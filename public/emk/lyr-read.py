@@ -26,10 +26,10 @@ def read_cursor_file(file_path: str):
         print("Error loading cursor:", e)
 
 
-with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.lyr", "r", encoding="cp874") as f:
+with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/song.lyr", "r", encoding="cp874") as f:
     lyric_data = f.read()
 
 print(lyric_data)
 
-cur = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.cur")
+cur = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/song.cur")
 print(cur)

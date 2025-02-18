@@ -1,7 +1,11 @@
 "use client";
 "use client";
 import React, { useState } from "react";
-import { decodeCP874, EMKBuilder, readFileAsUint8Array } from "../../lib/karaoke/emk-builder";
+import {
+  decodeCP874,
+  EMKBuilder,
+  readFileAsUint8Array,
+} from "../../lib/karaoke/builder/emk-builder";
 
 const EmkBuilderComponent: React.FC = () => {
   const [midiFile, setMidiFile] = useState<File | null>(null);

@@ -1,12 +1,14 @@
 "use client";
 import PlayerBox from "@/components/midi/plyer-box";
 import NavBar from "@/components/navbar/navbar-menu";
-import { ThaiWordDict } from "@/lib/wordcut";
+import { CurBuilder } from "@/lib/karaoke/builder/cur-builder";
+import { LyrBuilder } from "@/lib/karaoke/builder/lyr-builder";
+import { loadWords } from "@/lib/wordcut";
+import { ThaiWordDict } from "@/lib/wordcut/wordcut";
 import { JsSynthEngine } from "@/modules/js-synth-engine";
 import LyricsSection from "@/tools/lyrics-setcion";
 import React from "react";
 import { useEffect, useState } from "react";
-import { FaFile, FaPlus } from "react-icons/fa";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -18,16 +20,6 @@ export default function Home() {
   const [segmentedText, setSegmentedText] = useState<string[][]>([]);
   const [thaiSegmenter, setThaiSegmenter] = useState<ThaiWordDict | null>(null);
   const [synth, setSynth] = useState<JsSynthEngine>();
-
-  const loadWords = async () => {
-    const words: string[] = await fetch("/dict.json")
-      .then((res) => res.json())
-      .then((data) => data);
-
-    const segmenter = new ThaiWordDict();
-    segmenter.prepareWordDict(words);
-    setThaiSegmenter(segmenter);
-  };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -71,7 +63,6 @@ export default function Home() {
       setCursor((v) => {
         let clone = [...v];
         clone[charIndex + 1] = cursor;
-        console.log(clone);
         return clone;
       });
     }
@@ -99,8 +90,36 @@ export default function Home() {
     }
   };
 
+  const loadCur = () => {
+    const curBuild = new CurBuilder([
+      0, 14, 19, 24, 29, 40, 44, 48, 57, 60, 63, 68, 75, 82, 91, 96, 107, 111,
+      115, 120, 124, 129, 131, 133, 165, 165, 169, 177, 180, 187, 197, 217, 220,
+      223, 226, 236, 240, 244, 254, 257, 260, 263, 269, 275, 288, 290, 292, 294,
+      296, 337, 337, 369, 433, 444, 455, 477, 485, 501, 527, 555, 583, 603, 630,
+    ]);
+    curBuild.downloadFile("song.cur");
+  };
+
+  const loadLyr = () => {
+    const lyrBuild = new LyrBuilder({
+      artist: "ไหมไทย",
+      key: "cm",
+      name: "นะหน้าทอง",
+      lyrics: [
+        "เพลง คนน่าฮักอกหักบ่คือ",
+        "แสดงสด ไหมไทย หัวใจศิลป์",
+        "Intro:>>>>>>",
+        ">>>เป็นตาฮักกะด้อ",
+        "เจ็บเป็นอยู่บ้อคนดี",
+      ],
+    });
+    lyrBuild.downloadFile("song.lyr");
+  };
+
   useEffect(() => {
-    loadWords();
+    loadWords().then((word) => {
+      setThaiSegmenter(word);
+    });
     loadSynth();
   }, []);
 
@@ -109,6 +128,8 @@ export default function Home() {
       <div className="w-full bg-slate-300">
         <NavBar></NavBar>
       </div>
+      <div onClick={loadLyr}>lyr</div>
+      <div onClick={loadCur}>cur</div>
       <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 w-full h-[94.5vh] p-2">
         <div className="col-span-1 lg:col-span-4 overflow-auto">
           <div className="grid grid-row-6 w-full h-full">
