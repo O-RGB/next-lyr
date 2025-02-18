@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AllowSound from "@/allow-sound";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,10 +25,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+        />
+        <script src="/js-synthesizer/libfluidsynth-2.3.0.js"></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AllowSound>{children}</AllowSound>
       </body>
     </html>
   );
