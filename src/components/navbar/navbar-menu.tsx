@@ -11,9 +11,18 @@ interface NavBarMenuProps {
 
 const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   return (
-    <div className="flex">
+    <div className="flex px-2">
+      <div className="flex items-center justify-center px-2">
+        <span className="font-bold text-white select-none cursor-default">
+          Next Lyrics Editor
+        </span>
+      </div>
       <Dropdown
         items={[
+          {
+            label: "เลือกเพลง",
+            onClick: () => onSelectMenu?.("OPEN_MUSIC"),
+          },
           {
             label: "New File",
             onClick: () => onSelectMenu?.("FILE_NEW"),
@@ -25,16 +34,16 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
         ]}
       >
         <ButtonCommon
-          color="transparent"
-          className="!shadow-none !rounded-none !border-none !text-start text-sm"
+          variant="ghost"
+          className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
           icon={<BiFile></BiFile>}
         >
           ไฟล์
         </ButtonCommon>
       </Dropdown>
       <ButtonCommon
-        color="transparent"
-        className="!shadow-none !rounded-none !border-none !text-start text-sm"
+        variant="ghost"
+        className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
         icon={<MdOutlineLyrics></MdOutlineLyrics>}
         onClick={() => onSelectMenu?.("LYRICS_ADD")}
       >

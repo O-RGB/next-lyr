@@ -1,5 +1,6 @@
 import ButtonCommon from "@/components/button/button";
 import Input from "@/components/input/input";
+import TextAreaCommon from "@/components/textarea";
 import React, { useEffect, useState } from "react";
 
 interface LyricsEditSectionProps {
@@ -16,14 +17,17 @@ const LyricsEditSection: React.FC<LyricsEditSectionProps> = ({
     setText(list.join("|"));
   }, [list]);
   return (
-    <div className="flex gap-2">
-      <Input
-        value={text}
-        onChange={(e) => {
-          const value = e.target.value;
-          setText(value.trim());
-        }}
-      ></Input>
+    <div className="flex flex-col gap-2 justify-end items-end w-full">
+      <div className="w-full">
+        <TextAreaCommon
+          value={text}
+          onChange={(e) => {
+            const value = e.target.value;
+            setText(value.trim());
+          }}
+        ></TextAreaCommon>
+      </div>
+
       <ButtonCommon
         onClick={() => {
           onSave?.(text.split("|"));

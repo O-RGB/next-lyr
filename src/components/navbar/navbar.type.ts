@@ -1,5 +1,5 @@
 export type IMenuType = "FILE";
-export type ISubMenuType = "FILE_NEW" | "SAVE_NCN" | "LYRICS_ADD"
+export type ISubMenuType = "FILE_NEW" | "SAVE_NCN" | "LYRICS_ADD" | "OPEN_MUSIC"
 
 export type IMenusType = IMenuType | ISubMenuType;
 

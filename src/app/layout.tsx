@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import AllowSound from "@/allow-sound";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// โหลดฟอนต์
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ["thai", "latin"],
+  weight: ["400", "700"], // กำหนดน้ำหนักตัวอักษรที่ต้องใช้
+  variable: "--font-noto-sans-thai", // ตั้งค่า CSS Variable (ถ้าต้องการ)
 });
 
 export const metadata: Metadata = {
@@ -32,9 +29,7 @@ export default function RootLayout({
         />
         <script src="/js-synthesizer/libfluidsynth-2.3.0.js"></script>
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${notoSansThai.className} antialiased`}>
         <AllowSound>{children}</AllowSound>
       </body>
     </html>

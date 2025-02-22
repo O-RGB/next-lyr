@@ -53,13 +53,13 @@ const Dropdown: React.FC<DropdownProps> = ({
     >
       {children}
       {open && items && (
-        <div className="absolute left-0 mt-1 bg-white border border-gray-300 shadow-lg rounded-sm z-10 min-w-40">
+        <div className="absolute left-0 mt-1 bg-white border border-purple-500 shadow-lg rounded-sm z-10 min-w-40">
           <div className="w-full h-full flex flex-col ">
             {items.map((subItem, index) => (
               <React.Fragment key={`${subItem.label}-${index}`}>
                 <ButtonCommon
-                  color="transparent"
-                  className="!shadow-none !rounded-none !border-none !text-start"
+                  variant="ghost"
+                  className="!shadow-none !rounded-none !border-none !justify-start !text-black hover:!bg-purple-500/20"
                   onClick={() => handleOptionClick(subItem.onClick)}
                 >
                   {subItem.label}
