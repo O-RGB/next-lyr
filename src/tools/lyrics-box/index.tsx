@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import LyricsBoxRender from "./cards";
 import useLyricsStore from "@/stores/lyrics-store";
+import InsertLine from "./cards/insert-line";
 
 interface LyricsSectionProps {
   lineCurrent: number;
@@ -19,6 +20,12 @@ const LyricsSection: React.FC<LyricsSectionProps> = ({
 
   const [lyrics, setLyrics] = useState<string[][]>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const onAddNewLyrics = () => {
+    const newLyrics = [...lyrics, []];
+    setLyrics(newLyrics);
+    onLyricsListChange?.(newLyrics);
+  };
 
   const onAddLyricsIndex = (index: number) => {
     const newLyrics = [...lyrics];
@@ -57,7 +64,7 @@ const LyricsSection: React.FC<LyricsSectionProps> = ({
       ref={scrollContainerRef}
       className="relative row-span-4 rounded overflow-auto"
     >
-      <div className="flex flex-col gap-2 h-full border p-2 rounded-md">
+      <div className="flex flex-col gap-2 h-full p-2">
         {lyrics.map((data, i) => (
           <React.Fragment key={`lyr-box-${i}-${data.length}`}>
             <LyricsBoxRender
@@ -70,6 +77,13 @@ const LyricsSection: React.FC<LyricsSectionProps> = ({
               lyr={data}
               index={i}
             ></LyricsBoxRender>
+            {i === lyrics.length - 1 && (
+              <InsertLine
+                className="pb-2"
+                onClick={onAddNewLyrics}
+                disabled={disable}
+              ></InsertLine>
+            )}
           </React.Fragment>
         ))}
       </div>

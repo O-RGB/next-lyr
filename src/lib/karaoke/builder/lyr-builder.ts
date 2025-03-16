@@ -26,7 +26,7 @@ export class LyrBuilder {
         this.values.key,
         "",
         ...this.values.lyrics,
-      ].join("\n")
+      ].join("\r\n")
     );
   }
 

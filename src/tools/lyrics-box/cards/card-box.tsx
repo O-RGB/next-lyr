@@ -56,6 +56,7 @@ const LyricsCard: React.FC<LyricsCardProps> = ({
                     {i + 1}
                   </div>
                   <CharacterBox
+                    thisLineIndex={lineCurrent}
                     onActive={wordCurrent === i}
                     chr={lyr}
                   ></CharacterBox>

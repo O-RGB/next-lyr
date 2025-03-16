@@ -1,3 +1,4 @@
+from pprint import pprint
 
 def read_cursor_file(file_path: str):
     try:
@@ -24,12 +25,27 @@ def read_cursor_file(file_path: str):
         return cursor_data
     except Exception as e:
         print("Error loading cursor:", e)
+        return []
 
-
-with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/song.lyr", "r", encoding="cp874") as f:
+cur = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/U001.cur")
+with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/U001.lyr", "r", encoding="cp874") as f:
     lyric_data = f.read()
+lyric_data = lyric_data.split("\n")
+lyric_data = (lyric_data[4:len(lyric_data)-1])
+# ใช้ pprint ให้แสดงผลสวยงาม
+# pprint(cur, compact=True, width=80)
+print("lyric_data", (lyric_data))
 
-print(lyric_data)
+# รวมบรรทัดทั้งหมดเป็นสตริงเดียว
+all_text = ''.join(lyric_data)
 
-cur = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/song.cur")
-print(cur)
+# นับจำนวนตัวอักษร
+char_count = len(all_text)
+
+print("จำนวนตัวอักษรทั้งหมด:", char_count)
+
+# print("cur", len(cur))
+print("cur", cur)
+
+
+

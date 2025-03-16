@@ -4,7 +4,6 @@ import LyricsEditSection from "@/tools/lyrics-edit-section";
 import ModalCommon from "@/components/modal/modal";
 import ButtonCommon from "@/components/button/button";
 import { MdEdit, MdDeleteForever } from "react-icons/md";
-
 interface CharactersListProps {
   list: string[];
   isLineActive?: boolean;
@@ -59,7 +58,11 @@ const CharactersList: React.FC<CharactersListProps> = ({
       >
         <div className="flex flex-col gap-2">
           ยืนยันการลบท่อนเพลงที่ {lineIndex + 1}?
-          <BoxRender lyric={lyric} wordIndex={wordIndex}></BoxRender>
+          <BoxRender
+            lyric={lyric}
+            wordIndex={wordIndex}
+            lineCurrent={lineIndex}
+          ></BoxRender>
           <div className="flex items-center justify-end gap-2">
             <ButtonCommon color="gray">ยกเลิก</ButtonCommon>
             <ButtonCommon
@@ -78,7 +81,9 @@ const CharactersList: React.FC<CharactersListProps> = ({
         lyric={lyric}
         isLineActive={isLineActive}
         wordIndex={wordIndex}
+        lineCurrent={lineIndex}
       ></BoxRender>
+
       <div className="flex flex-col gap-2">
         <div>
           <ButtonCommon
@@ -108,31 +113,33 @@ function BoxRender({
   isLineActive,
   lyric,
   wordIndex,
+  lineCurrent,
 }: {
   lyric: string[];
   isLineActive?: boolean;
   wordIndex: number;
+  lineCurrent: number;
 }) {
   return (
-    <>
-      <div className="flex gap-1 flex-wrap w-full">
-        {lyric.map((lyr, i) => {
-          return (
-            <div
-              className="relative rounded-md  hover:scale-105 duration-500 overflow-hidden cursor-default group"
-              key={`res-box-${i}`}
-            >
-              <div className="border w-full bg-slate-200 text-center text-[10px] opacity-35">
-                {i + 1}
-              </div>
-              <CharacterBox
-                onActive={isLineActive && wordIndex === i}
-                chr={lyr}
-              ></CharacterBox>
+    <div className="flex gap-1 flex-wrap w-full">
+      {lyric.map((lyr, i) => {
+        return (
+          <div
+            className="relative rounded-md  hover:scale-105 duration-500 overflow-hidden cursor-default group"
+            key={`res-box-${i}`}
+          >
+            <div className="border w-full bg-slate-200 text-center text-[10px] opacity-35">
+              {i + 1}
             </div>
-          );
-        })}
-      </div>
-    </>
+            <CharacterBox
+              thisLineIndex={lineCurrent}
+              thisWordIndex={i}
+              onActive={isLineActive && wordIndex === i}
+              chr={lyr}
+            ></CharacterBox>
+          </div>
+        );
+      })}
+    </div>
   );
 }

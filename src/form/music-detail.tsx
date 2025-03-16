@@ -1,17 +1,71 @@
 import InputCommon from "@/components/input/input";
+import useLyricsStore from "@/stores/lyrics-store";
 import useMidiPlayerStore from "@/stores/midi-plyer-store";
-import React from "react";
+import React, { useState } from "react";
 
 interface MusicDetailFormProps {}
 
 const MusicDetailForm: React.FC<MusicDetailFormProps> = ({}) => {
   const isPlay = useMidiPlayerStore((state) => state.isPlay);
+  const setSongDetail = useLyricsStore((state) => state.setSongDetail);
+  const [values, setValues] = useState({
+    songId: "",
+    songName: "",
+    songKey: "",
+    artist: "",
+  });
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const updated = { ...values, [event.target.name]: event.target.value };
+    setValues({ ...values, [event.target.name]: event.target.value });
+    setSongDetail({
+      name: updated.songName,
+      artist: updated.artist,
+      key: updated.songKey,
+      lyrics: [],
+    });
+  };
+
+  //   const handleSubmit = (event: React.FormEvent) => {
+  //     event.preventDefault();
+  //     console.log("Form submitted", values);
+  //   };
+
   return (
-    <div className="flex flex-col gap-2">
-      <InputCommon disabled={!isPlay} label="ชื่อเพลง"></InputCommon>
-      <InputCommon disabled={!isPlay} label="คีย์เพลง"></InputCommon>
-      <InputCommon disabled={!isPlay} label="ศิลปิน"></InputCommon>
-    </div>
+    <form className="flex flex-col gap-2 w-full">
+      <div className="flex gap-2 w-full">
+        <InputCommon
+        //   disabled={!isPlay}
+          label="รหัสเพลง"
+          name="songId"
+          value={values.songId}
+          onChange={handleChange}
+        />
+        <InputCommon
+        //   disabled={!isPlay}
+          label="ชื่อเพลง"
+          name="songName"
+          value={values.songName}
+          onChange={handleChange}
+        />
+      </div>
+      <div className="flex gap-2 w-full">
+        <InputCommon
+        //   disabled={!isPlay}
+          label="คีย์เพลง"
+          name="songKey"
+          value={values.songKey}
+          onChange={handleChange}
+        />
+        <InputCommon
+        //   disabled={!isPlay}
+          label="ศิลปิน"
+          name="artist"
+          value={values.artist}
+          onChange={handleChange}
+        />
+      </div>
+    </form>
   );
 };
 
