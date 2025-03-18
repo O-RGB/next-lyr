@@ -20,15 +20,15 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
       <Dropdown
         items={[
           {
-            label: "เลือกเพลง",
+            label: "เปิดไฟล์ (Mid)",
             onClick: () => onSelectMenu?.("OPEN_MUSIC"),
           },
+          // {
+          //   label: "New File",
+          //   onClick: () => onSelectMenu?.("FILE_NEW"),
+          // },
           {
-            label: "New File",
-            onClick: () => onSelectMenu?.("FILE_NEW"),
-          },
-          {
-            label: "Save (NCN)",
+            label: "บันทึก (NCN)",
             onClick: () => onSelectMenu?.("SAVE_NCN"),
           },
         ]}

@@ -1,5 +1,4 @@
-import React, { useEffect } from "react";
-import ReactDOM from "react-dom";
+import React from "react";
 import "react-responsive-modal/styles.css";
 import { Modal, ModalProps } from "react-responsive-modal";
 import { MdClose } from "react-icons/md";
@@ -16,20 +15,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   open,
   ...props
 }) => {
-  // Handle background scroll
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [open]);
-
-  return ReactDOM.createPortal(
+  return (
     <Modal
       {...props}
       open={open}
@@ -59,7 +45,6 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         },
       }}
       animationDuration={200}
-      container={document.body} // ให้ modal อยู่บนสุด
     >
       <div className="flex flex-col gap-4">
         {title && (
@@ -69,8 +54,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         )}
         <div className="max-h-[80vh] overflow-y-auto pr-2">{children}</div>
       </div>
-    </Modal>,
-    document.body // Portal ไปที่ `document.body` เพื่อให้ modal อยู่บนสุด
+    </Modal>
   );
 };
 

@@ -11,6 +11,9 @@ interface MidiPlayerProps {}
 
 const MidiPlayer: React.FC<MidiPlayerProps> = ({}) => {
   const isPlay = useMidiPlayerStore((state) => state.isPlay);
+  const midiFileNamePlaying = useMidiPlayerStore(
+    (state) => state.midiFileNamePlaying
+  );
   const play = useMidiPlayerStore((state) => state.play);
   const pause = useMidiPlayerStore((state) => state.pause);
   const stop = useMidiPlayerStore((state) => state.stop);
@@ -22,7 +25,7 @@ const MidiPlayer: React.FC<MidiPlayerProps> = ({}) => {
   return (
     <div className="flex gap-2">
       <div className="flex text-xl w-fit px-3 bg-blue-500 rounded-md pointer-events-none select-none">
-        <div className="m-auto text-white font-bold mt-0.5">
+        <div className="m-auto text-white font-bold mt-0.5 text-nowrap">
           {measure} : {beat}
         </div>
       </div>
@@ -38,9 +41,16 @@ const MidiPlayer: React.FC<MidiPlayerProps> = ({}) => {
       ></ButtonCommon>
       <ButtonCommon
         onClick={stop}
-        // disabled={!isPlay}
         icon={<TbPlayerStopFilled></TbPlayerStopFilled>}
       ></ButtonCommon>
+
+      <div className="flex justify-end w-full ml-2 lg:ml-10">
+        {midiFileNamePlaying && (
+          <div className="my-auto text-xs line-clamp-2">
+            {midiFileNamePlaying}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

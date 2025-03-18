@@ -111,7 +111,7 @@ const LyricsList: React.FC<LyricsListProps> = ({
 
         return (
           <div key={`lyr-b-${key}`} className="-mx-[7px]">
-            <LyricsCharacter size="lg" lyr={char} clip={clipValue} />
+            <LyricsCharacter size="sm" lyr={char} clip={clipValue} />
           </div>
         );
       })}

@@ -22,7 +22,7 @@ const useSegementerStore = create<SegementerStore>((set, get) => ({
     if (!wordsCut) {
       return [];
     }
-
+    // let sp = str.map((v) => v.split(""));
     return str.map((v) => wordsCut.segmentText(v));
   },
 }));

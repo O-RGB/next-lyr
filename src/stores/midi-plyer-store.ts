@@ -7,6 +7,7 @@ interface MidiPlayerStore {
   synth?: JsSynthEngine;
   isPlay?: boolean;
   midiPlaying?: MidiData;
+  midiFileNamePlaying?: string;
   tick?: number;
   intervalId?: NodeJS.Timeout;
   midiTempo: TempoUI;
@@ -24,6 +25,7 @@ const useMidiPlayerStore = create<MidiPlayerStore>((set, get) => ({
   synth: undefined,
   isPlay: false,
   midiPlaying: undefined,
+  midiFileNamePlaying: undefined,
   tick: 0,
   intervalId: undefined,
   midiTempo: {
@@ -36,7 +38,8 @@ const useMidiPlayerStore = create<MidiPlayerStore>((set, get) => ({
 
   loadMidi: async (file: File) => {
     const midiData = await get().synth?.player?.loadMidi(file);
-    set({ midiPlaying: midiData });
+    set({ midiPlaying: midiData, midiFileNamePlaying: file.name });
+    get().stop();
     return midiData;
   },
 

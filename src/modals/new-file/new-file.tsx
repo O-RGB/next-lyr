@@ -28,7 +28,7 @@ const NewFileModal: React.FC<NewFileModalProps> = ({
     <ModalCommon open={openModal} onClose={handleCloseModal}>
       <div className="p-4 text-center">
         <div className="mt-4 flex justify-center gap-2">
-          <ButtonCommon onClick={onClose} color="transparent">
+          <ButtonCommon onClick={onClose} variant="outline">
             Cancel
           </ButtonCommon>
           <ButtonCommon

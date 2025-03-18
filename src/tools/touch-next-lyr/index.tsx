@@ -59,13 +59,13 @@ const TouchNextLyr: React.FC<TouchNextLyrProps> = ({}) => {
   return (
     <>
       <div className="flex gap-2 mb-4">
-        <ButtonCommon
+        {/* <ButtonCommon
           icon={<FaArrowLeft></FaArrowLeft>}
           onClick={() => moveWord(false)}
           className="w-full"
         >
           ย้อนกลับ
-        </ButtonCommon>
+        </ButtonCommon> */}
         <ButtonCommon
           icon={<FaArrowRight></FaArrowRight>}
           onClick={() => moveWord(true)}

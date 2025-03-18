@@ -117,8 +117,6 @@ const HomePage: React.FC<HomePageProps> = ({}) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <CurExport></CurExport>
-            <LyrExport></LyrExport>
             <ButtonCommon
               onClick={() => setPreview(true)}
               color="warning"

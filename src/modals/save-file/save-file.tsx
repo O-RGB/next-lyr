@@ -1,5 +1,8 @@
 import ButtonCommon from "@/components/button/button";
 import ModalCommon from "@/components/modal/modal";
+import CurExport from "@/tools/export/cur-export";
+import LyrExport from "@/tools/export/lyr-export";
+import MidExport from "@/tools/export/midi-export";
 import React, { useEffect, useState } from "react";
 
 interface SaveFileModalProps {
@@ -25,7 +28,22 @@ const SaveFileModal: React.FC<SaveFileModalProps> = ({
     setOpenModal(open);
   }, [open]);
   return (
-    <ModalCommon open={openModal} onClose={handleCloseModal}></ModalCommon>
+    <ModalCommon title="Save As" open={openModal} onClose={handleCloseModal}>
+      <div className="flex flex-col gap-4">
+        <div>
+          <div className="text-xs text-gray-500">Download (.cur)</div>
+          <CurExport></CurExport>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500">Download (.lyr)</div>
+          <LyrExport></LyrExport>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500">Download (.mid)</div>
+          <MidExport></MidExport>
+        </div>
+      </div>
+    </ModalCommon>
   );
 };
 

@@ -2,7 +2,10 @@ import React, { useEffect, useState } from "react";
 import LyricsList from "./lyrics-list";
 import { ISentence } from "./types/lyrics-player.type";
 import useMidiPlayerStore from "@/stores/midi-plyer-store";
-import { convertCursorToTicks } from "@/lib/karaoke/builder/cur-builder";
+import {
+  convertCursorToTicks,
+  CurBuilder,
+} from "@/lib/karaoke/builder/cur-builder";
 import useLyricsStore from "@/stores/lyrics-store";
 
 interface LyricsPlayerProps {}
@@ -16,8 +19,10 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({}) => {
   const [topLineIndex, setTopLineIndex] = useState<number>(0);
   const [bottomLineIndex, setBottomLineIndex] = useState<number>(1);
   const lyrics = useLyricsStore((state) => state.lyricsCuted);
-  const cursor = useLyricsStore((state) => state.cursorsPreview);
   const [lyricsJoin, setLyricsJoin] = useState<string[]>([]);
+  const lyricsCuted = useLyricsStore((state) => state.lyricsCuted);
+  const getCursor = useLyricsStore((state) => state.getCursor);
+  const synth = useMidiPlayerStore((state) => state.synth);
 
   function splitCursorByLyrics(lyrics: string[], cursor: number[]) {
     let cursorIndex = 0;
@@ -36,34 +41,51 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({}) => {
     return result;
   }
 
-  useEffect(() => {
-    stop();
-    if (lyrics && cursor) {
-      const join = lyrics.map((l) => l.join(""));
-      const divition = midiPlaying?.header.ticksPerBeat;
-      if (!divition) return;
+  const loadCur = async () => {
+    const tpb = midiPlaying?.header.ticksPerBeat;
+    if (tpb) {
+      const cursor = getCursor();
 
-      setLyricsJoin(join);
-      const curToTicks = convertCursorToTicks(divition, cursor);
-      const splitCursor = splitCursorByLyrics(join, curToTicks);
-
-      const formattedLyrics = splitCursor.map((lineCursor) => {
-        const [start, ...valueName] = lineCursor;
-        return {
-          start,
-          valueName,
-        };
-      });
-
-      setSentenceMapping(formattedLyrics);
-      setTimeout(() => {
-        play();
-      }, 200);
+      const bpm = await synth?.player?.getCurrentBPM();
+      if (bpm) {
+        const curBuild = new CurBuilder(cursor, lyricsCuted, tpb, bpm);
+        return curBuild;
+      }
+      return undefined;
     }
+    return undefined;
+  };
+
+  useEffect(() => {
+    synth?.synth?.seekPlayer(0);
+    loadCur().then((excur) => {
+      if (lyrics && excur) {
+        const join = lyrics.map((l) => l.join(""));
+        const divition = midiPlaying?.header.ticksPerBeat;
+        if (!divition) return;
+
+        setLyricsJoin(join);
+        const cursor = excur.getCursor();
+        const curToTicks = convertCursorToTicks(divition, cursor);
+        const splitCursor = splitCursorByLyrics(join, curToTicks);
+
+        const formattedLyrics = splitCursor.map((lineCursor) => {
+          const [start, ...valueName] = lineCursor;
+          return {
+            start,
+            valueName,
+          };
+        });
+
+        setSentenceMapping(formattedLyrics);
+        setTimeout(() => {
+          play();
+        }, 200);
+      }
+    });
   }, []);
 
   if (!sentenceMapping) return <></>;
-  if (!cursor) return <></>;
   if (!lyrics) return <></>;
 
   const currentTick = tick ?? 0;
