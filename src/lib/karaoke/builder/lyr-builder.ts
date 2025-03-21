@@ -19,6 +19,7 @@ export class LyrBuilder {
   }
 
   public getFileContent(): Uint8Array {
+    console.log("this.values.lyrics",this.values.lyrics)
     return encodeCP874(
       [
         this.values.name,

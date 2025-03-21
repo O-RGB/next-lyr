@@ -1,6 +1,4 @@
 import ButtonCommon from "@/components/button/button";
-
-import useLyricsStore from "@/stores/lyrics-store";
 import React from "react";
 import { FaFile } from "react-icons/fa";
 

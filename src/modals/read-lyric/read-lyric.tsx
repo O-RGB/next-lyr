@@ -56,6 +56,7 @@ const ReadLyricModal: React.FC<ReadLyricModalProps> = ({
         <ButtonCommon
           className="w-full disabled:opacity-50"
           icon={<FaPlus />}
+          onClick={handleCloseModal}
           type="submit"
           disabled={isDisabled}
         >

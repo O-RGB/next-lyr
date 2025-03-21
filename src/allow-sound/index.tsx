@@ -9,6 +9,7 @@ interface AllowSoundProps {
 const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
   const [ended, setEnded] = useState<boolean>(false);
   const [pressed, setPressed] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const audioLoopRef = useRef<HTMLAudioElement>(null);
 
@@ -38,7 +39,10 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
       audio.play();
       audioLoop.play();
       audio.addEventListener("ended", () => {
-        setEnded(true);
+        setFadeIn(true);
+        setTimeout(() => {
+          setEnded(true);
+        }, 1000);
       });
     }
   };
@@ -52,32 +56,56 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
       {ended ? (
         children
       ) : (
-        <div className="flex h-screen w-screen   items-center justify-center bg-gradient-to-r from-cyan-500 to-blue-500">
-          <div className="">
-            <div className="text-white text-center">
-              ลดการประมวลผล <br /> (เหมาะสำหรับมือถือ)
-            </div>
+        <div
+          data-rotation="45"
+          className={`flex h-screen w-screen items-center justify-center bg-gradient-to-r from-violet-500 to-purple-500 transition-opacity duration-1000 ${
+            fadeIn ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          <div className="text-center">
             {pressed ? (
-              <div className="flex items-center gap-2 text-white font-bold">
-                Karaoke lite Startup
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="text-4xl font-bold text-white tracking-wider animate-pulse">
+                  Next Lyrics Editer
+                </div>
+                <div className="flex items-center gap-2 text-white font-medium text-lg">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Loading...
+                </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center">
-                <div className="relative w-fit">
-                  <div className="absolute -right-0.5 -top-0.5 w-fit">
-                    <span className="relative flex h-3 w-3 ">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
-                    </span>
-                  </div>
+              <div className="flex flex-col items-center justify-center space-y-6">
+                <div className="text-4xl font-bold text-white mb-4 tracking-wider">
+                  Next Lyrics Editor
+                </div>
+                <div className="relative w-fit group">
+                  <div className="absolute -inset-0.5 bg-white opacity-30 rounded-lg blur-sm group-hover:opacity-100 transition duration-300"></div>
                   <button
-                    className="w-fit p-3 border flex items-center justify-center rounded-md bg-white"
+                    className="relative w-fit p-4 px-8 flex items-center justify-center rounded-lg bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30 font-medium text-lg hover:bg-opacity-30 transition-all duration-300 transform hover:scale-105"
                     onClick={handleClick}
                   >
-                    <div className="px-2">Allow Sound</div>
+                    Allow Sound
                   </button>
                 </div>
-                <span className="pt-1 text-xs text-white">Updated v.1.0.0</span>
               </div>
             )}
           </div>
