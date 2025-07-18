@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import "react-responsive-modal/styles.css";
 import { Modal, ModalProps } from "react-responsive-modal";
 import { MdClose } from "react-icons/md";
@@ -15,6 +15,55 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   open,
   ...props
 }) => {
+  const modalContentRef = useRef<HTMLDivElement | null>(null); // Reference to the children container
+  const [windowsWidth, setChildrenWidth] = useState<number | null>(null); // State to hold the width
+
+  useLayoutEffect(() => {
+    if (modalContentRef.current) {
+      // Create a ResizeObserver to detect changes in size
+      const resizeObserver = new ResizeObserver(() => {
+        if (modalContentRef.current) {
+          setChildrenWidth(modalContentRef.current.offsetWidth); // Update width when resized
+        }
+      });
+
+      // Start observing the element
+      resizeObserver.observe(modalContentRef.current);
+
+      // Cleanup observer when component unmounts or modal closes
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, []); // Observe element once, and keep observing when the component is mounted
+
+  useLayoutEffect(() => {
+    if (modalContentRef.current) {
+      setChildrenWidth(modalContentRef.current.offsetWidth); // Initial width on first render
+    }
+
+    const handleResize = () => {
+      if (modalContentRef.current) {
+        setChildrenWidth(modalContentRef.current.offsetWidth); // Update width on window resize
+      }
+    };
+
+    // Attach resize event listener to the window
+    window.addEventListener("resize", handleResize);
+
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [open]); // Only reset when modal opens
+
+  // Clone children and pass windowsWidth as a prop
+  const childrenWithProps = React.Children.map(children, (child) =>
+    React.isValidElement(child)
+      ? React.cloneElement(child as React.ReactElement<any>, { windowsWidth })
+      : child
+  );
+
   return (
     <Modal
       {...props}
@@ -27,7 +76,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       styles={{
         modal: {
           width: "90vw",
-          maxWidth: "800px",
+          maxWidth: "1800px",
           borderRadius: "8px",
           padding: "24px",
           backgroundColor: "white",
@@ -52,8 +101,16 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
             <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
           </div>
         )}
-        <div className="max-h-[80vh] overflow-y-auto pr-2">{children}</div>
+        <div
+          ref={modalContentRef}
+          className="max-h-[80vh] overflow-y-auto pr-2"
+        >
+          {childrenWithProps}
+        </div>
       </div>
+
+      {/* Display width of the children */}
+      {windowsWidth && <div>Children width: {windowsWidth}px</div>}
     </Modal>
   );
 };

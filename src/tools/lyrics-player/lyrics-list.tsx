@@ -1,120 +1,88 @@
-import React from "react";
-import LyricsCharacter from "./lyrics-character";
+import React, { useEffect, useRef, useState } from "react";
 import { ISentence } from "./types/lyrics-player.type";
+import LyricsCharacter from "./lyrics-character";
 
 interface LyricsListProps {
-  text: string;
-  sentence: ISentence;
+  text?: string;
+  sentence?: ISentence;
   tick: number;
   isEnd?: () => void;
+  containerWidth?: number;
 }
 
 const LyricsList: React.FC<LyricsListProps> = ({
-  text,
+  text = "",
   sentence,
   tick,
   isEnd,
+  containerWidth,
 }) => {
-  const groupThaiCharacters = (text: string) => {
-    const result: string[] = [];
-    let currentChar = "";
+  const [clipPercent, setClipPercent] = useState(0);
+  const [scaleX, setScaleX] = useState(1);
+  const textRef = useRef<HTMLDivElement>(null);
 
-    const thaiDiacritics = [
-      "\u0e31",
-      "\u0e34",
-      "\u0e35",
-      "\u0e36",
-      "\u0e37",
-      "\u0e38",
-      "\u0e39",
-      "\u0e47",
-      "\u0e48",
-      "\u0e49",
-      "\u0e4a",
-      "\u0e4b",
-      "\u0e4c",
-      "\u0e4d",
-      "\u0e30",
-      "\u0e32",
-      "\u0e33",
-      "\u0e40",
-      "\u0e41",
-      "\u0e42",
-      "\u0e43",
-      "\u0e44",
-    ];
+  useEffect(() => {
+    if (!text || !sentence || text.length === 0) {
+      setClipPercent(0);
+      return;
+    }
+
+    if (tick < sentence.start) {
+      setClipPercent(0);
+      return;
+    }
+
+    const lastCharTime = sentence.valueName[text.length - 1] || 0;
+
+    if (tick >= lastCharTime) {
+      setClipPercent(100);
+      if (isEnd) {
+        setTimeout(isEnd, 500);
+      }
+      return;
+    }
+
+    // Initialize targetIndex to -1, meaning no characters should be shown yet
+    let targetIndex = -1;
 
     for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-
-      const isDiacritic = thaiDiacritics.includes(char);
-
-      if (isDiacritic && currentChar) {
-        currentChar += char;
+      const charTime = sentence.valueName[i] || 0;
+      if (tick >= charTime) {
+        targetIndex = i;
       } else {
-        if (currentChar) {
-          result.push(currentChar);
-        }
-
-        currentChar = char;
+        break;
       }
     }
 
-    if (currentChar) {
-      result.push(currentChar);
+    // Calculate percentage based on targetIndex
+    if (targetIndex < 0) {
+      setClipPercent(0);
+    } else {
+      const percent = ((targetIndex + 1) / text.length) * 100;
+      setClipPercent(percent);
     }
+  }, [tick, text, sentence, isEnd]);
+  useEffect(() => {
+    if (textRef.current && containerWidth) {
+      const textWidth = textRef.current.scrollWidth;
 
-    return result;
-  };
-
-  const chars = groupThaiCharacters(text);
-
-  const calculateClip = (
-    currentTime: number,
-    nextTime: number,
-    end: boolean
-  ) => {
-    if (tick < currentTime) return 0;
-    if (tick >= nextTime) {
-      if (end) {
-        setTimeout(() => {
-          isEnd?.();
-        }, 500);
+      if (textWidth > containerWidth) {
+        setScaleX(containerWidth / textWidth);
+      } else {
+        setScaleX(1);
       }
-      return 100;
     }
-    return ((tick - currentTime) / (nextTime - currentTime)) * 100;
-  };
-
-  const getTimingForGroupedChar = (groupIndex: number) => {
-    let charCount = 0;
-    for (let i = 0; i < groupIndex; i++) {
-      charCount += chars[i].length;
-    }
-    return sentence.valueName[charCount];
-  };
+  }, [text, containerWidth]);
 
   return (
-    <div className="flex flex-wrap -mb-10">
-      {chars.map((char, key) => {
-        const currentTime = getTimingForGroupedChar(key);
-        const nextTime =
-          key < chars.length - 1
-            ? getTimingForGroupedChar(key + 1)
-            : currentTime + 30;
-
-        const clipValue = calculateClip(
-          currentTime,
-          nextTime,
-          key === chars.length - 1
-        );
-
-        return (
-          <div key={`lyr-b-${key}`} className="-mx-[7px]">
-            <LyricsCharacter size="sm" lyr={char} clip={clipValue} />
-          </div>
-        );
-      })}
+    <div
+      ref={textRef}
+      style={{
+        transform: `scaleX(${scaleX})`,
+        transformOrigin: "center center",
+      }}
+    >
+      <LyricsCharacter clip={clipPercent} lyr={text} size="md" />
     </div>
   );
 };

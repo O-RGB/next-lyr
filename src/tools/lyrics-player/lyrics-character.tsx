@@ -19,13 +19,13 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({
       : size === "md"
       ? "text-6xl"
       : size === "sm"
-      ? "text-4xl"
+      ? "text-2xl"
       : "text-8xl";
 
   const lyric = <pre>{lyr}</pre>;
 
   const clipStyle = {
-    transition: clip === 0 ? "" : "clip-path 0.05s ease-in-out",
+    transition: clip === 0 ? "" : "clip-path 0.3s ease-in",
     clipPath: `inset(-100% -100% -100% ${clip}%)`,
   };
   const textOver = {

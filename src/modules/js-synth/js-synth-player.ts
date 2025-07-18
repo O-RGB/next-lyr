@@ -48,6 +48,11 @@ export class JsSynthPlayerEngine {
     return currentBPM;
   }
 
+  async getTotalTicks() {
+    const totalTicks = (await this.player?.retrievePlayerTotalTicks()) ?? 0;
+    return totalTicks;
+  }
+
   setCurrentTiming(tick: number): void {
     this.player?.seekPlayer(tick);
   }

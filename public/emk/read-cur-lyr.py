@@ -27,6 +27,7 @@ def reverse_generate_segment(lyric, tick):
             "end": end, 
             "word_count": len(word), 
             "cursor_count":len(cursors), 
+            "cursors":cursors
         })
         index += len(word) + 1
     
@@ -60,12 +61,12 @@ def read_cursor_file(file_path: str):
         return []
 
 lyric_data = []
-with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/A0001.lyr", "r", encoding="cp874") as f:
+with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.lyr", "r", encoding="cp874") as f:
     lyric_data = f.read()
 lyric_data = lyric_data.split("\n")
 lyric_data = (lyric_data[4:len(lyric_data)-1])
 
-cursors = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/A0001.cur")
+cursors = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.cur")
 result = sum(len(word) for word in lyric_data)
 
 print("cursors All:", len(cursors))

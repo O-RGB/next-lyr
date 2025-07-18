@@ -9,6 +9,7 @@ interface MidiPlayerStore {
   midiPlaying?: MidiData;
   midiFileNamePlaying?: string;
   tick?: number;
+  totalTicks?: number;
   intervalId?: NodeJS.Timeout;
   midiTempo: TempoUI;
   measure: number;
@@ -32,14 +33,17 @@ const useMidiPlayerStore = create<MidiPlayerStore>((set, get) => ({
     count: 0,
     tempo: -1,
   },
+  totalTicks: 0,
   measure: 0,
   beat: 0,
   setSynth: (synth: JsSynthEngine) => set({ synth }),
 
   loadMidi: async (file: File) => {
     const midiData = await get().synth?.player?.loadMidi(file);
+
     set({ midiPlaying: midiData, midiFileNamePlaying: file.name });
     get().stop();
+
     return midiData;
   },
 
@@ -60,10 +64,11 @@ const useMidiPlayerStore = create<MidiPlayerStore>((set, get) => ({
   },
 
   pause: () => {
-    get().synth?.player?.pause();
     set({ isPlay: false });
     clearInterval(get().intervalId);
     set({ intervalId: undefined });
+    get().synth?.player?.pause();
+    get().synth?.synth?.stopPlayer();
   },
 
   stop: () => {
@@ -80,8 +85,9 @@ const useMidiPlayerStore = create<MidiPlayerStore>((set, get) => ({
     const intervalId = setInterval(async () => {
       const test = await get().synth?.player?.getCurrentBeat();
       const tick = await get().synth?.player?.getCurrentTiming();
+      const totalTicks = await get().synth?.player?.getTotalTicks();
       if (test?.measure)
-        set({ measure: test?.measure, beat: test?.beat, tick });
+        set({ measure: test?.measure, beat: test?.beat, tick, totalTicks });
     }, 50);
 
     set({ intervalId });

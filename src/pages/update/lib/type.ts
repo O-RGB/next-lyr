@@ -1,0 +1,14 @@
+export interface LyricWordData {
+  name: string;
+  start: number | null;
+  end: number | null;
+  length: number;
+  index: number;
+  lineIndex: number; // Added to preserve original line breaks
+}
+
+export interface ExportData {
+  title: string;
+  artist: string;
+  lyrics: Omit<LyricWordData, "index" | "lineIndex">[];
+}
