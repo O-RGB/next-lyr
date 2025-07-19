@@ -1,6 +1,5 @@
 "use client";
 
-
 import ButtonCommon from "@/components/button/button";
 import ModalCommon from "@/components/modal/modal";
 import MusicDetailForm from "@/form/music-detail";
@@ -16,6 +15,7 @@ import TouchNextLyr from "@/tools/touch-next-lyr";
 import React, { useEffect, useState } from "react";
 import { BsFileEarmarkPlayFill } from "react-icons/bs";
 import Home from "./update/pages";
+import { TimestampLyricSegmentGenerator } from "@/lib/karaoke/builder/cur-generator";
 
 interface HomePageProps {}
 
@@ -131,7 +131,13 @@ const HomePage: React.FC<HomePageProps> = ({}) => {
     //   </div>
     // </div>
     <>
-      <Home></Home>
+      <Home
+        exportData={(d) => {
+          const gen = new TimestampLyricSegmentGenerator();
+          const data = gen.generateSegment(d);
+          console.log(data);
+        }}
+      ></Home>
     </>
   );
 };

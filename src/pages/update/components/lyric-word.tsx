@@ -2,9 +2,9 @@ import { LyricWordData } from "../lib/type";
 
 type Props = {
   wordData: LyricWordData;
-  isActive: boolean; // Timing the current word (Blue)
-  isEditing: boolean; // The line is in edit mode (Purple)
-  isPlaybackHighlight: boolean; // Word is currently being sung (Gold)
+  isActive: boolean;
+  isEditing: boolean;
+  isPlaybackHighlight: boolean;
   onClick: (index: number) => void;
   onUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onDelete: (index: number) => void;
@@ -14,7 +14,7 @@ export default function LyricWord({
   wordData,
   isActive,
   isEditing,
-  isPlaybackHighlight, // <-- ADD THIS
+  isPlaybackHighlight,
   onClick,
 }: Props) {
   const isTimed = wordData.start !== null && wordData.end !== null;
@@ -25,8 +25,7 @@ export default function LyricWord({
         "lyric-word group relative cursor-pointer rounded-md border px-2.5 py-1.5 text-sm select-none",
         "bg-white border-slate-300 hover:bg-slate-200",
 
-        // [MODIFIED] Added new highlight style with priority
-        isPlaybackHighlight && "border-amber-400 bg-amber-200/80",
+        isPlaybackHighlight && "!border-amber-400 !bg-amber-200/80",
         isEditing && "border-purple-400 bg-purple-50/80 hover:bg-purple-100",
         isTimed &&
           "border-l-4 border-l-green-500 bg-green-50 hover:bg-green-100",

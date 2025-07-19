@@ -4,7 +4,7 @@ export interface LyricWordData {
   end: number | null;
   length: number;
   index: number;
-  lineIndex: number; // Added to preserve original line breaks
+  lineIndex: number;
 }
 
 export interface ExportData {

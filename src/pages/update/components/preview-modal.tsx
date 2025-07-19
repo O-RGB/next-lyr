@@ -1,16 +1,37 @@
-import { useEffect, useState, useRef, RefObject } from "react";
-import { LyricWordData } from "../lib/type";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "./common/modal";
+import LyricsCharacter, { LyricsCharacterStyle } from "./lyrics-character";
+import GraphemeSplitter from "grapheme-splitter";
 
 type Props = {
-  lyricsData: LyricWordData[];
-  audioRef: RefObject<HTMLAudioElement | null>;
+  timestamps: number[];
+  lyrics: string[][];
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   onClose: () => void;
 };
 
-export default function PreviewModal({ lyricsData, audioRef, onClose }: Props) {
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const animationFrameRef = useRef<number>(null);
+const PreviewModal: React.FC<Props> = ({
+  timestamps,
+  lyrics,
+  audioRef,
+  onClose,
+}) => {
+  const [currentTime, setCurrentTime] = useState(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const [wordStartTimes, setWordStartTimes] = useState<number[][]>([]);
+  const splitter = new GraphemeSplitter();
+
+  useEffect(() => {
+    let graphemeIndex = 0;
+    const newWordStartTimes = lyrics.map((line) =>
+      line.map((word) => {
+        const startTime = timestamps[graphemeIndex] ?? 0;
+        graphemeIndex += word.length;
+        return startTime;
+      })
+    );
+    setWordStartTimes(newWordStartTimes);
+  }, [lyrics, timestamps, splitter]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -20,56 +41,79 @@ export default function PreviewModal({ lyricsData, audioRef, onClose }: Props) {
     audio.play();
 
     const animate = () => {
-      const currentTime = audio.currentTime;
-      const newIndex = lyricsData.findIndex(
-        (word) =>
-          word.start !== null &&
-          word.end !== null &&
-          currentTime >= word.start &&
-          currentTime < word.end
-      );
-
-      setHighlightedIndex(newIndex);
+      if (audio) {
+        setCurrentTime(audio.currentTime);
+      }
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     animate();
 
     return () => {
-      cancelAnimationFrame(animationFrameRef.current!);
-      audio.pause();
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
     };
-  }, [lyricsData, audioRef]);
+  }, [audioRef]);
 
-  const lines = lyricsData.reduce<LyricWordData[][]>((acc, word) => {
-    // This simple logic groups words. A more robust solution might preserve original line breaks.
-    if (acc.length === 0 || acc[acc.length - 1].length >= 8) {
-      acc.push([]);
-    }
-    acc[acc.length - 1].push(word);
-    return acc;
-  }, []);
+  const textStyle: LyricsCharacterStyle = {
+    color: { color: "#FFF", colorBorder: "#00005E" },
+    activeColor: { color: "red", colorBorder: "#00005E" },
+    fontSize: 48,
+  };
+
+  if (wordStartTimes.length === 0) {
+    return null;
+  }
 
   return (
     <Modal title="Karaoke Preview" onClose={onClose}>
-      <div className="h-[60vh] overflow-y-auto p-4 bg-slate-900 text-slate-300 rounded-lg text-center font-semibold">
-        {lines.map((line, lineIndex) => (
-          <p key={lineIndex} className="text-4xl leading-relaxed my-4">
-            {line.map((word) => (
-              <span
-                key={word.index}
-                className={[
-                  "transition-colors duration-150",
-                  highlightedIndex === word.index &&
-                    "text-white bg-blue-600 px-2 rounded-md",
-                ].join(" ")}
-              >
-                {word.name}{" "}
-              </span>
-            ))}
-          </p>
-        ))}
+      <div className=" overflow-y-auto p-4 bg-slate-900 text-center font-semibold">
+        <div className="flex flex-col justify-center items-center h-full">
+          {lyrics.map((line, lineIndex) => (
+            <div
+              key={lineIndex}
+              className="flex flex-row flex-wrap justify-center my-2"
+            >
+              {line.map((word, wordIndex) => {
+                const startTime = wordStartTimes[lineIndex]?.[wordIndex] ?? 0;
+                const nextWordTime = wordStartTimes[lineIndex]?.[wordIndex + 1];
+                const nextLineFirstWordTime =
+                  wordStartTimes[lineIndex + 1]?.[0];
+                const endTime =
+                  nextWordTime ?? nextLineFirstWordTime ?? startTime + 1.0;
+
+                const duration = endTime - startTime;
+                let status: "inactive" | "active" | "completed" = "inactive";
+                if (currentTime >= startTime && currentTime < endTime) {
+                  status = "active";
+                } else if (currentTime >= endTime) {
+                  status = "completed";
+                }
+
+                return (
+                  <div key={wordIndex}>
+                    <LyricsCharacter
+                      lyr={word}
+                      status={status}
+                      duration={duration}
+                      fontSize={textStyle.fontSize}
+                      color={textStyle.color}
+                      activeColor={textStyle.activeColor}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </Modal>
   );
-}
+};
+
+export default PreviewModal;

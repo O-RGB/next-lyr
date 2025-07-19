@@ -4,10 +4,18 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import ControlPanel from "../components/control-panel";
 import LyricsPanel from "../components/lyrics-panel";
 import PreviewModal from "../components/preview-modal";
-import { LyricWordData } from "../lib/type";
+import { ExportData, LyricWordData } from "../lib/type";
 import { processRawLyrics, createAndDownloadJSON } from "../lib/utils";
+import React from "react";
+import { TimestampLyricSegmentGenerator } from "@/lib/karaoke/builder/cur-generator";
 
-export default function Home() {
+interface AppProps {
+  exportData?: (data: LyricWordData[]) => void;
+}
+
+const Home: React.FC<AppProps> = ({ exportData }) => {
+  const [timestamps, setTimestamps] = useState<number[]>([]);
+  const [lyricsRaw, setLyricsRaw] = useState<string[][]>([]);
   const [lyricsData, setLyricsData] = useState<LyricWordData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTimingActive, setIsTimingActive] = useState(false);
@@ -329,7 +337,28 @@ export default function Home() {
           onWordUpdate={handleWordUpdate}
           onWordDelete={() => {}}
           onPreview={() => setIsPreviewing(true)}
-          onExport={() => createAndDownloadJSON(lyricsData, metadata)}
+          onExport={() => {
+            // const data = createAndDownloadJSON(lyricsData, metadata);
+            // if (data) exportData?.(lyricsData);
+
+            const gen = new TimestampLyricSegmentGenerator();
+            const data = gen.generateSegment(lyricsData);
+            console.log(data);
+            setTimestamps(data);
+            const lyrs: string[][] = [];
+
+            lyricsData.forEach((data) => {
+              const { lineIndex, name } = data;
+
+              // สร้างแถวใหม่ถ้ายังไม่มี
+              if (!lyrs[lineIndex]) {
+                lyrs[lineIndex] = [];
+              }
+
+              lyrs[lineIndex].push(name);
+            });
+            setLyricsRaw(lyrs);
+          }}
           onStopTiming={handleStopTiming}
         />
         <ControlPanel
@@ -358,11 +387,14 @@ export default function Home() {
       </footer>
       {isPreviewing && (
         <PreviewModal
-          lyricsData={lyricsData}
+          lyrics={lyricsRaw}
+          timestamps={timestamps}
           audioRef={audioRef}
           onClose={() => setIsPreviewing(false)}
         />
       )}
     </main>
   );
-}
+};
+
+export default Home;
