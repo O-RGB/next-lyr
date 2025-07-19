@@ -1,6 +1,5 @@
 import ModalCommon from "@/components/modal/modal";
 import Upload from "@/components/upload";
-import useMidiPlayerStore from "@/stores/midi-plyer-store";
 import React, { useEffect, useState } from "react";
 import { SiMidi } from "react-icons/si";
 
@@ -13,7 +12,6 @@ const SelectMusicModal: React.FC<SelectMusicModalProps> = ({
   open = false,
   onClose,
 }) => {
-  const loadMidi = useMidiPlayerStore((state) => state.loadMidi);
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [selectedValue, setSelectedValue] = useState<string>("");
 
@@ -32,12 +30,7 @@ const SelectMusicModal: React.FC<SelectMusicModalProps> = ({
     onClose?.();
   };
 
-  const handleOnUpload = async (file: File) => {
-    if (loadMidi) {
-      const onLoaded = await loadMidi(file);
-      onClose?.();
-    }
-  };
+  const handleOnUpload = async (file: File) => {};
 
   useEffect(() => {
     setOpenModal(open);

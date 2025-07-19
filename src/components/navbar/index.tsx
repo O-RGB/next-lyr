@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import NavBarMemu from "./navbar-menu";
 import { IMenusType } from "./navbar.type";
-import ReadLyricModal from "@/modals/read-lyric/read-lyric";
-import NewFileModal from "@/modals/new-file/new-file";
-import SaveFileModal from "@/modals/save-file/save-file";
 import SelectMusicModal from "@/modals/select-music/select-music";
 
 interface HandleNavbarModalProps {}
@@ -19,7 +16,7 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
   };
   return (
     <>
-      <ReadLyricModal
+      {/* <ReadLyricModal
         open={modal === "LYRICS_ADD"}
         onClose={onCloseModal}
       ></ReadLyricModal>
@@ -30,7 +27,7 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
       <SaveFileModal
         open={modal === "SAVE_NCN"}
         onClose={onCloseModal}
-      ></SaveFileModal>
+      ></SaveFileModal> */}
       <SelectMusicModal
         open={modal === "OPEN_MUSIC"}
         onClose={onCloseModal}

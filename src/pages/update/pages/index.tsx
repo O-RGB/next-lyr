@@ -1,58 +1,74 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import ControlPanel from "../components/control-panel";
 import LyricsPanel from "../components/lyrics-panel";
 import PreviewModal from "../components/preview-modal";
-import { ExportData, LyricWordData } from "../lib/type";
-import { processRawLyrics, createAndDownloadJSON } from "../lib/utils";
-import React from "react";
-import { TimestampLyricSegmentGenerator } from "@/lib/karaoke/builder/cur-generator";
+import { LyricWordData } from "../lib/type";
+import { processRawLyrics } from "../lib/utils";
+import {
+  TickLyricSegmentGenerator,
+  TimestampLyricSegmentGenerator,
+} from "../lib/cur-generator";
+import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
+import MetadataForm from "../components/metadata-form";
 
-interface AppProps {
-  exportData?: (data: LyricWordData[]) => void;
-}
-
-const Home: React.FC<AppProps> = ({ exportData }) => {
-  const [timestamps, setTimestamps] = useState<number[]>([]);
-  const [lyricsRaw, setLyricsRaw] = useState<string[][]>([]);
+const Home: React.FC = () => {
+  // --- STATE ---
+  const [mode, setMode] = useState<"mp3" | "midi" | null>(null);
   const [lyricsData, setLyricsData] = useState<LyricWordData[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTimingActive, setIsTimingActive] = useState(false);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [metadata, setMetadata] = useState({ title: "", artist: "" });
 
+  // Timing & Playback
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isTimingActive, setIsTimingActive] = useState(false);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [playbackIndex, setPlaybackIndex] = useState<number | null>(null);
+  const [correctionIndex, setCorrectionIndex] = useState<number | null>(null);
 
+  // MP3
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // MIDI
+  const midiPlayerRef = useRef<MidiPlayerRef | null>(null);
+  const [midiInfo, setMidiInfo] = useState<{
+    fileName: string;
+    durationTicks: number;
+    ppq: number;
+  } | null>(null);
+  const [currentTick, setCurrentTick] = useState(0);
+
+  // Preview
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewTimestamps, setPreviewTimestamps] = useState<number[]>([]);
+  const [previewLyrics, setPreviewLyrics] = useState<string[][]>([]);
+
   const lyricInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const getPreRollTime = useCallback(
-    (targetWordIndex: number): number => {
-      if (!audioRef.current) return 0;
+    (lineIndex: number): number => {
+      if (lineIndex <= 0) return 0;
 
-      const targetWord = lyricsData[targetWordIndex];
-      if (!targetWord) return 0;
+      const firstWordOfPrevLine = lyricsData.find(
+        (w) => w.lineIndex === lineIndex - 1
+      );
 
-      let preRollTime = 0;
-
-      if (targetWord.start !== null) {
-        preRollTime = targetWord.start - 2;
-      } else {
-        const previousLineWords = lyricsData.filter(
-          (w) => w.lineIndex === targetWord.lineIndex - 1
-        );
-        if (previousLineWords.length > 0) {
-          const lastWordOfPreviousLine =
-            previousLineWords[previousLineWords.length - 1];
-          if (lastWordOfPreviousLine.end !== null) {
-            preRollTime = lastWordOfPreviousLine.end - 1;
-          }
-        }
+      if (firstWordOfPrevLine && firstWordOfPrevLine.start !== null) {
+        return firstWordOfPrevLine.start;
       }
-      return Math.max(0, preRollTime);
+
+      const firstWordOfCurrentLine = lyricsData.find(
+        (w) => w.lineIndex === lineIndex
+      );
+      if (!firstWordOfCurrentLine) return 0;
+
+      const lastTimedWordBefore = lyricsData
+        .slice(0, firstWordOfCurrentLine.index)
+        .filter((w) => w.end !== null)
+        .pop();
+
+      return lastTimedWordBefore?.end ?? 0;
     },
     [lyricsData]
   );
@@ -60,13 +76,12 @@ const Home: React.FC<AppProps> = ({ exportData }) => {
   const handleImport = useCallback(() => {
     const rawText = lyricInputRef.current?.value;
     if (!rawText) return;
-
     setIsPreviewing(false);
     setIsTimingActive(false);
     setEditingLineIndex(null);
     setCurrentIndex(0);
-    const processedLyrics = processRawLyrics(rawText);
-    setLyricsData(processedLyrics);
+    setCorrectionIndex(null);
+    setLyricsData(processRawLyrics(rawText));
   }, []);
 
   const handleWordUpdate = useCallback(
@@ -80,15 +95,46 @@ const Home: React.FC<AppProps> = ({ exportData }) => {
     []
   );
 
+  const handlePlay = useCallback(() => {
+    if (mode === "mp3") audioRef.current?.play();
+    else midiPlayerRef.current?.play();
+  }, [mode]);
+
+  const handlePause = useCallback(() => {
+    if (mode === "mp3") audioRef.current?.pause();
+    else midiPlayerRef.current?.pause();
+  }, [mode]);
+
+  const handleStop = useCallback(() => {
+    if (mode === "mp3" && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    } else if (mode === "midi") {
+      midiPlayerRef.current?.stop();
+    }
+    setIsTimingActive(false);
+    setCurrentIndex(0);
+    setEditingLineIndex(null);
+    setPlaybackIndex(null);
+    setCorrectionIndex(null);
+  }, [mode]);
+
+  const handleMidiFileLoaded = (
+    file: File,
+    durationTicks: number,
+    ppq: number
+  ) => {
+    setMidiInfo({ fileName: file.name, durationTicks, ppq });
+    setMetadata({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "" });
+  };
+
   const handleEditLine = useCallback(
     (lineIndex: number) => {
-      const firstWordOfLineEdit = lyricsData.find(
-        (w) => w.lineIndex === lineIndex
-      );
-      if (!firstWordOfLineEdit) return;
+      const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+      if (!firstWordOfLine) return;
 
-      const firstWordIndex = firstWordOfLineEdit.index;
-      const preRollTime = getPreRollTime(firstWordIndex);
+      const firstWordIndex = firstWordOfLine.index;
+      const preRollTime = getPreRollTime(lineIndex);
 
       setLyricsData((prev) =>
         prev.map((word) =>
@@ -97,209 +143,219 @@ const Home: React.FC<AppProps> = ({ exportData }) => {
             : word
         )
       );
-
       setCurrentIndex(firstWordIndex);
       setEditingLineIndex(lineIndex);
       setIsTimingActive(false);
+      setCorrectionIndex(null);
 
-      if (audioRef.current) {
-        audioRef.current.currentTime = Math.max(0, preRollTime);
+      if (mode === "mp3" && audioRef.current) {
+        audioRef.current.currentTime = preRollTime;
         audioRef.current.play();
+      } else if (mode === "midi" && midiPlayerRef.current) {
+        midiPlayerRef.current.seek(preRollTime);
+        midiPlayerRef.current.play();
       }
     },
-    [lyricsData, getPreRollTime]
+    [lyricsData, getPreRollTime, mode]
   );
 
   const handleStopTiming = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    handlePause();
     setIsTimingActive(false);
     setEditingLineIndex(null);
     alert("การจับเวลาถูกยกเลิก");
-  }, []);
+  }, [handlePause]);
 
-  const handlePlay = useCallback(() => {
-    if (!audioRef.current) return;
-    const currentAudioTime = audioRef.current.currentTime;
-
-    const currentWordAtTime = lyricsData.find(
-      (word) =>
-        word.start !== null &&
-        word.end !== null &&
-        currentAudioTime >= word.start &&
-        currentAudioTime < word.end
+  const handlePreview = useCallback(() => {
+    const timedWords = lyricsData.filter(
+      (w) => w.start !== null && w.end !== null
     );
-
-    let targetIndexForPreRoll = currentIndex;
-    if (playbackIndex !== null) {
-      targetIndexForPreRoll = playbackIndex;
-    } else if (currentWordAtTime) {
-      targetIndexForPreRoll = currentWordAtTime.index;
-    } else if (currentAudioTime === 0 && lyricsData.length > 0) {
-      targetIndexForPreRoll = 0;
+    if (timedWords.length === 0) {
+      alert("No timed lyrics to preview.");
+      return;
     }
 
-    const preRollTime = getPreRollTime(targetIndexForPreRoll);
-    audioRef.current.currentTime = Math.max(0, preRollTime);
-    audioRef.current.play();
-    setIsTimingActive(false);
-    setEditingLineIndex(null);
-  }, [lyricsData, currentIndex, playbackIndex, getPreRollTime]);
-
-  const handlePause = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+    let timestamps: number[] = [];
+    if (mode === "midi" && midiPlayerRef.current) {
+      const bpm = midiPlayerRef.current.currentBpm;
+      const generator = new TickLyricSegmentGenerator(bpm);
+      timestamps = generator.generateSegment(timedWords);
+    } else {
+      const generator = new TimestampLyricSegmentGenerator();
+      timestamps = generator.generateSegment(timedWords);
     }
-    setIsTimingActive(false);
-    setEditingLineIndex(null);
-  }, []);
+    setPreviewTimestamps(timestamps);
 
-  const handleStop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsTimingActive(false);
-    setCurrentIndex(0);
-    setEditingLineIndex(null);
-    setPlaybackIndex(null);
-  }, []);
+    const lyrs: string[][] = [];
+    lyricsData.forEach((data) => {
+      if (!lyrs[data.lineIndex]) lyrs[data.lineIndex] = [];
+      lyrs[data.lineIndex].push(data.name);
+    });
+    setPreviewLyrics(lyrs);
+    setIsPreviewing(true);
+  }, [lyricsData, mode]);
 
+  // ✅ MODIFIED: ปรับเงื่อนไขให้ Playback Highlight (สีทอง) ทำงานตอนย้อนกลับ
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || mode !== "mp3") return;
 
     const handleTimeUpdate = () => {
-      if (isTimingActive || isPreviewing) {
-        if (playbackIndex !== null) setPlaybackIndex(null);
+      // หยุดไฮไลท์เฉพาะตอน Preview หรือตอนกำลังกด -> (isTimingActive แต่ไม่ใช่ correction)
+      if (
+        isPreviewing ||
+        audio.paused ||
+        (isTimingActive && correctionIndex === null)
+      ) {
+        setPlaybackIndex(null); // ล้างไฮไลท์เก่าออก
         return;
       }
-
-      if (audio.paused && audio.currentTime === 0) {
-        if (playbackIndex !== null) setPlaybackIndex(null);
-        return;
-      }
-
-      if (!audio.paused || (audio.paused && playbackIndex !== null)) {
-        const currentTime = audio.currentTime;
-        const newPlaybackIndex = lyricsData.findIndex(
-          (word) =>
-            word.start !== null &&
-            word.end !== null &&
-            currentTime >= word.start &&
-            currentTime < word.end
-        );
-
-        if (newPlaybackIndex !== -1 && newPlaybackIndex !== playbackIndex) {
-          setPlaybackIndex(newPlaybackIndex);
-        } else if (
-          newPlaybackIndex === -1 &&
-          playbackIndex !== null &&
-          !audio.paused
-        ) {
-          setPlaybackIndex(null);
-        }
-      }
+      const newPlaybackIndex = lyricsData.findIndex(
+        (word) =>
+          word.start !== null &&
+          word.end !== null &&
+          audio.currentTime >= word.start &&
+          audio.currentTime < word.end
+      );
+      setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
     };
-
     audio.addEventListener("timeupdate", handleTimeUpdate);
     return () => audio.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [lyricsData, isTimingActive, isPreviewing, playbackIndex]);
+  }, [lyricsData, isTimingActive, isPreviewing, mode, correctionIndex]); // เพิ่ม correctionIndex ใน dependency
+
+  // ✅ MODIFIED: ปรับเงื่อนไขสำหรับ MIDI เช่นกัน
+  useEffect(() => {
+    const player = midiPlayerRef.current;
+    if (!player || mode !== "midi") return;
+
+    const handleTickUpdate = (tick: number) => {
+      setCurrentTick(tick);
+      if (
+        isPreviewing ||
+        !player.isPlaying ||
+        (isTimingActive && correctionIndex === null)
+      ) {
+        setPlaybackIndex(null);
+        return;
+      }
+      const newPlaybackIndex = lyricsData.findIndex(
+        (word) =>
+          word.start !== null &&
+          word.end !== null &&
+          tick >= word.start &&
+          tick < word.end
+      );
+      setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
+    };
+    player.addEventListener("tickupdate", handleTickUpdate);
+    return () => player.removeEventListener("tickupdate", handleTickUpdate);
+  }, [
+    lyricsData,
+    isTimingActive,
+    isPreviewing,
+    mode,
+    midiPlayerRef.current,
+    correctionIndex, // เพิ่ม correctionIndex ใน dependency
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
-        (e.target as HTMLElement).isContentEditable
-      )
+      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName))
         return;
 
-      const audio = audioRef.current;
-      if (!audio) return;
+      const playerActive =
+        mode === "mp3"
+          ? !audioRef.current?.paused
+          : midiPlayerRef.current?.isPlaying;
 
       if (e.code === "Space") {
         e.preventDefault();
-        audio.paused ? handlePlay() : handlePause();
+        playerActive ? handlePause() : handlePlay();
         return;
       }
 
-      if (e.code === "ArrowRight" && audio.paused) return;
+      if (isTimingActive && e.code === "ArrowLeft") {
+        e.preventDefault();
+        if (currentIndex <= 0) return;
 
-      if (e.code === "ArrowLeft" && !isTimingActive) return;
+        const prevIndex = currentIndex - 1;
+        const prevWord = lyricsData[prevIndex];
+        if (!prevWord) return;
 
+        setLyricsData((prev) => {
+          const newData = [...prev];
+          if (newData[currentIndex]) {
+            newData[currentIndex].start = null;
+          }
+          if (newData[prevIndex]) {
+            newData[prevIndex].end = null;
+            newData[prevIndex].length = 0;
+          }
+          return newData;
+        });
+
+        setCurrentIndex(prevIndex);
+        setCorrectionIndex(prevIndex);
+        setIsTimingActive(true);
+
+        const preRollTime = getPreRollTime(prevWord.lineIndex);
+        if (mode === "mp3" && audioRef.current) {
+          audioRef.current.currentTime = preRollTime;
+          if (!playerActive) handlePlay();
+        } else if (mode === "midi" && midiPlayerRef.current) {
+          midiPlayerRef.current.seek(preRollTime);
+          if (!playerActive) handlePlay();
+        }
+        return;
+      }
+
+      if (!playerActive || e.code !== "ArrowRight") return;
       e.preventDefault();
 
-      switch (e.code) {
-        case "ArrowRight": {
-          if (currentIndex >= lyricsData.length) return;
-          const currentTime = audio.currentTime;
-          if (!isTimingActive) {
-            setIsTimingActive(true);
-            setLyricsData((prev) => {
-              const newData = [...prev];
-              if (newData[currentIndex]) {
-                newData[currentIndex].start = currentTime;
-              }
-              return newData;
-            });
-            return;
-          }
-          setLyricsData((prev) => {
-            const newData = [...prev];
-            const currentWord = newData[currentIndex];
-            currentWord.end = currentTime;
-            currentWord.length =
-              currentWord.end - (currentWord.start ?? currentTime);
-            const nextWord = newData[currentIndex + 1];
-            if (nextWord) {
-              if (
-                nextWord.lineIndex !== currentWord.lineIndex &&
-                editingLineIndex !== null
-              ) {
-                audio.pause();
-                setIsTimingActive(false);
-                setEditingLineIndex(null);
-              } else {
-                nextWord.start = currentTime;
-              }
-            } else {
-              alert("Timing complete!");
-              audio.pause();
-              setIsTimingActive(false);
-              setEditingLineIndex(null);
-            }
-            return newData;
-          });
-          if (currentIndex + 1 < lyricsData.length) {
-            setCurrentIndex((prev) => prev + 1);
-          }
-          break;
-        }
-        case "ArrowLeft": {
-          if (currentIndex === 0) return;
-          const currentWord = lyricsData[currentIndex];
-          const targetWord = lyricsData[currentIndex - 1];
+      const currentTime =
+        mode === "mp3" ? audioRef.current?.currentTime ?? 0 : currentTick;
 
-          if (!isTimingActive || currentWord.lineIndex !== targetWord.lineIndex)
-            return;
-          audio.pause();
-          const targetIndex = currentIndex - 1;
-          const seekTime = targetWord.start;
-          if (seekTime === null) return;
-          setLyricsData((prev) => {
-            const newData = [...prev];
-            newData[targetIndex].end = null;
-            newData[targetIndex].length = 0;
-            if (newData[currentIndex]) {
-              newData[currentIndex].start = null;
-            }
-            return newData;
-          });
-          setCurrentIndex(targetIndex);
-          audio.currentTime = seekTime;
-          break;
+      setCorrectionIndex(null);
+
+      if (!isTimingActive) {
+        setIsTimingActive(true);
+        setLyricsData((prev) => {
+          const newData = [...prev];
+          if (newData[currentIndex]) newData[currentIndex].start = currentTime;
+          return newData;
+        });
+        return;
+      }
+
+      setLyricsData((prev) => {
+        const newData = [...prev];
+        const currentWord = newData[currentIndex];
+        currentWord.end = currentTime;
+        currentWord.length =
+          currentWord.end - (currentWord.start ?? currentTime);
+        const nextWord = newData[currentIndex + 1];
+        if (nextWord) {
+          if (
+            nextWord.lineIndex !== currentWord.lineIndex &&
+            editingLineIndex !== null
+          ) {
+            handlePause();
+            setIsTimingActive(false);
+            setEditingLineIndex(null);
+          } else {
+            nextWord.start = currentTime;
+          }
+        } else {
+          alert("Timing complete!");
+          handlePause();
+          setIsTimingActive(false);
+          setEditingLineIndex(null);
         }
+        return newData;
+      });
+
+      if (currentIndex + 1 < lyricsData.length) {
+        setCurrentIndex((prev) => prev + 1);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -311,7 +367,32 @@ const Home: React.FC<AppProps> = ({ exportData }) => {
     editingLineIndex,
     handlePlay,
     handlePause,
+    mode,
+    currentTick,
+    getPreRollTime,
   ]);
+
+  if (!mode) {
+    return (
+      <main className="flex h-screen flex-col items-center justify-center bg-slate-100 text-slate-800">
+        <h1 className="text-4xl font-bold mb-8">Karaoke Maker</h1>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setMode("mp3")}
+            className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
+          >
+            Start with MP3
+          </button>
+          <button
+            onClick={() => setMode("midi")}
+            className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-lg hover:bg-green-600 transition-all"
+          >
+            Start with MIDI
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-screen flex-col bg-slate-100 text-slate-800">
@@ -322,74 +403,79 @@ const Home: React.FC<AppProps> = ({ exportData }) => {
           isTimingActive={isTimingActive}
           editingLineIndex={editingLineIndex}
           playbackIndex={playbackIndex}
+          correctionIndex={correctionIndex}
           lyricInputRef={lyricInputRef}
           onImport={handleImport}
           onWordClick={(index) => {
             const word = lyricsData[index];
-            if (word?.start !== null && audioRef.current) {
-              audioRef.current.currentTime = word.start;
-              audioRef.current.play();
+            if (word?.start !== null) {
+              if (mode === "mp3" && audioRef.current) {
+                audioRef.current.currentTime = word.start;
+                handlePlay();
+              } else if (mode === "midi" && midiPlayerRef.current) {
+                midiPlayerRef.current.seek(word.start);
+                handlePlay();
+              }
               setIsTimingActive(false);
               setEditingLineIndex(null);
+              setCorrectionIndex(null);
             }
           }}
           onEditLine={handleEditLine}
           onWordUpdate={handleWordUpdate}
           onWordDelete={() => {}}
-          onPreview={() => setIsPreviewing(true)}
-          onExport={() => {
-            // const data = createAndDownloadJSON(lyricsData, metadata);
-            // if (data) exportData?.(lyricsData);
-
-            const gen = new TimestampLyricSegmentGenerator();
-            const data = gen.generateSegment(lyricsData);
-            console.log(data);
-            setTimestamps(data);
-            const lyrs: string[][] = [];
-
-            lyricsData.forEach((data) => {
-              const { lineIndex, name } = data;
-
-              // สร้างแถวใหม่ถ้ายังไม่มี
-              if (!lyrs[lineIndex]) {
-                lyrs[lineIndex] = [];
-              }
-
-              lyrs[lineIndex].push(name);
-            });
-            setLyricsRaw(lyrs);
-          }}
+          onPreview={handlePreview}
+          onExport={() => alert("Exporting...")}
           onStopTiming={handleStopTiming}
         />
-        <ControlPanel
-          audioRef={audioRef}
-          audioSrc={audioSrc}
-          metadata={metadata}
-          onAudioLoad={(file) => {
-            setAudioSrc(URL.createObjectURL(file));
-            setMetadata((prev) => ({
-              ...prev,
-              title: file.name.replace(/\.[^/.]+$/, ""),
-            }));
-          }}
-          onMetadataChange={setMetadata}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onStop={handleStop}
-        />
+        <div className="flex-[2] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
+          {mode === "mp3" ? (
+            <ControlPanel
+              audioRef={audioRef}
+              audioSrc={audioSrc}
+              metadata={metadata}
+              onAudioLoad={(file) => {
+                setAudioSrc(URL.createObjectURL(file));
+                setMetadata((prev) => ({
+                  ...prev,
+                  title: file.name.replace(/\.[^/.]+$/, ""),
+                }));
+              }}
+              onMetadataChange={setMetadata}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onStop={handleStop}
+            />
+          ) : (
+            <div className="space-y-4">
+              <MidiPlayer
+                ref={midiPlayerRef}
+                onFileLoaded={handleMidiFileLoaded}
+              />
+              <MetadataForm
+                metadata={metadata}
+                onMetadataChange={setMetadata}
+              />
+            </div>
+          )}
+        </div>
       </div>
       <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner">
         <p>
+          <b className="text-amber-400">Mode: {mode?.toUpperCase()}</b> |{" "}
           <b className="text-amber-400">Tap "Edit" on a line</b> to start |{" "}
           <b className="text-amber-400">Space:</b> Play/Pause |{" "}
-          <b className="text-amber-400">→ (while playing):</b> Set Time
+          <b className="text-amber-400">→:</b> Set Time |{" "}
+          <b className="text-red-400">←:</b> Go Back
         </p>
       </footer>
       {isPreviewing && (
         <PreviewModal
-          lyrics={lyricsRaw}
-          timestamps={timestamps}
+          lyrics={previewLyrics}
+          timestamps={previewTimestamps}
+          mode={mode}
           audioRef={audioRef}
+          midiPlayerRef={midiPlayerRef}
           onClose={() => setIsPreviewing(false)}
         />
       )}

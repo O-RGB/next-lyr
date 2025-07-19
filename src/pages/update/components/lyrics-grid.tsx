@@ -10,7 +10,8 @@ type Props = {
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
-  playbackIndex: number | null; // <-- ADD THIS
+  correctionIndex: number | null; // <-- PROP ใหม่
+  playbackIndex: number | null;
   onWordClick: (index: number) => void;
   onEditLine: (lineIndex: number) => void;
   onWordUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
@@ -47,11 +48,12 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                   isActive={
                     props.isTimingActive && props.currentIndex === word.index
                   }
+                  isPendingCorrection={props.correctionIndex === word.index} // <-- ส่ง PROP ใหม่ลงไป
                   isEditing={
                     props.editingLineIndex === word.lineIndex &&
                     !props.isTimingActive
                   }
-                  isPlaybackHighlight={props.playbackIndex === word.index} // <-- PASS IT DOWN
+                  isPlaybackHighlight={props.playbackIndex === word.index}
                   onClick={props.onWordClick}
                   onUpdate={() => {}}
                   onDelete={() => {}}
@@ -61,7 +63,7 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
             <Button
               className="ml-4"
               onClick={() => props.onEditLine(lineIndex)}
-              disabled={props.isTimingActive} // Disable edit while timing
+              disabled={props.isTimingActive}
             >
               <BiPencil className="h-4 w-4" />
             </Button>

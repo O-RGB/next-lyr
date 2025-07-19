@@ -1,64 +1,79 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "./common/modal";
 import LyricsCharacter, { LyricsCharacterStyle } from "./lyrics-character";
-import GraphemeSplitter from "grapheme-splitter";
+import { MidiPlayerRef } from "../modules/js-synth";
 
 type Props = {
   timestamps: number[];
   lyrics: string[][];
+  mode: "mp3" | "midi";
   audioRef: React.RefObject<HTMLAudioElement | null>;
+  midiPlayerRef: React.RefObject<MidiPlayerRef>;
   onClose: () => void;
 };
 
 const PreviewModal: React.FC<Props> = ({
   timestamps,
   lyrics,
+  mode,
   audioRef,
+  midiPlayerRef,
   onClose,
 }) => {
   const [currentTime, setCurrentTime] = useState(0);
-  const animationFrameRef = useRef<number | null>(null);
   const [wordStartTimes, setWordStartTimes] = useState<number[][]>([]);
-  const splitter = new GraphemeSplitter();
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let graphemeIndex = 0;
+    let index = 0;
     const newWordStartTimes = lyrics.map((line) =>
       line.map((word) => {
-        const startTime = timestamps[graphemeIndex] ?? 0;
-        graphemeIndex += word.length;
+        const startTime = timestamps[index] ?? 0;
+        index += word.length;
         return startTime;
       })
     );
     setWordStartTimes(newWordStartTimes);
-  }, [lyrics, timestamps, splitter]);
+  }, [lyrics, timestamps]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    const midiPlayer = midiPlayerRef.current;
 
-    audio.currentTime = 0;
-    audio.play();
-
-    const animate = () => {
-      if (audio) {
+    if (mode === "mp3" && audio) {
+      audio.currentTime = 0;
+      audio.play();
+      const animate = () => {
         setCurrentTime(audio.currentTime);
-      }
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
+        animationFrameRef.current = requestAnimationFrame(animate);
+      };
+      animate();
 
-    animate();
+      return () => {
+        if (animationFrameRef.current)
+          cancelAnimationFrame(animationFrameRef.current);
+        if (audio) audio.pause();
+      };
+    } else if (mode === "midi" && midiPlayer) {
+      const handleTickUpdate = (tick: number) => setCurrentTime(tick);
+      midiPlayer.addEventListener("tickupdate", handleTickUpdate);
+      midiPlayer.seek(0);
+      midiPlayer.play();
 
-    return () => {
-      if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    };
-  }, [audioRef]);
+      return () => {
+        midiPlayer.removeEventListener("tickupdate", handleTickUpdate);
+        if (midiPlayer.isPlaying) midiPlayer.pause();
+      };
+    }
+  }, [mode, audioRef, midiPlayerRef]);
+
+  const convertTickDurationToSeconds = (durationInTicks: number): number => {
+    const bpm = midiPlayerRef.current?.currentBpm || 120;
+    const ppq = midiPlayerRef.current?.ticksPerBeat || 480;
+    if (bpm === 0 || ppq === 0) return 0.5;
+    const secondsPerTick = 60 / (bpm * ppq);
+    return durationInTicks * secondsPerTick;
+  };
 
   const textStyle: LyricsCharacterStyle = {
     color: { color: "#FFF", colorBorder: "#00005E" },
@@ -66,14 +81,12 @@ const PreviewModal: React.FC<Props> = ({
     fontSize: 48,
   };
 
-  if (wordStartTimes.length === 0) {
-    return null;
-  }
+  if (wordStartTimes.length === 0) return null;
 
   return (
     <Modal title="Karaoke Preview" onClose={onClose}>
-      <div className=" overflow-y-auto p-4 bg-slate-900 text-center font-semibold">
-        <div className="flex flex-col justify-center items-center h-full">
+      <div className="overflow-y-auto p-4 bg-slate-900 text-center font-semibold">
+        <div className="flex flex-col justify-center items-center h-full min-h-[300px]">
           {lyrics.map((line, lineIndex) => (
             <div
               key={lineIndex}
@@ -85,9 +98,19 @@ const PreviewModal: React.FC<Props> = ({
                 const nextLineFirstWordTime =
                   wordStartTimes[lineIndex + 1]?.[0];
                 const endTime =
-                  nextWordTime ?? nextLineFirstWordTime ?? startTime + 1.0;
+                  nextWordTime ??
+                  nextLineFirstWordTime ??
+                  startTime + (mode === "midi" ? 480 : 1);
 
-                const duration = endTime - startTime;
+                let durationInSeconds = 0;
+                if (mode === "mp3") {
+                  durationInSeconds = endTime - startTime;
+                } else {
+                  durationInSeconds = convertTickDurationToSeconds(
+                    endTime - startTime
+                  );
+                }
+
                 let status: "inactive" | "active" | "completed" = "inactive";
                 if (currentTime >= startTime && currentTime < endTime) {
                   status = "active";
@@ -100,7 +123,7 @@ const PreviewModal: React.FC<Props> = ({
                     <LyricsCharacter
                       lyr={word}
                       status={status}
-                      duration={duration}
+                      duration={Math.max(0.05, durationInSeconds)}
                       fontSize={textStyle.fontSize}
                       color={textStyle.color}
                       activeColor={textStyle.activeColor}

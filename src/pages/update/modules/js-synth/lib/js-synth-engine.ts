@@ -3,6 +3,8 @@ import { JsSynthPlayerEngine } from "./js-synth-player";
 import { DEFAULT_SOUND_FONT } from "@/configs/value";
 
 export class JsSynthEngine {
+  public static instance: JsSynthEngine | undefined = undefined;
+
   public synth: JsSynthesizer | undefined;
   public audio: AudioContext | undefined;
   public player: JsSynthPlayerEngine | undefined;
@@ -12,7 +14,18 @@ export class JsSynthEngine {
   public soundfontFile: File | undefined;
   public bassLocked: number | undefined = undefined;
 
-  async startup() {
+  private constructor() {}
+
+  public static async getInstance(): Promise<JsSynthEngine> {
+    if (!JsSynthEngine.instance) {
+      const engine = new JsSynthEngine();
+      await engine.startup();
+      JsSynthEngine.instance = engine;
+    }
+    return JsSynthEngine.instance!;
+  }
+
+  private async startup() {
     const audioContext = new AudioContext();
 
     const { Synthesizer } = await import("js-synthesizer");
@@ -27,8 +40,33 @@ export class JsSynthEngine {
     this.synth = synth;
     this.audio = audioContext;
 
-    this.player = new JsSynthPlayerEngine(synth);
+    this.player = new JsSynthPlayerEngine(synth, audioContext);
+
     await this.loadDefaultSoundFont();
+  }
+
+  public playBeep(isFirstBeat: boolean = false) {
+    if (!this.audio) {
+      return;
+    }
+    const osc = this.audio.createOscillator();
+    const gain = this.audio.createGain();
+
+    const frequency = isFirstBeat ? 880.0 : 440.0;
+    osc.frequency.setValueAtTime(frequency, this.audio.currentTime);
+    osc.type = "sine";
+
+    gain.gain.setValueAtTime(0.2, this.audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      this.audio.currentTime + 0.08
+    );
+
+    osc.connect(gain);
+    gain.connect(this.audio.destination);
+
+    osc.start(this.audio.currentTime);
+    osc.stop(this.audio.currentTime + 0.1);
   }
 
   async loadPresetSoundFont(sfId?: number) {

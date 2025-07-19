@@ -631,10 +631,10 @@ jiti@^1.21.6:
   resolved "https://registry.yarnpkg.com/jiti/-/jiti-1.21.7.tgz#9dd81043424a3d28458b193d965f0d18a2300ba9"
   integrity sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==
 
-js-synthesizer@^1.10.0:
-  version "1.10.0"
-  resolved "https://registry.yarnpkg.com/js-synthesizer/-/js-synthesizer-1.10.0.tgz#b13fd5589697cd4f8a3bea221586e9c5919e3bf7"
-  integrity sha512-OR8j8QcWgAPvVcJ8LOtCx3Ypdm7lfyumYGQmxLUWIpZmnpzoUlb/HDYagHMv79je1D/rS6mEkq27F48MS87LMw==
+js-synthesizer@^1.11.0:
+  version "1.11.0"
+  resolved "https://registry.yarnpkg.com/js-synthesizer/-/js-synthesizer-1.11.0.tgz#1afb7f5f2c36b39f6ce8272679a115900f261b39"
+  integrity sha512-ROQth4Ozf9a7sV+8gXDdzkQsrxbvYw35/piPCBlnwCu5X4TzUh5QejT1AKtmyeHjOZJHY0PjS+tDAvL7hPAk1g==
 
 lilconfig@^3.0.0, lilconfig@^3.1.3:
   version "3.1.3"

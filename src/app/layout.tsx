@@ -28,9 +28,11 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
         <script src="/js-synthesizer/libfluidsynth-2.3.0.js"></script>
+        <script src="/js-synthesizer/libfluidsynth-2.4.6.js"></script>
       </head>
       <body className={`${notoSansThai.className} antialiased`}>
-        <AllowSound>{children}</AllowSound>
+        {/* <AllowSound>{children}</AllowSound> */}
+        {children}
       </body>
     </html>
   );

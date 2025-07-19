@@ -11,6 +11,7 @@ type Props = {
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
+  correctionIndex: number | null; // <-- PROP ใหม่
   playbackIndex: number | null;
   lyricInputRef: RefObject<HTMLTextAreaElement | null>;
   onImport: () => void;
@@ -32,6 +33,7 @@ export default function LyricsPanel({ ...props }: Props) {
         currentIndex={props.currentIndex}
         isTimingActive={props.isTimingActive}
         editingLineIndex={props.editingLineIndex}
+        correctionIndex={props.correctionIndex} // <-- ส่งต่อไป
         playbackIndex={props.playbackIndex}
         onWordClick={props.onWordClick}
         onEditLine={props.onEditLine}

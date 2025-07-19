@@ -1,15 +1,15 @@
 import { useState, useEffect, RefObject } from "react";
 import { Button } from "./common/button";
 import { Card } from "./common/card";
-import { BsPlay, BsPause, BsStop } from "react-icons/bs"; // Import icons
+import { BsPlay, BsPause, BsStop } from "react-icons/bs";
 
 type Props = {
   src: string | null;
   audioRef: RefObject<HTMLAudioElement | null>;
   onFileChange: (file: File) => void;
-  onPlay: () => void; // New prop
-  onPause: () => void; // New prop
-  onStop: () => void; // New prop
+  onPlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
 };
 
 export default function AudioPlayer({
@@ -20,10 +20,9 @@ export default function AudioPlayer({
   onPause,
   onStop,
 }: Props) {
-  // Destructure new props
   const [currentTime, setCurrentTime] = useState("0:00");
   const [activeSpeed, setActiveSpeed] = useState(1);
-  const [isPlaying, setIsPlaying] = useState(false); // New state to track if audio is playing
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -36,12 +35,12 @@ export default function AudioPlayer({
     if (!audio) return;
 
     const updateTime = () => setCurrentTime(formatTime(audio.currentTime || 0));
-    const updatePlayState = () => setIsPlaying(!audio.paused); // Update internal state
+    const updatePlayState = () => setIsPlaying(!audio.paused);
 
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("play", updatePlayState);
     audio.addEventListener("pause", updatePlayState);
-    audio.addEventListener("ended", updatePlayState); // Consider ended state
+    audio.addEventListener("ended", updatePlayState);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
@@ -90,12 +89,7 @@ export default function AudioPlayer({
       </div>
       <div className="flex justify-center items-center gap-2 mt-3">
         {[0.75, 1, 1.5].map((speed) => (
-          <Button
-            key={speed}
-            // variant={activeSpeed === speed ? "default" : "outline"} // You might need to adjust this if you have a variant prop
-            // size="sm" // You might need to adjust this if you have a size prop
-            onClick={() => handleSpeedChange(speed)}
-          >
+          <Button key={speed} onClick={() => handleSpeedChange(speed)}>
             {speed}x
           </Button>
         ))}
