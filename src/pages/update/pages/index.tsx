@@ -12,6 +12,7 @@ import {
 } from "../lib/cur-generator";
 import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
 import MetadataForm from "../components/metadata-form";
+import EditLyricLineModal from "../components/edit-lyric-line-modal";
 
 const Home: React.FC = () => {
   // --- STATE ---
@@ -25,6 +26,10 @@ const Home: React.FC = () => {
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [playbackIndex, setPlaybackIndex] = useState<number | null>(null);
   const [correctionIndex, setCorrectionIndex] = useState<number | null>(null);
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(
+    null
+  );
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // MP3
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
@@ -49,25 +54,20 @@ const Home: React.FC = () => {
   const getPreRollTime = useCallback(
     (lineIndex: number): number => {
       if (lineIndex <= 0) return 0;
-
       const firstWordOfPrevLine = lyricsData.find(
         (w) => w.lineIndex === lineIndex - 1
       );
-
       if (firstWordOfPrevLine && firstWordOfPrevLine.start !== null) {
         return firstWordOfPrevLine.start;
       }
-
       const firstWordOfCurrentLine = lyricsData.find(
         (w) => w.lineIndex === lineIndex
       );
       if (!firstWordOfCurrentLine) return 0;
-
       const lastTimedWordBefore = lyricsData
         .slice(0, firstWordOfCurrentLine.index)
         .filter((w) => w.end !== null)
         .pop();
-
       return lastTimedWordBefore?.end ?? 0;
     },
     [lyricsData]
@@ -81,8 +81,66 @@ const Home: React.FC = () => {
     setEditingLineIndex(null);
     setCurrentIndex(0);
     setCorrectionIndex(null);
+    setSelectedLineIndex(null);
     setLyricsData(processRawLyrics(rawText));
   }, []);
+
+  const handleDeleteLine = useCallback((lineIndexToDelete: number) => {
+    if (
+      !confirm(`Are you sure you want to delete line ${lineIndexToDelete + 1}?`)
+    )
+      return;
+    setLyricsData((prev) => {
+      const remainingWords = prev.filter(
+        (word) => word.lineIndex !== lineIndexToDelete
+      );
+      const newLyricsData: LyricWordData[] = [];
+      let globalWordIndex = 0;
+      const lineMap = new Map<number, number>();
+      let newLineIndexCounter = 0;
+      remainingWords.forEach((word) => {
+        let newLineIndex;
+        if (lineMap.has(word.lineIndex)) {
+          newLineIndex = lineMap.get(word.lineIndex)!;
+        } else {
+          newLineIndex = newLineIndexCounter;
+          lineMap.set(word.lineIndex, newLineIndex);
+          newLineIndexCounter++;
+        }
+        newLyricsData.push({
+          ...word,
+          lineIndex: newLineIndex,
+          index: globalWordIndex++,
+        });
+      });
+      return newLyricsData;
+    });
+    setSelectedLineIndex(null);
+  }, []);
+
+  const handleUpdateLine = useCallback(
+    (lineIndexToUpdate: number, newText: string) => {
+      const newWordsForLine = processRawLyrics(newText).map((word) => ({
+        ...word,
+        lineIndex: lineIndexToUpdate,
+      }));
+      setLyricsData((prev) => {
+        const otherLinesWords = prev.filter(
+          (word) => word.lineIndex !== lineIndexToUpdate
+        );
+        const updatedLyrics = [...otherLinesWords, ...newWordsForLine];
+        updatedLyrics.sort((a, b) => {
+          if (a.lineIndex !== b.lineIndex) {
+            return a.lineIndex - b.lineIndex;
+          }
+          return a.index - b.index;
+        });
+        return updatedLyrics.map((word, index) => ({ ...word, index }));
+      });
+      setIsEditModalOpen(false);
+    },
+    []
+  );
 
   const handleWordUpdate = useCallback(
     (index: number, newWordData: Partial<LyricWordData>) => {
@@ -132,10 +190,9 @@ const Home: React.FC = () => {
     (lineIndex: number) => {
       const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
       if (!firstWordOfLine) return;
-
       const firstWordIndex = firstWordOfLine.index;
       const preRollTime = getPreRollTime(lineIndex);
-
+      setSelectedLineIndex(lineIndex);
       setLyricsData((prev) =>
         prev.map((word) =>
           word.lineIndex === lineIndex
@@ -147,7 +204,6 @@ const Home: React.FC = () => {
       setEditingLineIndex(lineIndex);
       setIsTimingActive(false);
       setCorrectionIndex(null);
-
       if (mode === "mp3" && audioRef.current) {
         audioRef.current.currentTime = preRollTime;
         audioRef.current.play();
@@ -174,7 +230,6 @@ const Home: React.FC = () => {
       alert("No timed lyrics to preview.");
       return;
     }
-
     let timestamps: number[] = [];
     if (mode === "midi" && midiPlayerRef.current) {
       const bpm = midiPlayerRef.current.currentBpm;
@@ -185,7 +240,6 @@ const Home: React.FC = () => {
       timestamps = generator.generateSegment(timedWords);
     }
     setPreviewTimestamps(timestamps);
-
     const lyrs: string[][] = [];
     lyricsData.forEach((data) => {
       if (!lyrs[data.lineIndex]) lyrs[data.lineIndex] = [];
@@ -195,19 +249,16 @@ const Home: React.FC = () => {
     setIsPreviewing(true);
   }, [lyricsData, mode]);
 
-  // ✅ MODIFIED: ปรับเงื่อนไขให้ Playback Highlight (สีทอง) ทำงานตอนย้อนกลับ
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || mode !== "mp3") return;
-
     const handleTimeUpdate = () => {
-      // หยุดไฮไลท์เฉพาะตอน Preview หรือตอนกำลังกด -> (isTimingActive แต่ไม่ใช่ correction)
       if (
         isPreviewing ||
         audio.paused ||
         (isTimingActive && correctionIndex === null)
       ) {
-        setPlaybackIndex(null); // ล้างไฮไลท์เก่าออก
+        setPlaybackIndex(null);
         return;
       }
       const newPlaybackIndex = lyricsData.findIndex(
@@ -218,16 +269,27 @@ const Home: React.FC = () => {
           audio.currentTime < word.end
       );
       setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
+      if (newPlaybackIndex > -1) {
+        const word = lyricsData[newPlaybackIndex];
+        if (word && selectedLineIndex !== word.lineIndex) {
+          setSelectedLineIndex(word.lineIndex);
+        }
+      }
     };
     audio.addEventListener("timeupdate", handleTimeUpdate);
     return () => audio.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [lyricsData, isTimingActive, isPreviewing, mode, correctionIndex]); // เพิ่ม correctionIndex ใน dependency
+  }, [
+    lyricsData,
+    isTimingActive,
+    isPreviewing,
+    mode,
+    correctionIndex,
+    selectedLineIndex,
+  ]);
 
-  // ✅ MODIFIED: ปรับเงื่อนไขสำหรับ MIDI เช่นกัน
   useEffect(() => {
     const player = midiPlayerRef.current;
     if (!player || mode !== "midi") return;
-
     const handleTickUpdate = (tick: number) => {
       setCurrentTick(tick);
       if (
@@ -246,6 +308,12 @@ const Home: React.FC = () => {
           tick < word.end
       );
       setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
+      if (newPlaybackIndex > -1) {
+        const word = lyricsData[newPlaybackIndex];
+        if (word && selectedLineIndex !== word.lineIndex) {
+          setSelectedLineIndex(word.lineIndex);
+        }
+      }
     };
     player.addEventListener("tickupdate", handleTickUpdate);
     return () => player.removeEventListener("tickupdate", handleTickUpdate);
@@ -254,27 +322,96 @@ const Home: React.FC = () => {
     isTimingActive,
     isPreviewing,
     mode,
-    midiPlayerRef.current,
-    correctionIndex, // เพิ่ม correctionIndex ใน dependency
+    midiPlayerRef,
+    correctionIndex,
+    selectedLineIndex,
   ]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isTimingActive || correctionIndex !== null) {
+        const activeWordEl = document.querySelector(
+          `[data-index="${currentIndex}"]`
+        );
+        activeWordEl?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      } else if (selectedLineIndex !== null) {
+        const selectedLineEl = document.querySelector(
+          `[data-line-index="${selectedLineIndex}"]`
+        );
+        selectedLineEl?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [currentIndex, selectedLineIndex, isTimingActive, correctionIndex]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName))
+      if (
+        ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
+        isEditModalOpen
+      )
         return;
 
       const playerActive =
         mode === "mp3"
           ? !audioRef.current?.paused
           : midiPlayerRef.current?.isPlaying;
+      const totalLines = lyricsData.length
+        ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
+        : 0;
 
-      if (e.code === "Space") {
+      if (e.code === "ArrowUp") {
         e.preventDefault();
-        playerActive ? handlePause() : handlePlay();
+        setSelectedLineIndex((prev) => {
+          if (prev === null) return totalLines > 0 ? 0 : null;
+          return prev > 0 ? prev - 1 : 0;
+        });
+        return;
+      }
+      if (e.code === "ArrowDown") {
+        e.preventDefault();
+        setSelectedLineIndex((prev) => {
+          if (prev === null) return totalLines > 0 ? 0 : null;
+          return prev < totalLines - 1 ? prev + 1 : prev;
+        });
+        return;
+      }
+      if (e.code === "Enter" && selectedLineIndex !== null) {
+        e.preventDefault();
+        setIsEditModalOpen(true);
         return;
       }
 
-      if (isTimingActive && e.code === "ArrowLeft") {
+      // ✅ MODIFIED: ปรับปรุง Logic ของ Spacebar
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (playerActive) {
+          handlePause();
+        } else {
+          // ถ้ามีบรรทัดที่เลือกไว้ ให้เล่นจากบรรทัดก่อนหน้า
+          if (selectedLineIndex !== null) {
+            const preRollTime = getPreRollTime(selectedLineIndex);
+            if (mode === "mp3" && audioRef.current) {
+              audioRef.current.currentTime = preRollTime;
+            } else if (mode === "midi" && midiPlayerRef.current) {
+              midiPlayerRef.current.seek(preRollTime);
+            }
+          }
+          handlePlay();
+        }
+        return;
+      }
+
+      if (
+        (isTimingActive || correctionIndex !== null) &&
+        e.code === "ArrowLeft"
+      ) {
         e.preventDefault();
         if (currentIndex <= 0) return;
 
@@ -298,12 +435,16 @@ const Home: React.FC = () => {
         setCorrectionIndex(prevIndex);
         setIsTimingActive(true);
 
-        const preRollTime = getPreRollTime(prevWord.lineIndex);
+        const lineStartTime =
+          lyricsData.find(
+            (w) => w.lineIndex === prevWord.lineIndex && w.start !== null
+          )?.start ?? getPreRollTime(prevWord.lineIndex);
+
         if (mode === "mp3" && audioRef.current) {
-          audioRef.current.currentTime = preRollTime;
+          audioRef.current.currentTime = lineStartTime;
           if (!playerActive) handlePlay();
         } else if (mode === "midi" && midiPlayerRef.current) {
-          midiPlayerRef.current.seek(preRollTime);
+          midiPlayerRef.current.seek(lineStartTime);
           if (!playerActive) handlePlay();
         }
         return;
@@ -330,12 +471,15 @@ const Home: React.FC = () => {
       setLyricsData((prev) => {
         const newData = [...prev];
         const currentWord = newData[currentIndex];
-        currentWord.end = currentTime;
-        currentWord.length =
-          currentWord.end - (currentWord.start ?? currentTime);
+        if (currentWord) {
+          currentWord.end = currentTime;
+          currentWord.length =
+            currentWord.end - (currentWord.start ?? currentTime);
+        }
         const nextWord = newData[currentIndex + 1];
         if (nextWord) {
           if (
+            currentWord &&
             nextWord.lineIndex !== currentWord.lineIndex &&
             editingLineIndex !== null
           ) {
@@ -355,7 +499,14 @@ const Home: React.FC = () => {
       });
 
       if (currentIndex + 1 < lyricsData.length) {
-        setCurrentIndex((prev) => prev + 1);
+        const nextIndex = currentIndex + 1;
+        const nextWord = lyricsData[nextIndex];
+
+        setCurrentIndex(nextIndex);
+
+        if (nextWord && selectedLineIndex !== nextWord.lineIndex) {
+          setSelectedLineIndex(nextWord.lineIndex);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -370,6 +521,9 @@ const Home: React.FC = () => {
     mode,
     currentTick,
     getPreRollTime,
+    selectedLineIndex,
+    isEditModalOpen,
+    correctionIndex,
   ]);
 
   if (!mode) {
@@ -404,6 +558,7 @@ const Home: React.FC = () => {
           editingLineIndex={editingLineIndex}
           playbackIndex={playbackIndex}
           correctionIndex={correctionIndex}
+          selectedLineIndex={selectedLineIndex}
           lyricInputRef={lyricInputRef}
           onImport={handleImport}
           onWordClick={(index) => {
@@ -422,6 +577,7 @@ const Home: React.FC = () => {
             }
           }}
           onEditLine={handleEditLine}
+          onDeleteLine={handleDeleteLine}
           onWordUpdate={handleWordUpdate}
           onWordDelete={() => {}}
           onPreview={handlePreview}
@@ -463,10 +619,11 @@ const Home: React.FC = () => {
       <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner">
         <p>
           <b className="text-amber-400">Mode: {mode?.toUpperCase()}</b> |{" "}
-          <b className="text-amber-400">Tap "Edit" on a line</b> to start |{" "}
+          <b className="text-amber-400">Use ↑/↓ to Select Line</b> |{" "}
+          <b className="text-amber-400">Enter: Edit Line</b> |{" "}
           <b className="text-amber-400">Space:</b> Play/Pause |{" "}
           <b className="text-amber-400">→:</b> Set Time |{" "}
-          <b className="text-red-400">←:</b> Go Back
+          <b className="text-red-400">←:</b> Go Back/Correct
         </p>
       </footer>
       {isPreviewing && (
@@ -477,6 +634,15 @@ const Home: React.FC = () => {
           audioRef={audioRef}
           midiPlayerRef={midiPlayerRef}
           onClose={() => setIsPreviewing(false)}
+        />
+      )}
+      {isEditModalOpen && selectedLineIndex !== null && (
+        <EditLyricLineModal
+          lineWords={lyricsData.filter(
+            (w) => w.lineIndex === selectedLineIndex
+          )}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={(newText) => handleUpdateLine(selectedLineIndex, newText)}
         />
       )}
     </main>

@@ -11,12 +11,14 @@ type Props = {
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
-  correctionIndex: number | null; // <-- PROP ใหม่
+  correctionIndex: number | null;
   playbackIndex: number | null;
+  selectedLineIndex: number | null; // <-- PROP ใหม่
   lyricInputRef: RefObject<HTMLTextAreaElement | null>;
   onImport: () => void;
   onWordClick: (index: number) => void;
   onEditLine: (lineIndex: number) => void;
+  onDeleteLine: (lineIndex: number) => void; // <-- PROP ใหม่
   onWordUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onWordDelete: (index: number) => void;
   onPreview: () => void;
@@ -33,10 +35,12 @@ export default function LyricsPanel({ ...props }: Props) {
         currentIndex={props.currentIndex}
         isTimingActive={props.isTimingActive}
         editingLineIndex={props.editingLineIndex}
-        correctionIndex={props.correctionIndex} // <-- ส่งต่อไป
+        correctionIndex={props.correctionIndex}
         playbackIndex={props.playbackIndex}
+        selectedLineIndex={props.selectedLineIndex} // <-- ส่งต่อไป
         onWordClick={props.onWordClick}
         onEditLine={props.onEditLine}
+        onDeleteLine={props.onDeleteLine} // <-- ส่งต่อไป
         onWordUpdate={props.onWordUpdate}
         onWordDelete={props.onWordDelete}
       />

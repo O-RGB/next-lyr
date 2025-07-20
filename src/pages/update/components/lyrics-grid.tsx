@@ -3,17 +3,19 @@ import { LyricWordData } from "../lib/type";
 import LyricWord from "./lyric-word";
 import { Card } from "./common/card";
 import { Button } from "./common/button";
-import { BiPencil } from "react-icons/bi";
+import { BiPencil, BiTrash } from "react-icons/bi";
 
 type Props = {
   lyricsData: LyricWordData[];
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
-  correctionIndex: number | null; // <-- PROP ใหม่
+  correctionIndex: number | null;
   playbackIndex: number | null;
+  selectedLineIndex: number | null;
   onWordClick: (index: number) => void;
   onEditLine: (lineIndex: number) => void;
+  onDeleteLine: (lineIndex: number) => void;
   onWordUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onWordDelete: (index: number) => void;
 };
@@ -38,7 +40,13 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
         {lines.map((line, lineIndex) => (
           <Card
             key={lineIndex}
-            className="flex items-center justify-between p-3 transition-shadow hover:shadow-md"
+            data-line-index={lineIndex} // ✅ ADDED: สำหรับ Auto-Scrolling
+            className={[
+              "flex items-center justify-between p-3 transition-all duration-200 hover:shadow-md",
+              props.selectedLineIndex === lineIndex
+                ? "bg-blue-100/80 ring-2 ring-blue-400"
+                : "",
+            ].join(" ")}
           >
             <div className="lyric-line flex flex-wrap gap-x-2 gap-y-1 leading-relaxed">
               {line.map((word) => (
@@ -46,9 +54,10 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                   key={word.index}
                   wordData={word}
                   isActive={
-                    props.isTimingActive && props.currentIndex === word.index
+                    (props.isTimingActive || props.correctionIndex !== null) &&
+                    props.currentIndex === word.index
                   }
-                  isPendingCorrection={props.correctionIndex === word.index} // <-- ส่ง PROP ใหม่ลงไป
+                  isPendingCorrection={props.correctionIndex === word.index}
                   isEditing={
                     props.editingLineIndex === word.lineIndex &&
                     !props.isTimingActive
@@ -60,13 +69,24 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                 />
               ))}
             </div>
-            <Button
-              className="ml-4"
-              onClick={() => props.onEditLine(lineIndex)}
-              disabled={props.isTimingActive}
-            >
-              <BiPencil className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 ml-4">
+              <Button
+                onClick={() => props.onEditLine(lineIndex)}
+                disabled={props.isTimingActive}
+                className="p-2 hover:bg-slate-200 rounded-md"
+                title="Start Timing Edit"
+              >
+                <BiPencil className="h-5 w-5 text-slate-600" />
+              </Button>
+              <Button
+                onClick={() => props.onDeleteLine(lineIndex)}
+                disabled={props.isTimingActive}
+                className="p-2 hover:bg-red-200 rounded-md"
+                title="Delete Line"
+              >
+                <BiTrash className="h-5 w-5 text-red-600" />
+              </Button>
+            </div>
           </Card>
         ))}
       </div>
