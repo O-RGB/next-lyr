@@ -1,6 +1,6 @@
 import { useState, useEffect, RefObject } from "react";
-import { Button } from "./common/button";
-import { Card } from "./common/card";
+import { Button } from "../../components/common/button";
+import { Card } from "../../components/common/card";
 import { BsPlay, BsPause, BsStop } from "react-icons/bs";
 
 type Props = {

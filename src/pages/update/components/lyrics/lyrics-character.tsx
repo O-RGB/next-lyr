@@ -56,8 +56,6 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({
     whiteSpace: "nowrap",
   };
 
-  // หมายเหตุ: การใช้ text-shadow จะให้เส้นขอบที่ไม่คมเท่า stroke
-  // หากต้องการเส้นขอบคมชัดแบบเดิม อาจต้องกลับไปใช้ layer ซ้อนกัน
   return (
     <div style={baseStyle}>
       {lyr}

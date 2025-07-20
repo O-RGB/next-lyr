@@ -12,7 +12,12 @@ import { JsSynthPlayerEngine } from "./lib/js-synth-player";
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
 interface MidiPlayerProps {
-  onFileLoaded?: (file: File, durationTicks: number, ppq: number) => void;
+  onFileLoaded?: (
+    file: File,
+    durationTicks: number,
+    ppq: number,
+    bpm: number
+  ) => void;
   onTickChange?: (tick: number) => void; // <-- ADDED: Callback for tick updates
 }
 
@@ -71,7 +76,12 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
           setFileName(file.name);
           setDuration(midiInfo.durationTicks);
           // MODIFIED: Pass more data back up
-          onFileLoaded?.(file, midiInfo.durationTicks, midiInfo.ppq);
+          onFileLoaded?.(
+            file,
+            midiInfo.durationTicks,
+            midiInfo.ppq,
+            midiInfo.bpm
+          );
         } catch (error) {
           console.error("Error loading MIDI file:", error);
           setFileName("Error: Invalid MIDI file");

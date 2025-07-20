@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Modal } from "./common/modal";
-import { Button } from "./common/button";
-import { LyricWordData } from "../lib/type";
+import { Modal } from "../common/modal";
+import { Button } from "../common/button";
+import { LyricWordData } from "../../types/type";
 
 type Props = {
   lineWords: LyricWordData[];
@@ -21,7 +21,6 @@ export default function EditLyricLineModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Focus ที่ input field เมื่อ modal เปิด
     inputRef.current?.focus();
     inputRef.current?.select();
   }, []);

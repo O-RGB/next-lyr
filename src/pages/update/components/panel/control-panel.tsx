@@ -1,13 +1,13 @@
 import type { Dispatch, SetStateAction, RefObject } from "react";
-import AudioPlayer from "./audio-player";
-import MetadataForm from "./metadata-form";
+import AudioPlayer from "../../modules/audio/audio-player";
+import MetadataForm from "../metadata/metadata-form";
 
 type Props = {
   audioRef: RefObject<HTMLAudioElement | null>;
   audioSrc: string | null;
   metadata: { title: string; artist: string };
   onAudioLoad: (file: File) => void;
-  onMetadataChange: Dispatch<SetStateAction<{ title: string; artist: string }>>;
+  onMetadataChange: (metadata: { title: string; artist: string }) => void;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;

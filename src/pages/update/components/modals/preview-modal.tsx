@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Modal } from "./common/modal";
-import LyricsCharacter, { LyricsCharacterStyle } from "./lyrics-character";
-import { MidiPlayerRef } from "../modules/js-synth";
+import { Modal } from "../common/modal";
+import LyricsCharacter, {
+  LyricsCharacterStyle,
+} from "../lyrics/lyrics-character";
+import { MidiPlayerRef } from "../../modules/js-synth";
 
 type Props = {
   timestamps: number[];
@@ -10,6 +12,12 @@ type Props = {
   audioRef: React.RefObject<HTMLAudioElement | null>;
   midiPlayerRef: React.RefObject<MidiPlayerRef>;
   onClose: () => void;
+};
+
+type ProcessedWord = {
+  text: string;
+  startTime: number;
+  endTime: number;
 };
 
 const PreviewModal: React.FC<Props> = ({
@@ -21,21 +29,33 @@ const PreviewModal: React.FC<Props> = ({
   onClose,
 }) => {
   const [currentTime, setCurrentTime] = useState(0);
-  const [wordStartTimes, setWordStartTimes] = useState<number[][]>([]);
+  const [processedLyrics, setProcessedLyrics] = useState<ProcessedWord[][]>([]);
   const animationFrameRef = useRef<number | null>(null);
 
+  // useEffect สำหรับแปลงข้อมูล (ส่วนนี้ถูกต้องแล้ว)
   useEffect(() => {
-    let index = 0;
-    const newWordStartTimes = lyrics.map((line) =>
-      line.map((word) => {
-        const startTime = timestamps[index] ?? 0;
-        index += word.length;
-        return startTime;
-      })
-    );
-    setWordStartTimes(newWordStartTimes);
+    if (!timestamps || timestamps.length === 0) return;
+
+    const allLines: ProcessedWord[][] = [];
+    let tickIndex = 0;
+
+    lyrics.forEach((line, lineIndex) => {
+      const currentLine: ProcessedWord[] = [];
+      line.forEach((word) => {
+        const startTime = timestamps[tickIndex];
+        const endTime = timestamps[tickIndex + word.length];
+        currentLine.push({ text: word, startTime, endTime });
+        tickIndex += word.length;
+      });
+      allLines.push(currentLine);
+      if (lineIndex < lyrics.length - 1) {
+        tickIndex++;
+      }
+    });
+    setProcessedLyrics(allLines);
   }, [lyrics, timestamps]);
 
+  // useEffect สำหรับควบคุมการเล่นเสียงและเวลา
   useEffect(() => {
     const audio = audioRef.current;
     const midiPlayer = midiPlayerRef.current;
@@ -44,6 +64,7 @@ const PreviewModal: React.FC<Props> = ({
       audio.currentTime = 0;
       audio.play();
       const animate = () => {
+        // ✨ แก้ไขจุดที่ 1: ไม่ต้องคูณ 1000 เพราะเราจะใช้หน่วยวินาทีทั้งหมด
         setCurrentTime(audio.currentTime);
         animationFrameRef.current = requestAnimationFrame(animate);
       };
@@ -81,29 +102,23 @@ const PreviewModal: React.FC<Props> = ({
     fontSize: 48,
   };
 
-  if (wordStartTimes.length === 0) return null;
+  if (processedLyrics.length === 0) return null;
 
   return (
     <Modal title="Karaoke Preview" onClose={onClose}>
       <div className="overflow-y-auto p-4 bg-slate-900 text-center font-semibold">
         <div className="flex flex-col justify-center items-center h-full min-h-[300px]">
-          {lyrics.map((line, lineIndex) => (
+          {processedLyrics.map((line, lineIndex) => (
             <div
               key={lineIndex}
               className="flex flex-row flex-wrap justify-center my-2"
             >
               {line.map((word, wordIndex) => {
-                const startTime = wordStartTimes[lineIndex]?.[wordIndex] ?? 0;
-                const nextWordTime = wordStartTimes[lineIndex]?.[wordIndex + 1];
-                const nextLineFirstWordTime =
-                  wordStartTimes[lineIndex + 1]?.[0];
-                const endTime =
-                  nextWordTime ??
-                  nextLineFirstWordTime ??
-                  startTime + (mode === "midi" ? 480 : 1);
+                const { text, startTime, endTime } = word;
 
                 let durationInSeconds = 0;
                 if (mode === "mp3") {
+                  // ✨ แก้ไขจุดที่ 2: ไม่ต้องหาร 1000 เพราะ startTime และ endTime เป็นวินาทีอยู่แล้ว
                   durationInSeconds = endTime - startTime;
                 } else {
                   durationInSeconds = convertTickDurationToSeconds(
@@ -119,15 +134,21 @@ const PreviewModal: React.FC<Props> = ({
                 }
 
                 return (
-                  <div key={wordIndex}>
+                  <div
+                    key={wordIndex}
+                    className="flex flex-col text-white text-[8px]"
+                  >
                     <LyricsCharacter
-                      lyr={word}
+                      lyr={text}
                       status={status}
                       duration={Math.max(0.05, durationInSeconds)}
                       fontSize={textStyle.fontSize}
                       color={textStyle.color}
                       activeColor={textStyle.activeColor}
                     />
+                    <span>
+                      {startTime?.toFixed(2)}-{endTime?.toFixed(2)}
+                    </span>
                   </div>
                 );
               })}

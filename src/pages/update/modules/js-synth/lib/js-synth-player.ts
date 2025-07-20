@@ -131,7 +131,7 @@ export class JsSynthPlayerEngine {
   // --- Loading and Utility Methods (ไม่มีการเปลี่ยนแปลง) ---
   async loadMidi(
     resource: File
-  ): Promise<{ durationTicks: number; ppq: number }> {
+  ): Promise<{ durationTicks: number; ppq: number; bpm: number }> {
     const buffer = await this.loadBinaryFromFile(resource);
     let midiData: MidiData, midiBuffer: ArrayBuffer;
 
@@ -160,8 +160,9 @@ export class JsSynthPlayerEngine {
     await this.player.resetPlayer();
     await this.player.addSMFDataToPlayer(midiBuffer);
     this.seek(0);
+    let bpm = await this.player.retrievePlayerBpm();
 
-    return { durationTicks: this.durationTicks, ppq: this.ticksPerBeat };
+    return { durationTicks: this.durationTicks, ppq: this.ticksPerBeat, bpm };
   }
 
   private extractMidiMetadata(midi: MidiData): void {

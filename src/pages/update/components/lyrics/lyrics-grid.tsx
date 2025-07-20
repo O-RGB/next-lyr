@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { LyricWordData } from "../lib/type";
+import { LyricWordData } from "../../types/type";
 import LyricWord from "./lyric-word";
-import { Card } from "./common/card";
-import { Button } from "./common/button";
+import { Card } from "../common/card";
+import { Button } from "../common/button";
 import { BiPencil, BiTrash } from "react-icons/bi";
 
 type Props = {
@@ -40,7 +40,7 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
         {lines.map((line, lineIndex) => (
           <Card
             key={lineIndex}
-            data-line-index={lineIndex} // ✅ ADDED: สำหรับ Auto-Scrolling
+            data-line-index={lineIndex}
             className={[
               "flex items-center justify-between p-3 transition-all duration-200 hover:shadow-md",
               props.selectedLineIndex === lineIndex

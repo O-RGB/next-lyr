@@ -1,6 +1,5 @@
-import { ExportData, LyricWordData } from "./type";
+import { ExportData, LyricWordData } from "../types/type";
 
-// [MODIFIED] Now includes lineIndex during processing
 export function processRawLyrics(rawText: string): LyricWordData[] {
   const lines = rawText.trim().split("\n");
   const words: LyricWordData[] = [];
@@ -19,7 +18,7 @@ export function processRawLyrics(rawText: string): LyricWordData[] {
         end: null,
         length: 0,
         index: globalWordIndex++,
-        lineIndex: lineIndex, // Assign the line number
+        lineIndex: lineIndex,
       });
     });
   });
@@ -49,15 +48,4 @@ export function createAndDownloadJSON(
   };
 
   return exportData;
-
-//   const jsonString = JSON.stringify(exportData, null, 2);
-//   const blob = new Blob([jsonString], { type: "application/json" });
-//   const url = URL.createObjectURL(blob);
-//   const a = document.createElement("a");
-//   a.href = url;
-//   a.download = `${metadata.title.replace(/\s/g, "_") || "lyrics"}.json`;
-//   document.body.appendChild(a);
-//   a.click();
-//   document.body.removeChild(a);
-//   URL.revokeObjectURL(url);
 }

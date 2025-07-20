@@ -1,16 +1,5 @@
 import json
-def generate_segment(lyric, tick, BPM):
-    step = round(864 / BPM)
-    timings = [tick[0]]
-    
-    for i, word in enumerate(lyric):
-        for j in range(len(word)):
-            if i == len(lyric) - 1:
-                timings.append(tick[i + 1] + j * step)
-            else:
-                timings.append(tick[i + 1] + j)
-    
-    return timings
+ 
 
 def reverse_generate_segment(lyric, tick):
     result = []
@@ -61,12 +50,12 @@ def read_cursor_file(file_path: str):
         return []
 
 lyric_data = []
-with open("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.lyr", "r", encoding="cp874") as f:
+with open("/Users/digixtwo/Documents/Project/next-lyr/public/midi/check-cur-to-lyr/addmorevertion/not more/mhy27.lyr", "r", encoding="cp874") as f:
     lyric_data = f.read()
 lyric_data = lyric_data.split("\n")
 lyric_data = (lyric_data[4:len(lyric_data)-1])
 
-cursors = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/emk/WN00849.cur")
+cursors = read_cursor_file("/Users/digixtwo/Documents/Project/next-lyr/public/midi/check-cur-to-lyr/addmorevertion/not more/mhy27.cur")
 result = sum(len(word) for word in lyric_data)
 
 print("cursors All:", len(cursors))
@@ -78,3 +67,8 @@ reverse = reverse_generate_segment(lyric_data, cursors)
 print("Process Line:",len(reverse))
 print(json.dumps(reverse, indent=2, ensure_ascii=False))
 input()
+
+# cursors All: 179
+# lyric char All: 171
+# Last Cursor: 1651
+# Process Line: 8

@@ -1,4 +1,4 @@
-import { LyricWordData } from "@/pages/update/lib/type";
+import { LyricWordData } from "../../types/type";
 
 interface LyricSegmentGenerator {
   generateSegment(words: LyricWordData[]): number[];
@@ -18,17 +18,42 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
 
     if (words.length === 0) return timings;
 
-    timings.push(words[0].start ?? 0);
-
     const easeInOut = (t: number): number =>
       t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
     const minCharSpacing = 3;
     const speedFactor = 1.2;
+    let line = -1;
 
     words.forEach((word, i) => {
-      const segmentDuration = (word.end ?? 0) - (word.start ?? 0);
+      // ส่วนที่ 1: เพิ่มจุดคั่นระหว่างบรรทัด (ทำงานเหมือนเดิม)
+      if (line !== word.lineIndex) {
+        if (i > 0) {
+          const prevWord = words[i - 1];
+          const midPointTime = Math.round(
+            ((prevWord.end ?? 0) + (word.start ?? 0)) / 2
+          );
+          timings.push(midPointTime);
+        } else {
+          timings.push(word.start ?? 0);
+        }
+        line = word.lineIndex;
+      }
 
+      // ส่วนที่ 2: สร้าง timing ของตัวอักษร โดยเพิ่มเงื่อนไขพิเศษ
+      let segmentDuration: number;
+      const nextWord = words[i + 1];
+
+      // ✨ ตรวจสอบว่าคำนี้เป็นคำสุดท้ายของบรรทัดหรือไม่
+      if (nextWord && nextWord.lineIndex > word.lineIndex) {
+        // ถ้าใช่, ใช้สูตร "หาร 2" เพื่อให้แอนิเมชันจบเร็วขึ้น
+        segmentDuration = ((nextWord.start ?? 0) - (word.start ?? 0)) / 2;
+      } else {
+        // ถ้าไม่ใช่, ใช้ระยะเวลาปกติ
+        segmentDuration = (word.end ?? 0) - (word.start ?? 0);
+      }
+
+      // --- ส่วนที่เหลือทำงานเหมือนเดิมโดยใช้ segmentDuration ที่ถูกเลือกไว้ ---
       let speedMultiplier =
         i === words.length - 1
           ? 0.9
@@ -59,107 +84,100 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
       }
     });
 
+    // ตรวจสอบให้แน่ใจว่าค่า timing เรียงจากน้อยไปมากเสมอ
     for (let i = 1; i < timings.length; i++) {
-      if (timings[i] <= timings[i - 1]) timings[i] = timings[i - 1] + 1;
+      if (timings[i] <= timings[i - 1]) {
+        timings[i] = timings[i - 1] + 1;
+      }
     }
 
+    console.log("Total timings:", timings.length);
     return timings;
   }
 }
 
 export class TimestampLyricSegmentGenerator implements LyricSegmentGenerator {
   generateSegment(words: LyricWordData[]): number[] {
-    if (words.length === 0) {
-      return [];
-    }
+    const timings: number[] = [];
 
-    const minCharTime = 0.001; // เวลาขั้นต่ำสุดระหว่างตัวอักษร
+    if (words.length === 0) return timings;
 
-    // --- Step 1: คำนวณความเร็วพื้นฐานของแต่ละคำ (จำนวนตัวอักษรต่อวินาที) ---
-    const speeds = words.map((word) => {
-      const duration = (word.end ?? 0) - (word.start ?? 0);
-      // ป้องกันการหารด้วยศูนย์ถ้าคำไม่มีระยะเวลาหรือไม่มีตัวอักษร
-      if (duration <= 0 || word.name.length === 0) {
-        return 0;
+    const easeInOut = (t: number): number =>
+      t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    const minCharSpacing = 0.001; // หน่วยวินาที
+    const speedFactor = 1.2;
+    let line = -1;
+
+    // ค่าคงที่สำหรับพิจารณาว่าเป็นคำที่ "ยาว" (หน่วยวินาที)
+    const LONG_WORD_THRESHOLD_S = 0.7;
+
+    words.forEach((word, i) => {
+      // ✨ Step 1: เพิ่มจุดคั่นระหว่างบรรทัด (ทำงานเหมือน Tick Mode) ✨
+      if (line !== word.lineIndex) {
+        if (i > 0) {
+          const prevWord = words[i - 1];
+          // คำนวณจุดกึ่งกลางเป็น float ไม่ต้อง round
+          const midPointTime = ((prevWord.end ?? 0) + (word.start ?? 0)) / 2;
+          timings.push(midPointTime);
+        } else {
+          // เพิ่มจุดเริ่มต้นของเพลงเป็นจุดแรกสุด
+          timings.push(word.start ?? 0);
+        }
+        line = word.lineIndex;
       }
-      return word.name.length / duration;
-    });
 
-    // --- Step 2: สร้าง Timestamps จากความเร็วที่ผสมข้ามขอบเขตแล้ว ---
-    const unscaledTimings: number[] = [];
-    let currentTime = words[0].start ?? 0;
+      // ✨ Step 2: สร้าง Timings ของตัวอักษร (ทำงานเหมือน Tick Mode) ✨
+      let segmentDuration: number;
+      const nextWord = words[i + 1];
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
+      // ปรับระยะเวลาของคำสุดท้ายในบรรทัด
+      if (nextWord && nextWord.lineIndex > word.lineIndex) {
+        segmentDuration = ((nextWord.start ?? 0) - (word.start ?? 0)) / 2;
+      } else {
+        segmentDuration = (word.end ?? 0) - (word.start ?? 0);
+      }
+
+      // ปรับความเร็ว
+      let speedMultiplier =
+        i === words.length - 1
+          ? 0.9
+          : segmentDuration > LONG_WORD_THRESHOLD_S
+          ? 0.85
+          : 0.95;
+
+      const effectiveDuration =
+        (segmentDuration * speedMultiplier) / speedFactor;
+
       const charsInWord = word.name.length;
-      if (charsInWord === 0) {
-        continue;
-      }
+      if (charsInWord === 0) return;
 
-      // หาความเร็ว ณ จุดเริ่มต้นและจุดสิ้นสุดของขอบเขตคำปัจจุบัน
-      const prevSpeed = speeds[i - 1] ?? speeds[i]; // ถ้าเป็นคำแรก ให้ใช้ความเร็วตัวเอง
-      const currentSpeed = speeds[i];
-      const nextSpeed = speeds[i + 1] ?? speeds[i]; // ถ้าเป็นคำสุดท้าย ให้ใช้ความเร็วตัวเอง
-
-      // ความเร็ว ณ รอยต่อ คือค่าเฉลี่ยของสองคำที่มาบรรจบกัน
-      const startBoundarySpeed = (prevSpeed + currentSpeed) / 2;
-      const endBoundarySpeed = (currentSpeed + nextSpeed) / 2;
+      let lastTime = word.start ?? 0;
 
       for (let j = 0; j < charsInWord; j++) {
-        // เกลี่ยความเร็วจากต้นคำไปท้ายคำแบบ Linear
-        const progress = charsInWord === 1 ? 1.0 : j / (charsInWord - 1);
-        const interpolatedSpeed =
-          (1 - progress) * startBoundarySpeed + progress * endBoundarySpeed;
+        const progress = j / (charsInWord - 1 || 1);
+        const easedProgress = easeInOut(progress);
 
-        if (interpolatedSpeed <= 0) {
-          // ถ้าความเร็วเป็นศูนย์ (เช่น ช่วงเงียบ) ให้ใช้ค่าเวลาขั้นต่ำ
-          currentTime += minCharTime;
-        } else {
-          // เวลาที่ใช้สำหรับตัวอักษรนี้ = 1 / ความเร็ว
-          const deltaTime = 1 / interpolatedSpeed;
-          currentTime += deltaTime;
+        // คำนวณตำแหน่งเป็น float ไม่ต้อง round
+        let position = (word.start ?? 0) + easedProgress * effectiveDuration;
+
+        if (position <= lastTime) {
+          position = lastTime + minCharSpacing;
         }
-        unscaledTimings.push(currentTime);
+
+        timings.push(position);
+        lastTime = position;
       }
-    }
-
-    // --- Step 3: ปรับสเกล Timings ทั้งหมดให้กลับมาพอดีกับระยะเวลาจริง ---
-    const actualStartTime = words[0].start ?? 0;
-    const actualEndTime = words[words.length - 1].end ?? 0;
-    const actualDuration = actualEndTime - actualStartTime;
-
-    // หาจุดเริ่มต้นและสิ้นสุดของเวลาที่คำนวณได้
-    const calculatedStartTime = unscaledTimings[0] ?? actualStartTime;
-    const calculatedEndTime =
-      unscaledTimings[unscaledTimings.length - 1] ?? actualEndTime;
-    const calculatedDuration = calculatedEndTime - calculatedStartTime;
-
-    // ถ้าไม่สามารถปรับสเกลได้ (เช่น ระยะเวลาเป็น 0) ให้คืนค่าแบบพื้นฐาน
-    if (actualDuration <= 0 || calculatedDuration <= 0) {
-      const fallbackTimings = words.flatMap((w) =>
-        Array(w.name.length).fill(w.start ?? 0)
-      );
-      fallbackTimings.unshift(words[0].start ?? 0);
-      return fallbackTimings;
-    }
-
-    const scaleFactor = actualDuration / calculatedDuration;
-
-    let finalTimings = unscaledTimings.map((t) => {
-      const timeFromCalcStart = t - calculatedStartTime;
-      return actualStartTime + timeFromCalcStart * scaleFactor;
     });
 
-    // เพิ่ม timestamp ตัวแรกสุดกลับเข้าไป (สำคัญมาก)
-    finalTimings.unshift(actualStartTime);
-
-    // ตรวจสอบความถูกต้องและความปลอดภัยของค่าครั้งสุดท้าย
-    for (let i = 1; i < finalTimings.length; i++) {
-      if (finalTimings[i] <= finalTimings[i - 1]) {
-        finalTimings[i] = finalTimings[i - 1] + minCharTime;
+    // ✨ Step 3: ตรวจสอบความถูกต้อง (ทำงานเหมือน Tick Mode) ✨
+    for (let i = 1; i < timings.length; i++) {
+      if (timings[i] <= timings[i - 1]) {
+        timings[i] = timings[i - 1] + minCharSpacing;
       }
     }
 
-    return finalTimings;
+    console.log("timings", timings);
+    return timings;
   }
 }

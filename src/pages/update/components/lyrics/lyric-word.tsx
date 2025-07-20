@@ -1,11 +1,11 @@
-import { LyricWordData } from "../lib/type";
+import { LyricWordData } from "../../types/type";
 
 type Props = {
   wordData: LyricWordData;
   isActive: boolean;
   isEditing: boolean;
   isPlaybackHighlight: boolean;
-  isPendingCorrection: boolean; // <-- PROP ใหม่
+  isPendingCorrection: boolean;
   onClick: (index: number) => void;
   onUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onDelete: (index: number) => void;

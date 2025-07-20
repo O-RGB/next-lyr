@@ -1,10 +1,10 @@
-import type { Dispatch, SetStateAction } from "react";
-import { Card } from "./common/card";
-import Input from "./common/input";
+import { Card } from "../common/card";
+import Input from "../common/input";
 
 type Props = {
   metadata: { title: string; artist: string };
-  onMetadataChange: Dispatch<SetStateAction<{ title: string; artist: string }>>;
+  // Type นี้ถูกต้องแล้ว คือรับ object ไม่ใช่ function
+  onMetadataChange: (metadata: { title: string; artist: string }) => void;
 };
 
 export default function MetadataForm({ metadata, onMetadataChange }: Props) {
@@ -24,7 +24,8 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             className="col-span-3 p-2 border rounded-md"
             value={metadata.title}
             onChange={(e) =>
-              onMetadataChange((prev) => ({ ...prev, title: e.target.value }))
+              // ✅ แก้ไข: ส่ง object ใหม่กลับไป โดยใช้ค่าเดิมจาก prop `metadata`
+              onMetadataChange({ ...metadata, title: e.target.value })
             }
             placeholder="Song Title"
           />
@@ -41,7 +42,8 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             className="col-span-3 p-2 border rounded-md"
             value={metadata.artist}
             onChange={(e) =>
-              onMetadataChange((prev) => ({ ...prev, artist: e.target.value }))
+              // ✅ แก้ไข: ส่ง object ใหม่กลับไปเช่นกัน
+              onMetadataChange({ ...metadata, artist: e.target.value })
             }
             placeholder="Artist Name"
           />
@@ -50,11 +52,3 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
     </Card>
   );
 }
-
-// Ensure Input component has basic styling if not already present
-// update/components/common/input.tsx
-// const Input: React.FC<InputProps> = ({ className, ...props }) => {
-//   return (
-//     <input {...props} type="text" className={`w-full ${className}`} />
-//   );
-// };
