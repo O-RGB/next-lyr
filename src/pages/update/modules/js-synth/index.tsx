@@ -8,6 +8,7 @@ import React, {
 import { FaPlay, FaPause, FaFolderOpen, FaStop } from "react-icons/fa";
 import { JsSynthEngine } from "./lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "./lib/js-synth-player";
+import { MidiDecode } from "../../lib/midi-tags-decode";
 
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
@@ -72,6 +73,9 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const handleLoadMidiFile = async (file: File) => {
       if (player) {
         try {
+          const test = new MidiDecode(await file.arrayBuffer());
+          const te = await test.parse();
+          console.log(te);
           const midiInfo = await player.loadMidi(file);
           setFileName(file.name);
           setDuration(midiInfo.durationTicks);

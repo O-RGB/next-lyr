@@ -128,7 +128,7 @@ export class JsSynthPlayerEngine {
     });
   }
 
-  // --- Loading and Utility Methods (ไม่มีการเปลี่ยนแปลง) ---
+  // --- Loading and Utility Methods (แก้ไขเพื่อหา BPM ที่ถูกต้อง) ---
   async loadMidi(
     resource: File
   ): Promise<{ durationTicks: number; ppq: number; bpm: number }> {
@@ -157,10 +157,29 @@ export class JsSynthPlayerEngine {
     );
     this.durationTicks = totalTicks;
 
+    // --- START: MODIFICATION ---
+    // Find initial BPM from the parsed MIDI data
+    let initialBpm: number | undefined;
+    for (const track of midiData.tracks) {
+      for (const event of track) {
+        if (event.type === "setTempo" && event.microsecondsPerBeat) {
+          initialBpm = 60000000 / event.microsecondsPerBeat;
+          break;
+        }
+      }
+      if (initialBpm) break;
+    }
+    // --- END: MODIFICATION ---
+
     await this.player.resetPlayer();
     await this.player.addSMFDataToPlayer(midiBuffer);
     this.seek(0);
-    let bpm = await this.player.retrievePlayerBpm();
+
+    // Use the parsed BPM if found, otherwise fall back to the player's BPM
+    const bpm = initialBpm ?? (await this.player.retrievePlayerBpm());
+    if (initialBpm) {
+      this.currentBpm = initialBpm;
+    }
 
     return { durationTicks: this.durationTicks, ppq: this.ticksPerBeat, bpm };
   }

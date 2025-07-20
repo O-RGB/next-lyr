@@ -5,12 +5,56 @@ interface LyricSegmentGenerator {
 }
 
 export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
-  private BPM: number;
   private msPerBeat: number;
+  private ticksPerBeat: number;
+  private cursor: number[] = [];
+  private buffer: Uint8Array<ArrayBuffer> | undefined;
 
-  constructor(BPM: number) {
-    this.BPM = BPM;
+  constructor(BPM: number, ppq: number) {
     this.msPerBeat = 60000 / BPM;
+    this.ticksPerBeat = ppq;
+  }
+
+  private convertTicksToCursor = (value: number[]) => {
+    if (this.ticksPerBeat === 0) {
+      console.error("ticksPerBeat = 0");
+      return [];
+    }
+
+    let cursor = value.map((tick) =>
+      Math.round(tick / (this.ticksPerBeat / 24))
+    );
+    return cursor;
+  };
+
+  public export = () => {
+    if (this.cursor.length === 0) return;
+    const tickToCur = this.convertTicksToCursor(this.cursor);
+    const buffer = new Uint8Array(tickToCur.length * 2 + 1);
+    let offset = 0;
+
+    for (const value of tickToCur) {
+      buffer[offset] = value & 0xff;
+      buffer[offset + 1] = (value >> 8) & 0xff;
+      offset += 2;
+    }
+
+    buffer[offset] = 0xff;
+    this.buffer = buffer;
+    return buffer;
+  };
+
+  public downloadFile(filename: string): void {
+    if (!this.buffer) return;
+    const blob = new Blob([this.buffer], {
+      type: "application/octet-stream",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   generateSegment(words: LyricWordData[]): number[] {
@@ -92,7 +136,7 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
       }
     }
 
-    console.log("Total timings:", timings.length);
+    this.cursor = timings;
     return timings;
   }
 }

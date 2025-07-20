@@ -5,6 +5,7 @@ import {
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
 } from "../lib/cur-generator";
+import { LyrBuilder } from "../lib/lyr-generator";
 
 // --- STATE TYPE ---
 interface KaraokeState {
@@ -355,20 +356,41 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }
 
         let timestamps: number[] = [];
+
         if (mode === "midi" && midiInfo) {
-          const generator = new TickLyricSegmentGenerator(midiInfo.bpm);
+          const generator = new TickLyricSegmentGenerator(
+            midiInfo.bpm,
+            midiInfo.ppq
+          );
           timestamps = generator.generateSegment(timedWords);
-          console.log(midiInfo, timestamps);
+          generator.export();
+          generator.downloadFile(`${midiInfo?.fileName.split(".")[0]}.cur`);
         } else {
           const generator = new TimestampLyricSegmentGenerator();
           timestamps = generator.generateSegment(timedWords);
         }
 
         const lyrs: string[][] = [];
+        const lyrInline: string[] = [];
         lyricsData.forEach((data) => {
           if (!lyrs[data.lineIndex]) lyrs[data.lineIndex] = [];
           lyrs[data.lineIndex].push(data.name);
+
+          if (!lyrInline[data.lineIndex]) lyrInline.push("");
+          lyrInline[data.lineIndex] = lyrInline[data.lineIndex] + data.name;
         });
+
+        const lyr = new LyrBuilder({
+          name: "นะหน้าทอง",
+          artist: "โจอี้ ภูวศิษฐ์",
+          key: "A",
+          lyrics: lyrInline,
+        });
+
+        console.log(lyr);
+
+        lyr.getFileContent();
+        lyr.downloadFile(`${midiInfo?.fileName.split(".")[0]}.lyr`);
 
         set({
           previewTimestamps: timestamps,
