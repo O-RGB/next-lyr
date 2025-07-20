@@ -32,7 +32,6 @@ const PreviewModal: React.FC<Props> = ({
   const [processedLyrics, setProcessedLyrics] = useState<ProcessedWord[][]>([]);
   const animationFrameRef = useRef<number | null>(null);
 
-  // useEffect สำหรับแปลงข้อมูล (ส่วนนี้ถูกต้องแล้ว)
   useEffect(() => {
     if (!timestamps || timestamps.length === 0) return;
 
@@ -55,7 +54,6 @@ const PreviewModal: React.FC<Props> = ({
     setProcessedLyrics(allLines);
   }, [lyrics, timestamps]);
 
-  // useEffect สำหรับควบคุมการเล่นเสียงและเวลา
   useEffect(() => {
     const audio = audioRef.current;
     const midiPlayer = midiPlayerRef.current;
@@ -64,7 +62,6 @@ const PreviewModal: React.FC<Props> = ({
       audio.currentTime = 0;
       audio.play();
       const animate = () => {
-        // ✨ แก้ไขจุดที่ 1: ไม่ต้องคูณ 1000 เพราะเราจะใช้หน่วยวินาทีทั้งหมด
         setCurrentTime(audio.currentTime);
         animationFrameRef.current = requestAnimationFrame(animate);
       };
@@ -118,7 +115,6 @@ const PreviewModal: React.FC<Props> = ({
 
                 let durationInSeconds = 0;
                 if (mode === "mp3") {
-                  // ✨ แก้ไขจุดที่ 2: ไม่ต้องหาร 1000 เพราะ startTime และ endTime เป็นวินาทีอยู่แล้ว
                   durationInSeconds = endTime - startTime;
                 } else {
                   durationInSeconds = convertTickDurationToSeconds(
@@ -141,14 +137,12 @@ const PreviewModal: React.FC<Props> = ({
                     <LyricsCharacter
                       lyr={text}
                       status={status}
-                      duration={Math.max(0.05, durationInSeconds)}
+                      duration={Math.max(0, durationInSeconds)}
                       fontSize={textStyle.fontSize}
                       color={textStyle.color}
                       activeColor={textStyle.activeColor}
                     />
-                    <span>
-                      {startTime?.toFixed(2)}-{endTime?.toFixed(2)}
-                    </span>
+                    ​
                   </div>
                 );
               })}

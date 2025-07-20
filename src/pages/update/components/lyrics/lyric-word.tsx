@@ -29,21 +29,18 @@ export default function LyricWord({
   return (
     <div
       className={[
-        "lyric-word group relative cursor-pointer rounded-md border px-2.5 py-1.5 text-sm select-none transition-all duration-150",
+        "lyric-word group relative cursor-pointer rounded-md border px-2.5 py-1.5 text-sm select-none",
         "bg-white border-slate-300 hover:bg-slate-200",
-
         isPlaybackHighlight && "!border-amber-400 !bg-amber-200/80",
-        isEditing && "border-purple-400 bg-purple-50/80 hover:bg-purple-100",
-        // ✅ NEW: Style สำหรับสถานะ "กำลังรอแก้" (สีส้ม)
+        isEditing &&
+          "border-purple-400 bg-purple-50/80 hover:bg-purple-100 transition-all duration-150",
         isPendingCorrection &&
-          "ring-2 ring-orange-500 font-bold bg-orange-100 border-orange-400",
-        // ถ้าเป็นสถานะแก้ จะไม่แสดงสีเขียวทับ
+          "ring-2 ring-orange-500 font-bold bg-orange-100 border-orange-400 transition-all duration-150",
         isTimed &&
           !isPendingCorrection &&
-          "border-l-4 border-l-green-500 bg-green-50 hover:bg-green-100",
-        // Style สำหรับ Active (สีฟ้า) จะแสดงทับสีส้มได้ ถ้า Index ตรงกัน
+          "border-l-4 border-l-green-500 bg-green-50 hover:bg-green-100 transition-all duration-150",
         isActive &&
-          "ring-2 ring-blue-500 scale-105 font-bold bg-blue-100 border-blue-400",
+          "ring-2 ring-blue-500 scale-105 font-bold bg-blue-100 border-blue-400 transition-all duration-150",
       ].join(" ")}
       data-index={wordData.index}
       onClick={() => onClick(wordData.index)}
