@@ -40,7 +40,6 @@ export default function LyricsPanel({
     <Card className="flex-[3] flex flex-col p-4">
       <h3 className="text-lg font-semibold mb-2">Lyric Grid</h3>
       <LyricsGrid
-        // Pass data down to LyricsGrid (or it can also connect to the store)
         lyricsData={lyricsData}
         currentIndex={currentIndex}
         isTimingActive={isTimingActive}
@@ -55,10 +54,18 @@ export default function LyricsPanel({
         onWordDelete={() => {}} // Placeholder
       />
       <div className="flex items-center gap-2 mt-4 flex-wrap">
-        <Button onClick={actions.startPreview}>
+        <Button
+          onClick={actions.startPreview}
+          // *** FIX APPLIED HERE ***
+          disabled={editingLineIndex !== null}
+        >
           <BsPlay className="mr-2 h-4 w-4" /> Preview
         </Button>
-        <Button onClick={() => alert("Exporting...")}>
+        <Button
+          onClick={() => alert("Exporting...")}
+          // *** FIX APPLIED HERE ***
+          disabled={editingLineIndex !== null}
+        >
           <BsSave className="mr-2 h-4 w-4" /> Export JSON
         </Button>
 
@@ -77,8 +84,14 @@ export default function LyricsPanel({
         ref={lyricInputRef}
         placeholder="Paste lyrics here... Use new lines, spaces, or | to separate words."
         className="w-full p-2 border rounded min-h-[100px]"
+        // Disable textarea while editing to prevent accidental changes
+        disabled={editingLineIndex !== null}
       />
-      <Button onClick={handleImport} className="mt-2 w-full">
+      <Button
+        onClick={handleImport}
+        className="mt-2 w-full"
+        disabled={editingLineIndex !== null}
+      >
         Process Lyrics
       </Button>
     </Card>

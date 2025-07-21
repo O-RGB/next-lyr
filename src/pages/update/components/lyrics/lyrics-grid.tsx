@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { LyricWordData } from "../../types/type";
 import LyricWord from "./lyric-word";
 import { Card } from "../common/card";
@@ -23,9 +23,10 @@ type Props = {
 
 export default function LyricsGrid({ lyricsData, ...props }: Props) {
   const chords = useKaraokeStore((s) => s.chordsData);
+  const lineRefs = useRef<(HTMLDivElement | null)[]>([]); // Ref for each line
+
   const lines = useMemo(() => {
     if (!lyricsData || lyricsData.length === 0) return [];
-
     const groupedByLine: LyricWordData[][] = [];
     lyricsData.forEach((word) => {
       if (!groupedByLine[word.lineIndex]) {
@@ -33,8 +34,23 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
       }
       groupedByLine[word.lineIndex].push(word);
     });
+    // Ensure refs array is the correct size
+    lineRefs.current = lineRefs.current.slice(0, groupedByLine.length);
     return groupedByLine;
   }, [lyricsData]);
+
+  // Effect for auto-scrolling
+  useEffect(() => {
+    if (
+      props.selectedLineIndex !== null &&
+      lineRefs.current[props.selectedLineIndex]
+    ) {
+      lineRefs.current[props.selectedLineIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center", // Scrolls the line to the center of the view
+      });
+    }
+  }, [props.selectedLineIndex]); // Reruns whenever the selected line changes
 
   return (
     <div className="flex-grow bg-slate-200/50 border border-slate-300 rounded-lg p-3 overflow-y-auto">
@@ -43,23 +59,22 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
           const lineChords = chords.filter((chord) => {
             const firstWord = line[0];
             if (!firstWord || firstWord.start === null) return false;
-            const lastWord = line[line.length - 1];
-            if (!lastWord || lastWord.end === null) return false;
-
             const lineStartTime = firstWord.start;
+            const nextLine = lines[lineIndex + 1];
             const nextLineStartTime =
-              lines[lineIndex + 1] && lines[lineIndex + 1][0].start
-                ? lines[lineIndex + 1][0].start
+              nextLine && nextLine[0] && nextLine[0].start !== null
+                ? nextLine[0].start
                 : Infinity;
 
             return (
-              chord.tick >= lineStartTime &&
-              chord.tick < (nextLineStartTime ?? 0)
+              chord.tick >= lineStartTime && chord.tick < nextLineStartTime
             );
           });
           return (
             <Card
               key={lineIndex}
+              // Assign the ref to each line's wrapping Card component
+              ref={(el: any) => (lineRefs.current[lineIndex] = el)}
               data-line-index={lineIndex}
               className={[
                 "relative pt-6 flex items-center justify-between p-3 transition-all duration-200 hover:shadow-md",
@@ -69,19 +84,23 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
               ].join(" ")}
             >
               {lineChords.length > 0 && (
-                <div className="absolute top-1 left-2 w-full h-5">
+                // *** FIX APPLIED HERE ***
+                <div className="absolute top-1 left-2 right-[6.5rem] h-5">
                   {lineChords.map((chord, i) => {
                     const firstWordTick = line[0].start ?? 0;
-                    const lastWordTick =
-                      line[line.length - 1].end ?? firstWordTick;
+                    const lastWord = line[line.length - 1];
+                    const lastWordTick = lastWord.end ?? firstWordTick;
                     const totalLineTick = lastWordTick - firstWordTick || 1;
                     const pos =
-                      ((chord.tick - firstWordTick) / totalLineTick) * 100;
+                      totalLineTick > 0
+                        ? ((chord.tick - firstWordTick) / totalLineTick) * 100
+                        : 0;
+
                     return (
                       <span
                         key={i}
                         className="absolute text-purple-600 font-bold text-sm"
-                        style={{ left: `${pos}%` }}
+                        style={{ left: `${Math.max(0, Math.min(100, pos))}%` }}
                       >
                         {chord.chord}
                       </span>
@@ -114,15 +133,15 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
               <div className="flex items-center gap-2 ml-4">
                 <Button
                   onClick={() => props.onEditLine(lineIndex)}
-                  disabled={props.isTimingActive}
+                  disabled={props.editingLineIndex !== null}
                   className="p-2 hover:bg-slate-200 rounded-md"
-                  title="Start Timing Edit"
+                  title="Start Timing Edit (Ctrl+Enter)"
                 >
                   <BiPencil className="h-5 w-5 text-slate-600" />
                 </Button>
                 <Button
                   onClick={() => props.onDeleteLine(lineIndex)}
-                  disabled={props.isTimingActive}
+                  disabled={props.editingLineIndex !== null}
                   className="p-2 hover:bg-red-200 rounded-md"
                   title="Delete Line"
                 >

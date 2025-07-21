@@ -146,7 +146,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             artist: "",
           },
         }),
-
       importParsedMidiData: (data) => {
         if (!data.lyrics || data.lyrics.length === 0) {
           set({ chordsData: data.chords || [] });
@@ -157,26 +156,19 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         let globalWordIndex = 0;
         const songPpq = get().midiInfo?.ppq ?? 480;
 
-        console.log(songPpq);
-
-        // Flatten the lyrics array to make setting end times easier
         const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
         data.lyrics.forEach((line, lineIndex) => {
           line.forEach((wordEvent) => {
             const convertedTick = convertCursorToTick(wordEvent.tick, songPpq);
-
             const currentFlatIndex = flatLyrics.findIndex(
               (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
             );
             const nextEvent = flatLyrics[currentFlatIndex + 1];
-
             const endTime = nextEvent
               ? convertCursorToTick(nextEvent.tick, songPpq)
               : convertedTick + songPpq;
-
             const length = endTime - convertedTick;
-
             finalWords.push({
               name: wordEvent.text,
               start: convertedTick,
@@ -203,7 +195,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           selectedLineIndex: null,
         });
       },
-
       importLyrics: (rawText) => {
         if (!rawText) return;
         set({
@@ -217,7 +208,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           selectedLineIndex: null,
         });
       },
-
       deleteLine: (lineIndexToDelete) => {
         if (
           !confirm(
@@ -253,7 +243,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           return { lyricsData: newLyricsData, selectedLineIndex: null };
         });
       },
-
       updateLine: (lineIndexToUpdate, newText) => {
         const newWordsForLine = processRawLyrics(newText).map((word) => ({
           ...word,
@@ -279,7 +268,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           };
         });
       },
-
       updateWord: (index, newWordData) => {
         set((state) => ({
           lyricsData: state.lyricsData.map((word, i) =>
@@ -287,17 +275,23 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           ),
         }));
       },
-
       startTiming: (currentTime) => {
-        set((state) => ({
-          isTimingActive: true,
-          correctionIndex: null,
-          lyricsData: state.lyricsData.map((word, i) =>
-            i === state.currentIndex ? { ...word, start: currentTime } : word
-          ),
-        }));
+        set((state) => {
+          if (
+            state.lyricsData[state.currentIndex]?.start !== null &&
+            state.editingLineIndex === null
+          ) {
+            return {};
+          }
+          return {
+            isTimingActive: true,
+            correctionIndex: null,
+            lyricsData: state.lyricsData.map((word, i) =>
+              i === state.currentIndex ? { ...word, start: currentTime } : word
+            ),
+          };
+        });
       },
-
       recordTiming: (currentTime) => {
         let isLineEnd = false;
         set((state) => {
@@ -321,9 +315,13 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           }
           return { lyricsData: newData };
         });
+
+        if (isLineEnd && get().editingLineIndex !== null) {
+          get().actions.stopTiming();
+        }
+
         return { isLineEnd };
       },
-
       goToNextWord: () => {
         set((state) => {
           if (state.currentIndex + 1 < state.lyricsData.length) {
@@ -334,29 +332,28 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
               selectedLineIndex: nextWord
                 ? nextWord.lineIndex
                 : state.selectedLineIndex,
+              correctionIndex: null, // Clear correction highlight when moving forward
             };
           }
           return { isTimingActive: false, editingLineIndex: null };
         });
       },
-
       correctTimingStep: (newCurrentIndex) => {
         let lineStartTime = 0;
         set((state) => {
-          const prevWord = state.lyricsData[newCurrentIndex];
-          if (!prevWord) return {};
+          const wordToCorrect = state.lyricsData[newCurrentIndex];
+          if (!wordToCorrect) return {};
 
-          lineStartTime =
-            state.lyricsData.find(
-              (w) => w.lineIndex === prevWord.lineIndex && w.start !== null
-            )?.start ?? getPreRollTime(prevWord.lineIndex);
+          lineStartTime = getPreRollTime(wordToCorrect.lineIndex);
 
           const newData = [...state.lyricsData];
+          // Clear timing for the word we are moving FROM
           if (newData[state.currentIndex]) {
-            newData[state.currentIndex].start = null; // Clear old start time
+            newData[state.currentIndex].start = null;
           }
+          // Clear timing for the word we are moving TO
           if (newData[newCurrentIndex]) {
-            newData[newCurrentIndex].end = null; // Clear previous word's end time
+            newData[newCurrentIndex].end = null;
             newData[newCurrentIndex].length = 0;
           }
           return {
@@ -368,17 +365,14 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         return { lineStartTime };
       },
-
       stopTiming: () => {
         set({ isTimingActive: false, editingLineIndex: null });
-        alert("การจับเวลาถูกยกเลิก");
+        alert("Timing has stopped.");
       },
-
       setPlaybackIndex: (index) => set({ playbackIndex: index }),
       setCurrentIndex: (index) => set({ currentIndex: index }),
       setCorrectionIndex: (index) => set({ correctionIndex: index }),
       selectLine: (lineIndex) => set({ selectedLineIndex: lineIndex }),
-
       startEditLine: (lineIndex) => {
         const { lyricsData } = get();
         const firstWordOfLine = lyricsData.find(
@@ -404,12 +398,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }));
         return { success: true, firstWordIndex, preRollTime };
       },
-
       openEditModal: () => set({ isEditModalOpen: true }),
       closeEditModal: () => set({ isEditModalOpen: false }),
-
       startPreview: () => {
-        const { lyricsData, mode, midiInfo } = get();
+        const { lyricsData, mode, midiInfo, metadata } = get();
         const timedWords = lyricsData.filter(
           (w) => w.start !== null && w.end !== null
         );
@@ -427,7 +419,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           );
           timestamps = generator.generateSegment(timedWords);
           generator.export();
-          generator.downloadFile(`${midiInfo?.fileName.split(".")[0]}.cur`);
+          const curFilename = `${
+            metadata.title || midiInfo.fileName.split(".")[0]
+          }.cur`;
+          generator.downloadFile(curFilename);
         } else {
           const generator = new TimestampLyricSegmentGenerator();
           timestamps = generator.generateSegment(timedWords);
@@ -439,19 +434,21 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           if (!lyrs[data.lineIndex]) lyrs[data.lineIndex] = [];
           lyrs[data.lineIndex].push(data.name);
 
-          if (!lyrInline[data.lineIndex]) lyrInline.push("");
-          lyrInline[data.lineIndex] = lyrInline[data.lineIndex] + data.name;
+          if (!lyrInline[data.lineIndex]) lyrInline[data.lineIndex] = "";
+          lyrInline[data.lineIndex] += data.name;
         });
 
-        const lyr = new LyrBuilder({
-          name: "นะหน้าทอง",
-          artist: "โจอี้ ภูวศิษฐ์",
+        const lyrBuilder = new LyrBuilder({
+          name: metadata.title || "Untitled",
+          artist: metadata.artist || "Unknown",
           key: "A",
           lyrics: lyrInline,
         });
 
-        lyr.getFileContent();
-        lyr.downloadFile(`${midiInfo?.fileName.split(".")[0]}.lyr`);
+        const lyrFilename = `${
+          metadata.title || midiInfo?.fileName.split(".")[0] || "song"
+        }.lyr`;
+        lyrBuilder.downloadFile(lyrFilename);
 
         set({
           previewTimestamps: timestamps,

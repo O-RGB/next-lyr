@@ -8,7 +8,10 @@ import EditLyricLineModal from "../components/modals/edit-lyric-line-modal";
 import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
 import MetadataForm from "../components/metadata/metadata-form";
 import { useKaraokeStore } from "../store/useKaraokeStore";
-import { useKeyboardControls } from "../hooks/useKeyboardControls";
+import {
+  useKeyboardControls,
+  PlayerControls,
+} from "../hooks/useKeyboardControls";
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
 import { MidiParseResult } from "../lib/midi-tags-decode";
 
@@ -32,8 +35,7 @@ const LyrEditerPanel: React.FC = () => {
   const midiPlayerRef = useRef<MidiPlayerRef | null>(null);
 
   // --- PLAYER CONTROLS INTERFACE ---
-  // Create a unified interface for keyboard controls to interact with players
-  const playerControls = useMemo(
+  const playerControls = useMemo<PlayerControls | null>(
     () =>
       mode
         ? {
@@ -59,12 +61,8 @@ const LyrEditerPanel: React.FC = () => {
                 : midiPlayerRef.current?.isPlaying) ?? false,
           }
         : null,
-    [mode, audioRef, midiPlayerRef]
+    [mode]
   );
-
-  // --- HOOKS ---
-  useKeyboardControls(playerControls);
-  usePlaybackSync(audioRef, midiPlayerRef);
 
   // --- HANDLERS ---
   const handleStop = () => {
@@ -77,21 +75,29 @@ const LyrEditerPanel: React.FC = () => {
   };
 
   const handleWordClick = (index: number) => {
-    const word = lyricsData[index];
+    const word = lyricsData.find((w) => w.index === index);
     if (word?.start !== null && playerControls) {
-      playerControls.seek(word.start);
-      playerControls.play();
+      playerControls.seek(word?.start ?? 0);
+      if (!playerControls.isPlaying()) {
+        playerControls.play();
+      }
+      // Stop any active timing session when clicking a word
       actions.stopTiming();
     }
   };
 
   const handleEditLine = (lineIndex: number) => {
+    if (lineIndex === null) return;
     const { success, preRollTime } = actions.startEditLine(lineIndex);
     if (success && playerControls) {
       playerControls.seek(preRollTime);
       playerControls.play();
     }
   };
+
+  // --- HOOKS ---
+  useKeyboardControls(playerControls, handleEditLine);
+  usePlaybackSync(audioRef, midiPlayerRef);
 
   // --- RENDER ---
   if (!mode) {
@@ -119,7 +125,6 @@ const LyrEditerPanel: React.FC = () => {
   return (
     <main className="flex h-screen flex-col bg-slate-100 text-slate-800">
       <div className="flex-grow container mx-auto p-4 flex gap-4 overflow-hidden">
-        {/* LyricsPanel now gets most props from the store directly */}
         <LyricsPanel
           onWordClick={handleWordClick}
           onEditLine={handleEditLine}
@@ -144,7 +149,6 @@ const LyrEditerPanel: React.FC = () => {
               <MidiPlayer
                 ref={midiPlayerRef}
                 onFileLoaded={(file, durationTicks, ppq, bpm) => {
-                  console.log("on file loaded = ", ppq);
                   actions.setMidiInfo({
                     fileName: file.name,
                     durationTicks,
@@ -175,12 +179,12 @@ const LyrEditerPanel: React.FC = () => {
       </div>
       <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner">
         <p>
-          <b className="text-amber-400">Mode: {mode?.toUpperCase()}</b> |{" "}
-          <b className="text-amber-400">Use ↑/↓ to Select Line</b> |{" "}
-          <b className="text-amber-400">Enter: Edit Line</b> |{" "}
-          <b className="text-amber-400">Space:</b> Play/Pause |{" "}
-          <b className="text-amber-400">→:</b> Set Time |{" "}
-          <b className="text-red-400">←:</b> Go Back/Correct
+          <b className="text-amber-400">↑/↓: Select</b> |{" "}
+          <b className="text-amber-400">Enter: Edit Text</b> |{" "}
+          <b className="text-amber-400">Shift+Enter: Start Timing</b> |{" "}
+          <b className="text-amber-400">Space: Play/Pause</b> |{" "}
+          <b className="text-amber-400">→: Set Time</b> |{" "}
+          <b className="text-red-400">←: Correct</b>
         </p>
       </footer>
       {isPreviewing && (
@@ -199,7 +203,14 @@ const LyrEditerPanel: React.FC = () => {
             (w) => w.lineIndex === selectedLineIndex
           )}
           onClose={actions.closeEditModal}
-          onSave={(newText) => actions.updateLine(selectedLineIndex, newText)}
+          onSave={(newText) => {
+            // 1. Update the line text
+            actions.updateLine(selectedLineIndex, newText);
+            // 2. Close the modal
+            actions.closeEditModal();
+            // 3. Immediately start the line re-timing process
+            handleEditLine(selectedLineIndex);
+          }}
         />
       )}
     </main>
