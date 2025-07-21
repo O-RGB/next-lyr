@@ -8,7 +8,8 @@ import React, {
 import { FaPlay, FaPause, FaFolderOpen, FaStop } from "react-icons/fa";
 import { JsSynthEngine } from "./lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "./lib/js-synth-player";
-import { MidiDecode } from "../../lib/midi-tags-decode";
+import { MidiDecode, MidiParseResult } from "../../lib/midi-tags-decode";
+import * as LyrEditer from "../midi-klyr-parser/lib/processor";
 
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
@@ -19,11 +20,12 @@ interface MidiPlayerProps {
     ppq: number,
     bpm: number
   ) => void;
-  onTickChange?: (tick: number) => void; // <-- ADDED: Callback for tick updates
+  onTickChange?: (tick: number) => void;
+  onLyricsParsed?: (data: MidiParseResult) => void;
 }
 
 const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
-  ({ onFileLoaded, onTickChange }, ref) => {
+  ({ onFileLoaded, onTickChange, onLyricsParsed }, ref) => {
     const [player, setPlayer] = useState<JsSynthPlayerEngine | null>(null);
 
     const [isPlaying, setIsPlaying] = useState(false);
@@ -52,7 +54,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       const handleTickUpdate = (tick: number, bpm: number) => {
         setCurrentTick(tick);
         setCurrentBpm(bpm);
-        onTickChange?.(tick); // <-- ADDED: Call the new prop
+        onTickChange?.(tick);
       };
       const handleStateChange = (playing: boolean) => setIsPlaying(playing);
 
@@ -73,19 +75,25 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const handleLoadMidiFile = async (file: File) => {
       if (player) {
         try {
-          const test = new MidiDecode(await file.arrayBuffer());
-          const te = await test.parse();
-          console.log(te);
+          const midiDecoder = LyrEditer.parse(await file.arrayBuffer());
+          console.log(midiDecoder);
+
           const midiInfo = await player.loadMidi(file);
           setFileName(file.name);
           setDuration(midiInfo.durationTicks);
-          // MODIFIED: Pass more data back up
+
           onFileLoaded?.(
             file,
             midiInfo.durationTicks,
             midiInfo.ppq,
             midiInfo.bpm
           );
+
+          onLyricsParsed?.({
+            chords: midiDecoder.chords,
+            info: midiDecoder.info,
+            lyrics: midiDecoder.lyrics,
+          });
         } catch (error) {
           console.error("Error loading MIDI file:", error);
           setFileName("Error: Invalid MIDI file");

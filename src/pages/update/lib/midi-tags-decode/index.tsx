@@ -17,10 +17,9 @@ export type SongInfo = Record<string, string>;
 
 export interface MidiParseResult {
   info: SongInfo;
-  lyrics: LyricEvent[];
+  lyrics: LyricEvent[][];
   chords: ChordEvent[];
 }
-
 interface VlqResult {
   value: number;
   nextPos: number;
@@ -221,18 +220,28 @@ export class MidiDecode {
 
   private _extractLyricsFromXml(xmlDoc: Document): void {
     const lines = xmlDoc.querySelectorAll("LINE");
+    let currentLine: LyricEvent[] = [];
+
     lines.forEach((line) => {
       const words = line.querySelectorAll("WORD");
+      currentLine = []; // Start a new line
+
       words.forEach((word) => {
         const textElem = word.querySelector("TEXT");
         const timeElem = word.querySelector("TIME");
         if (textElem?.textContent?.trim() && timeElem?.textContent) {
-          this.result.lyrics.push({
+          currentLine.push({
             text: textElem.textContent.trim(),
             tick: parseInt(timeElem.textContent, 10),
           });
         }
       });
+
+      // Only push the line if it contains lyrics
+      if (currentLine.length > 0) {
+        // @ts-ignore - We'll modify the interface to support line grouping
+        this.result.lyrics.push(currentLine);
+      }
     });
   }
 

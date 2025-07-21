@@ -10,6 +10,7 @@ import MetadataForm from "../components/metadata/metadata-form";
 import { useKaraokeStore } from "../store/useKaraokeStore";
 import { useKeyboardControls } from "../hooks/useKeyboardControls";
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
+import { MidiParseResult } from "../lib/midi-tags-decode";
 
 const LyrEditerPanel: React.FC = () => {
   // --- STATE & ACTIONS from ZUSTAND ---
@@ -143,11 +144,24 @@ const LyrEditerPanel: React.FC = () => {
               <MidiPlayer
                 ref={midiPlayerRef}
                 onFileLoaded={(file, durationTicks, ppq, bpm) => {
+                  console.log("on file loaded = ", ppq);
                   actions.setMidiInfo({
                     fileName: file.name,
                     durationTicks,
                     ppq,
                     bpm,
+                  });
+                }}
+                onLyricsParsed={(data: MidiParseResult) => {
+                  if (data.info && (data.info.TITLE || data.info.ARTIST)) {
+                    actions.setMetadata({
+                      title: data.info.TITLE || metadata.title,
+                      artist: data.info.ARTIST || metadata.artist,
+                    });
+                  }
+                  actions.importParsedMidiData({
+                    lyrics: data.lyrics,
+                    chords: data.chords,
                   });
                 }}
               />
@@ -169,7 +183,6 @@ const LyrEditerPanel: React.FC = () => {
           <b className="text-red-400">←:</b> Go Back/Correct
         </p>
       </footer>
-
       {isPreviewing && (
         <PreviewModal
           lyrics={previewLyrics}
@@ -180,7 +193,6 @@ const LyrEditerPanel: React.FC = () => {
           onClose={actions.closePreview}
         />
       )}
-
       {isEditModalOpen && selectedLineIndex !== null && (
         <EditLyricLineModal
           lineWords={lyricsData.filter(

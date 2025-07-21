@@ -181,11 +181,16 @@ export class JsSynthPlayerEngine {
       this.currentBpm = initialBpm;
     }
 
-    return { durationTicks: this.durationTicks, ppq: this.ticksPerBeat, bpm };
+    return {
+      durationTicks: this.durationTicks,
+      ppq: midiData.header.ticksPerBeat ?? 480,
+      bpm,
+    };
   }
 
   private extractMidiMetadata(midi: MidiData): void {
     this.ticksPerBeat = midi.header.ticksPerBeat || 480;
+    console.log("ticksPerBeat", this.ticksPerBeat);
   }
 
   private async loadBinaryFromFile(file: File): Promise<ArrayBuffer> {

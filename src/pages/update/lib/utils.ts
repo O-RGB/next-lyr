@@ -1,5 +1,19 @@
 import { ExportData, LyricWordData } from "../types/type";
 
+export const convertCursorToTick = (
+  cursorValue: number,
+  ppq: number
+): number => {
+  if (ppq === 0) {
+    console.error("PPQ (ticksPerBeat) cannot be zero.");
+    return 0;
+  }
+
+  console.log("ppq", ppq);
+  const originalTick = (cursorValue * ppq) / 24;
+  return originalTick;
+};
+
 export function processRawLyrics(rawText: string): LyricWordData[] {
   const lines = rawText.trim().split("\n");
   const words: LyricWordData[] = [];
