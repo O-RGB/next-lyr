@@ -37,8 +37,8 @@ export default function LyricsPanel({
   };
 
   return (
-    <Card className="flex-[3] flex flex-col p-4">
-      <h3 className="text-lg font-semibold mb-2">Lyric Grid</h3>
+    <Card className="flex flex-col p-4 h-full bg-gray-50">
+      <h3 className="text-lg font-semibold mb-2 ">Lyric Grid</h3>
       <LyricsGrid
         lyricsData={lyricsData}
         currentIndex={currentIndex}

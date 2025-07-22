@@ -13,11 +13,10 @@ export const usePlaybackSync = (
     correctionIndex,
     isPreviewing,
     selectedLineIndex,
-    editingLineIndex, //  <-- เพิ่ม state นี้เข้ามา
+    editingLineIndex,
     actions,
   } = useKaraokeStore();
 
-  // Sync for MP3 mode
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || mode !== "mp3") return;
@@ -41,8 +40,7 @@ export const usePlaybackSync = (
       actions.setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
       if (newPlaybackIndex > -1) {
         const word = lyricsData[newPlaybackIndex];
-        // *** FIX APPLIED HERE ***
-        // Only auto-select the line if we are NOT in the middle of a line edit.
+
         if (
           word &&
           selectedLineIndex !== word.lineIndex &&
@@ -64,10 +62,9 @@ export const usePlaybackSync = (
     lyricsData,
     actions,
     selectedLineIndex,
-    editingLineIndex, // <-- เพิ่ม dependency
+    editingLineIndex,
   ]);
 
-  // Sync for MIDI mode
   useEffect(() => {
     const player = midiPlayerRef.current;
     if (!player || mode !== "midi") return;
@@ -91,8 +88,7 @@ export const usePlaybackSync = (
       actions.setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
       if (newPlaybackIndex > -1) {
         const word = lyricsData[newPlaybackIndex];
-        // *** FIX APPLIED HERE ***
-        // Only auto-select the line if we are NOT in the middle of a line edit.
+
         if (
           word &&
           selectedLineIndex !== word.lineIndex &&
@@ -114,6 +110,6 @@ export const usePlaybackSync = (
     lyricsData,
     actions,
     selectedLineIndex,
-    editingLineIndex, // <-- เพิ่ม dependency
+    editingLineIndex,
   ]);
 };

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useKaraokeStore } from "../store/useKaraokeStore";
 
-// A helper type for player controls
 export type PlayerControls = {
   play: () => void;
   pause: () => void;
@@ -10,10 +9,9 @@ export type PlayerControls = {
   isPlaying: () => boolean;
 };
 
-// This hook now encapsulates all keyboard-related logic
 export const useKeyboardControls = (
   player: PlayerControls | null,
-  onEditLine: (lineIndex: number) => void // Pass the handler from the main component
+  onEditLine: (lineIndex: number) => void
 ) => {
   const {
     actions,
@@ -39,7 +37,6 @@ export const useKeyboardControls = (
         ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
         : 0;
 
-      // --- Navigation ---
       if (e.code === "ArrowUp") {
         e.preventDefault();
         actions.selectLine(
@@ -63,23 +60,18 @@ export const useKeyboardControls = (
         return;
       }
 
-      // --- Editing & Timing ---
-
-      // Open text edit modal with Enter
       if (e.code === "Enter" && !e.ctrlKey && selectedLineIndex !== null) {
         e.preventDefault();
         actions.openEditModal();
         return;
       }
 
-      // Start line re-timing with Control + Enter
       if (e.ctrlKey && e.code === "Enter" && selectedLineIndex !== null) {
         e.preventDefault();
         onEditLine(selectedLineIndex);
         return;
       }
 
-      // --- Playback ---
       if (e.code === "Space") {
         e.preventDefault();
         if (player.isPlaying()) {
@@ -97,7 +89,6 @@ export const useKeyboardControls = (
         return;
       }
 
-      // --- CORRECTION LOGIC FIX ---
       if (
         (isTimingActive || editingLineIndex !== null) &&
         e.code === "ArrowLeft"
@@ -105,9 +96,6 @@ export const useKeyboardControls = (
         e.preventDefault();
         if (currentIndex <= 0) return;
 
-        // *** BUG FIX APPLIED HERE ***
-        // If we are in single-line edit mode and at the first word,
-        // pressing 'left' will reset the timing state for that line.
         if (editingLineIndex !== null) {
           const firstWordOfEditingLine = lyricsData.find(
             (w) => w.lineIndex === editingLineIndex
@@ -116,13 +104,11 @@ export const useKeyboardControls = (
             firstWordOfEditingLine &&
             currentIndex === firstWordOfEditingLine.index
           ) {
-            // This resets the line to its "ready-to-time" state.
             onEditLine(editingLineIndex);
             return;
           }
         }
 
-        // Standard correction step for all other cases
         const prevIndex = currentIndex - 1;
         const { lineStartTime } = actions.correctTimingStep(prevIndex);
         player.seek(lineStartTime);
@@ -130,16 +116,28 @@ export const useKeyboardControls = (
         return;
       }
 
-      // --- TIMING RECORD LOGIC ---
       if (player.isPlaying() && e.code === "ArrowRight") {
-        // Allow timing only if it has been explicitly started
-        if (isTimingActive || editingLineIndex !== null) {
-          e.preventDefault();
-          const currentTime = player.getCurrentTime();
+        e.preventDefault();
 
-          // If timing isn't active yet (e.g., after starting a line edit), start it.
-          // This ensures the first word gets timed correctly.
-          if (!isTimingActive) {
+        const currentTime = player.getCurrentTime();
+        const currentWord = lyricsData[currentIndex];
+
+        const isStartingFromScratch =
+          !isTimingActive &&
+          editingLineIndex === null &&
+          currentWord &&
+          currentWord.start === null;
+
+        const isStartingEditedLine =
+          !isTimingActive && editingLineIndex !== null;
+
+        if (isTimingActive || isStartingFromScratch || isStartingEditedLine) {
+          if (isStartingFromScratch) {
+            actions.startTiming(currentTime);
+            return;
+          }
+
+          if (isStartingEditedLine) {
             actions.startTiming(currentTime);
             return;
           }
@@ -151,8 +149,6 @@ export const useKeyboardControls = (
             player.pause();
             actions.stopTiming();
           } else if (isLineEnd) {
-            // Stop timing automatically when the edited line is finished.
-            // The alert is now inside stopTiming action.
           } else {
             actions.goToNextWord();
           }

@@ -123,14 +123,16 @@ const LyrEditerPanel: React.FC = () => {
   }
 
   return (
-    <main className="flex h-screen flex-col bg-slate-100 text-slate-800">
-      <div className="flex-grow container mx-auto p-4 flex gap-4 overflow-hidden">
-        <LyricsPanel
-          onWordClick={handleWordClick}
-          onEditLine={handleEditLine}
-          onStopTiming={handleStop}
-        />
-        <div className="flex-[2] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
+    <main className="flex h-screen flex-col ">
+      <div className="flex p-4 gap-4 overflow-hidden h-full">
+        <div className="w-[70%] h-full">
+          <LyricsPanel
+            onWordClick={handleWordClick}
+            onEditLine={handleEditLine}
+            onStopTiming={handleStop}
+          />
+        </div>
+        <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
           {mode === "mp3" ? (
             <ControlPanel
               audioRef={audioRef}

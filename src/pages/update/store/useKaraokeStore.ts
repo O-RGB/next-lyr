@@ -1,3 +1,4 @@
+// update/store/useKaraokeStore.ts
 import { create } from "zustand";
 import { LyricWordData } from "../types/type";
 import { processRawLyrics, convertCursorToTick } from "../lib/utils";
@@ -277,6 +278,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       },
       startTiming: (currentTime) => {
         set((state) => {
+          // If word already timed and not in line edit mode, do not re-time it.
           if (
             state.lyricsData[state.currentIndex]?.start !== null &&
             state.editingLineIndex === null
