@@ -6,6 +6,7 @@ type RulerProps = {
   step?: number;
   startTime?: number | null; // New prop for start time
   endTime?: number | null; // New prop for end time
+  onRulerClick?: (percentage: number) => void; // New prop for click event
 };
 
 export default function Ruler({
@@ -13,15 +14,30 @@ export default function Ruler({
   step = 50,
   startTime = null,
   endTime = null,
+  onRulerClick,
 }: RulerProps) {
   const formatTimeValue = (value: number | null) => {
     if (value === null) return "N/A";
     return value;
   };
 
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (
+      onRulerClick &&
+      startTime !== null &&
+      endTime !== null &&
+      endTime > startTime
+    ) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percentage = clickX / rect.width;
+      onRulerClick(percentage);
+    }
+  };
+
   return (
     <div
-      className="relative w-full h-0.5 opacity-45"
+      className="relative w-full h-0.5 opacity-45 cursor-pointer" // Added cursor-pointer
       style={{
         backgroundImage: `
           repeating-linear-gradient(to right, black 0, black 1px, transparent 1px, transparent 10px),
@@ -29,6 +45,7 @@ export default function Ruler({
         `,
         backgroundSize: "10px 100%, 50px 100%",
       }}
+      onClick={handleClick} // Added onClick handler
     >
       {/* Start Time Label */}
       {startTime !== null && (

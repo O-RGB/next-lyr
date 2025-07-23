@@ -5,18 +5,27 @@ import { Card } from "../common/card";
 import LyricsGrid from "../lyrics/lyrics-grid";
 import { BsPlay, BsSave } from "react-icons/bs";
 import { BiStop } from "react-icons/bi";
+import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor"; // Import ChordEvent type
 
 type Props = {
   // Props are now for events that the parent needs to handle
   onWordClick: (index: number) => void;
   onEditLine: (lineIndex: number) => void;
   onStopTiming: () => void;
+  onRulerClick: (
+    lineIndex: number,
+    tickPercentage: number,
+    lineDuration: number
+  ) => void; // New prop
+  onChordClick: (chord: ChordEvent) => void; // New prop
 };
 
 export default function LyricsPanel({
   onWordClick,
   onEditLine,
   onStopTiming,
+  onRulerClick, // Destructure new prop
+  onChordClick, // Destructure new prop
 }: Props) {
   // Select only the state and actions needed for this component
   const {
@@ -52,6 +61,8 @@ export default function LyricsPanel({
         onDeleteLine={actions.deleteLine}
         onWordUpdate={actions.updateWord}
         onWordDelete={() => {}} // Placeholder
+        onRulerClick={onRulerClick} // Pass new handler
+        onChordClick={onChordClick} // Pass new handler
       />
       <div className="flex items-center gap-2 mt-4 flex-wrap">
         <Button
@@ -60,13 +71,6 @@ export default function LyricsPanel({
           disabled={editingLineIndex !== null}
         >
           <BsPlay className="mr-2 h-4 w-4" /> Preview
-        </Button>
-        <Button
-          onClick={() => alert("Exporting...")}
-          // *** FIX APPLIED HERE ***
-          disabled={editingLineIndex !== null}
-        >
-          <BsSave className="mr-2 h-4 w-4" /> Export JSON
         </Button>
 
         {editingLineIndex !== null && (

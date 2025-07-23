@@ -7,7 +7,10 @@ import {
   TimestampLyricSegmentGenerator,
 } from "../lib/cur-generator";
 import { LyrBuilder } from "../lib/lyr-generator";
-import { ChordEvent, LyricEvent } from "../lib/midi-tags-decode";
+import {
+  ChordEvent,
+  LyricEvent,
+} from "../modules/midi-klyr-parser/lib/processor"; // Corrected import path
 
 // --- STATE TYPE ---
 interface KaraokeState {
@@ -22,7 +25,7 @@ interface KaraokeState {
     ppq: number;
     bpm: number;
   } | null;
-  chordsData: ChordEvent[];
+  chordsData: ChordEvent[]; // This already exists
 
   // Timing & Playback
   currentIndex: number;
@@ -37,6 +40,9 @@ interface KaraokeState {
   isPreviewing: boolean;
   previewTimestamps: number[];
   previewLyrics: string[][];
+  isChordModalOpen: boolean; // New
+  selectedChord: ChordEvent | null; // New
+  suggestedChordTick: number | null; // New
 
   // Actions
   actions: {
@@ -58,6 +64,9 @@ interface KaraokeState {
       lyrics: LyricEvent[][];
       chords: ChordEvent[];
     }) => void;
+    addChord: (chord: ChordEvent) => void; // New
+    updateChord: (oldTick: number, newChord: ChordEvent) => void; // New
+    deleteChord: (tickToDelete: number) => void; // New
 
     // Timing & Playback
     startTiming: (currentTime: number) => void;
@@ -82,6 +91,10 @@ interface KaraokeState {
     // Preview
     startPreview: () => void;
     closePreview: () => void;
+
+    // Chord Modal
+    openChordModal: (chord?: ChordEvent, suggestedTick?: number) => void; // New
+    closeChordModal: () => void; // New
   };
 }
 
@@ -129,6 +142,9 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     isPreviewing: false,
     previewTimestamps: [],
     previewLyrics: [],
+    isChordModalOpen: false, // New
+    selectedChord: null, // New
+    suggestedChordTick: null, // New
 
     // --- ACTIONS ---
     actions: {
@@ -157,22 +173,29 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         let globalWordIndex = 0;
         const songPpq = get().midiInfo?.ppq ?? 480;
 
+        // Flatten all lyric events and sort them by tick to determine word end times
         const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
         data.lyrics.forEach((line, lineIndex) => {
           line.forEach((wordEvent) => {
-            const convertedTick = convertCursorToTick(wordEvent.tick, songPpq);
+            const convertedTick = convertCursorToTick(wordEvent.tick, songPpq);// Ticks from parser are already absolute
+
+            // Find the current word event in the sorted flat array
             const currentFlatIndex = flatLyrics.findIndex(
               (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
             );
+            // The end time of the current word is the start time of the next word event,
+            // or if it's the last word, assume a default duration (e.g., 1 beat/480 ticks)
             const nextEvent = flatLyrics[currentFlatIndex + 1];
             const endTime = nextEvent
               ? convertCursorToTick(nextEvent.tick, songPpq)
               : convertedTick + songPpq;
-            const length = endTime - convertedTick;
+
+
+            const length = endTime - convertedTick; // Duration in ticks
             finalWords.push({
               name: wordEvent.text,
-              start: convertedTick,
+              start: convertedTick, // Use raw tick directly from parser
               end: endTime,
               length: length,
               index: globalWordIndex++,
@@ -181,10 +204,13 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           });
         });
 
-        const convertedChords = data.chords.map((chord) => ({
-          ...chord,
-          tick: chord.tick,
-        }));
+        // Ensure chords are also sorted
+        const convertedChords = data.chords
+          .map((chord) => ({
+            ...chord,
+            tick: chord.tick,
+          }))
+          .sort((a, b) => a.tick - b.tick);
 
         set({
           lyricsData: finalWords,
@@ -196,11 +222,43 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           selectedLineIndex: null,
         });
       },
+      addChord: (newChord) => {
+        set((state) => ({
+          chordsData: [...state.chordsData, newChord].sort(
+            (a, b) => a.tick - b.tick
+          ),
+          isChordModalOpen: false,
+          selectedChord: null,
+          suggestedChordTick: null,
+        }));
+      },
+      updateChord: (oldTick, updatedChord) => {
+        set((state) => ({
+          chordsData: state.chordsData
+            .map((chord) =>
+              chord.tick === oldTick ? { ...updatedChord } : chord
+            )
+            .sort((a, b) => a.tick - b.tick),
+          isChordModalOpen: false,
+          selectedChord: null,
+          suggestedChordTick: null,
+        }));
+      },
+      deleteChord: (tickToDelete) => {
+        set((state) => ({
+          chordsData: state.chordsData.filter(
+            (chord) => chord.tick !== tickToDelete
+          ),
+          isChordModalOpen: false,
+          selectedChord: null,
+          suggestedChordTick: null,
+        }));
+      },
       importLyrics: (rawText) => {
         if (!rawText) return;
         set({
           lyricsData: processRawLyrics(rawText),
-          chordsData: [],
+          chordsData: [], // Clear chords when importing plain lyrics
           isPreviewing: false,
           isTimingActive: false,
           editingLineIndex: null,
@@ -258,7 +316,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             if (a.lineIndex !== b.lineIndex) {
               return a.lineIndex - b.lineIndex;
             }
-            return (a.start ?? a.index) - (b.start ?? b.index);
+            // Sort by start time if available, otherwise by original index (for new words)
+            const aTime = a.start !== null ? a.start : a.index;
+            const bTime = b.start !== null ? b.start : b.index;
+            return aTime - bTime;
           });
           return {
             lyricsData: updatedLyrics.map((word, index) => ({
@@ -403,7 +464,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       openEditModal: () => set({ isEditModalOpen: true }),
       closeEditModal: () => set({ isEditModalOpen: false }),
       startPreview: () => {
-        const { lyricsData, mode, midiInfo, metadata } = get();
+        const { lyricsData, mode, midiInfo, metadata, chordsData } = get(); // Get chordsData
         const timedWords = lyricsData.filter(
           (w) => w.start !== null && w.end !== null
         );
@@ -425,6 +486,30 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             metadata.title || midiInfo.fileName.split(".")[0]
           }.cur`;
           generator.downloadFile(curFilename);
+
+          // Save MIDI with updated data
+          // This part requires access to the original MidiFile and the build function from processor.ts
+          // For now, this is a placeholder. A full implementation would need to pass originalMidiData
+          // from where the file was loaded (e.g., in MidiPlayer component) to the store.
+          // Example:
+          // const parser = new MidiKLyrParser(); // Or retrieve the original parser instance if available
+          // const originalMidi = get().originalMidiBuffer; // Assume you store this
+          // if (originalMidi) {
+          //   const modifiedMidiBuffer = MidiEditer.build({
+          //     originalMidiData: parser.parseMidiFile(originalMidi), // Need parsed object
+          //     newSongInfo: metadata,
+          //     newLyricsData: lyricsData.map(w => ({ text: w.name, tick: w.start! })), // Simplified for example
+          //     newChordsData: chordsData,
+          //     headerToUse: "LyrHdr1" // Or detectedHeader from initial parse
+          //   });
+          //   const midiBlob = new Blob([modifiedMidiBuffer], { type: 'audio/midi' });
+          //   const midiLink = document.createElement("a");
+          //   midiLink.href = URL.createObjectURL(midiBlob);
+          //   midiLink.download = `${metadata.title || "song"}.mid`;
+          //   document.body.appendChild(midiLink);
+          //   midiLink.click();
+          //   document.body.removeChild(midiLink);
+          // }
         } else {
           const generator = new TimestampLyricSegmentGenerator();
           timestamps = generator.generateSegment(timedWords);
@@ -459,6 +544,19 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
       },
       closePreview: () => set({ isPreviewing: false }),
+
+      openChordModal: (chord, suggestedTick) =>
+        set({
+          isChordModalOpen: true,
+          selectedChord: chord || null,
+          suggestedChordTick: suggestedTick || null,
+        }), // New
+      closeChordModal: () =>
+        set({
+          isChordModalOpen: false,
+          selectedChord: null,
+          suggestedChordTick: null,
+        }), // New
     },
   };
 });

@@ -8,6 +8,8 @@ import { useKaraokeStore } from "../../store/useKaraokeStore";
 import Ruler from "../common/ruler";
 import Tags from "../common/tags";
 import React from "react";
+import WordTimingLines from "./word-timing-lines";
+import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor";
 
 type Props = {
   lyricsData: LyricWordData[];
@@ -22,9 +24,20 @@ type Props = {
   onDeleteLine: (lineIndex: number) => void;
   onWordUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onWordDelete: (index: number) => void;
+  onRulerClick: (
+    lineIndex: number,
+    tickPercentage: number,
+    lineDuration: number
+  ) => void;
+  onChordClick: (chord: ChordEvent) => void;
 };
 
-export default function LyricsGrid({ lyricsData, ...props }: Props) {
+export default function LyricsGrid({
+  lyricsData,
+  onRulerClick,
+  onChordClick,
+  ...props
+}: Props) {
   const chords = useKaraokeStore((s) => s.chordsData);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -37,6 +50,9 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
       }
       groupedByLine[word.lineIndex].push(word);
     });
+
+    // Sort words within each line by their original index to maintain order
+    groupedByLine.forEach((line) => line.sort((a, b) => a.index - b.index));
 
     lineRefs.current = lineRefs.current.slice(0, groupedByLine.length);
     return groupedByLine;
@@ -56,28 +72,44 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
 
   return (
     <div className="h-full bg-white border border-slate-300 rounded-lg p-3 overflow-auto">
-      <div className="flex flex-col   divide-y">
+      <div className="flex flex-col divide-y">
         {lines.map((line, lineIndex) => {
-          const lineChords = chords.filter((chord) => {
-            const firstWord = line[0];
-            if (!firstWord || firstWord.start === null) return false;
-            const lineStartTime = firstWord.start;
-            const nextLine = lines[lineIndex + 1];
-            const nextLineStartTime =
-              nextLine && nextLine[0] && nextLine[0].start !== null
-                ? nextLine[0].start
-                : Infinity;
-
-            return (
-              chord.tick >= lineStartTime && chord.tick < nextLineStartTime
-            );
-          });
-
-          // Calculate start and end times for the ruler
           const firstWordOfLine = line[0];
           const lastWordOfLine = line[line.length - 1];
           const rulerStartTime = firstWordOfLine?.start ?? null;
           const rulerEndTime = lastWordOfLine?.end ?? null;
+          const lineDuration =
+            rulerEndTime !== null && rulerStartTime !== null
+              ? rulerEndTime - rulerStartTime
+              : 0;
+
+          const lineChords = chords
+            .filter((chord) => {
+              if (rulerStartTime === null) return false;
+              const nextLine = lines[lineIndex + 1];
+              const nextLineStartTime =
+                nextLine && nextLine[0] && nextLine[0].start !== null
+                  ? nextLine[0].start
+                  : Infinity;
+
+              return (
+                chord.tick >= rulerStartTime && chord.tick < nextLineStartTime
+              );
+            })
+            .sort((a, b) => a.tick - b.tick);
+
+          // สร้าง wordsWithState สำหรับ WordTimingLines
+          const wordsWithState = line.map((word) => ({
+            ...word,
+            isActive:
+              (props.isTimingActive || props.correctionIndex !== null) &&
+              props.currentIndex === word.index,
+            isPendingCorrection: props.correctionIndex === word.index,
+            isEditing:
+              props.editingLineIndex === word.lineIndex &&
+              !props.isTimingActive,
+            isPlaybackHighlight: props.playbackIndex === word.index,
+          }));
 
           return (
             <div
@@ -91,21 +123,29 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                   : "",
               ].join(" ")}
             >
-              <div className="relative w-fit lyric-line flex flex-nowrap  gap-x-2 gap-y-1 pt-8 pb-4 px-2">
+              <div className="relative w-fit lyric-line flex flex-nowrap gap-x-2 gap-y-1 pt-8 pb-4 px-2">
                 <div className="absolute w-full top-2">
                   <div className="w-full">
-                    <Ruler startTime={rulerStartTime} endTime={rulerEndTime} />
+                    <Ruler
+                      startTime={rulerStartTime}
+                      endTime={rulerEndTime}
+                      onRulerClick={(percentage) =>
+                        onRulerClick(lineIndex, percentage, lineDuration)
+                      }
+                    />
+                    <WordTimingLines
+                      words={wordsWithState}
+                      lineStartTime={rulerStartTime}
+                      lineEndTime={rulerEndTime}
+                    />
                   </div>
 
                   <div className="overflow-y-auto w-full">
                     {lineChords.length > 0 && (
                       <div className="absolute h-5 w-full -top-2 z-10">
                         {lineChords.map((chord, i) => {
-                          const firstWordTick = line[0].start ?? 0;
-                          const lastWord = line[line.length - 1];
-                          const lastWordTick = lastWord.end ?? firstWordTick;
-                          const totalLineTick =
-                            lastWordTick - firstWordTick || 1;
+                          const firstWordTick = rulerStartTime ?? 0;
+                          const totalLineTick = lineDuration || 1;
                           const pos =
                             totalLineTick > 0
                               ? ((chord.tick - firstWordTick) / totalLineTick) *
@@ -113,17 +153,17 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                               : 0;
 
                           return (
-                            <React.Fragment key={i}>
-                              <Tags
-                                style={{
-                                  left: `${Math.max(0, Math.min(100, pos))}%`,
-                                }}
-                                text={chord.chord}
-                                className="absolute -top-1"
-                                tagsClassName={"text-[10px]"}
-                                hoverText={`Tick: ${chord.tick}`}
-                              ></Tags>
-                            </React.Fragment>
+                            <Tags
+                              key={i}
+                              style={{
+                                left: `${Math.max(0, Math.min(100, pos))}%`,
+                              }}
+                              text={chord.chord}
+                              className="absolute -top-1 cursor-pointer"
+                              tagsClassName={"text-[10px]"}
+                              hoverText={`Tick: ${chord.tick}`}
+                              onClick={() => onChordClick(chord)}
+                            ></Tags>
                           );
                         })}
                       </div>
@@ -152,6 +192,7 @@ export default function LyricsGrid({ lyricsData, ...props }: Props) {
                   />
                 ))}
               </div>
+
               <div className="flex items-center gap-2 ml-4">
                 <Button
                   onClick={() => props.onEditLine(lineIndex)}

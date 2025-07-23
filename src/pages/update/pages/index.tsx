@@ -5,6 +5,7 @@ import ControlPanel from "../components/panel/control-panel";
 import LyricsPanel from "../components/panel/lyrics-panel";
 import PreviewModal from "../components/modals/preview-modal";
 import EditLyricLineModal from "../components/modals/edit-lyric-line-modal";
+import ChordEditModal from "../components/modals/chord-edit-modal"; // Import new modal
 import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
 import MetadataForm from "../components/metadata/metadata-form";
 import { useKaraokeStore } from "../store/useKaraokeStore";
@@ -14,6 +15,7 @@ import {
 } from "../hooks/useKeyboardControls";
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
 import { MidiParseResult } from "../lib/midi-tags-decode";
+import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor"; // Import ChordEvent type
 
 const LyrEditerPanel: React.FC = () => {
   // --- STATE & ACTIONS from ZUSTAND ---
@@ -27,6 +29,9 @@ const LyrEditerPanel: React.FC = () => {
     previewLyrics,
     previewTimestamps,
     isEditModalOpen,
+    isChordModalOpen, // New
+    selectedChord, // New
+    suggestedChordTick, // New
     actions,
   } = useKaraokeStore();
 
@@ -95,6 +100,27 @@ const LyrEditerPanel: React.FC = () => {
     }
   };
 
+  // New handler for ruler clicks
+  const handleRulerClick = (
+    lineIndex: number,
+    percentage: number,
+    lineDuration: number
+  ) => {
+    const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+    if (firstWordOfLine && firstWordOfLine.start !== null) {
+      const clickedTick = firstWordOfLine.start + lineDuration * percentage;
+      actions.openChordModal(undefined, Math.round(clickedTick));
+    } else {
+      // If line not timed, maybe open modal at 0 tick or current playback tick
+      actions.openChordModal(undefined, playerControls?.getCurrentTime() ?? 0);
+    }
+  };
+
+  // New handler for chord clicks
+  const handleChordClick = (chord: ChordEvent) => {
+    actions.openChordModal(chord);
+  };
+
   // --- HOOKS ---
   useKeyboardControls(playerControls, handleEditLine);
   usePlaybackSync(audioRef, midiPlayerRef);
@@ -130,6 +156,8 @@ const LyrEditerPanel: React.FC = () => {
             onWordClick={handleWordClick}
             onEditLine={handleEditLine}
             onStopTiming={handleStop}
+            onRulerClick={handleRulerClick} // Pass new handler
+            onChordClick={handleChordClick} // Pass new handler
           />
         </div>
         <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
@@ -213,6 +241,21 @@ const LyrEditerPanel: React.FC = () => {
             // 3. Immediately start the line re-timing process
             handleEditLine(selectedLineIndex);
           }}
+        />
+      )}
+      {isChordModalOpen && (
+        <ChordEditModal
+          initialChord={selectedChord || undefined}
+          suggestedTick={suggestedChordTick || undefined}
+          onClose={actions.closeChordModal}
+          onSave={(chord) => {
+            if (selectedChord) {
+              actions.updateChord(selectedChord.tick, chord);
+            } else {
+              actions.addChord(chord);
+            }
+          }}
+          onDelete={selectedChord ? actions.deleteChord : undefined}
         />
       )}
     </main>

@@ -39,6 +39,8 @@ export function processRawLyrics(rawText: string): LyricWordData[] {
   return words;
 }
 
+// Moved createAndDownloadJSON here to make it a utility function
+// It can then be called directly or integrated into the store actions if preferred.
 export function createAndDownloadJSON(
   lyrics: LyricWordData[],
   metadata: { title: string; artist: string }
