@@ -182,6 +182,8 @@ const LyrEditerPanel: React.FC = () => {
             onRulerClick={handleRulerClick}
             onChordClick={handleChordClick}
             onAddChordClick={handleAddChordClick} // Pass new handler
+            currentPlaybackTime={playerControls?.getCurrentTime()}
+            mode={mode}
           />
         </div>
         <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">

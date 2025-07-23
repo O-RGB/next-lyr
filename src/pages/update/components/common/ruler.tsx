@@ -7,6 +7,8 @@ type RulerProps = {
   startTime?: number | null; // New prop for start time
   endTime?: number | null; // New prop for end time
   onRulerClick?: (percentage: number) => void; // New prop for click event
+  currentPlaybackPercentage?: number | null; // New prop for playback indicator
+  mode?: "mp3" | "midi" | null; // New prop for mode context
 };
 
 export default function Ruler({
@@ -15,10 +17,16 @@ export default function Ruler({
   startTime = null,
   endTime = null,
   onRulerClick,
+  currentPlaybackPercentage, // Destructure new prop
+  mode, // Destructure new prop
 }: RulerProps) {
   const formatTimeValue = (value: number | null) => {
     if (value === null) return "N/A";
-    return value;
+    // Assuming ticks for midi, seconds for mp3
+    if (mode === "mp3") {
+      return value.toFixed(2); // Format seconds
+    }
+    return value; // Keep ticks as is
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -47,6 +55,19 @@ export default function Ruler({
       }}
       onClick={handleClick} // Added onClick handler
     >
+      {/* Playback Indicator (Running Circle) */}
+      {currentPlaybackPercentage !== null && (
+        <div
+          className="absolute w-3 h-3 rounded-full bg-red-500 border border-white"
+          style={{
+            left: `${currentPlaybackPercentage}%`,
+            top: "-0.5rem", // Adjust vertical position to be on the ruler line
+            transform: "translateX(-50%)", // Center the circle on the percentage
+            zIndex: 20, // Ensure it's on top
+          }}
+        ></div>
+      )}
+
       {/* Start Time Label */}
       {startTime !== null && (
         <div className="text-[8px] absolute top-full -left-2 mt-2 whitespace-nowrap">

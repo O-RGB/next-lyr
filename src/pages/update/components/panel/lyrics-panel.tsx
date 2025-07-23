@@ -20,6 +20,8 @@ type Props = {
   ) => void; // New prop
   onChordClick: (chord: ChordEvent) => void; // New prop
   onAddChordClick: (lineIndex: number) => void; // New prop
+  currentPlaybackTime: number | null | undefined; // New prop
+  mode: "mp3" | "midi" | null; // New prop
 };
 
 export default function LyricsPanel({
@@ -29,6 +31,8 @@ export default function LyricsPanel({
   onRulerClick,
   onChordClick,
   onAddChordClick, // Destructure new prop
+  currentPlaybackTime, // Destructure new prop
+  mode, // Destructure new prop
 }: Props) {
   // Select only the state and actions needed for this component
   const {
@@ -67,6 +71,8 @@ export default function LyricsPanel({
         onRulerClick={onRulerClick}
         onChordClick={onChordClick}
         onAddChordClick={onAddChordClick} // Pass new handler
+        currentPlaybackTime={currentPlaybackTime}
+        mode={mode}
       />
       <div className="flex items-center gap-2 mt-4 flex-wrap">
         <Button

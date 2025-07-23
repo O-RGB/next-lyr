@@ -32,6 +32,8 @@ type Props = {
   ) => void;
   onChordClick: (chord: ChordEvent) => void;
   onAddChordClick: (lineIndex: number) => void; // New prop
+  currentPlaybackTime: number | null | undefined; // New prop
+  mode: "mp3" | "midi" | null; // New prop
 };
 
 export default function LyricsGrid({
@@ -39,6 +41,8 @@ export default function LyricsGrid({
   onRulerClick,
   onChordClick,
   onAddChordClick, // Destructure new prop
+  currentPlaybackTime, // Destructure new prop
+  mode, // Destructure new prop
   ...props
 }: Props) {
   const chords = useKaraokeStore((s) => s.chordsData);
@@ -85,6 +89,21 @@ export default function LyricsGrid({
             rulerEndTime !== null && rulerStartTime !== null
               ? rulerEndTime - rulerStartTime
               : 0;
+
+          // Calculate current playback percentage for the ruler
+          let currentPlaybackPercentage: number | null = null;
+          if (
+            currentPlaybackTime !== null &&
+            currentPlaybackTime !== undefined &&
+            rulerStartTime !== null &&
+            rulerEndTime !== null &&
+            lineDuration > 0 &&
+            currentPlaybackTime >= rulerStartTime &&
+            currentPlaybackTime <= rulerEndTime
+          ) {
+            currentPlaybackPercentage =
+              ((currentPlaybackTime - rulerStartTime) / lineDuration) * 100;
+          }
 
           const lineChords = chords
             .filter((chord) => {
@@ -134,6 +153,8 @@ export default function LyricsGrid({
                     onRulerClick={(percentage) =>
                       onRulerClick(lineIndex, percentage, lineDuration)
                     }
+                    currentPlaybackPercentage={currentPlaybackPercentage} // Pass new prop
+                    mode={mode} // Pass new prop
                   />
                   <WordTimingLines
                     words={wordsWithState}
