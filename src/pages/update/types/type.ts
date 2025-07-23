@@ -12,3 +12,5 @@ export interface ExportData {
   artist: string;
   lyrics: Omit<LyricWordData, "index" | "lineIndex">[];
 }
+
+export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";

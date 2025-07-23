@@ -1,6 +1,6 @@
 // update/store/useKaraokeStore.ts
 import { create } from "zustand";
-import { LyricWordData } from "../types/type";
+import { LyricWordData, MusicMode } from "../types/type";
 import { processRawLyrics, convertCursorToTick } from "../lib/utils";
 import {
   TickLyricSegmentGenerator,
@@ -15,10 +15,12 @@ import {
 // --- STATE TYPE ---
 interface KaraokeState {
   // Mode & Data
-  mode: "mp3" | "midi" | null;
+  mode: MusicMode | null; // <-- เพิ่ม 'mp4' และ 'youtube'
   lyricsData: LyricWordData[];
   metadata: { title: string; artist: string };
   audioSrc: string | null;
+  videoSrc: string | null; // <-- เพิ่ม state สำหรับ MP4
+  youtubeId: string | null; // <-- เพิ่ม state สำหรับ YouTube
   audioDuration: number | null; // <-- เพิ่ม state นี้
   midiInfo: {
     fileName: string;
@@ -49,9 +51,11 @@ interface KaraokeState {
   // Actions
   actions: {
     // Mode & Data
-    setMode: (mode: "mp3" | "midi") => void;
+    setMode: (mode: MusicMode) => void; // <-- อัปเดต type
     setMetadata: (metadata: { title: string; artist: string }) => void;
     setAudioSrc: (src: string, fileName: string) => void;
+    setVideoSrc: (src: string, fileName: string) => void; // <-- เพิ่ม action
+    setYoutubeId: (url: string) => void; // <-- เพิ่ม action
     setAudioDuration: (duration: number) => void; // <-- เพิ่ม action type นี้
     setMidiInfo: (info: {
       fileName: string;
@@ -135,6 +139,8 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     lyricsData: [],
     metadata: { title: "", artist: "" },
     audioSrc: null,
+    videoSrc: null, // <-- เพิ่มค่าเริ่มต้น
+    youtubeId: null, // <-- เพิ่มค่าเริ่มต้น
     audioDuration: null, // <-- เพิ่มค่าเริ่มต้น
     midiInfo: null,
     chordsData: [],
@@ -165,7 +171,43 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           ),
         }));
       },
-      setMode: (mode) => set({ mode }),
+      setMode: (mode) =>
+        set({
+          mode,
+          audioSrc: null,
+          videoSrc: null,
+          youtubeId: null,
+          midiInfo: null,
+          audioDuration: null,
+          metadata: { title: "", artist: "" },
+          lyricsData: [],
+          chordsData: [],
+        }),
+      setVideoSrc: (src, fileName) =>
+        set({
+          videoSrc: src,
+          audioDuration: null,
+          metadata: { title: fileName.replace(/\.[^/.]+$/, ""), artist: "" },
+        }),
+      setYoutubeId: (url) => {
+        const getYouTubeId = (url: string): string | null => {
+          const regExp =
+            /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+          const match = url.match(regExp);
+          return match && match[2].length === 11 ? match[2] : null;
+        };
+        const videoId = getYouTubeId(url);
+        if (videoId) {
+          set({
+            youtubeId: videoId,
+            metadata: { title: "YouTube Video", artist: "" },
+          });
+        } else {
+          alert(
+            "Invalid YouTube URL. Please use a valid URL like 'https://www.youtube.com/watch?v=...'"
+          );
+        }
+      },
       setMetadata: (metadata) => set({ metadata }),
       setAudioSrc: (src, fileName) =>
         set({

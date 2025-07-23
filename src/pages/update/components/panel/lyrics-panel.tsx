@@ -7,6 +7,7 @@ import LyricsGrid from "../lyrics/lyrics-grid";
 import { BsPlay, BsSave } from "react-icons/bs";
 import { BiStop } from "react-icons/bi";
 import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor"; // Import ChordEvent type
+import { MusicMode } from "../../types/type";
 
 type Props = {
   // Props are now for events that the parent needs to handle
@@ -21,7 +22,7 @@ type Props = {
   onChordClick: (chord: ChordEvent) => void; // New prop
   onAddChordClick: (lineIndex: number) => void; // New prop
   currentPlaybackTime: number | null | undefined; // New prop
-  mode: "mp3" | "midi" | null; // New prop
+  mode: MusicMode | null; // New prop
 };
 
 export default function LyricsPanel({

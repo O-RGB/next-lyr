@@ -17,7 +17,11 @@ import {
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
 import { MidiParseResult } from "../lib/midi-tags-decode";
 import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor";
-import TimelinePanel from "../components/panel/timeline-panel"; //  <-- เพิ่ม import
+import TimelinePanel from "../components/panel/timeline-panel";
+import VideoPlayer, { VideoPlayerRef } from "../modules/video/video-player";
+import YoutubePlayer, {
+  YouTubePlayerRef,
+} from "../modules/youtube/youtube-player";
 
 const LyrEditerPanel: React.FC = () => {
   // --- STATE & ACTIONS from ZUSTAND ---
@@ -26,50 +30,108 @@ const LyrEditerPanel: React.FC = () => {
     lyricsData,
     metadata,
     audioSrc,
+    videoSrc,
+    youtubeId,
     selectedLineIndex,
     isPreviewing,
     previewLyrics,
     previewTimestamps,
     isEditModalOpen,
-    isChordModalOpen, // New
-    selectedChord, // New
-    suggestedChordTick, // New
+    isChordModalOpen,
+    selectedChord,
+    suggestedChordTick,
     actions,
   } = useKaraokeStore();
 
   // --- REFS ---
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<VideoPlayerRef | null>(null);
+  const youtubeRef = useRef<YouTubePlayerRef | null>(null);
   const midiPlayerRef = useRef<MidiPlayerRef | null>(null);
 
-  // --- PLAYER CONTROLS INTERFACE ---
-  const playerControls = useMemo<PlayerControls | null>(
-    () =>
-      mode
-        ? {
-            play: () =>
-              mode === "mp3"
-                ? audioRef.current?.play()
-                : midiPlayerRef.current?.play(),
-            pause: () =>
-              mode === "mp3"
-                ? audioRef.current?.pause()
-                : midiPlayerRef.current?.pause(),
-            seek: (time: number) =>
-              mode === "mp3"
-                ? (audioRef.current!.currentTime = time)
-                : midiPlayerRef.current?.seek(time),
-            getCurrentTime: () =>
-              (mode === "mp3"
-                ? audioRef.current?.currentTime
-                : midiPlayerRef.current?.currentTick) ?? 0,
-            isPlaying: () =>
-              (mode === "mp3"
-                ? !audioRef.current?.paused
-                : midiPlayerRef.current?.isPlaying) ?? false,
-          }
-        : null,
-    [mode]
-  );
+  // --- PLAYER CONTROLS INTERFACE (ฉบับแก้ไขที่ถูกต้อง) ---
+  const playerControls = useMemo<PlayerControls | null>(() => {
+    if (!mode) return null;
+
+    return {
+      play: () => {
+        switch (mode) {
+          case "mp3":
+            audioRef.current?.play();
+            break;
+          case "mp4":
+            videoRef.current?.play();
+            break;
+          case "youtube":
+            youtubeRef.current?.play();
+            break;
+          case "midi":
+            midiPlayerRef.current?.play();
+            break;
+        }
+      },
+      pause: () => {
+        switch (mode) {
+          case "mp3":
+            audioRef.current?.pause();
+            break;
+          case "mp4":
+            videoRef.current?.pause();
+            break;
+          case "youtube":
+            youtubeRef.current?.pause();
+            break;
+          case "midi":
+            midiPlayerRef.current?.pause();
+            break;
+        }
+      },
+      seek: (time: number) => {
+        switch (mode) {
+          case "mp3":
+            if (audioRef.current) audioRef.current.currentTime = time;
+            break;
+          case "mp4":
+            videoRef.current?.seek(time);
+            break;
+          case "youtube":
+            youtubeRef.current?.seek(time);
+            break;
+          case "midi":
+            midiPlayerRef.current?.seek(time);
+            break;
+        }
+      },
+      getCurrentTime: () => {
+        switch (mode) {
+          case "mp3":
+            return audioRef.current?.currentTime ?? 0;
+          case "mp4":
+            return videoRef.current?.getCurrentTime() ?? 0;
+          case "youtube":
+            return youtubeRef.current?.getCurrentTime() ?? 0;
+          case "midi":
+            return midiPlayerRef.current?.currentTick ?? 0;
+          default:
+            return 0;
+        }
+      },
+      isPlaying: () => {
+        switch (mode) {
+          case "mp3":
+            return !!audioRef.current && !audioRef.current.paused;
+          case "mp4":
+            return videoRef.current?.isPlaying() ?? false;
+          case "youtube":
+            return youtubeRef.current?.isPlaying() ?? false;
+          case "midi":
+            return midiPlayerRef.current?.isPlaying ?? false;
+          default:
+            return false;
+        }
+      },
+    };
+  }, [mode]); // <-- Dependency ที่ถูกต้องคือ [mode] เท่านั้น
 
   // --- HANDLERS ---
   const handleStop = () => {
@@ -88,7 +150,6 @@ const LyrEditerPanel: React.FC = () => {
       if (!playerControls.isPlaying()) {
         playerControls.play();
       }
-      // Stop any active timing session when clicking a word
       actions.stopTiming();
     }
   };
@@ -102,7 +163,6 @@ const LyrEditerPanel: React.FC = () => {
     }
   };
 
-  // New handler for ruler clicks
   const handleRulerClick = (
     lineIndex: number,
     percentage: number,
@@ -113,33 +173,29 @@ const LyrEditerPanel: React.FC = () => {
       const clickedTick = firstWordOfLine.start + lineDuration * percentage;
       actions.openChordModal(undefined, Math.round(clickedTick));
     } else {
-      // If line not timed, maybe open modal at 0 tick or current playback tick
       actions.openChordModal(undefined, playerControls?.getCurrentTime() ?? 0);
     }
   };
 
-  // New handler for chord clicks
   const handleChordClick = (chord: ChordEvent) => {
     actions.openChordModal(chord);
   };
 
-  // New handler for adding chords via the '+' button
   const handleAddChordClick = (lineIndex: number) => {
     const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
     let suggestedTick = 0;
 
     if (firstWordOfLine?.start !== null) {
-      suggestedTick = firstWordOfLine?.start ?? 0; // Use start of line if timed
+      suggestedTick = firstWordOfLine?.start ?? 0;
     } else {
-      suggestedTick = playerControls?.getCurrentTime() ?? 0; // Use current playback time if not timed
+      suggestedTick = playerControls?.getCurrentTime() ?? 0;
     }
 
-    // Add a small offset if the suggested tick is 0, to differentiate it
     if (
       suggestedTick === 0 &&
       (firstWordOfLine === undefined || firstWordOfLine.start === null)
     ) {
-      suggestedTick = 1; // A small positive tick
+      suggestedTick = 1;
     }
 
     actions.openChordModal(undefined, Math.round(suggestedTick));
@@ -147,19 +203,31 @@ const LyrEditerPanel: React.FC = () => {
 
   // --- HOOKS ---
   useKeyboardControls(playerControls, handleEditLine);
-  usePlaybackSync(audioRef, midiPlayerRef);
+  usePlaybackSync(audioRef, videoRef, youtubeRef, midiPlayerRef);
 
   // --- RENDER ---
   if (!mode) {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-100 text-slate-800">
         <h1 className="text-4xl font-bold mb-8">Karaoke Maker</h1>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-4 p-4">
           <button
             onClick={() => actions.setMode("mp3")}
             className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
           >
             Start with MP3
+          </button>
+          <button
+            onClick={() => actions.setMode("mp4")}
+            className="px-8 py-4 bg-purple-500 text-white font-bold rounded-lg shadow-lg hover:bg-purple-600 transition-all"
+          >
+            Start with MP4
+          </button>
+          <button
+            onClick={() => actions.setMode("youtube")}
+            className="px-8 py-4 bg-red-600 text-white font-bold rounded-lg shadow-lg hover:bg-red-700 transition-all"
+          >
+            Start with YouTube
           </button>
           <button
             onClick={() => actions.setMode("midi")}
@@ -184,13 +252,13 @@ const LyrEditerPanel: React.FC = () => {
               onStopTiming={handleStop}
               onRulerClick={handleRulerClick}
               onChordClick={handleChordClick}
-              onAddChordClick={handleAddChordClick} // Pass new handler
+              onAddChordClick={handleAddChordClick}
               currentPlaybackTime={playerControls?.getCurrentTime()}
               mode={mode}
             />
           </div>
           <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
-            {mode === "mp3" ? (
+            {mode === "mp3" && (
               <ControlPanel
                 audioRef={audioRef}
                 audioSrc={audioSrc}
@@ -203,7 +271,36 @@ const LyrEditerPanel: React.FC = () => {
                 onPause={() => playerControls?.pause()}
                 onStop={handleStop}
               />
-            ) : (
+            )}
+            {mode === "mp4" && (
+              <div className="space-y-4">
+                <VideoPlayer
+                  ref={videoRef}
+                  src={videoSrc}
+                  onFileChange={(file) =>
+                    actions.setVideoSrc(URL.createObjectURL(file), file.name)
+                  }
+                />
+                <MetadataForm
+                  metadata={metadata}
+                  onMetadataChange={actions.setMetadata}
+                />
+              </div>
+            )}
+            {mode === "youtube" && (
+              <div className="space-y-4">
+                <YoutubePlayer
+                  ref={youtubeRef}
+                  youtubeId={youtubeId}
+                  onUrlChange={(url) => actions.setYoutubeId(url)}
+                />
+                <MetadataForm
+                  metadata={metadata}
+                  onMetadataChange={actions.setMetadata}
+                />
+              </div>
+            )}
+            {mode === "midi" && (
               <div className="space-y-4">
                 <MidiPlayer
                   ref={midiPlayerRef}
@@ -237,9 +334,9 @@ const LyrEditerPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="h-[280px] mt-4 flex-shrink-0">
+        {/* <div className="h-[200px] mt-4 flex-shrink-0">
           <TimelinePanel />
-        </div>
+        </div> */}
       </div>
 
       <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner flex-shrink-0">

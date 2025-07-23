@@ -4,11 +4,12 @@ import LyricsCharacter, {
   LyricsCharacterStyle,
 } from "../lyrics/lyrics-character";
 import { MidiPlayerRef } from "../../modules/js-synth";
+import { MusicMode } from "../../types/type";
 
 type Props = {
   timestamps: number[];
   lyrics: string[][];
-  mode: "mp3" | "midi";
+  mode: MusicMode;
   audioRef: React.RefObject<HTMLAudioElement | null>;
   midiPlayerRef: React.RefObject<MidiPlayerRef>;
   onClose: () => void;
