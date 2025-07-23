@@ -1,3 +1,4 @@
+// update/components/panel/lyrics-panel.tsx
 import { useRef } from "react";
 import { useKaraokeStore } from "../../store/useKaraokeStore";
 import { Button } from "../common/button";
@@ -18,14 +19,16 @@ type Props = {
     lineDuration: number
   ) => void; // New prop
   onChordClick: (chord: ChordEvent) => void; // New prop
+  onAddChordClick: (lineIndex: number) => void; // New prop
 };
 
 export default function LyricsPanel({
   onWordClick,
   onEditLine,
   onStopTiming,
-  onRulerClick, // Destructure new prop
-  onChordClick, // Destructure new prop
+  onRulerClick,
+  onChordClick,
+  onAddChordClick, // Destructure new prop
 }: Props) {
   // Select only the state and actions needed for this component
   const {
@@ -61,13 +64,13 @@ export default function LyricsPanel({
         onDeleteLine={actions.deleteLine}
         onWordUpdate={actions.updateWord}
         onWordDelete={() => {}} // Placeholder
-        onRulerClick={onRulerClick} // Pass new handler
-        onChordClick={onChordClick} // Pass new handler
+        onRulerClick={onRulerClick}
+        onChordClick={onChordClick}
+        onAddChordClick={onAddChordClick} // Pass new handler
       />
       <div className="flex items-center gap-2 mt-4 flex-wrap">
         <Button
           onClick={actions.startPreview}
-          // *** FIX APPLIED HERE ***
           disabled={editingLineIndex !== null}
         >
           <BsPlay className="mr-2 h-4 w-4" /> Preview
@@ -88,7 +91,6 @@ export default function LyricsPanel({
         ref={lyricInputRef}
         placeholder="Paste lyrics here... Use new lines, spaces, or | to separate words."
         className="w-full p-2 border rounded min-h-[100px]"
-        // Disable textarea while editing to prevent accidental changes
         disabled={editingLineIndex !== null}
       />
       <Button

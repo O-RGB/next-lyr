@@ -49,13 +49,13 @@ export default function Ruler({
     >
       {/* Start Time Label */}
       {startTime !== null && (
-        <div className="text-[8px] absolute top-full left-0 mt-1 whitespace-nowrap">
+        <div className="text-[8px] absolute top-full -left-2 mt-2 whitespace-nowrap">
           {formatTimeValue(startTime)}
         </div>
       )}
       {/* End Time Label */}
       {endTime !== null && (
-        <div className="text-[8px] absolute top-full right-0 mt-1 whitespace-nowrap transform translate-x-1/2">
+        <div className="text-[8px] absolute top-full right-1 mt-2 whitespace-nowrap transform translate-x-1/2">
           {formatTimeValue(endTime)}
         </div>
       )}

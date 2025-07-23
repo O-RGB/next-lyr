@@ -4,6 +4,7 @@ import { LyricWordData } from "../../types/type";
 import LyricWord from "./lyric-word";
 import { Button } from "../common/button";
 import { BiPencil, BiTrash } from "react-icons/bi";
+import { BsPlusCircle } from "react-icons/bs"; // Added import
 import { useKaraokeStore } from "../../store/useKaraokeStore";
 import Ruler from "../common/ruler";
 import Tags from "../common/tags";
@@ -30,12 +31,14 @@ type Props = {
     lineDuration: number
   ) => void;
   onChordClick: (chord: ChordEvent) => void;
+  onAddChordClick: (lineIndex: number) => void; // New prop
 };
 
 export default function LyricsGrid({
   lyricsData,
   onRulerClick,
   onChordClick,
+  onAddChordClick, // Destructure new prop
   ...props
 }: Props) {
   const chords = useKaraokeStore((s) => s.chordsData);
@@ -123,54 +126,63 @@ export default function LyricsGrid({
                   : "",
               ].join(" ")}
             >
-              <div className="relative w-fit lyric-line flex flex-nowrap gap-x-2 gap-y-1 pt-8 pb-4 px-2">
-                <div className="absolute w-full top-2">
-                  <div className="w-full">
-                    <Ruler
-                      startTime={rulerStartTime}
-                      endTime={rulerEndTime}
-                      onRulerClick={(percentage) =>
-                        onRulerClick(lineIndex, percentage, lineDuration)
-                      }
-                    />
-                    <WordTimingLines
-                      words={wordsWithState}
-                      lineStartTime={rulerStartTime}
-                      lineEndTime={rulerEndTime}
-                    />
-                  </div>
-
-                  <div className="overflow-y-auto w-full">
-                    {lineChords.length > 0 && (
-                      <div className="absolute h-5 w-full -top-2 z-10">
-                        {lineChords.map((chord, i) => {
-                          const firstWordTick = rulerStartTime ?? 0;
-                          const totalLineTick = lineDuration || 1;
-                          const pos =
-                            totalLineTick > 0
-                              ? ((chord.tick - firstWordTick) / totalLineTick) *
-                                100
-                              : 0;
-
-                          return (
-                            <Tags
-                              key={i}
-                              style={{
-                                left: `${Math.max(0, Math.min(100, pos))}%`,
-                              }}
-                              text={chord.chord}
-                              className="absolute -top-1 cursor-pointer"
-                              tagsClassName={"text-[10px]"}
-                              hoverText={`Tick: ${chord.tick}`}
-                              onClick={() => onChordClick(chord)}
-                            ></Tags>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+              <div className="absolute top-4 left-2 right-0 z-50 w-[80%]">
+                <div className="">
+                  <Ruler
+                    startTime={rulerStartTime}
+                    endTime={rulerEndTime}
+                    onRulerClick={(percentage) =>
+                      onRulerClick(lineIndex, percentage, lineDuration)
+                    }
+                  />
+                  <WordTimingLines
+                    words={wordsWithState}
+                    lineStartTime={rulerStartTime}
+                    lineEndTime={rulerEndTime}
+                  />
                 </div>
 
+                <div className="overflow-y-auto ">
+                  {lineChords.length > 0 && (
+                    <div className="absolute h-5 w-full -top-2 z-10">
+                      {lineChords.map((chord, i) => {
+                        const firstWordTick = rulerStartTime ?? 0;
+                        const totalLineTick = lineDuration || 1;
+                        const pos =
+                          totalLineTick > 0
+                            ? ((chord.tick - firstWordTick) / totalLineTick) *
+                              100
+                            : 0;
+
+                        return (
+                          <Tags
+                            key={i}
+                            style={{
+                              left: `${Math.max(0, Math.min(100, pos))}%`,
+                            }}
+                            text={chord.chord}
+                            className="absolute -top-3.5 cursor-pointer"
+                            tagsClassName={"text-[8px]"}
+                            hoverText={`Tick: ${chord.tick}`}
+                            onClick={() => onChordClick(chord)}
+                          ></Tags>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-3.5 -right-5 z-50">
+                  <Button
+                    onClick={() => onAddChordClick(lineIndex)}
+                    disabled={props.editingLineIndex !== null}
+                    className="p-2 hover:bg-green-200 rounded-md"
+                    title="Add New Chord to this Line"
+                  >
+                    <BsPlusCircle className="h-3 w-3 text-gray-500" />
+                  </Button>
+                </div>
+              </div>
+              <div className="relative w-fit lyric-line flex flex-nowrap gap-x-2 gap-y-1 pt-8 pb-4 px-2">
                 {line.map((word) => (
                   <LyricWord
                     key={word.index}

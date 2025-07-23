@@ -17,7 +17,7 @@ const Tags: React.FC<TagsProps> = ({
   return (
     <div {...props} className={`${className} group`}>
       <span
-        className={`${tagsClassName} bg-purple-600 rounded-md text-white px-1.5 font-bold text-nowrap`}
+        className={`${tagsClassName} bg-purple-600 rounded-sm text-white px-1 font-bold text-nowrap`}
       >
         {text}
       </span>

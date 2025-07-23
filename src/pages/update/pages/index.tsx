@@ -1,3 +1,4 @@
+// update/pages/index.tsx
 "use client";
 
 import React, { useRef, useMemo } from "react";
@@ -121,6 +122,28 @@ const LyrEditerPanel: React.FC = () => {
     actions.openChordModal(chord);
   };
 
+  // New handler for adding chords via the '+' button
+  const handleAddChordClick = (lineIndex: number) => {
+    const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+    let suggestedTick = 0;
+
+    if (firstWordOfLine?.start !== null) {
+      suggestedTick = firstWordOfLine?.start ?? 0; // Use start of line if timed
+    } else {
+      suggestedTick = playerControls?.getCurrentTime() ?? 0; // Use current playback time if not timed
+    }
+
+    // Add a small offset if the suggested tick is 0, to differentiate it
+    if (
+      suggestedTick === 0 &&
+      (firstWordOfLine === undefined || firstWordOfLine.start === null)
+    ) {
+      suggestedTick = 1; // A small positive tick
+    }
+
+    actions.openChordModal(undefined, Math.round(suggestedTick));
+  };
+
   // --- HOOKS ---
   useKeyboardControls(playerControls, handleEditLine);
   usePlaybackSync(audioRef, midiPlayerRef);
@@ -156,8 +179,9 @@ const LyrEditerPanel: React.FC = () => {
             onWordClick={handleWordClick}
             onEditLine={handleEditLine}
             onStopTiming={handleStop}
-            onRulerClick={handleRulerClick} // Pass new handler
-            onChordClick={handleChordClick} // Pass new handler
+            onRulerClick={handleRulerClick}
+            onChordClick={handleChordClick}
+            onAddChordClick={handleAddChordClick} // Pass new handler
           />
         </div>
         <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
@@ -209,12 +233,12 @@ const LyrEditerPanel: React.FC = () => {
       </div>
       <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner">
         <p>
-          <b className="text-amber-400">↑/↓: Select</b> |{" "}
+          <b className="text-amber-400">Up/Down: Select</b> |{" "}
           <b className="text-amber-400">Enter: Edit Text</b> |{" "}
           <b className="text-amber-400">Shift+Enter: Start Timing</b> |{" "}
           <b className="text-amber-400">Space: Play/Pause</b> |{" "}
-          <b className="text-amber-400">→: Set Time</b> |{" "}
-          <b className="text-red-400">←: Correct</b>
+          <b className="text-amber-400">Right: Set Time</b> |{" "}
+          <b className="text-red-400">Left: Correct</b>
         </p>
       </footer>
       {isPreviewing && (
