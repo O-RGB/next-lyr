@@ -6,7 +6,7 @@ import ControlPanel from "../components/panel/control-panel";
 import LyricsPanel from "../components/panel/lyrics-panel";
 import PreviewModal from "../components/modals/preview-modal";
 import EditLyricLineModal from "../components/modals/edit-lyric-line-modal";
-import ChordEditModal from "../components/modals/chord-edit-modal"; // Import new modal
+import ChordEditModal from "../components/modals/chord-edit-modal";
 import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
 import MetadataForm from "../components/metadata/metadata-form";
 import { useKaraokeStore } from "../store/useKaraokeStore";
@@ -16,7 +16,8 @@ import {
 } from "../hooks/useKeyboardControls";
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
 import { MidiParseResult } from "../lib/midi-tags-decode";
-import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor"; // Import ChordEvent type
+import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor";
+import TimelinePanel from "../components/panel/timeline-panel"; //  <-- เพิ่ม import
 
 const LyrEditerPanel: React.FC = () => {
   // --- STATE & ACTIONS from ZUSTAND ---
@@ -173,67 +174,75 @@ const LyrEditerPanel: React.FC = () => {
 
   return (
     <main className="flex h-screen flex-col ">
-      <div className="flex p-4 gap-4 overflow-hidden h-full">
-        <div className="w-[70%] h-full">
-          <LyricsPanel
-            onWordClick={handleWordClick}
-            onEditLine={handleEditLine}
-            onStopTiming={handleStop}
-            onRulerClick={handleRulerClick}
-            onChordClick={handleChordClick}
-            onAddChordClick={handleAddChordClick} // Pass new handler
-            currentPlaybackTime={playerControls?.getCurrentTime()}
-            mode={mode}
-          />
-        </div>
-        <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
-          {mode === "mp3" ? (
-            <ControlPanel
-              audioRef={audioRef}
-              audioSrc={audioSrc}
-              metadata={metadata}
-              onAudioLoad={(file) => {
-                actions.setAudioSrc(URL.createObjectURL(file), file.name);
-              }}
-              onMetadataChange={actions.setMetadata}
-              onPlay={() => playerControls?.play()}
-              onPause={() => playerControls?.pause()}
-              onStop={handleStop}
+      <div className="flex flex-col p-4 gap-4 overflow-hidden h-full">
+        {/* Top Section */}
+        <div className="flex-1 flex gap-4 overflow-hidden">
+          <div className="w-[70%] h-full">
+            <LyricsPanel
+              onWordClick={handleWordClick}
+              onEditLine={handleEditLine}
+              onStopTiming={handleStop}
+              onRulerClick={handleRulerClick}
+              onChordClick={handleChordClick}
+              onAddChordClick={handleAddChordClick} // Pass new handler
+              currentPlaybackTime={playerControls?.getCurrentTime()}
+              mode={mode}
             />
-          ) : (
-            <div className="space-y-4">
-              <MidiPlayer
-                ref={midiPlayerRef}
-                onFileLoaded={(file, durationTicks, ppq, bpm) => {
-                  actions.setMidiInfo({
-                    fileName: file.name,
-                    durationTicks,
-                    ppq,
-                    bpm,
-                  });
-                }}
-                onLyricsParsed={(data: MidiParseResult) => {
-                  if (data.info && (data.info.TITLE || data.info.ARTIST)) {
-                    actions.setMetadata({
-                      title: data.info.TITLE || metadata.title,
-                      artist: data.info.ARTIST || metadata.artist,
-                    });
-                  }
-                  actions.importParsedMidiData({
-                    lyrics: data.lyrics,
-                    chords: data.chords,
-                  });
-                }}
-              />
-              <MetadataForm
+          </div>
+          <div className="w-[30%] flex flex-col p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
+            {mode === "mp3" ? (
+              <ControlPanel
+                audioRef={audioRef}
+                audioSrc={audioSrc}
                 metadata={metadata}
+                onAudioLoad={(file) => {
+                  actions.setAudioSrc(URL.createObjectURL(file), file.name);
+                }}
                 onMetadataChange={actions.setMetadata}
+                onPlay={() => playerControls?.play()}
+                onPause={() => playerControls?.pause()}
+                onStop={handleStop}
               />
-            </div>
-          )}
+            ) : (
+              <div className="space-y-4">
+                <MidiPlayer
+                  ref={midiPlayerRef}
+                  onFileLoaded={(file, durationTicks, ppq, bpm) => {
+                    actions.setMidiInfo({
+                      fileName: file.name,
+                      durationTicks,
+                      ppq,
+                      bpm,
+                    });
+                  }}
+                  onLyricsParsed={(data: MidiParseResult) => {
+                    if (data.info && (data.info.TITLE || data.info.ARTIST)) {
+                      actions.setMetadata({
+                        title: data.info.TITLE || metadata.title,
+                        artist: data.info.ARTIST || metadata.artist,
+                      });
+                    }
+                    actions.importParsedMidiData({
+                      lyrics: data.lyrics,
+                      chords: data.chords,
+                    });
+                  }}
+                />
+                <MetadataForm
+                  metadata={metadata}
+                  onMetadataChange={actions.setMetadata}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="h-[280px] mt-4 flex-shrink-0">
+          <TimelinePanel />
         </div>
       </div>
-      <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner">
+
+      <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner flex-shrink-0">
         <p>
           <b className="text-amber-400">Up/Down: Select</b> |{" "}
           <b className="text-amber-400">Enter: Edit Text</b> |{" "}
@@ -243,6 +252,7 @@ const LyrEditerPanel: React.FC = () => {
           <b className="text-red-400">Left: Correct</b>
         </p>
       </footer>
+
       {isPreviewing && (
         <PreviewModal
           lyrics={previewLyrics}
@@ -260,11 +270,8 @@ const LyrEditerPanel: React.FC = () => {
           )}
           onClose={actions.closeEditModal}
           onSave={(newText) => {
-            // 1. Update the line text
             actions.updateLine(selectedLineIndex, newText);
-            // 2. Close the modal
             actions.closeEditModal();
-            // 3. Immediately start the line re-timing process
             handleEditLine(selectedLineIndex);
           }}
         />

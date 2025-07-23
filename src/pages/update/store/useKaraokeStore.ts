@@ -19,13 +19,14 @@ interface KaraokeState {
   lyricsData: LyricWordData[];
   metadata: { title: string; artist: string };
   audioSrc: string | null;
+  audioDuration: number | null; // <-- เพิ่ม state นี้
   midiInfo: {
     fileName: string;
     durationTicks: number;
     ppq: number;
     bpm: number;
   } | null;
-  chordsData: ChordEvent[]; // This already exists
+  chordsData: ChordEvent[];
 
   // Timing & Playback
   currentIndex: number;
@@ -34,15 +35,16 @@ interface KaraokeState {
   playbackIndex: number | null;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
+  currentTime: number; // <-- เพิ่ม state
 
   // UI State
   isEditModalOpen: boolean;
   isPreviewing: boolean;
   previewTimestamps: number[];
   previewLyrics: string[][];
-  isChordModalOpen: boolean; // New
-  selectedChord: ChordEvent | null; // New
-  suggestedChordTick: number | null; // New
+  isChordModalOpen: boolean;
+  selectedChord: ChordEvent | null;
+  suggestedChordTick: number | null;
 
   // Actions
   actions: {
@@ -50,6 +52,7 @@ interface KaraokeState {
     setMode: (mode: "mp3" | "midi") => void;
     setMetadata: (metadata: { title: string; artist: string }) => void;
     setAudioSrc: (src: string, fileName: string) => void;
+    setAudioDuration: (duration: number) => void; // <-- เพิ่ม action type นี้
     setMidiInfo: (info: {
       fileName: string;
       durationTicks: number;
@@ -64,9 +67,10 @@ interface KaraokeState {
       lyrics: LyricEvent[][];
       chords: ChordEvent[];
     }) => void;
-    addChord: (chord: ChordEvent) => void; // New
-    updateChord: (oldTick: number, newChord: ChordEvent) => void; // New
-    deleteChord: (tickToDelete: number) => void; // New
+    addChord: (chord: ChordEvent) => void;
+    updateChord: (oldTick: number, newChord: ChordEvent) => void;
+    deleteChord: (tickToDelete: number) => void;
+    updateWordTiming: (index: number, start: number, end: number) => void;
 
     // Timing & Playback
     startTiming: (currentTime: number) => void;
@@ -76,6 +80,7 @@ interface KaraokeState {
     stopTiming: () => void;
     setPlaybackIndex: (index: number | null) => void;
     setCurrentIndex: (index: number) => void;
+    setCurrentTime: (time: number) => void; // <-- เพิ่ม action type
     setCorrectionIndex: (index: number | null) => void;
 
     // Line Selection & Editing
@@ -93,8 +98,8 @@ interface KaraokeState {
     closePreview: () => void;
 
     // Chord Modal
-    openChordModal: (chord?: ChordEvent, suggestedTick?: number) => void; // New
-    closeChordModal: () => void; // New
+    openChordModal: (chord?: ChordEvent, suggestedTick?: number) => void;
+    closeChordModal: () => void;
   };
 }
 
@@ -130,6 +135,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     lyricsData: [],
     metadata: { title: "", artist: "" },
     audioSrc: null,
+    audioDuration: null, // <-- เพิ่มค่าเริ่มต้น
     midiInfo: null,
     chordsData: [],
     currentIndex: 0,
@@ -138,23 +144,36 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     playbackIndex: null,
     correctionIndex: null,
     selectedLineIndex: null,
+    currentTime: 0, // <-- กำหนดค่าเริ่มต้น
     isEditModalOpen: false,
     isPreviewing: false,
     previewTimestamps: [],
     previewLyrics: [],
-    isChordModalOpen: false, // New
-    selectedChord: null, // New
-    suggestedChordTick: null, // New
+    isChordModalOpen: false,
+    selectedChord: null,
+    suggestedChordTick: null,
 
     // --- ACTIONS ---
     actions: {
+      setCurrentTime: (time) => set({ currentTime: time }), // <-- เพิ่ม action นี้
+      updateWordTiming: (index, start, end) => {
+        set((state) => ({
+          lyricsData: state.lyricsData.map((word) =>
+            word.index === index
+              ? { ...word, start, end, length: end - start }
+              : word
+          ),
+        }));
+      },
       setMode: (mode) => set({ mode }),
       setMetadata: (metadata) => set({ metadata }),
       setAudioSrc: (src, fileName) =>
         set({
           audioSrc: src,
+          audioDuration: null, // <-- รีเซ็ตค่าเมื่อเปลี่ยนไฟล์
           metadata: { title: fileName.replace(/\.[^/.]+$/, ""), artist: "" },
         }),
+      setAudioDuration: (duration) => set({ audioDuration: duration }), // <-- เพิ่ม action นี้
       setMidiInfo: (info) =>
         set({
           midiInfo: info,
@@ -178,7 +197,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
         data.lyrics.forEach((line, lineIndex) => {
           line.forEach((wordEvent) => {
-            const convertedTick = convertCursorToTick(wordEvent.tick, songPpq);// Ticks from parser are already absolute
+            const convertedTick = convertCursorToTick(wordEvent.tick, songPpq); // Ticks from parser are already absolute
 
             // Find the current word event in the sorted flat array
             const currentFlatIndex = flatLyrics.findIndex(
@@ -190,7 +209,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             const endTime = nextEvent
               ? convertCursorToTick(nextEvent.tick, songPpq)
               : convertedTick + songPpq;
-
 
             const length = endTime - convertedTick; // Duration in ticks
             finalWords.push({
@@ -486,30 +504,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             metadata.title || midiInfo.fileName.split(".")[0]
           }.cur`;
           generator.downloadFile(curFilename);
-
-          // Save MIDI with updated data
-          // This part requires access to the original MidiFile and the build function from processor.ts
-          // For now, this is a placeholder. A full implementation would need to pass originalMidiData
-          // from where the file was loaded (e.g., in MidiPlayer component) to the store.
-          // Example:
-          // const parser = new MidiKLyrParser(); // Or retrieve the original parser instance if available
-          // const originalMidi = get().originalMidiBuffer; // Assume you store this
-          // if (originalMidi) {
-          //   const modifiedMidiBuffer = MidiEditer.build({
-          //     originalMidiData: parser.parseMidiFile(originalMidi), // Need parsed object
-          //     newSongInfo: metadata,
-          //     newLyricsData: lyricsData.map(w => ({ text: w.name, tick: w.start! })), // Simplified for example
-          //     newChordsData: chordsData,
-          //     headerToUse: "LyrHdr1" // Or detectedHeader from initial parse
-          //   });
-          //   const midiBlob = new Blob([modifiedMidiBuffer], { type: 'audio/midi' });
-          //   const midiLink = document.createElement("a");
-          //   midiLink.href = URL.createObjectURL(midiBlob);
-          //   midiLink.download = `${metadata.title || "song"}.mid`;
-          //   document.body.appendChild(midiLink);
-          //   midiLink.click();
-          //   document.body.removeChild(midiLink);
-          // }
         } else {
           const generator = new TimestampLyricSegmentGenerator();
           timestamps = generator.generateSegment(timedWords);
@@ -550,13 +544,13 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           isChordModalOpen: true,
           selectedChord: chord || null,
           suggestedChordTick: suggestedTick || null,
-        }), // New
+        }),
       closeChordModal: () =>
         set({
           isChordModalOpen: false,
           selectedChord: null,
           suggestedChordTick: null,
-        }), // New
+        }),
     },
   };
 });

@@ -1,4 +1,6 @@
+// update/modules/audio/audio-player.tsx
 import { useState, useEffect, RefObject } from "react";
+import { useKaraokeStore } from "../../store/useKaraokeStore"; // <-- import store
 import { Button } from "../../components/common/button";
 import { Card } from "../../components/common/card";
 import { BsPlay, BsPause, BsStop } from "react-icons/bs";
@@ -20,6 +22,7 @@ export default function AudioPlayer({
   onPause,
   onStop,
 }: Props) {
+  const { actions } = useKaraokeStore(); // <-- ดึง actions มาใช้
   const [currentTime, setCurrentTime] = useState("0:00");
   const [activeSpeed, setActiveSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,6 +32,32 @@ export default function AudioPlayer({
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
+
+  // Effect นี้ใช้สำหรับอ่านค่า duration ของไฟล์เสียง
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !src) return;
+
+    const handleLoadedMetadata = () => {
+      // เช็คว่า duration มีค่าที่ถูกต้อง
+      if (audio.duration && isFinite(audio.duration)) {
+        actions.setAudioDuration(audio.duration);
+      }
+    };
+
+    // เพิ่ม event listener เมื่อ metadata ของไฟล์โหลดเสร็จ
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    // กรณีที่ metadata โหลดไปแล้วก่อนที่ effect จะทำงาน
+    if (audio.readyState >= 1) {
+      handleLoadedMetadata();
+    }
+
+    // cleanup function
+    return () => {
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, [src, audioRef, actions]);
 
   useEffect(() => {
     const audio = audioRef.current;

@@ -5,6 +5,7 @@ interface TagsProps extends React.HTMLAttributes<HTMLSpanElement> {
   className?: string;
   tagsClassName?: string;
   hoverText?: string;
+  disabledTooltip?: boolean;
 }
 
 const Tags: React.FC<TagsProps> = ({
@@ -12,6 +13,7 @@ const Tags: React.FC<TagsProps> = ({
   className,
   tagsClassName,
   hoverText,
+  disabledTooltip,
   ...props
 }) => {
   return (
@@ -21,9 +23,11 @@ const Tags: React.FC<TagsProps> = ({
       >
         {text}
       </span>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-2 py-1 bg-slate-800 text-white text-xs rounded-md whitespace-nowrap z-10">
-        {hoverText}
-      </div>
+      {!disabledTooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-2 py-1 bg-slate-800 text-white text-xs rounded-md whitespace-nowrap z-10">
+          {hoverText}
+        </div>
+      )}
     </div>
   );
 };

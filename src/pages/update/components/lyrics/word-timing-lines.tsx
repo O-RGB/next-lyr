@@ -35,7 +35,7 @@ export default function WordTimingLines({
   };
 
   return (
-    <div className="absolute w-full h-[1px] -bottom-1 flex items-center opacity-70">
+    <div className="absolute w-full h-[1px] bottom-2 flex items-center opacity-70">
       {words.map((word) => {
         if (word.start === null || word.end === null) return null;
 

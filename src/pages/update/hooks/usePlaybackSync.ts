@@ -1,3 +1,4 @@
+// update/hooks/usePlaybackSync.ts
 import { useEffect, RefObject } from "react";
 import { useKaraokeStore } from "../store/useKaraokeStore";
 import { MidiPlayerRef } from "../modules/js-synth";
@@ -22,6 +23,9 @@ export const usePlaybackSync = (
     if (!audio || mode !== "mp3") return;
 
     const handleTimeUpdate = () => {
+      // ✅ อัปเดต currentTime ใน store
+      actions.setCurrentTime(audio.currentTime);
+
       if (
         isPreviewing ||
         audio.paused ||
@@ -70,6 +74,9 @@ export const usePlaybackSync = (
     if (!player || mode !== "midi") return;
 
     const handleTickUpdate = (tick: number) => {
+      // ✅ อัปเดต currentTime ใน store
+      actions.setCurrentTime(tick);
+
       if (
         isPreviewing ||
         !player.isPlaying ||
