@@ -1,5 +1,5 @@
 "use client";
-import MidiEditorComponent from "@/pages/update/modules/midi-klyr-parser";
+import MidiEditorComponent from "@/modules/midi-klyr-parser";
 import React from "react";
 
 interface MidiTestProps {}

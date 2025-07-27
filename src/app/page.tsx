@@ -1,6 +1,6 @@
 "use client";
-import NavBar from "@/pages/update/components/navbar";
-import LyrEditerPanel from "@/pages/update/pages";
+import NavBar from "@/components/navbar";
+import LyrEditerPanel from "@/components/ui";
 import React from "react";
 
 export default function Home() {
