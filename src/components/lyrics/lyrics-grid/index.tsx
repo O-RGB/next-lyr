@@ -67,7 +67,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
       lineRefs.current[props.selectedLineIndex]
     ) {
       lineRefs.current[props.selectedLineIndex]?.scrollIntoView({
-        behavior: "instant",
+        behavior: "smooth",
         block: "center",
       });
     }
