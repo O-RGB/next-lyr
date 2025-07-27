@@ -1,7 +1,7 @@
-import ModalCommon from "@/components/modal/modal";
 import Upload from "@/components/upload";
 import React, { useEffect, useState } from "react";
 import { SiMidi } from "react-icons/si";
+import ModalCommon from "../../common/modal";
 
 interface SelectMusicModalProps {
   open?: boolean;
@@ -51,12 +51,6 @@ const SelectMusicModal: React.FC<SelectMusicModalProps> = ({
           }}
           icon={<SiMidi className="text-4xl text-blue-500" />}
         ></Upload>
-        {/* <RadioGroup
-          value={selectedValue}
-          onChange={setSelectedValue}
-          options={options}
-          name="fruits"
-        /> */}
       </ModalCommon>
     </>
   );

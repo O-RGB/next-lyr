@@ -1,10 +1,5 @@
-// lib/midiProcessor.ts
-// A modern, modular version of the MIDI processing library.
 import pako from "pako";
 
-// --- Type Definitions (integrated into the module) ---
-
-// User-facing types for parse result and build options
 export interface LyricEvent {
   text: string;
   tick: number;
@@ -31,7 +26,6 @@ export interface BuildOptions {
   headerToUse: string;
 }
 
-// Internal types for processing
 interface BaseMidiEvent {
   absoluteTime: number;
 }
@@ -62,8 +56,6 @@ export interface MidiFile {
   ticksPerBeat: number;
   tracks: MidiTrack[];
 }
-
-// --- Private Utility Functions ---
 
 function stringToTIS620(str: string): Uint8Array {
   const bytes = [];
@@ -121,25 +113,16 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 }
 
 function writeVariableLength(value: number): number[] {
-  if (value < 0) {
+  if (value < 0)
     throw new Error("Cannot write negative variable-length quantity.");
-  }
-  if (value === 0) {
-    return [0];
-  }
-
+  if (value === 0) return [0];
   const buffer: number[] = [];
   while (value > 0) {
     buffer.push(value & 0x7f);
     value >>= 7;
   }
-
   const reversedBuffer = buffer.reverse();
-
-  for (let i = 0; i < reversedBuffer.length - 1; i++) {
-    reversedBuffer[i] |= 0x80;
-  }
-
+  for (let i = 0; i < reversedBuffer.length - 1; i++) reversedBuffer[i] |= 0x80;
   return reversedBuffer;
 }
 
@@ -162,7 +145,19 @@ function escapeXml(text: string): string {
   });
 }
 
-// --- Private Core Logic Functions ---
+function readVariableLength(
+  view: DataView,
+  offset: number
+): { value: number; nextOffset: number } {
+  let value = 0;
+  let byte;
+  let currentOffset = offset;
+  do {
+    byte = view.getUint8(currentOffset++);
+    value = (value << 7) | (byte & 0x7f);
+  } while (byte & 0x80);
+  return { value, nextOffset: currentOffset };
+}
 
 function _parseEvent(
   view: DataView,
@@ -171,16 +166,22 @@ function _parseEvent(
 ): MidiEvent & { nextOffset: number } {
   let status = view.getUint8(offset);
   let isRunningStatus = false;
+
   if (status < 0x80) {
-    if (!runningStatus) throw new Error("Running status expected but none set");
-    status = runningStatus;
-    isRunningStatus = true;
+    if (!runningStatus) {
+      console.warn("Running status expected but none set, forcing fallback");
+
+      status = 0x90;
+    } else {
+      status = runningStatus;
+      isRunningStatus = true;
+    }
   }
+
   const eventType = status >> 4;
   let currentOffset = isRunningStatus ? offset : offset + 1;
 
   if (status === 0xff) {
-    // Meta Event
     const metaType = view.getUint8(currentOffset++);
     const lengthResult = readVariableLength(view, currentOffset);
     currentOffset = lengthResult.nextOffset;
@@ -195,7 +196,6 @@ function _parseEvent(
       nextOffset: currentOffset,
     };
   } else if (eventType >= 0x8 && eventType <= 0xe) {
-    // Channel Event
     const paramCount = eventType === 0xc || eventType === 0xd ? 1 : 2;
     const data = [];
     for (let i = 0; i < paramCount; i++) {
@@ -209,13 +209,15 @@ function _parseEvent(
       nextOffset: currentOffset,
     };
   } else if (status === 0xf0 || status === 0xf7) {
-    // Sysex Event
     const lengthResult = readVariableLength(view, currentOffset);
     currentOffset = lengthResult.nextOffset;
     const data = new Uint8Array(view.buffer, currentOffset, lengthResult.value);
     currentOffset += lengthResult.value;
     return { type: "sysex", data, absoluteTime: 0, nextOffset: currentOffset };
   } else {
+    console.warn(
+      `Unknown MIDI event at offset ${offset}, status=0x${status.toString(16)}`
+    );
     return {
       type: "unknown",
       status,
@@ -223,20 +225,6 @@ function _parseEvent(
       nextOffset: currentOffset,
     };
   }
-}
-
-function readVariableLength(
-  view: DataView,
-  offset: number
-): { value: number; nextOffset: number } {
-  let value = 0;
-  let byte;
-  let currentOffset = offset;
-  do {
-    byte = view.getUint8(currentOffset++);
-    value = (value << 7) | (byte & 0x7f);
-  } while (byte & 0x80);
-  return { value, nextOffset: currentOffset };
 }
 
 function _parseMidiFile(buffer: ArrayBuffer): MidiFile {
@@ -267,18 +255,14 @@ function _parseMidiFile(buffer: ArrayBuffer): MidiFile {
       const event: MidiEvent = { ...eventResult, absoluteTime: currentTime };
       events.push(event);
       offset = eventResult.nextOffset;
-      if (event.type === "channel") {
-        runningStatus = event.status;
-      } else {
-        runningStatus = 0;
-      }
+      if (event.type === "channel") runningStatus = event.status;
+      else runningStatus = 0;
     }
     tracks.push(events);
   }
   return { format, trackCount, ticksPerBeat, tracks };
 }
 
-// Internal type for parsing XML which has more fields
 interface KlyrWord {
   tick: number;
   name: string;
@@ -323,17 +307,15 @@ function _extractDataFromEvents(
   let songInfo: SongInfo = {};
   let lyrics: LyricEvent[][] = [];
   let chords: ChordEvent[] = [];
-  let detectedHeader = "LyrHdr1"; // Default
+  let detectedHeader = "LyrHdr1";
   let foundLyrics = false;
 
   midiData.tracks.forEach((track) => {
     track.forEach((event) => {
       if (event.type !== "meta") return;
-
       if (event.metaType === 0x06 && event.text) {
         chords.push({ chord: event.text, tick: event.absoluteTime });
       }
-
       if (
         !foundLyrics &&
         event.metaType === 0x01 &&
@@ -342,27 +324,20 @@ function _extractDataFromEvents(
       ) {
         const regex = /(K?LyrHdr\d*)(.*)/i;
         const match = event.text.match(regex);
-
         if (match && match[2]) {
           detectedHeader = match[1] || "LyrHdr1";
           const encodedPayload = match[2].trim();
-
           try {
             const compressed = base64ToArrayBuffer(encodedPayload);
             const decompressed = pako.inflate(compressed);
             const xmlText = TIS620ToString(decompressed);
-
             if (typeof window !== "undefined") {
               const parser = new DOMParser();
               const xmlDoc = parser.parseFromString(xmlText, "text/xml");
               const klyrData = _parseKLyrXML(xmlDoc);
               songInfo = klyrData.info;
-              // ** DATA TRANSFORMATION HAPPENS HERE **
               lyrics = klyrData.lyrics.map((line) =>
-                line.map((word) => ({
-                  text: word.name,
-                  tick: word.tick,
-                }))
+                line.map((word) => ({ text: word.name, tick: word.tick }))
               );
               foundLyrics = true;
             }
@@ -377,7 +352,6 @@ function _extractDataFromEvents(
   });
 
   chords.sort((a, b) => a.tick - b.tick);
-
   return { info: songInfo, lyrics, chords, detectedHeader };
 }
 
@@ -397,11 +371,10 @@ function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {
         xml += "<LINE>\n";
         xml += `<TIME>${line[0].tick}</TIME>\n`;
         line.forEach((word) => {
-          // word is now LyricEvent
           xml += "<WORD>\n";
           xml += `<TIME>${word.tick}</TIME>\n`;
-          xml += `<TEXT>${escapeXml(word.text)}</TEXT>\n`; // Use .text
-          xml += `<VOCAL></VOCAL>\n`; // Vocal is always empty
+          xml += `<TEXT>${escapeXml(word.text)}</TEXT>\n`;
+          xml += `<VOCAL></VOCAL>\n`;
           xml += "</WORD>\n";
         });
         xml += "</LINE>\n";
@@ -453,7 +426,6 @@ function _createModifiedMidi(
       track.some((e) => e.type === "meta" && e.metaType === 0x51)
     );
     if (targetTrackIndex === -1 && otherTracks.length > 0) targetTrackIndex = 0;
-
     if (targetTrackIndex !== -1) {
       const newMarkerEvents: MidiEvent[] = newChordsData.map((chord) => ({
         type: "meta",
@@ -540,47 +512,59 @@ function _buildTrackData(track: MidiTrack): Uint8Array {
 
 function _buildMidiFile(
   midiStructure: Omit<MidiFile, "trackCount">
-): ArrayBuffer {
-  const trackDataChunks = midiStructure.tracks.map(_buildTrackData);
-  const totalSize =
-    14 + trackDataChunks.reduce((sum, chunk) => sum + 8 + chunk.length, 0);
-  const buffer = new ArrayBuffer(totalSize);
-  const view = new DataView(buffer);
+): Uint8Array {
+  const { format, ticksPerBeat, tracks } = midiStructure;
+  const trackBuffers: Uint8Array[] = tracks.map(_buildTrackData);
+  const totalLength =
+    14 + trackBuffers.reduce((sum, buf) => sum + 8 + buf.length, 0);
+  const output = new Uint8Array(totalLength);
+  const view = new DataView(output.buffer);
+
   let offset = 0;
+  const writeString = (str: string) => {
+    for (let i = 0; i < str.length; i++) output[offset++] = str.charCodeAt(i);
+  };
 
-  view.setUint32(offset, 0x4d546864); // MThd
-  view.setUint32(offset + 4, 6);
-  view.setUint16(offset + 8, midiStructure.format);
-  view.setUint16(offset + 10, midiStructure.tracks.length);
-  view.setUint16(offset + 12, midiStructure.ticksPerBeat);
-  offset += 14;
+  writeString("MThd");
+  view.setUint32(offset, 6);
+  offset += 4;
+  view.setUint16(offset, format);
+  offset += 2;
+  view.setUint16(offset, tracks.length);
+  offset += 2;
+  view.setUint16(offset, ticksPerBeat);
+  offset += 2;
 
-  trackDataChunks.forEach((trackBytes) => {
-    view.setUint32(offset, 0x4d54726b); // MTrk
-    view.setUint32(offset + 4, trackBytes.length);
-    offset += 8;
-    new Uint8Array(buffer, offset, trackBytes.length).set(trackBytes);
-    offset += trackBytes.length;
-  });
+  for (const trackBuffer of trackBuffers) {
+    writeString("MTrk");
+    view.setUint32(offset, trackBuffer.length);
+    offset += 4;
+    output.set(trackBuffer, offset);
+    offset += trackBuffer.length;
+  }
 
-  return buffer;
+  return output;
 }
-
-// --- Public API ---
 
 export function parse(arrayBuffer: ArrayBuffer): ParseResult {
   const midiData = _parseMidiFile(arrayBuffer);
-  const extractedData = _extractDataFromEvents(midiData);
-  return {
-    midiData,
-    info: extractedData.info,
-    lyrics: extractedData.lyrics,
-    chords: extractedData.chords,
-    detectedHeader: extractedData.detectedHeader,
-  };
+  const extracted = _extractDataFromEvents(midiData);
+  return { midiData, ...extracted };
 }
 
-export function build(options: BuildOptions): ArrayBuffer {
-  const newMidiStructure = _createModifiedMidi(options);
-  return _buildMidiFile(newMidiStructure);
+export function buildModifiedMidi(options: BuildOptions): Uint8Array {
+  const modified = _createModifiedMidi(options);
+  return _buildMidiFile(modified);
 }
+
+export async function loadMidiFile(file: File | Blob): Promise<ParseResult> {
+  const arrayBuffer = await file.arrayBuffer();
+  return parse(arrayBuffer);
+}
+
+export {
+  stringToTIS620,
+  TIS620ToString,
+  base64ToArrayBuffer,
+  arrayBufferToBase64,
+};

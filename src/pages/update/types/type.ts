@@ -13,4 +13,11 @@ export interface ExportData {
   lyrics: Omit<LyricWordData, "index" | "lineIndex">[];
 }
 
+export interface IMidiInfo {
+  fileName: string;
+  durationTicks: number;
+  ppq: number;
+  bpm: number;
+}
+
 export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";

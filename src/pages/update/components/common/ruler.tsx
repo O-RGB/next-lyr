@@ -1,14 +1,16 @@
-// update/components/common/ruler.tsx
-import React from "react";
+import React, { useEffect } from "react";
+import { MusicMode } from "../../types/type";
+import ButtonCommon, { ButtonCommonProps } from "./button";
 
 type RulerProps = {
   max?: number;
   step?: number;
-  startTime?: number | null; // New prop for start time
-  endTime?: number | null; // New prop for end time
-  onRulerClick?: (percentage: number) => void; // New prop for click event
-  currentPlaybackPercentage?: number | null; // New prop for playback indicator
-  mode?: "mp3" | "midi" | null; // New prop for mode context
+  startTime?: number | null;
+  endTime?: number | null;
+  onRulerClick?: (percentage: number) => void;
+  // buttonProps?: ButtonCommonProps;
+  currentPlaybackPercentage?: number | null;
+  mode: MusicMode | null;
 };
 
 export default function Ruler({
@@ -17,16 +19,15 @@ export default function Ruler({
   startTime = null,
   endTime = null,
   onRulerClick,
-  currentPlaybackPercentage, // Destructure new prop
-  mode, // Destructure new prop
-}: RulerProps) {
+  currentPlaybackPercentage,
+  mode,
+}: // buttonProps = {
+//   hidden: true,
+// },
+RulerProps) {
   const formatTimeValue = (value: number | null) => {
     if (value === null) return "N/A";
-    // Assuming ticks for midi, seconds for mp3
-    if (mode === "mp3") {
-      return value.toFixed(2); // Format seconds
-    }
-    return value; // Keep ticks as is
+    return mode === "mp3" ? value.toFixed(2) : value;
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -43,40 +44,48 @@ export default function Ruler({
     }
   };
 
-  return (
-    <div
-      className="relative w-full h-0.5 opacity-45 cursor-pointer" // Added cursor-pointer
-      style={{
-        backgroundImage: `
-          repeating-linear-gradient(to right, black 0, black 1px, transparent 1px, transparent 10px),
-          repeating-linear-gradient(to right, black 0, black 2px, transparent 2px, transparent 50px)
-        `,
-        backgroundSize: "10px 100%, 50px 100%",
-      }}
-      onClick={handleClick} // Added onClick handler
-    >
-      {/* Playback Indicator (Running Circle) */}
-      {currentPlaybackPercentage !== null && (
-        <div
-          className="absolute w-3 h-3 rounded-full bg-red-500 border border-white"
-          style={{
-            left: `${currentPlaybackPercentage}%`,
-            top: "-0.5rem", // Adjust vertical position to be on the ruler line
-            transform: "translateX(-50%)", // Center the circle on the percentage
-            zIndex: 20, // Ensure it's on top
-          }}
-        ></div>
-      )}
+  const ticks = Array.from(
+    { length: Math.floor(max / step) + 1 },
+    (_, i) => i * step
+  );
 
-      {/* Start Time Label */}
+  // useEffect(() => {}, [buttonProps.hidden]);
+  return (
+    <div className="relative w-full" onClick={handleClick}>
+      <div className="relative h-[1px] rounded-md bg-gray-200 shadow-inner">
+        {ticks.map((tick, i) => (
+          <div
+            key={i}
+            className={`absolute h-1 w-[1px] bg-gray-400`}
+            style={{
+              left: `${(tick / max) * 100}%`,
+              transform: "translateX(-50%)",
+              opacity: i % 2 === 0 ? 1 : 0.5,
+            }}
+          ></div>
+        ))}
+
+        {currentPlaybackPercentage !== null && (
+          <div
+            className="absolute w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-lg"
+            style={{
+              left: `${currentPlaybackPercentage}%`,
+              top: "-0.5rem",
+              transform: "translateX(-50%)",
+              zIndex: 20,
+            }}
+          ></div>
+        )}
+      </div>
+
       {startTime !== null && (
-        <div className="text-[8px] absolute top-full -left-2 mt-2 whitespace-nowrap">
+        <div className="text-[8px] absolute top-1 -left-2 mt-2 text-gray-600 whitespace-nowrap">
           {formatTimeValue(startTime)}
         </div>
       )}
-      {/* End Time Label */}
+
       {endTime !== null && (
-        <div className="text-[8px] absolute top-full right-1 mt-2 whitespace-nowrap transform translate-x-1/2">
+        <div className="text-[8px] absolute top-1 right-1 mt-2 text-gray-600 whitespace-nowrap transform translate-x-1/2">
           {formatTimeValue(endTime)}
         </div>
       )}

@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Modal } from "../common/modal";
-import LyricsCharacter, {
-  LyricsCharacterStyle,
-} from "../lyrics/lyrics-character";
+import { LyricsCharacterStyle } from "../lyrics/lyrics-character";
 import { MidiPlayerRef } from "../../modules/js-synth";
 import { MusicMode } from "../../types/type";
+import { LyricsRangeArray } from "../../lib/lyrics/lyrics-mapping";
+import { ISentence } from "../../lib/lyrics/types";
+import LyricsPlayer from "../../lib/lyrics";
 
 type Props = {
+  lyricsProcessed: LyricsRangeArray<ISentence>;
   timestamps: number[];
   lyrics: string[][];
   mode: MusicMode;
@@ -22,6 +23,7 @@ type ProcessedWord = {
 };
 
 const PreviewModal: React.FC<Props> = ({
+  lyricsProcessed,
   timestamps,
   lyrics,
   mode,
@@ -99,59 +101,13 @@ const PreviewModal: React.FC<Props> = ({
     activeColor: { color: "red", colorBorder: "#00005E" },
     fontSize: 48,
   };
-
-  if (processedLyrics.length === 0) return null;
-
   return (
-    <Modal title="Karaoke Preview" onClose={onClose}>
-      <div className="overflow-y-auto p-4 bg-slate-900 text-center font-semibold">
-        <div className="flex flex-col justify-center items-center h-full min-h-[300px]">
-          {processedLyrics.map((line, lineIndex) => (
-            <div
-              key={lineIndex}
-              className="flex flex-row flex-wrap justify-center my-2"
-            >
-              {line.map((word, wordIndex) => {
-                const { text, startTime, endTime } = word;
-
-                let durationInSeconds = 0;
-                if (mode === "mp3") {
-                  durationInSeconds = endTime - startTime;
-                } else {
-                  durationInSeconds = convertTickDurationToSeconds(
-                    endTime - startTime
-                  );
-                }
-
-                let status: "inactive" | "active" | "completed" = "inactive";
-                if (currentTime >= startTime && currentTime < endTime) {
-                  status = "active";
-                } else if (currentTime >= endTime) {
-                  status = "completed";
-                }
-
-                return (
-                  <div
-                    key={wordIndex}
-                    className="flex flex-col text-white text-[8px]"
-                  >
-                    <LyricsCharacter
-                      lyr={text}
-                      status={status}
-                      duration={Math.max(0, durationInSeconds)}
-                      fontSize={textStyle.fontSize}
-                      color={textStyle.color}
-                      activeColor={textStyle.activeColor}
-                    />
-                    ​
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </Modal>
+    <div className="w-full h-56 bg-black">
+      <LyricsPlayer
+        currentTick={currentTime}
+        lyricsProcessed={lyricsProcessed}
+      ></LyricsPlayer>
+    </div>
   );
 };
 

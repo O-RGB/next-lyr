@@ -1,30 +1,27 @@
-// update/pages/index.tsx
 "use client";
 
 import React, { useRef, useMemo } from "react";
 import ControlPanel from "../components/panel/control-panel";
 import LyricsPanel from "../components/panel/lyrics-panel";
-import PreviewModal from "../components/modals/preview-modal";
-import EditLyricLineModal from "../components/modals/edit-lyric-line-modal";
-import ChordEditModal from "../components/modals/chord-edit-modal";
+import ChordEditModal from "../components/modals/chord";
 import MidiPlayer, { MidiPlayerRef } from "../modules/js-synth";
 import MetadataForm from "../components/metadata/metadata-form";
 import { useKaraokeStore } from "../store/useKaraokeStore";
+import { usePlaybackSync } from "../hooks/usePlaybackSync";
+import { MidiParseResult } from "../lib/midi-tags-decode";
+import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor";
 import {
   useKeyboardControls,
   PlayerControls,
 } from "../hooks/useKeyboardControls";
-import { usePlaybackSync } from "../hooks/usePlaybackSync";
-import { MidiParseResult } from "../lib/midi-tags-decode";
-import { ChordEvent } from "../modules/midi-klyr-parser/lib/processor";
-import TimelinePanel from "../components/panel/timeline-panel";
-import VideoPlayer, { VideoPlayerRef } from "../modules/video/video-player";
 import YoutubePlayer, {
   YouTubePlayerRef,
 } from "../modules/youtube/youtube-player";
+import VideoPlayer, { VideoPlayerRef } from "../modules/video/video-player";
+import LyricsPlayer from "../lib/lyrics";
+import EditLyricLineModal from "../components/modals/edit-lyrics/edit-lyric-line-modal";
 
 const LyrEditerPanel: React.FC = () => {
-  // --- STATE & ACTIONS from ZUSTAND ---
   const {
     mode,
     lyricsData,
@@ -33,23 +30,21 @@ const LyrEditerPanel: React.FC = () => {
     videoSrc,
     youtubeId,
     selectedLineIndex,
-    isPreviewing,
-    previewLyrics,
-    previewTimestamps,
+    lyricsProcessed,
     isEditModalOpen,
     isChordModalOpen,
     selectedChord,
     suggestedChordTick,
+    currentTime,
+    midiInfo,
     actions,
   } = useKaraokeStore();
 
-  // --- REFS ---
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<VideoPlayerRef | null>(null);
   const youtubeRef = useRef<YouTubePlayerRef | null>(null);
   const midiPlayerRef = useRef<MidiPlayerRef | null>(null);
 
-  // --- PLAYER CONTROLS INTERFACE (ฉบับแก้ไขที่ถูกต้อง) ---
   const playerControls = useMemo<PlayerControls | null>(() => {
     if (!mode) return null;
 
@@ -131,9 +126,8 @@ const LyrEditerPanel: React.FC = () => {
         }
       },
     };
-  }, [mode]); // <-- Dependency ที่ถูกต้องคือ [mode] เท่านั้น
+  }, [mode]);
 
-  // --- HANDLERS ---
   const handleStop = () => {
     playerControls?.pause();
     playerControls?.seek(0);
@@ -155,7 +149,7 @@ const LyrEditerPanel: React.FC = () => {
   };
 
   const handleEditLine = (lineIndex: number) => {
-    if (lineIndex === null) return;
+    if (lineIndex === null || midiInfo === null) return;
     const { success, preRollTime } = actions.startEditLine(lineIndex);
     if (success && playerControls) {
       playerControls.seek(preRollTime);
@@ -201,11 +195,9 @@ const LyrEditerPanel: React.FC = () => {
     actions.openChordModal(undefined, Math.round(suggestedTick));
   };
 
-  // --- HOOKS ---
   useKeyboardControls(playerControls, handleEditLine);
   usePlaybackSync(audioRef, videoRef, youtubeRef, midiPlayerRef);
 
-  // --- RENDER ---
   if (!mode) {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-100 text-slate-800">
@@ -215,25 +207,25 @@ const LyrEditerPanel: React.FC = () => {
             onClick={() => actions.setMode("mp3")}
             className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
           >
-            Start with MP3
+            Start with MP3{" "}
           </button>
           <button
             onClick={() => actions.setMode("mp4")}
             className="px-8 py-4 bg-purple-500 text-white font-bold rounded-lg shadow-lg hover:bg-purple-600 transition-all"
           >
-            Start with MP4
+            Start with MP4{" "}
           </button>
           <button
             onClick={() => actions.setMode("youtube")}
             className="px-8 py-4 bg-red-600 text-white font-bold rounded-lg shadow-lg hover:bg-red-700 transition-all"
           >
-            Start with YouTube
+            Start with YouTube{" "}
           </button>
           <button
             onClick={() => actions.setMode("midi")}
             className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-lg hover:bg-green-600 transition-all"
           >
-            Start with MIDI
+            Start with MIDI{" "}
           </button>
         </div>
       </main>
@@ -241,10 +233,10 @@ const LyrEditerPanel: React.FC = () => {
   }
 
   return (
-    <main className="flex h-screen flex-col ">
-      <div className="flex flex-col p-4 gap-4 overflow-hidden h-full">
+    <main className="flex h-[calc(100vh-36px)]">
+      <div className="flex flex-col gap-4 overflow-hidden w-full h-full p-4">
         {/* Top Section */}
-        <div className="flex-1 flex gap-4 overflow-hidden">
+        <div className="flex-1 flex gap-4 overflow-hidden h-full">
           <div className="w-[70%] h-full">
             <LyricsPanel
               onWordClick={handleWordClick}
@@ -253,7 +245,7 @@ const LyrEditerPanel: React.FC = () => {
               onRulerClick={handleRulerClick}
               onChordClick={handleChordClick}
               onAddChordClick={handleAddChordClick}
-              currentPlaybackTime={playerControls?.getCurrentTime()}
+              currentPlaybackTime={currentTime}
               mode={mode}
             />
           </div>
@@ -334,60 +326,47 @@ const LyrEditerPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* <div className="h-[200px] mt-4 flex-shrink-0">
-          <TimelinePanel />
-        </div> */}
+        {/* Real-time Preview Section */}
+        <div className="h-[250px] mt-4 flex-shrink-0 bg-black rounded-lg flex items-center justify-center">
+          {lyricsProcessed ? (
+            <LyricsPlayer
+              lyricsProcessed={lyricsProcessed}
+              currentTick={currentTime}
+            />
+          ) : (
+            <div className="text-slate-500">
+              Timing data required for preview.
+            </div>
+          )}
+        </div>
       </div>
 
-      <footer className="w-full bg-slate-800 text-white p-2 text-center text-sm shadow-inner flex-shrink-0">
-        <p>
-          <b className="text-amber-400">Up/Down: Select</b> |{" "}
-          <b className="text-amber-400">Enter: Edit Text</b> |{" "}
-          <b className="text-amber-400">Shift+Enter: Start Timing</b> |{" "}
-          <b className="text-amber-400">Space: Play/Pause</b> |{" "}
-          <b className="text-amber-400">Right: Set Time</b> |{" "}
-          <b className="text-red-400">Left: Correct</b>
-        </p>
-      </footer>
+      <EditLyricLineModal
+        open={isEditModalOpen && selectedLineIndex !== null}
+        lineWords={lyricsData.filter((w) => w.lineIndex === selectedLineIndex)}
+        onClose={actions.closeEditModal}
+        onSave={(newText) => {
+          if (selectedLineIndex === null) return;
+          actions.updateLine(selectedLineIndex, newText);
+          actions.closeEditModal();
+          handleEditLine(selectedLineIndex);
+        }}
+      />
 
-      {isPreviewing && (
-        <PreviewModal
-          lyrics={previewLyrics}
-          timestamps={previewTimestamps}
-          mode={mode}
-          audioRef={audioRef}
-          midiPlayerRef={midiPlayerRef}
-          onClose={actions.closePreview}
-        />
-      )}
-      {isEditModalOpen && selectedLineIndex !== null && (
-        <EditLyricLineModal
-          lineWords={lyricsData.filter(
-            (w) => w.lineIndex === selectedLineIndex
-          )}
-          onClose={actions.closeEditModal}
-          onSave={(newText) => {
-            actions.updateLine(selectedLineIndex, newText);
-            actions.closeEditModal();
-            handleEditLine(selectedLineIndex);
-          }}
-        />
-      )}
-      {isChordModalOpen && (
-        <ChordEditModal
-          initialChord={selectedChord || undefined}
-          suggestedTick={suggestedChordTick || undefined}
-          onClose={actions.closeChordModal}
-          onSave={(chord) => {
-            if (selectedChord) {
-              actions.updateChord(selectedChord.tick, chord);
-            } else {
-              actions.addChord(chord);
-            }
-          }}
-          onDelete={selectedChord ? actions.deleteChord : undefined}
-        />
-      )}
+      <ChordEditModal
+        open={isChordModalOpen}
+        initialChord={selectedChord || undefined}
+        suggestedTick={suggestedChordTick || undefined}
+        onClose={actions.closeChordModal}
+        onSave={(chord) => {
+          if (selectedChord) {
+            actions.updateChord(selectedChord.tick, chord);
+          } else {
+            actions.addChord(chord);
+          }
+        }}
+        onDelete={selectedChord ? actions.deleteChord : undefined}
+      />
     </main>
   );
 };

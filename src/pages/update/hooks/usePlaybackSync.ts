@@ -2,8 +2,8 @@
 import { useEffect, RefObject } from "react";
 import { useKaraokeStore } from "../store/useKaraokeStore";
 import { MidiPlayerRef } from "../modules/js-synth";
-import { VideoPlayerRef } from "../modules/video/video-player"; // <-- Import
-import { YouTubePlayerRef } from "../modules/youtube/youtube-player"; // <-- Import
+import { VideoPlayerRef } from "../modules/video/video-player";
+import { YouTubePlayerRef } from "../modules/youtube/youtube-player";
 
 export const usePlaybackSync = (
   audioRef: RefObject<HTMLAudioElement | null>,
@@ -16,14 +16,14 @@ export const usePlaybackSync = (
     mode,
     isTimingActive,
     correctionIndex,
-    isPreviewing,
     selectedLineIndex,
     editingLineIndex,
     actions,
   } = useKaraokeStore();
 
   const syncLogic = (currentTime: number) => {
-    if (isPreviewing || (isTimingActive && correctionIndex === null)) {
+    // ลบ isPreviewing ออกไป, เหลือแค่เงื่อนไขตอนกำลังจับเวลา
+    if (isTimingActive && correctionIndex === null) {
       actions.setPlaybackIndex(null);
       return;
     }
@@ -62,7 +62,6 @@ export const usePlaybackSync = (
   }, [
     audioRef,
     mode,
-    isPreviewing,
     isTimingActive,
     correctionIndex,
     lyricsData,
@@ -86,7 +85,6 @@ export const usePlaybackSync = (
   }, [
     videoRef,
     mode,
-    isPreviewing,
     isTimingActive,
     correctionIndex,
     lyricsData,
@@ -113,7 +111,6 @@ export const usePlaybackSync = (
       animationFrameId = requestAnimationFrame(animate);
     };
 
-    // เริ่ม loop เมื่อมีการเล่น
     const intervalId = setInterval(() => {
       if (youtubePlayer.isPlaying() && !animationFrameId) {
         animate();
@@ -127,7 +124,6 @@ export const usePlaybackSync = (
   }, [
     youtubeRef,
     mode,
-    isPreviewing,
     isTimingActive,
     correctionIndex,
     lyricsData,
@@ -150,7 +146,6 @@ export const usePlaybackSync = (
   }, [
     midiPlayerRef,
     mode,
-    isPreviewing,
     isTimingActive,
     correctionIndex,
     lyricsData,

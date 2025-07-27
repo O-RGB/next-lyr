@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { Modal } from "../common/modal";
-import { Button } from "../common/button";
-import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor"; // Corrected import path for ChordEvent
+import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
+import ModalCommon from "../../common/modal";
+import ButtonCommon from "../../common/button";
 
 type Props = {
-  initialChord?: ChordEvent; // Optional for adding new chords
-  suggestedTick?: number; // For new chord when clicking ruler
+  initialChord?: ChordEvent;
+  suggestedTick?: number;
   onClose: () => void;
   onSave: (chord: ChordEvent) => void;
-  onDelete?: (tick: number) => void; // Optional for deleting existing chords
+  onDelete?: (tick: number) => void;
+  open?: boolean;
 };
 
 export default function ChordEditModal({
@@ -17,6 +18,7 @@ export default function ChordEditModal({
   onClose,
   onSave,
   onDelete,
+  open = false,
 }: Props) {
   const [chordText, setChordText] = useState(initialChord?.chord || "");
   const [tickValue, setTickValue] = useState(
@@ -61,7 +63,11 @@ export default function ChordEditModal({
   };
 
   return (
-    <Modal title={isEditing ? "Edit Chord" : "Add New Chord"} onClose={onClose}>
+    <ModalCommon
+      title={isEditing ? "Edit Chord" : "Add New Chord"}
+      onClose={onClose}
+      open={open}
+    >
       <div className="space-y-4">
         <div>
           <label
@@ -100,26 +106,26 @@ export default function ChordEditModal({
         </div>
         <div className="flex justify-between gap-3 pt-2">
           {isEditing && onDelete && (
-            <Button
+            <ButtonCommon
               onClick={handleDelete}
               className="px-4 py-2 bg-red-600 text-white hover:bg-red-700"
             >
               Delete
-            </Button>
+            </ButtonCommon>
           )}
           <div className="flex gap-3 ml-auto">
-            <Button onClick={onClose} className="px-4 py-2 bg-slate-200">
+            <ButtonCommon onClick={onClose} className="px-4 py-2 bg-slate-200">
               Cancel
-            </Button>
-            <Button
+            </ButtonCommon>
+            <ButtonCommon
               onClick={handleSave}
               className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
             >
               Save Changes
-            </Button>
+            </ButtonCommon>
           </div>
         </div>
       </div>
-    </Modal>
+    </ModalCommon>
   );
 }

@@ -6,9 +6,10 @@ import {
   useEffect,
   useState,
 } from "react";
-import { Button } from "../../components/common/button";
+
 import { Card } from "../../components/common/card";
 import { useKaraokeStore } from "../../store/useKaraokeStore";
+import ButtonCommon from "../../components/common/button";
 
 type Props = {
   src: string | null;
@@ -79,12 +80,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
           className="w-full rounded-lg bg-black mb-4"
           controls
         />
-        <Button
+        <ButtonCommon
           onClick={() => fileInputRef.current?.click()}
           className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
         >
           Choose Video File
-        </Button>
+        </ButtonCommon>
         <input
           type="file"
           ref={fileInputRef}

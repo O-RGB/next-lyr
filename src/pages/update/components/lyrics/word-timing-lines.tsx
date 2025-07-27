@@ -1,5 +1,6 @@
 import React from "react";
 import { LyricWordData } from "../../types/type";
+import ButtonCommon, { ButtonCommonProps } from "../common/button";
 
 type WordWithState = LyricWordData & {
   isActive: boolean;
@@ -12,12 +13,14 @@ type WordTimingLinesProps = {
   words: WordWithState[];
   lineStartTime: number | null;
   lineEndTime: number | null;
+  buttonProps: ButtonCommonProps;
 };
 
 export default function WordTimingLines({
   words,
   lineStartTime,
   lineEndTime,
+  buttonProps,
 }: WordTimingLinesProps) {
   if (!lineStartTime || !lineEndTime || lineEndTime === lineStartTime) {
     return null;
@@ -35,7 +38,7 @@ export default function WordTimingLines({
   };
 
   return (
-    <div className="absolute w-full h-[1px] bottom-2 flex items-center opacity-70">
+    <div className="absolute w-full h-[1px] bottom-2.5 flex items-center opacity-70">
       {words.map((word) => {
         if (word.start === null || word.end === null) return null;
 
@@ -74,6 +77,16 @@ export default function WordTimingLines({
           </div>
         );
       })}
+
+      <div className="absolute -bottom-3 -right-7 z-50">
+        <ButtonCommon
+          {...buttonProps}
+          circle
+          size="sm"
+          color="white"
+          variant="ghost"
+        />
+      </div>
     </div>
   );
 }

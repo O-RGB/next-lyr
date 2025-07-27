@@ -9,10 +9,10 @@ import {
 import YouTube from "react-youtube";
 import type { YouTubePlayer } from "react-youtube";
 
-import { Button } from "../../components/common/button";
 import { Card } from "../../components/common/card";
 import { useKaraokeStore } from "../../store/useKaraokeStore";
 import Input from "../../components/common/input";
+import ButtonCommon from "../../components/common/button";
 
 type Props = {
   youtubeId: string | null;
@@ -86,12 +86,12 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
             placeholder="Enter YouTube URL"
             className="w-full p-2 border rounded-md"
           />
-          <Button
+          <ButtonCommon
             onClick={() => onUrlChange(url)}
             className="p-2 bg-red-500 text-white rounded-md hover:bg-red-600"
           >
             Load
-          </Button>
+          </ButtonCommon>
         </div>
       </Card>
     );

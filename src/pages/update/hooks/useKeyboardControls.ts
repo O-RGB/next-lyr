@@ -22,6 +22,7 @@ export const useKeyboardControls = (
     correctionIndex,
     currentIndex,
     editingLineIndex,
+    midiInfo
   } = useKaraokeStore();
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export const useKeyboardControls = (
         return;
       }
 
-      if (e.code === "Space") {
+      if (e.code === "Space" && midiInfo) {
         e.preventDefault();
         if (player.isPlaying()) {
           player.pause();

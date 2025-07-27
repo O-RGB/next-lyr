@@ -51,7 +51,7 @@ export default function MidiEditorComponent() {
       const newLyricsData: MidiEditer.LyricEvent[][] = JSON.parse(lyricsJson);
       const newChordsData: MidiEditer.ChordEvent[] = JSON.parse(chordsJson);
 
-      const newMidiBuffer = MidiEditer.build({
+      const newMidiBuffer = MidiEditer.buildModifiedMidi({
         originalMidiData: parsedData.midiData,
         newSongInfo,
         newLyricsData,

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import ButtonCommon from "../button/button";
 import { IOptions } from "@/types/common.type";
+import ButtonCommon from "@/pages/update/components/common/button";
 
 interface DropdownProps {
   children?: React.ReactNode;

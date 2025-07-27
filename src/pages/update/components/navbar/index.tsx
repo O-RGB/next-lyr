@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import NavBarMemu from "./navbar-menu";
 import { IMenusType } from "./navbar.type";
-import SelectMusicModal from "@/modals/select-music/select-music";
+import SelectMusicModal from "@/pages/update/components/modals/select-music/select-music";
+import ReadLyricsModal from "@/pages/update/components/modals/read-lyrics";
 
 interface HandleNavbarModalProps {}
 
@@ -16,6 +17,10 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
   };
   return (
     <>
+      <ReadLyricsModal
+        open={modal === "LYRICS_ADD"}
+        onClose={onCloseModal}
+      ></ReadLyricsModal>
       {/* <ReadLyricModal
         open={modal === "LYRICS_ADD"}
         onClose={onCloseModal}

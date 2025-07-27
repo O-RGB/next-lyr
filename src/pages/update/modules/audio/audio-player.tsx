@@ -1,9 +1,9 @@
 // update/modules/audio/audio-player.tsx
 import { useState, useEffect, RefObject } from "react";
 import { useKaraokeStore } from "../../store/useKaraokeStore"; // <-- import store
-import { Button } from "../../components/common/button";
 import { Card } from "../../components/common/card";
 import { BsPlay, BsPause, BsStop } from "react-icons/bs";
+import ButtonCommon from "../../components/common/button";
 
 type Props = {
   src: string | null;
@@ -106,21 +106,21 @@ export default function AudioPlayer({
       </div>
       <audio ref={audioRef} src={src || ""} controls className="w-full" />
       <div className="flex justify-center items-center gap-2 mt-3">
-        <Button onClick={onPlay} disabled={isPlaying}>
+        <ButtonCommon onClick={onPlay} disabled={isPlaying}>
           <BsPlay className="mr-2 h-4 w-4" /> Play
-        </Button>
-        <Button onClick={onPause} disabled={!isPlaying}>
+        </ButtonCommon>
+        <ButtonCommon onClick={onPause} disabled={!isPlaying}>
           <BsPause className="mr-2 h-4 w-4" /> Pause
-        </Button>
-        <Button onClick={onStop}>
+        </ButtonCommon>
+        <ButtonCommon onClick={onStop}>
           <BsStop className="mr-2 h-4 w-4" /> Stop
-        </Button>
+        </ButtonCommon>
       </div>
       <div className="flex justify-center items-center gap-2 mt-3">
         {[0.75, 1, 1.5].map((speed) => (
-          <Button key={speed} onClick={() => handleSpeedChange(speed)}>
+          <ButtonCommon key={speed} onClick={() => handleSpeedChange(speed)}>
             {speed}x
-          </Button>
+          </ButtonCommon>
         ))}
       </div>
     </Card>

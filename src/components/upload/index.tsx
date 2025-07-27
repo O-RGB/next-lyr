@@ -6,25 +6,40 @@ interface UploadProps {
   onRemove?: (file: File) => void;
   accept?: string;
   multiple?: boolean;
-  maxSize?: number; // in MB
+  maxSize?: number;
   disabled?: boolean;
   className?: string;
   icon?: React.ReactNode;
+  mode?: "dropzone" | "button";
+  customNode?: React.ReactNode;
+  preview?: boolean;
 }
 
 interface FileItemProps {
   file: File;
   onRemove: (file: File) => void;
+  preview?: boolean;
 }
 
-const FileItem: React.FC<FileItemProps> = ({ file, onRemove }) => {
-  // Convert bytes to MB
+const FileItem: React.FC<FileItemProps> = ({ file, onRemove, preview }) => {
   const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+  const isImage = file.type.startsWith("image/");
 
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-      <div className="flex items-center gap-2">
-        <MdFilePresent className="text-blue-500 text-xl" />
+      <div className="flex items-center gap-3">
+        {preview && isImage ? (
+          <img
+            src={URL.createObjectURL(file)}
+            alt={file.name}
+            className="w-12 h-12 object-cover rounded-md border"
+            onLoad={(e) =>
+              URL.revokeObjectURL((e.target as HTMLImageElement).src)
+            }
+          />
+        ) : (
+          <MdFilePresent className="text-blue-500 text-xl" />
+        )}
         <div>
           <p className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
             {file.name}
@@ -47,10 +62,13 @@ const Upload: React.FC<UploadProps> = ({
   onRemove,
   accept,
   multiple = false,
-  maxSize, // Default 10MB
+  maxSize,
   disabled = false,
   className = "",
   icon,
+  mode = "dropzone",
+  customNode,
+  preview = false,
 }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,18 +80,14 @@ const Upload: React.FC<UploadProps> = ({
       setError(null);
 
       const validFiles = Array.from(newFiles).filter((file) => {
-        // Check file size
-        if (maxSize ? file.size > maxSize * 1024 * 1024 : false) {
+        if (maxSize && file.size > maxSize * 1024 * 1024) {
           setError(`File size should not exceed ${maxSize}MB`);
           return false;
         }
-
-        // Check file type if accept prop is provided
         if (accept && !file.type.match(accept.replace(/,/g, "|"))) {
-          setError(`Invalid file type. Accepted types: ${accept}`);
+          setError(`Invalid file type. Accepted: ${accept}`);
           return false;
         }
-
         return true;
       });
 
@@ -86,97 +100,107 @@ const Upload: React.FC<UploadProps> = ({
     [accept, maxSize, multiple, files, onChange]
   );
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!disabled) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (!disabled) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  const handleRemove = (fileToRemove: File) => {
-    const newFiles = files.filter((file) => file !== fileToRemove);
-    setFiles(newFiles);
-    onRemove?.(fileToRemove);
-    onChange?.(newFiles);
-  };
-
-  const handleClick = () => {
+  const openFileDialog = () => {
     if (!disabled && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!disabled) handleFiles(e.dataTransfer.files);
+  };
+
+  const handleRemove = (fileToRemove: File) => {
+    const newFiles = files.filter((f) => f !== fileToRemove);
+    setFiles(newFiles);
+    onRemove?.(fileToRemove);
+    onChange?.(newFiles);
+  };
+
+  const renderDropzone = () => (
+    <div
+      className={`
+        relative border-2 border-dashed rounded-lg p-6 transition-all duration-200
+        ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300"}
+        ${
+          disabled
+            ? "opacity-50 cursor-not-allowed"
+            : "cursor-pointer hover:border-blue-500"
+        }
+      `}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!disabled) setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+      onClick={openFileDialog}
+    >
+      {icon || <MdCloudUpload className="text-4xl text-blue-500" />}
+      <p className="text-gray-700 font-medium text-center">
+        Drag and drop files or click to browse
+      </p>
+      <p className="text-sm text-gray-500">
+        {multiple ? "Upload multiple files" : "Upload single file"}
+        {accept && ` (${accept})`}
+      </p>
+      {maxSize && (
+        <p className="text-sm text-gray-500">Maximum file size: {maxSize}MB</p>
+      )}
+    </div>
+  );
+
+  const renderButton = () => (
+    <button
+      onClick={openFileDialog}
+      disabled={disabled}
+      className={`
+        px-4 py-2 rounded-lg bg-blue-500 text-white font-medium 
+        hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed
+      `}
+    >
+      {icon || <MdCloudUpload className="inline-block mr-2" />}
+      Upload File
+    </button>
+  );
+
   return (
     <div className={className}>
-      <div
-        className={`
-          relative
-          border-2 border-dashed
-          rounded-lg
-          p-6
-          transition-all
-          duration-200
-          ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300"}
-          ${
-            disabled
-              ? "opacity-50 cursor-not-allowed"
-              : "cursor-pointer hover:border-blue-500"
-          }
-        `}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleClick}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
-          accept={accept}
-          multiple={multiple}
-          disabled={disabled}
-        />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => e.target.files && handleFiles(e.target.files)}
+        accept={accept}
+        multiple={multiple}
+        disabled={disabled}
+      />
 
-        <div className="flex flex-col items-center gap-2">
-          {icon ? icon : <MdCloudUpload className="text-4xl text-blue-500" />}
-          <p className="text-gray-700 font-medium text-center">
-            Drag and drop your files here or click to browse
-          </p>
-          <p className="text-sm text-gray-500">
-            {multiple ? "Upload multiple files" : "Upload single file"}
-            {accept && ` (${accept})`}
-          </p>
-          {maxSize && (
-            <p className="text-sm text-gray-500">
-              Maximum file size: {maxSize}MB
-            </p>
-          )}
+      {customNode ? (
+        <div onClick={openFileDialog} className="cursor-pointer">
+          {customNode}
         </div>
-      </div>
+      ) : mode === "dropzone" ? (
+        renderDropzone()
+      ) : (
+        renderButton()
+      )}
 
       {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
 
-      {files.length > 0 && (
+      {preview && files.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">
-          {files.map((file, index) => (
+          {files.map((file, idx) => (
             <FileItem
-              key={`${file.name}-${index}`}
+              key={`${file.name}-${idx}`}
               file={file}
               onRemove={handleRemove}
+              preview={preview}
             />
           ))}
         </div>

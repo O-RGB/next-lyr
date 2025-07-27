@@ -26,7 +26,7 @@ const TimelinePanel: React.FC = () => {
     chordsData,
     mode,
     midiInfo,
-    audioDuration, // <-- ดึง audioDuration จาก store
+    audioDuration,
     actions,
     currentTime,
   } = useKaraokeStore();
@@ -34,7 +34,7 @@ const TimelinePanel: React.FC = () => {
   const [clips, setClips] = useState<Clip[]>([]);
   const [zoom, setZoom] = useState(100);
   const [pixelsPerUnit, setPixelsPerUnit] = useState(PIXELS_PER_SECOND_DEFAULT);
-  const [totalTime, setTotalTime] = useState(0); // <-- ปรับค่าเริ่มต้นเป็น 0
+  const [totalTime, setTotalTime] = useState(0);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -49,20 +49,18 @@ const TimelinePanel: React.FC = () => {
   } | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
 
-  // Effect to adjust scaling based on mode and zoom
   useEffect(() => {
     const basePixels =
       mode === "midi" ? PIXELS_PER_TICK_DEFAULT : PIXELS_PER_SECOND_DEFAULT;
     setPixelsPerUnit(basePixels * (zoom / 100));
   }, [mode, zoom]);
 
-  // Effect to build clips from store data
   useEffect(() => {
     const lyricClips: Clip[] = lyricsData.map((word, index) => ({
       id: `lyric-${word.index}`,
       type: "lyrics",
       start: word.start ?? 0,
-      duration: word.length > 0 ? word.length : mode === "midi" ? 100 : 0.2, // Default duration
+      duration: word.length > 0 ? word.length : mode === "midi" ? 100 : 0.2,
       name: word.name,
       layer: 0,
       originalIndex: index,
@@ -72,7 +70,7 @@ const TimelinePanel: React.FC = () => {
       id: `chord-${chord.tick}-${index}`,
       type: "chords",
       start: chord.tick,
-      duration: mode === "midi" ? 100 : 0.2, // Default duration for chords
+      duration: mode === "midi" ? 100 : 0.2,
       name: chord.chord,
       layer: 1,
       originalIndex: index,
@@ -81,38 +79,35 @@ const TimelinePanel: React.FC = () => {
     setClips([...lyricClips, ...chordClips]);
   }, [lyricsData, chordsData, mode]);
 
-  // Effect to determine total time
   useEffect(() => {
     if (mode === "midi" && midiInfo) {
       setTotalTime(midiInfo.durationTicks);
-    } else if (mode === "mp3") {
-      // ใช้ audioDuration ที่อ่านมาจากไฟล์โดยตรง
-      // ถ้ายังไม่มี ให้ใช้ค่า fallback เป็น 180 วินาที
+    } else if (["mp3", "mp4", "youtube"].includes(mode ?? "")) {
       setTotalTime(audioDuration ?? 180);
     }
-  }, [mode, midiInfo, audioDuration]); // <-- เปลี่ยน dependency เป็น audioDuration
+  }, [mode, midiInfo, audioDuration]);
 
-  // ✅ Effect for auto-scrolling the timeline
+  // ✅ Effect for auto-scrolling the timeline (แก้ไข logic)
   useEffect(() => {
     const timelineContainer = timelineContainerRef.current;
-    if (!timelineContainer) return;
+    if (!timelineContainer || timelineContainer.clientWidth === 0) return;
 
     const playheadPositionX = currentTime * pixelsPerUnit;
     const containerWidth = timelineContainer.clientWidth;
 
-    // Calculate the desired scroll position to keep the playhead in the middle
+    // พยายามทำให้ playhead อยู่ตรงกลางเสมอ
     const targetScrollLeft = playheadPositionX - containerWidth / 2;
+    const newScrollLeft = Math.max(0, targetScrollLeft); // ไม่ให้เลื่อนไปค่าติดลบ
 
-    // Only scroll if the playhead is moving towards the center-right of the view
-    if (targetScrollLeft > timelineContainer.scrollLeft - containerWidth / 4) {
+    // เลื่อนเมื่อตำแหน่งใหม่ต่างจากเดิมพอสมควร เพื่อป้องกันการกระตุก
+    if (Math.abs(newScrollLeft - timelineContainer.scrollLeft) > 1) {
       timelineContainer.scrollTo({
-        left: targetScrollLeft,
-        behavior: "smooth", // Use 'auto' for instant scroll
+        left: newScrollLeft,
+        behavior: "smooth", // ทำให้การเลื่อนนุ่มนวล
       });
     }
   }, [currentTime, pixelsPerUnit]);
 
-  // --- Handlers for Drag & Resize ---
   const handleMouseDown = (e: React.MouseEvent, clip: Clip) => {
     e.preventDefault();
     e.stopPropagation();
@@ -165,7 +160,6 @@ const TimelinePanel: React.FC = () => {
           )
         );
       } else {
-        // left handle
         const originalEndInPixels =
           (clip.start + clip.duration) * pixelsPerUnit;
         const newStartInPixels = Math.max(
@@ -196,7 +190,6 @@ const TimelinePanel: React.FC = () => {
       if (clip.type === "lyrics") {
         actions.updateWordTiming(clip.originalIndex, newStart, newEnd);
       } else {
-        // chords
         const updatedChord = {
           ...chordsData[clip.originalIndex],
           tick: Math.round(newStart),
@@ -306,12 +299,10 @@ const TimelinePanel: React.FC = () => {
           className="relative h-full"
           style={{ width: `${totalTime * pixelsPerUnit}px`, minWidth: "100%" }}
         >
-          {/* Time Ruler */}
           <div className="h-6 w-full sticky top-0 bg-gray-700 z-20">
             {timeRulerContent}
           </div>
 
-          {/* Playhead */}
           <div
             ref={playheadRef}
             className="absolute top-0 w-0.5 bg-red-500 h-full z-30"
@@ -320,9 +311,7 @@ const TimelinePanel: React.FC = () => {
             <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></div>
           </div>
 
-          {/* Tracks */}
           <div className="relative w-full h-full pt-4">
-            {/* Lyrics Track */}
             <div className="h-16 border-b border-gray-600 relative">
               <div className="absolute left-2 -top-2 text-xs font-bold text-gray-400">
                 Lyrics
@@ -349,7 +338,6 @@ const TimelinePanel: React.FC = () => {
                 ))}
             </div>
 
-            {/* Chords Track */}
             <div className="h-16 relative">
               <div className="absolute left-2 -top-2 text-xs font-bold text-gray-400">
                 Chords

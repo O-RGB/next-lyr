@@ -1,9 +1,9 @@
 import React from "react";
-import Dropdown from "../dropdown/dropdown";
-import ButtonCommon from "../button/button";
+import Dropdown from "../common/dropdown/dropdown";
 import { BiFile } from "react-icons/bi";
 import { MdOutlineLyrics } from "react-icons/md";
 import { IMenusType } from "./navbar.type";
+import ButtonCommon from "@/pages/update/components/common/button";
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;

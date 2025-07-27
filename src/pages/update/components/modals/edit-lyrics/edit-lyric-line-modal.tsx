@@ -1,20 +1,25 @@
 import { useState, useEffect, useRef } from "react";
-import { Modal } from "../common/modal";
-import { Button } from "../common/button";
-import { LyricWordData } from "../../types/type";
+import InputCommon from "@/components/input/input";
+
+import { LyricWordData } from "@/pages/update/types/type";
+import ModalCommon from "../../common/modal";
+import ButtonCommon from "../../common/button";
+import { FaBackspace, FaSave } from "react-icons/fa";
+import { IoArrowBackCircle } from "react-icons/io5";
 
 type Props = {
+  open?: boolean;
   lineWords: LyricWordData[];
   onClose: () => void;
   onSave: (newText: string) => void;
 };
 
 export default function EditLyricLineModal({
+  open,
   lineWords,
   onClose,
   onSave,
 }: Props) {
-  const originalText = lineWords.map((w) => w.name).join(" ");
   const initialInputText = lineWords.map((w) => w.name).join("|");
 
   const [inputText, setInputText] = useState(initialInputText);
@@ -38,17 +43,29 @@ export default function EditLyricLineModal({
     }
   };
 
+  useEffect(() => {
+    setInputText(initialInputText);
+  }, [initialInputText]);
+
   return (
-    <Modal title="Edit Lyric Line" onClose={onClose}>
+    <ModalCommon
+      modalId="edit-lyrics"
+      title="Edit Lyric Line"
+      onClose={() => {
+        onClose();
+        setInputText(initialInputText);
+      }}
+      open={open ?? false}
+      cancelButtonProps={{
+        onClick: onClose,
+      }}
+      okButtonProps={{
+        onClick: handleSave,
+        children: "Save Changes",
+        icon: <FaSave></FaSave>,
+      }}
+    >
       <div className="space-y-4">
-        <div>
-          <p className="text-sm font-medium text-slate-600 mb-1">
-            Original Line:
-          </p>
-          <p className="p-3 bg-slate-200 rounded-md text-slate-800">
-            {originalText}
-          </p>
-        </div>
         <div>
           <label
             htmlFor="edit-line-input"
@@ -56,28 +73,16 @@ export default function EditLyricLineModal({
           >
             Edit (use | to separate words):
           </label>
-          <input
+          <InputCommon
             id="edit-line-input"
             ref={inputRef}
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <div className="flex justify-end gap-3 pt-2">
-          <Button onClick={onClose} className="px-4 py-2 bg-slate-200">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Save Changes
-          </Button>
-        </div>
       </div>
-    </Modal>
+    </ModalCommon>
   );
 }
