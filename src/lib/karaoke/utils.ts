@@ -8,8 +8,6 @@ export const convertCursorToTick = (
     console.error("PPQ (ticksPerBeat) cannot be zero.");
     return 0;
   }
-
-  console.log("ppq", ppq);
   const originalTick = (cursorValue * ppq) / 24;
   return originalTick;
 };

@@ -68,7 +68,7 @@ const _processLyricsForPlayer = (
 // --- STATE TYPE ---
 export interface KaraokeState {
   // Mode & Data
-  mode: MusicMode | null;
+  mode: MusicMode;
   lyricsData: LyricWordData[];
   metadata: SongInfo | null;
   audioSrc: string | null;
@@ -96,11 +96,11 @@ export interface KaraokeState {
   minChordTickRange: number | null; // Added for chord range restriction
   maxChordTickRange: number | null; // Added for chord range restriction
 
+  setMetadata: (metadata: Partial<SongInfo>) => void;
   // Actions
   actions: {
     // Mode & Data
     setMode: (mode: MusicMode) => void;
-    setMetadata: (metadata: Partial<SongInfo>) => void;
     setAudioSrc: (src: string, fileName: string) => void;
     setVideoSrc: (src: string, fileName: string) => void;
     setYoutubeId: (url: string) => void;
@@ -185,7 +185,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
   return {
     // --- INITIAL STATE ---
-    mode: null,
+    mode: "midi",
     lyricsData: [],
     metadata: null,
     audioSrc: null,
@@ -208,7 +208,8 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     suggestedChordTick: null,
     minChordTickRange: null, // Initial state
     maxChordTickRange: null, // Initial state
-
+    setMetadata: (metadata) =>
+      set({ metadata: { ...DEFAULT_SONG_INFO, ...metadata } }),
     // --- ACTIONS ---
     actions: {
       processLyricsForPlayer: () => {
@@ -269,8 +270,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           alert("Invalid YouTube URL.");
         }
       },
-      setMetadata: (metadata) =>
-        set({ metadata: { ...DEFAULT_SONG_INFO, ...metadata } }),
+
       setAudioSrc: (src, fileName) =>
         set({
           audioSrc: src,

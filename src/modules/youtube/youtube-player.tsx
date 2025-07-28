@@ -28,6 +28,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
     const actions = useKaraokeStore((state) => state.actions);
+    const setMetadata = useKaraokeStore((state) => state.setMetadata);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.playVideo(),
@@ -45,7 +46,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       const duration = event.target.getDuration();
       const videoData = event.target.getVideoData();
       actions.setAudioDuration(duration);
-      actions.setMetadata({ TITLE: videoData.title, ARTIST: videoData.author });
+      setMetadata({ TITLE: videoData.title, ARTIST: videoData.author });
     };
 
     const opts = {

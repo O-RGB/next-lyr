@@ -1,95 +1,67 @@
-import { LyricsCharacterStyle } from "@/components/lyrics/lyrics-character";
-import React, { useEffect, useRef, useState } from "react";
-import { ISentence } from "../../../lib/karaoke/lyrics/types";
-import LyricsCharacter from "./character";
+import React, { useMemo } from "react";
+import { LyricsRangeArray } from "@/lib/karaoke/lyrics/lyrics-mapping";
+import { ISentence } from "@/lib/karaoke/lyrics/types";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import { LyricsCharacterStyle } from "../lyrics-character";
+import LyricsList from "./line";
 
-interface LyricsListProps {
-  text?: string;
-  sentence?: ISentence;
-  tick: number;
-  containerWidth?: number;
-  onStarted?: () => void;
-  onCompleted?: () => void;
+interface LyricsPlayerProps {
+  lyricsProcessed: LyricsRangeArray<ISentence>;
   textStyle?: LyricsCharacterStyle;
 }
 
-const LyricsList: React.FC<LyricsListProps> = ({
-  text = "",
-  sentence,
-  tick,
-  containerWidth,
-  onStarted,
-  onCompleted,
+const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
+  lyricsProcessed,
   textStyle,
 }) => {
-  const [clipPercent, setClipPercent] = useState(0);
-  const [scale, setScale] = useState(1);
-  const textRef = useRef<HTMLDivElement>(null);
-  const eventsRef = useRef({ started: false, completed: false });
+  const currentTime = useKaraokeStore((state) => state.currentTime);
+  const chordsData = useKaraokeStore((state) => state.chordsData);
 
-  useEffect(() => {
-    eventsRef.current = { started: false, completed: false };
-  }, [text, sentence]);
+  const active = useMemo(() => {
+    if (!lyricsProcessed) return null;
+    return lyricsProcessed.search(currentTime);
+  }, [lyricsProcessed, currentTime]);
 
-  useEffect(() => {
-    if (!text || !sentence || !text.length) {
-      setClipPercent(0);
-      return;
-    }
+  const next = useMemo(() => {
+    if (!lyricsProcessed || !active) return null;
+    return lyricsProcessed.getByIndex(active.index + 1);
+  }, [lyricsProcessed, active]);
 
-    if (tick < sentence.start) {
-      setClipPercent(0);
-      return;
-    }
+  const getSentenceForTag = (tag: "top" | "bottom") => {
+    if (!active) return undefined;
+    if (active.lyrics.tag === tag) return active.lyrics.value;
+    if (next?.tag === tag) return next.value;
+    return undefined;
+  };
 
-    if (!eventsRef.current.started && onStarted) {
-      onStarted();
-      eventsRef.current.started = true;
-    }
+  const topSentence = getSentenceForTag("top");
+  const bottomSentence = getSentenceForTag("bottom");
 
-    const lastCharTime = sentence.valueName[text.length - 1] || 0;
-    if (tick >= lastCharTime) {
-      setClipPercent(100);
+  const isTopActive = active?.lyrics.tag === "top";
+  const isBottomActive = active?.lyrics.tag === "bottom";
 
-      if (!eventsRef.current.completed && onCompleted) {
-        onCompleted();
-        eventsRef.current.completed = true;
-      }
-      return;
-    }
-
-    for (let i = 0; i < text.length - 1; i++) {
-      const currentTime = sentence.valueName[i] || 0;
-      const nextTime = sentence.valueName[i + 1] || 0;
-
-      if (tick >= currentTime && tick < nextTime) {
-        const charProgress = (tick - currentTime) / (nextTime - currentTime);
-        const charPercent = i + charProgress;
-        setClipPercent((charPercent / text.length) * 100);
-        return;
-      }
-    }
-  }, [tick, text, sentence, onStarted, onCompleted]);
-
-  useEffect(() => {
-    if (textRef.current && containerWidth) {
-      const textWidth = textRef.current.scrollWidth;
-      setScale(textWidth > containerWidth ? containerWidth / textWidth : 1);
-    }
-  }, [text, containerWidth]);
+  const className = `flex items-center justify-center relative w-full h-full rounded-lg text-center overflow-auto [&::-webkit-scrollbar]:hidden duration-300`;
 
   return (
-    <div
-      ref={textRef}
-      className="px-10 w-fit"
-      style={{
-        transform: `scaleX(${scale})`,
-        transformOrigin: "center center",
-      }}
-    >
-      <LyricsCharacter clip={clipPercent} text={text} />
+    <div className={className}>
+      <div className="flex flex-col items-center justify-center text-white drop-shadow-lg w-full overflow-visible pt-4">
+        <LyricsList
+          tick={isTopActive ? currentTime : 0}
+          sentence={topSentence}
+          nextSentence={isTopActive ? next?.value : undefined}
+          chords={isTopActive ? chordsData : []}
+          textStyle={textStyle}
+        />
+        <LyricsList
+          tick={isBottomActive ? currentTime : 0}
+          sentence={bottomSentence}
+          nextSentence={isBottomActive ? next?.value : undefined}
+          chords={isBottomActive ? chordsData : []}
+          textStyle={textStyle}
+        />
+      </div>
     </div>
   );
 };
 
-export default LyricsList;
+export default LyricsPlayer;

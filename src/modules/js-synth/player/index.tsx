@@ -87,8 +87,6 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       if (player) {
         try {
           const midiDecoder = LyrEditer.parse(await file.arrayBuffer());
-          console.log(midiDecoder.info);
-
           const midiInfo = await player.loadMidi(file);
           setFileName(file.name);
           setDuration(midiInfo.durationTicks);
@@ -120,9 +118,9 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         <Upload
           customNode={
             <ButtonCommon icon={<FaFolderOpen></FaFolderOpen>}>
-              <span className="line-clamp-1">
+              <div className="line-clamp-1">
                 {fileName || "Select MIDI File"}
-              </span>
+              </div>
             </ButtonCommon>
           }
           accept=".mid,.midi"

@@ -1,4 +1,4 @@
-import InputCommon from "@/components/input/input";
+import InputCommon from "@/components/common/data-input/input";
 import React, { useState } from "react";
 
 interface MusicDetailFormProps {}

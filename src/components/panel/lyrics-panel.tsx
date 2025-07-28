@@ -33,9 +33,9 @@ export default function LyricsPanel({
 
   return (
     <Card className="flex flex-col p-4 h-full bg-gray-50 space-y-2">
-      <div className="flex justify-between">
+      {/* <div className="flex justify-between">
         <h3 className="text-lg font-semibold mb-2 ">Lyric</h3>
-      </div>
+      </div> */}
       <LyricsGrid
         lyricsData={lyricsData}
         onWordClick={onWordClick}

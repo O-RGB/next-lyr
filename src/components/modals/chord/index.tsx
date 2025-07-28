@@ -5,6 +5,9 @@ import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import InputCommon from "@/components/common/data-input/input";
 import InputNumberCommon from "@/components/common/data-input/input-number";
+import { FaSave } from "react-icons/fa";
+import { IoArrowBackCircle } from "react-icons/io5";
+import { MdDelete } from "react-icons/md";
 
 type Props = {
   initialChord?: ChordEvent;
@@ -108,21 +111,15 @@ export default function ChordEditModal({
       footer={
         <div className="flex justify-between gap-3 pt-2">
           {isEditing && onDelete && (
-            <ButtonCommon
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white hover:bg-red-700"
-            >
+            <ButtonCommon onClick={handleDelete} color="danger" icon={<MdDelete></MdDelete>}>
               Delete
             </ButtonCommon>
           )}
           <div className="flex gap-3 ml-auto">
-            <ButtonCommon onClick={onClose} className="px-4 py-2 bg-slate-200">
+            <ButtonCommon onClick={onClose} color="gray"  icon={<IoArrowBackCircle />}>
               Cancel
             </ButtonCommon>
-            <ButtonCommon
-              onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
-            >
+            <ButtonCommon onClick={handleSave} color="primary" icon={<FaSave></FaSave>}>
               Save Changes
             </ButtonCommon>
           </div>

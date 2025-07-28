@@ -1,4 +1,10 @@
-import React, { isValidElement, cloneElement, ReactNode } from "react";
+import React, {
+  isValidElement,
+  cloneElement,
+  ReactNode,
+  useEffect,
+  useRef,
+} from "react";
 import {
   FormProvider,
   Controller,
@@ -28,13 +34,13 @@ export interface FormProps<T extends FieldValues> {
   onFinish: (values: T) => void;
   children: ReactNode;
   layout?: "vertical" | "horizontal";
+  onFormChange?: (values: T) => void;
   [key: string]: any;
 }
 
 export interface FormItemProps<T extends FieldValues> {
   name: Path<T>;
   label?: string;
-
   children: (field: ControllerRenderProps<T, Path<T>>) => ReactNode;
   className?: string;
   rules?: Rule[];
@@ -114,7 +120,10 @@ function FormItem<T extends FieldValues>({
   const {
     control,
     formState: { errors },
+    trigger,
+    getValues,
   } = useFormContext<T>();
+
   const error = errors[name];
   const hasError = !!error;
   const errorMessage = error?.message as string;
@@ -150,7 +159,18 @@ function FormItem<T extends FieldValues>({
         control={control}
         rules={rhfRules}
         render={({ field }) => {
-          const inputElement = children(field);
+          const inputElement = children({
+            ...field,
+            onChange: (value: any) => {
+              field.onChange(value);
+              setTimeout(() => {
+                const formContext = control._formState;
+                if (formContext && (window as any).__formChangeCallback) {
+                  (window as any).__formChangeCallback(getValues());
+                }
+              }, 0);
+            },
+          });
 
           const styledInputElement = isValidElement(inputElement)
             ? cloneElement(inputElement, {
@@ -165,19 +185,11 @@ function FormItem<T extends FieldValues>({
             : inputElement;
 
           return (
-            <div className="relative line-clamp-1">
-              {styledInputElement}
-              {/* {hasFeedback && hasError && (
-                <div className="absolute right-2 top-6 transform -translate-y-1/2 text-red-500">
-                  <MdError className="w-3 h-3" />
-                </div>
-              )} */}
-            </div>
+            <div className="relative line-clamp-1">{styledInputElement}</div>
           );
         }}
       />
 
-      {/* ส่วนแสดง Error, Help, Success ยังคงเหมือนเดิม */}
       {hasError && errorMessage && (
         <div className="text-red-500 text-[10px] flex items-center line-clamp-1">
           <MdError className="w-3 h-3 mr-1" />
@@ -209,8 +221,25 @@ const Form: FormComponent = <T extends FieldValues>({
   onFinish,
   children,
   layout = "vertical",
+  onFormChange,
   ...rest
 }: FormProps<T>) => {
+  const onFormChangeRef = useRef(onFormChange);
+
+  useEffect(() => {
+    onFormChangeRef.current = onFormChange;
+  }, [onFormChange]);
+
+  useEffect(() => {
+    if (onFormChangeRef.current) {
+      (window as any).__formChangeCallback = onFormChangeRef.current;
+    }
+
+    return () => {
+      delete (window as any).__formChangeCallback;
+    };
+  }, []);
+
   return (
     <FormProvider {...form}>
       <form

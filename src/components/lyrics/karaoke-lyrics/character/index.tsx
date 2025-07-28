@@ -24,9 +24,8 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text }) => {
 
   return (
     <div
-      className={`text-lg`}
       style={{
-        fontSize: 40,
+        fontSize: 35,
         position: "relative",
         left: 0,
         top: 0,

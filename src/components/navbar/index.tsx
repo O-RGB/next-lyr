@@ -3,6 +3,7 @@ import NavBarMemu from "./navbar-menu";
 import { IMenusType } from "./navbar";
 import SelectMusicModal from "@/components/modals/select-music/select-music";
 import ReadLyricsModal from "@/components/modals/read-lyrics";
+import BuildNcnModal from "../modals/build-ncn";
 
 interface HandleNavbarModalProps {}
 
@@ -21,6 +22,10 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
         open={modal === "LYRICS_ADD"}
         onClose={onCloseModal}
       ></ReadLyricsModal>
+      <BuildNcnModal
+        open={modal === "SAVE_NCN"}
+        onClose={onCloseModal}
+      ></BuildNcnModal>
       {/* <ReadLyricModal
         open={modal === "LYRICS_ADD"}
         onClose={onCloseModal}
@@ -37,7 +42,6 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
         open={modal === "OPEN_MUSIC"}
         onClose={onCloseModal}
       ></SelectMusicModal>
-
       <NavBarMemu onSelectMenu={onSelectMenu}></NavBarMemu>
     </>
   );

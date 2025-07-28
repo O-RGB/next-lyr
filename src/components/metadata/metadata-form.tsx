@@ -1,5 +1,3 @@
-import ButtonCommon from "../common/button";
-import { FaSave } from "react-icons/fa";
 import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
@@ -11,7 +9,7 @@ import {
   SongInfo,
   vocalChannelOption,
 } from "@/modules/midi-klyr-parser/lib/processor";
-import { useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
 
@@ -22,8 +20,17 @@ type Props = {
 
 export default function MetadataForm({ metadata, onMetadataChange }: Props) {
   const midiInfo = useKaraokeStore((state) => state.midiInfo);
+
+  // ใช้ ref เพื่อเก็บ callback ล่าสุด
+  const onMetadataChangeRef = useRef(onMetadataChange);
+
+  // อัปเดต ref เมื่อ prop เปลี่ยน
+  useEffect(() => {
+    onMetadataChangeRef.current = onMetadataChange;
+  }, [onMetadataChange]);
+
   const initName = Form.useForm({
-    defaultValues: metadata || {
+    defaultValues: {
       TITLE: "",
       KEY: "C",
       TEMPO: "",
@@ -40,7 +47,16 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
     },
   });
 
-  useEffect(() => {
+  // ใช้ throttle/debounce เพื่อลดการเรียก callback
+  const handleFormChange = useCallback((values: Partial<SongInfo>) => {
+    console.log(values);
+    // เรียกใช้ callback จาก ref
+    if (onMetadataChangeRef.current) {
+      onMetadataChangeRef.current(values);
+    }
+  }, []); // ไม่มี dependency เพราะใช้ ref
+
+  useLayoutEffect(() => {
     if (metadata) {
       const keys = Object.keys(metadata);
       for (let index = 0; index < keys.length; index++) {
@@ -48,12 +64,14 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
         initName.setValue(data, (metadata as any)[data]);
       }
     }
-  }, [metadata]);
+  }, [metadata, initName]);
+
   return (
     <Card className="bg-white/50 p-4 rounded-lg">
       <Form
         form={initName}
-        onFinish={onMetadataChange}
+        onFinish={() => {}}
+        onFormChange={handleFormChange}
         className="flex flex-col gap-0.5"
       >
         <Form.Item<SongInfo> required name="TITLE" className="w-full">
@@ -63,7 +81,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Song Title :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <div className="flex gap-2">
@@ -75,7 +93,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
                 options={keyOption}
                 label="Key :"
                 inputSize="sm"
-              ></SelectCommon>
+              />
             )}
           </Form.Item>
           <Form.Item<SongInfo> required name="TEMPO" className="w-full">
@@ -85,7 +103,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
                 disabled={!midiInfo}
                 label="Tempo :"
                 inputSize="sm"
-              ></InputNumberCommon>
+              />
             )}
           </Form.Item>
           <Form.Item<SongInfo> required name="ARTIST_TYPE" className="w-full">
@@ -96,7 +114,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
                 options={artistTypeOption}
                 label="Gender :"
                 inputSize="sm"
-              ></SelectCommon>
+              />
             )}
           </Form.Item>
         </div>
@@ -107,7 +125,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Album :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="ARTIST" className="w-full">
@@ -117,7 +135,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Artist :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="AUTHOR" className="w-full">
@@ -127,7 +145,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Composer :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="GENRE" className="w-full">
@@ -137,7 +155,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Rhythm/Genre :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="CREATOR" className="w-full">
@@ -147,7 +165,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Creator :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="COMPANY" className="w-full">
@@ -157,7 +175,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               disabled={!midiInfo}
               label="Music Label :"
               inputSize="sm"
-            ></InputCommon>
+            />
           )}
         </Form.Item>
         <Form.Item<SongInfo> required name="LANGUAGE" className="w-full">
@@ -168,7 +186,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
               options={languageOption}
               label="Language :"
               inputSize="sm"
-            ></SelectCommon>
+            />
           )}
         </Form.Item>
         <div className="flex gap-2">
@@ -179,7 +197,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
                 disabled={!midiInfo}
                 label="Year :"
                 inputSize="sm"
-              ></InputNumberCommon>
+              />
             )}
           </Form.Item>
           <Form.Item<SongInfo> required name="VOCAL_CHANNEL" className="w-full">
@@ -190,14 +208,9 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
                 options={vocalChannelOption}
                 label="Vocal Channel :"
                 inputSize="sm"
-              ></SelectCommon>
+              />
             )}
           </Form.Item>
-        </div>
-        <div className="w-full">
-          <ButtonCommon className="w-full" type="submit" icon={<FaSave />}>
-            ตกลง
-          </ButtonCommon>
         </div>
       </Form>
     </Card>

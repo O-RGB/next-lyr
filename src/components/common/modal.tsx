@@ -104,6 +104,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
             <ButtonCommon
               color="gray"
               icon={<IoArrowBackCircle />}
+              onClick={onClose}
               {...cancelButtonProps}
             >
               {cancelButtonProps?.children ?? "Cancel"}
