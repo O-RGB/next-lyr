@@ -6,10 +6,10 @@ import { FaFile } from "react-icons/fa";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
-import Upload from "@/components/common/upload";
+import Upload from "@/components/common/data-input/upload";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
-import TextAreaCommon from "@/components/common/textarea";
+import TextareaCommon from "@/components/common/data-input/textarea";
 
 interface ReadLyricsModalProps {
   open?: boolean;
@@ -18,7 +18,7 @@ interface ReadLyricsModalProps {
 
 const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   const exText = "ตัว|อย่าง|เนื้อ|เพลง\nของ|คุณ";
-  const { actions } = useKaraokeStore();
+  const actions = useKaraokeStore((state) => state.actions);
   const [lyricsText, setLyricsText] = useState<string>(exText);
   const [openModal, setOpenModal] = useState<boolean>(false);
   const handleCloseModal = () => {
@@ -118,11 +118,11 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
           </div>
         }
       >
-        <TextAreaCommon
+        <TextareaCommon
           value={lyricsText}
           onChange={onTextChange}
           className="h-[300px] lg:h-[400px]"
-        ></TextAreaCommon>
+        ></TextareaCommon>
       </ModalCommon>
     </>
   );

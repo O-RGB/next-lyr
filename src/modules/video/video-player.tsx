@@ -29,7 +29,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
   ({ src, onFileChange }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { actions } = useKaraokeStore();
+    const actions = useKaraokeStore((state) => state.actions);
     const [isPlaying, setIsPlaying] = useState(false);
 
     useImperativeHandle(ref, () => ({

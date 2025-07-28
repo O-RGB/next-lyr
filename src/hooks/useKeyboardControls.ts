@@ -13,17 +13,15 @@ export const useKeyboardControls = (
   player: PlayerControls | null,
   onEditLine: (lineIndex: number) => void
 ) => {
-  const {
-    actions,
-    isEditModalOpen,
-    selectedLineIndex,
-    lyricsData,
-    isTimingActive,
-    correctionIndex,
-    currentIndex,
-    editingLineIndex,
-    midiInfo
-  } = useKaraokeStore();
+  const actions = useKaraokeStore((state) => state.actions);
+  const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
+  const currentIndex = useKaraokeStore((state) => state.currentIndex);
+  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+  const midiInfo = useKaraokeStore((state) => state.midiInfo);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

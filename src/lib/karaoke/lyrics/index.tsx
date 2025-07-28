@@ -1,21 +1,19 @@
 import React, { useEffect, useMemo } from "react";
 import { LyricsRangeArray } from "./lyrics-mapping";
 import { ISentence } from "./types";
-import LyricsList from "./lyrics-ui";
+import LyricsList from "../../../components/lyrics/karaoke-lyrics";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 
 interface LyricsPlayerProps {
-  currentTick: number;
   lyricsProcessed: LyricsRangeArray<ISentence>;
 }
 
-const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
-  lyricsProcessed,
-  currentTick,
-}) => {
+const LyricsPlayer: React.FC<LyricsPlayerProps> = ({ lyricsProcessed }) => {
+  const currentTime = useKaraokeStore((state) => state.currentTime);
   const active = useMemo(() => {
     if (!lyricsProcessed) return null;
-    return lyricsProcessed.search(currentTick);
-  }, [lyricsProcessed, currentTick]);
+    return lyricsProcessed.search(currentTime);
+  }, [lyricsProcessed, currentTime]);
 
   const next = useMemo(() => {
     if (!lyricsProcessed || !active) return null;
@@ -52,12 +50,12 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
     <div className={className}>
       <div className="flex flex-col gap-3 items-center justify-center text-white drop-shadow-lg w-fit overflow-hidden">
         <LyricsList
-          tick={active.lyrics.tag === "top" ? currentTick : 0}
+          tick={active.lyrics.tag === "top" ? currentTime : 0}
           sentence={active.lyrics.value}
           text={topText}
         />
         <LyricsList
-          tick={active.lyrics.tag === "bottom" ? currentTick : 0}
+          tick={active.lyrics.tag === "bottom" ? currentTime : 0}
           sentence={active.lyrics.value}
           text={bottomText}
         />

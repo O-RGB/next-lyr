@@ -3,9 +3,9 @@ import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import YouTube from "react-youtube";
 import type { YouTubePlayer } from "react-youtube";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-import Input from "../../components/common/input";
 import ButtonCommon from "../../components/common/button";
 import Card from "../../components/common/card";
+import InputCommon from "@/components/common/data-input/input";
 
 type Props = {
   youtubeId: string | null;
@@ -27,7 +27,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
-    const { actions } = useKaraokeStore();
+    const actions = useKaraokeStore((state) => state.actions);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.playVideo(),
@@ -45,7 +45,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       const duration = event.target.getDuration();
       const videoData = event.target.getVideoData();
       actions.setAudioDuration(duration);
-      actions.setMetadata({ title: videoData.title, artist: videoData.author });
+      actions.setMetadata({ TITLE: videoData.title, ARTIST: videoData.author });
     };
 
     const opts = {
@@ -73,11 +73,10 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
           </div>
         )}
         <div className="flex gap-2">
-          <Input
+          <InputCommon
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Enter YouTube URL"
-            className="w-full p-2 border rounded-md"
           />
           <ButtonCommon
             onClick={() => onUrlChange(url)}

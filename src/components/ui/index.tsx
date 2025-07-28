@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useCallback } from "react";
 import ControlPanel from "../panel/control-panel";
 import LyricsPanel from "../panel/lyrics-panel";
 import ChordEditModal from "../modals/chord";
-import MidiPlayer, { MidiPlayerRef } from "../../modules/js-synth";
+import MidiPlayer, {
+  MidiParseResult,
+  MidiPlayerRef,
+} from "../../modules/js-synth/player";
 import MetadataForm from "../metadata/metadata-form";
 import { useKaraokeStore } from "../../stores/karaoke-store";
 
-import { MidiParseResult } from "../../lib/karaoke/midi-tags-decode";
 import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor";
 import YoutubePlayer, {
   YouTubePlayerRef,
@@ -16,29 +18,28 @@ import YoutubePlayer, {
 import VideoPlayer, { VideoPlayerRef } from "../../modules/video/video-player";
 import LyricsPlayer from "../../lib/karaoke/lyrics";
 import EditLyricLineModal from "../modals/edit-lyrics/edit-lyric-line-modal";
-import { usePlaybackSync } from "@/hooks/usePlaybackSync";
-import { PlayerControls, useKeyboardControls } from "@/hooks/useKeyboardControls";
+import { PlayerControls } from "@/hooks/useKeyboardControls";
+import KeyboardRender from "./keybord-render";
 
 const LyrEditerPanel: React.FC = () => {
-  const {
-    mode,
-    lyricsData,
-    metadata,
-    audioSrc,
-    videoSrc,
-    youtubeId,
-    selectedLineIndex,
-    lyricsProcessed,
-    isEditModalOpen,
-    isChordModalOpen,
-    selectedChord,
-    suggestedChordTick,
-    minChordTickRange,
-    maxChordTickRange,
-    currentTime,
-    midiInfo,
-    actions,
-  } = useKaraokeStore();
+  const mode = useKaraokeStore((state) => state.mode);
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const metadata = useKaraokeStore((state) => state.metadata);
+  const audioSrc = useKaraokeStore((state) => state.audioSrc);
+  const videoSrc = useKaraokeStore((state) => state.videoSrc);
+  const youtubeId = useKaraokeStore((state) => state.youtubeId);
+
+  const lyricsProcessed = useKaraokeStore((state) => state.lyricsProcessed);
+  const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
+  const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
+  const selectedChord = useKaraokeStore((state) => state.selectedChord);
+  const suggestedChordTick = useKaraokeStore(
+    (state) => state.suggestedChordTick
+  );
+  const minChordTickRange = useKaraokeStore((state) => state.minChordTickRange);
+  const maxChordTickRange = useKaraokeStore((state) => state.maxChordTickRange);
+  const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const actions = useKaraokeStore((state) => state.actions);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<VideoPlayerRef | null>(null);
@@ -128,96 +129,107 @@ const LyrEditerPanel: React.FC = () => {
     };
   }, [mode]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     playerControls?.pause();
     playerControls?.seek(0);
     actions.stopTiming();
     actions.setPlaybackIndex(null);
     actions.setCurrentIndex(0);
     actions.setCorrectionIndex(null);
-  };
+  }, [playerControls, actions]);
 
-  const handleWordClick = (index: number) => {
-    const word = lyricsData.find((w) => w.index === index);
-    if (word?.start !== null && playerControls) {
-      playerControls.seek(word?.start ?? 0);
-      if (!playerControls.isPlaying()) {
+  const handleWordClick = useCallback(
+    (index: number) => {
+      const word = lyricsData.find((w) => w.index === index);
+      if (word?.start !== null && playerControls) {
+        playerControls.seek(word?.start ?? 0);
+        if (!playerControls.isPlaying()) {
+          playerControls.play();
+        }
+        actions.stopTiming();
+      }
+    },
+    [lyricsData, playerControls, actions]
+  );
+
+  const handleEditLine = useCallback(
+    (lineIndex: number) => {
+      if (lineIndex === null || midiInfo === null) return;
+      const { success, preRollTime } = actions.startEditLine(lineIndex);
+      if (success && playerControls) {
+        playerControls.seek(preRollTime);
         playerControls.play();
       }
-      actions.stopTiming();
-    }
-  };
+    },
+    [midiInfo, actions, playerControls]
+  );
 
-  const handleEditLine = (lineIndex: number) => {
-    if (lineIndex === null || midiInfo === null) return;
-    const { success, preRollTime } = actions.startEditLine(lineIndex);
-    if (success && playerControls) {
-      playerControls.seek(preRollTime);
-      playerControls.play();
-    }
-  };
-
-  const handleRulerClick = (
-    lineIndex: number,
-    percentage: number,
-    lineDuration: number
-  ) => {
-    const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
-    if (firstWordOfLine && firstWordOfLine.start !== null) {
-      const clickedTick = firstWordOfLine.start + lineDuration * percentage;
-      actions.openChordModal(undefined, Math.round(clickedTick));
-    } else {
-      actions.openChordModal(undefined, playerControls?.getCurrentTime() ?? 0);
-    }
-  };
-
-  const handleChordClick = (chord: ChordEvent) => {
-    actions.openChordModal(chord);
-  };
-
-  const handleAddChordClick = (lineIndex: number) => {
-    const wordsInLine = lyricsData.filter((w) => w.lineIndex === lineIndex);
-    const timedWordsInLine = wordsInLine.filter(
-      (w) => w.start !== null && w.end !== null
-    );
-
-    let minLineTick: number | undefined;
-    let maxLineTick: number | undefined;
-
-    if (timedWordsInLine.length > 0) {
-      minLineTick = Math.min(...timedWordsInLine.map((w) => w.start!));
-      maxLineTick = Math.max(...timedWordsInLine.map((w) => w.end!));
-    }
-
-    let suggestedTick = playerControls?.getCurrentTime() ?? 0;
-
-    if (minLineTick !== undefined && maxLineTick !== undefined) {
-      suggestedTick = Math.max(
-        minLineTick,
-        Math.min(maxLineTick, suggestedTick)
-      );
-    } else {
-      if (suggestedTick === 0) {
-        suggestedTick = 1;
+  const handleRulerClick = useCallback(
+    (lineIndex: number, percentage: number, lineDuration: number) => {
+      const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+      if (firstWordOfLine && firstWordOfLine.start !== null) {
+        const clickedTick = firstWordOfLine.start + lineDuration * percentage;
+        actions.openChordModal(undefined, Math.round(clickedTick));
+      } else {
+        actions.openChordModal(
+          undefined,
+          playerControls?.getCurrentTime() ?? 0
+        );
       }
-    }
+    },
+    [lyricsData, actions, playerControls]
+  );
 
-    actions.openChordModal(
-      undefined,
-      Math.round(suggestedTick),
-      minLineTick,
-      maxLineTick
-    );
-  };
+  const handleChordClick = useCallback(
+    (chord: ChordEvent) => {
+      actions.openChordModal(chord);
+    },
+    [actions]
+  );
 
-  useKeyboardControls(playerControls, handleEditLine);
-  usePlaybackSync(audioRef, videoRef, youtubeRef, midiPlayerRef);
+  const handleAddChordClick = useCallback(
+    (lineIndex: number) => {
+      const wordsInLine = lyricsData.filter((w) => w.lineIndex === lineIndex);
+      const timedWordsInLine = wordsInLine.filter(
+        (w) => w.start !== null && w.end !== null
+      );
+
+      let minLineTick: number | undefined;
+      let maxLineTick: number | undefined;
+
+      if (timedWordsInLine.length > 0) {
+        minLineTick = Math.min(...timedWordsInLine.map((w) => w.start!));
+        maxLineTick = Math.max(...timedWordsInLine.map((w) => w.end!));
+      }
+
+      let suggestedTick = playerControls?.getCurrentTime() ?? 0;
+
+      if (minLineTick !== undefined && maxLineTick !== undefined) {
+        suggestedTick = Math.max(
+          minLineTick,
+          Math.min(maxLineTick, suggestedTick)
+        );
+      } else {
+        if (suggestedTick === 0) {
+          suggestedTick = 1;
+        }
+      }
+
+      actions.openChordModal(
+        undefined,
+        Math.round(suggestedTick),
+        minLineTick,
+        maxLineTick
+      );
+    },
+    [lyricsData, actions, playerControls]
+  );
 
   if (!mode) {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-100 text-slate-800">
         <h1 className="text-4xl font-bold mb-8">Karaoke Maker</h1>
-        <div className="flex flex-wrap justify-center gap-4 p-4">
+        <div className="flex flex-wrap justify-center gap-2 p-4">
           <button
             onClick={() => actions.setMode("mp3")}
             className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-all"
@@ -249,10 +261,18 @@ const LyrEditerPanel: React.FC = () => {
 
   return (
     <main className="flex h-[calc(100vh-36px)]">
-      <div className="flex gap-4 overflow-hidden w-full h-full p-4">
+      <KeyboardRender
+        audioRef={audioRef}
+        handleEditLine={handleEditLine}
+        midiPlayerRef={midiPlayerRef}
+        playerControls={playerControls}
+        videoRef={videoRef}
+        youtubeRef={youtubeRef}
+      ></KeyboardRender>
+      <div className="flex gap-2 overflow-hidden w-full h-full p-4">
         {/* Top Section */}
-        <div className="w-full flex flex-col gap-4 overflow-hidden">
-          <div className="h-[80%]">
+        <div className="w-full flex flex-col gap-2 overflow-hidden">
+          <div className="h-[70%]">
             <LyricsPanel
               onWordClick={handleWordClick}
               onEditLine={handleEditLine}
@@ -260,25 +280,17 @@ const LyrEditerPanel: React.FC = () => {
               onRulerClick={handleRulerClick}
               onChordClick={handleChordClick}
               onAddChordClick={handleAddChordClick}
-              currentPlaybackTime={currentTime}
               mode={mode}
             />
           </div>
           {/* Real-time Preview Section */}
-          <div className="h-[20%] bg-black rounded-lg flex items-center justify-center">
-            {lyricsProcessed ? (
-              <LyricsPlayer
-                lyricsProcessed={lyricsProcessed}
-                currentTick={currentTime}
-              />
-            ) : (
-              <div className="text-slate-500">
-                Timing data required for preview.
-              </div>
+          <div className="h-[30%] bg-gray-400 rounded-lg flex items-center justify-center">
+            {(lyricsProcessed?.ranges.length ?? 0) > 0 && lyricsProcessed && (
+              <LyricsPlayer lyricsProcessed={lyricsProcessed} />
             )}
           </div>
         </div>
-        <div className="p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg">
+        <div className="relative p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg h-full overflow-auto">
           {mode === "mp3" && (
             <ControlPanel
               audioRef={audioRef}
@@ -293,6 +305,7 @@ const LyrEditerPanel: React.FC = () => {
               onStop={handleStop}
             />
           )}
+
           {mode === "mp4" && (
             <div className="space-y-4">
               <VideoPlayer
@@ -334,12 +347,7 @@ const LyrEditerPanel: React.FC = () => {
                   });
                 }}
                 onLyricsParsed={(data: MidiParseResult) => {
-                  if (data.info && (data.info.TITLE || data.info.ARTIST)) {
-                    actions.setMetadata({
-                      title: data.info.TITLE || metadata.title,
-                      artist: data.info.ARTIST || metadata.artist,
-                    });
-                  }
+                  actions.setMetadata(data.info);
                   actions.importParsedMidiData({
                     lyrics: data.lyrics,
                     chords: data.chords,
@@ -354,19 +362,11 @@ const LyrEditerPanel: React.FC = () => {
           )}
         </div>
       </div>
-
       <EditLyricLineModal
-        open={isEditModalOpen && selectedLineIndex !== null}
-        lineWords={lyricsData.filter((w) => w.lineIndex === selectedLineIndex)}
-        onClose={actions.closeEditModal}
-        onSave={(newText) => {
-          if (selectedLineIndex === null) return;
-          actions.updateLine(selectedLineIndex, newText);
-          actions.closeEditModal();
-          handleEditLine(selectedLineIndex);
-        }}
+        open={isEditModalOpen}
+        lyricsData={lyricsData}
+        handleEditLine={handleEditLine}
       />
-
       <ChordEditModal
         open={isChordModalOpen}
         initialChord={selectedChord || undefined}

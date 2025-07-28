@@ -1,29 +1,24 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { BiPencil, BiTrash } from "react-icons/bi";
 import { BsPlusCircle } from "react-icons/bs";
-import { ChordEvent } from "@/lib/karaoke/midi-tags-decode";
-import LyricWord from "../lyric-word";
-import Ruler from "../../common/ruler";
-import WordTimingLines from "../word-timing-lines";
-import DraggableChordTag from "./draggable-chord-tag";
-import PopConfirmCommon from "../../common/popconfrim";
-import ButtonCommon from "../../common/button";
+import LyricWord from "./word";
+import Ruler from "./ruler/ruler";
+import WordTimingLines from "../../word-timing-lines";
+import PopConfirmCommon from "../../../common/popconfrim";
+import ButtonCommon from "../../../common/button";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
+import SelectedColorLine from "./render/selected-color";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import ChordsListLine from "./chords/lists";
+import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 
 export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
   lineRef: (el: HTMLDivElement | null) => void;
   chords: ChordEvent[];
-  selectedLineIndex: number | null;
-  currentPlaybackTime: number | null | undefined;
   mode: MusicMode | null;
-  isTimingActive: boolean;
-  correctionIndex: number | null;
-  currentIndex: number;
-  editingLineIndex: number | null;
-  playbackIndex: number | null;
   midiInfo: IMidiInfo | null;
   onRulerClick: (
     lineIndex: number,
@@ -45,6 +40,8 @@ const LineRow: React.FC<LineRowProps> = ({
   midiInfo,
   ...props
 }) => {
+  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+
   const { setNodeRef } = useDroppable({
     id: `line-${lineIndex}`,
   });
@@ -58,39 +55,12 @@ const LineRow: React.FC<LineRowProps> = ({
       ? rulerEndTime - rulerStartTime
       : 0;
 
-  let currentPlaybackPercentage: number | null = null;
-  if (
-    props.currentPlaybackTime !== null &&
-    rulerStartTime !== null &&
-    rulerEndTime !== null &&
-    lineDuration > 0 &&
-    (props.currentPlaybackTime ?? 0) >= rulerStartTime &&
-    (props.currentPlaybackTime ?? 0) <= rulerEndTime
-  ) {
-    currentPlaybackPercentage =
-      (((props.currentPlaybackTime ?? 0) - rulerStartTime) / lineDuration) *
-      100;
-  }
-
-  const wordsWithState = line.map((word) => ({
-    ...word,
-    isActive:
-      (props.isTimingActive || props.correctionIndex !== null) &&
-      props.currentIndex === word.index,
-    isPendingCorrection: props.correctionIndex === word.index,
-    isEditing:
-      props.editingLineIndex === word.lineIndex && !props.isTimingActive,
-    isPlaybackHighlight: props.playbackIndex === word.index,
-  }));
-  useEffect(() => {}, []);
   return (
     <div
       data-line-index={lineIndex}
-      className={[
-        "relative flex flex-col gap-4 rounded-sm p-4",
-        props.selectedLineIndex === lineIndex ? "bg-blue-50" : "",
-      ].join(" ")}
+      className={"relative flex flex-col gap-4 rounded-sm p-4 "}
     >
+      <SelectedColorLine lineIndex={lineIndex}></SelectedColorLine>
       <div
         ref={(el: HTMLDivElement | null) => {
           lineRef(el);
@@ -99,66 +69,44 @@ const LineRow: React.FC<LineRowProps> = ({
         className="relative w-[80%] h-4"
       >
         <Ruler
+          lineIndex={lineIndex}
           startTime={rulerStartTime}
           endTime={rulerEndTime}
           onRulerClick={(percentage) =>
             props.onRulerClick(lineIndex, percentage, lineDuration)
           }
-          currentPlaybackPercentage={currentPlaybackPercentage}
           mode={props.mode}
         />
-
         <WordTimingLines
+          lineIndex={lineIndex}
           buttonProps={{
             onClick: () => props.onAddChordClick(lineIndex),
-            disabled: props.editingLineIndex !== null,
+            disabled: editingLineIndex !== null,
             title: "Add New Chord to this Line",
             icon: (
               <BsPlusCircle className="text-xs text-purple-800"></BsPlusCircle>
             ),
           }}
-          words={wordsWithState}
+          line={line}
           lineStartTime={rulerStartTime}
           lineEndTime={rulerEndTime}
+          editingLineIndex={editingLineIndex}
         />
-        {chords.length > 0 && (
-          <div className="absolute h-5 w-full -top-2 z-50">
-            {chords.map((chord, i) => {
-              const firstWordTick = rulerStartTime ?? 0;
-              const totalLineTick = lineDuration || 1;
-              const pos =
-                totalLineTick > 0
-                  ? ((chord.tick - firstWordTick) / totalLineTick) * 100
-                  : 0;
-              return (
-                <DraggableChordTag
-                  key={`${chord.tick}-${i}`}
-                  chord={chord}
-                  initialLeftPercentage={pos}
-                  onClick={() => props.onChordClick(chord)}
-                />
-              );
-            })}
-          </div>
-        )}
+        <ChordsListLine
+          chords={chords}
+          lineDuration={lineDuration}
+          onChordClick={props.onChordClick}
+          rulerStartTime={rulerStartTime}
+        ></ChordsListLine>
       </div>
-
       <div className="flex w-full justify-between items-center">
         <div className="flex flex-nowrap gap-2">
           {line.map((word) => (
             <LyricWord
+              lineIndex={lineIndex}
               key={word.index}
               wordData={word}
-              isActive={
-                (props.isTimingActive || props.correctionIndex !== null) &&
-                props.currentIndex === word.index
-              }
-              isPendingCorrection={props.correctionIndex === word.index}
-              isEditing={
-                props.editingLineIndex === word.lineIndex &&
-                !props.isTimingActive
-              }
-              isPlaybackHighlight={props.playbackIndex === word.index}
+              editingLineIndex={editingLineIndex}
               onClick={props.onWordClick}
               onUpdate={() => {}}
               onDelete={() => {}}
@@ -168,23 +116,25 @@ const LineRow: React.FC<LineRowProps> = ({
         <div className="flex items-center gap-2 ml-4">
           <ButtonCommon
             onClick={() => props.onEditLine(lineIndex)}
-            disabled={props.editingLineIndex !== null}
+            disabled={editingLineIndex !== null}
             title="Start Timing Edit (Ctrl+Enter)"
             color="white"
             circle
             variant="ghost"
             size="sm"
             icon={<BiPencil className="text-slate-600" />}
+            className="z-20"
           ></ButtonCommon>
           <PopConfirmCommon
             openbuttonProps={{
-              disabled: props.editingLineIndex !== null,
+              disabled: editingLineIndex !== null,
               title: "Delete Line",
               icon: <BiTrash></BiTrash>,
               circle: true,
               color: "danger",
               variant: "ghost",
               size: "sm",
+              className: "z-20",
             }}
             onConfirm={() => props.onDeleteLine(lineIndex)}
           ></PopConfirmCommon>

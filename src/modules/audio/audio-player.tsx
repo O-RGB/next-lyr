@@ -22,7 +22,7 @@ export default function AudioPlayer({
   onPause,
   onStop,
 }: Props) {
-  const { actions } = useKaraokeStore(); // <-- ดึง actions มาใช้
+  const actions = useKaraokeStore((state) => state.actions);
   const [currentTime, setCurrentTime] = useState("0:00");
   const [activeSpeed, setActiveSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);

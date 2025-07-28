@@ -10,7 +10,9 @@ import {
 } from "../lib/karaoke/cur-generator";
 import {
   ChordEvent,
+  DEFAULT_SONG_INFO,
   LyricEvent,
+  SongInfo,
 } from "../modules/midi-klyr-parser/lib/processor";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 
@@ -68,7 +70,7 @@ export interface KaraokeState {
   // Mode & Data
   mode: MusicMode | null;
   lyricsData: LyricWordData[];
-  metadata: { title: string; artist: string };
+  metadata: SongInfo | null;
   audioSrc: string | null;
   videoSrc: string | null;
   youtubeId: string | null;
@@ -98,7 +100,7 @@ export interface KaraokeState {
   actions: {
     // Mode & Data
     setMode: (mode: MusicMode) => void;
-    setMetadata: (metadata: { title: string; artist: string }) => void;
+    setMetadata: (metadata: Partial<SongInfo>) => void;
     setAudioSrc: (src: string, fileName: string) => void;
     setVideoSrc: (src: string, fileName: string) => void;
     setYoutubeId: (url: string) => void;
@@ -185,7 +187,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     // --- INITIAL STATE ---
     mode: null,
     lyricsData: [],
-    metadata: { title: "", artist: "" },
+    metadata: null,
     audioSrc: null,
     videoSrc: null,
     youtubeId: null,
@@ -233,7 +235,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           youtubeId: null,
           midiInfo: null,
           audioDuration: null,
-          metadata: { title: "", artist: "" },
+          metadata: null,
           lyricsData: [],
           chordsData: [],
           lyricsProcessed: undefined,
@@ -242,7 +244,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         set({
           videoSrc: src,
           audioDuration: null,
-          metadata: { title: fileName.replace(/\.[^/.]+$/, ""), artist: "" },
+          metadata: {
+            ...DEFAULT_SONG_INFO,
+            TITLE: fileName.replace(/\.[^/.]+$/, ""),
+          },
         }),
       setYoutubeId: (url) => {
         const getYouTubeId = (url: string): string | null => {
@@ -255,26 +260,33 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         if (videoId) {
           set({
             youtubeId: videoId,
-            metadata: { title: "YouTube Video", artist: "" },
+            metadata: {
+              ...DEFAULT_SONG_INFO,
+              TITLE: "YouTube Video",
+            },
           });
         } else {
           alert("Invalid YouTube URL.");
         }
       },
-      setMetadata: (metadata) => set({ metadata }),
+      setMetadata: (metadata) =>
+        set({ metadata: { ...DEFAULT_SONG_INFO, ...metadata } }),
       setAudioSrc: (src, fileName) =>
         set({
           audioSrc: src,
           audioDuration: null,
-          metadata: { title: fileName.replace(/\.[^/.]+$/, ""), artist: "" },
+          metadata: {
+            ...DEFAULT_SONG_INFO,
+            TITLE: fileName.replace(/\.[^/.]+$/, ""),
+          },
         }),
       setAudioDuration: (duration) => set({ audioDuration: duration }),
       setMidiInfo: (info) =>
         set({
           midiInfo: info,
           metadata: {
-            title: info.fileName.replace(/\.[^/.]+$/, ""),
-            artist: "",
+            ...DEFAULT_SONG_INFO,
+            TITLE: info.fileName.replace(/\.[^/.]+$/, ""),
           },
         }),
       importParsedMidiData: (data) => {

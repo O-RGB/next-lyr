@@ -1,162 +1,196 @@
 import ButtonCommon from "../common/button";
 import { FaSave } from "react-icons/fa";
-import Form from "../common/form";
-import InputCommon from "../input/input";
+import Form from "../common/data-input/form";
 import Card from "../common/card";
+import SelectCommon from "../common/data-input/select";
+import InputCommon from "../common/data-input/input";
+import {
+  artistTypeOption,
+  keyOption,
+  languageOption,
+  SongInfo,
+  vocalChannelOption,
+} from "@/modules/midi-klyr-parser/lib/processor";
+import { useEffect } from "react";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import InputNumberCommon from "../common/data-input/input-number";
 
 type Props = {
-  metadata: { title: string; artist: string };
-  // Type นี้ถูกต้องแล้ว คือรับ object ไม่ใช่ function
-  onMetadataChange: (metadata: { title: string; artist: string }) => void;
+  metadata: SongInfo | null;
+  onMetadataChange: (metadata: Partial<SongInfo>) => void;
 };
 
 export default function MetadataForm({ metadata, onMetadataChange }: Props) {
+  const midiInfo = useKaraokeStore((state) => state.midiInfo);
   const initName = Form.useForm({
-    defaultValues: {
-      nickname: undefined,
+    defaultValues: metadata || {
+      TITLE: "",
+      KEY: "C",
+      TEMPO: "",
+      ARTIST_TYPE: "M",
+      ALBUM: "",
+      ARTIST: "",
+      AUTHOR: "",
+      GENRE: "",
+      CREATOR: "",
+      COMPANY: "",
+      LANGUAGE: "THAI",
+      YEAR: "",
+      VOCAL_CHANNEL: "9",
     },
   });
+
+  useEffect(() => {
+    if (metadata) {
+      const keys = Object.keys(metadata);
+      for (let index = 0; index < keys.length; index++) {
+        const data: any = keys[index];
+        initName.setValue(data, (metadata as any)[data]);
+      }
+    }
+  }, [metadata]);
   return (
     <Card className="bg-white/50 p-4 rounded-lg">
       <Form
         form={initName}
-        onFinish={(values) => {
-          console.log("values", values, values.nickname);
-          // peerInitialize(values.nickname);
-        }}
-        className="flex flex-col gap-2"
+        onFinish={onMetadataChange}
+        className="flex flex-col gap-0.5"
       >
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="TITLE" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Song Title :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
         <div className="flex gap-2">
-          <Form.Item required name="nickname" className="w-full">
+          <Form.Item<SongInfo> required name="KEY" className="w-full">
             {(field) => (
-              <InputCommon
+              <SelectCommon
                 {...field}
-                placeholder="Key :"
-                autoFocus
+                disabled={!midiInfo}
+                options={keyOption}
+                label="Key :"
                 inputSize="sm"
-              ></InputCommon>
+              ></SelectCommon>
             )}
           </Form.Item>
-          <Form.Item required name="nickname" className="w-full">
+          <Form.Item<SongInfo> required name="TEMPO" className="w-full">
             {(field) => (
-              <InputCommon
+              <InputNumberCommon
                 {...field}
-                placeholder="Tempo :"
-                autoFocus
+                disabled={!midiInfo}
+                label="Tempo :"
                 inputSize="sm"
-              ></InputCommon>
+              ></InputNumberCommon>
             )}
           </Form.Item>
-          <Form.Item required name="nickname" className="w-full">
+          <Form.Item<SongInfo> required name="ARTIST_TYPE" className="w-full">
             {(field) => (
-              <InputCommon
+              <SelectCommon
                 {...field}
-                placeholder="M/W :"
-                autoFocus
+                disabled={!midiInfo}
+                options={artistTypeOption}
+                label="Gender :"
                 inputSize="sm"
-              ></InputCommon>
+              ></SelectCommon>
             )}
           </Form.Item>
         </div>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="ALBUM" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Album :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="ARTIST" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Artist :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="AUTHOR" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Composer :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="GENRE" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Rhythm/Genre :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="CREATOR" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Creator :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="COMPANY" className="w-full">
           {(field) => (
             <InputCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              label="Music Label :"
               inputSize="sm"
             ></InputCommon>
           )}
         </Form.Item>
-        <Form.Item required name="nickname" className="w-full">
+        <Form.Item<SongInfo> required name="LANGUAGE" className="w-full">
           {(field) => (
-            <InputCommon
+            <SelectCommon
               {...field}
-              placeholder="Title :"
-              autoFocus
+              disabled={!midiInfo}
+              options={languageOption}
+              label="Language :"
               inputSize="sm"
-            ></InputCommon>
+            ></SelectCommon>
           )}
         </Form.Item>
         <div className="flex gap-2">
-          <Form.Item required name="nickname" className="w-full">
+          <Form.Item<SongInfo> required name="YEAR" className="w-full">
             {(field) => (
-              <InputCommon
+              <InputNumberCommon
                 {...field}
-                placeholder="Key :"
-                autoFocus
+                disabled={!midiInfo}
+                label="Year :"
                 inputSize="sm"
-              ></InputCommon>
+              ></InputNumberCommon>
             )}
           </Form.Item>
-          <Form.Item required name="nickname" className="w-full">
+          <Form.Item<SongInfo> required name="VOCAL_CHANNEL" className="w-full">
             {(field) => (
-              <InputCommon
+              <SelectCommon
                 {...field}
-                placeholder="Tempo :"
-                autoFocus
+                disabled={!midiInfo}
+                options={vocalChannelOption}
+                label="Vocal Channel :"
                 inputSize="sm"
-              ></InputCommon>
+              ></SelectCommon>
             )}
           </Form.Item>
         </div>
@@ -166,42 +200,6 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           </ButtonCommon>
         </div>
       </Form>
-      {/* <div className="space-y-3">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <label
-            htmlFor="song-title"
-            className="text-right text-sm font-medium"
-          >
-            Title
-          </label>
-          <Input
-            id="song-title"
-            className="col-span-3 p-2 border rounded-md"
-            value={metadata.title}
-            onChange={(e) =>
-              onMetadataChange({ ...metadata, title: e.target.value })
-            }
-            placeholder="Song Title"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <label
-            htmlFor="song-artist"
-            className="text-right text-sm font-medium"
-          >
-            Artist
-          </label>
-          <Input
-            id="song-artist"
-            className="col-span-3 p-2 border rounded-md"
-            value={metadata.artist}
-            onChange={(e) =>
-              onMetadataChange({ ...metadata, artist: e.target.value })
-            }
-            placeholder="Artist Name"
-          />
-        </div>
-      </div> */}
     </Card>
   );
 }

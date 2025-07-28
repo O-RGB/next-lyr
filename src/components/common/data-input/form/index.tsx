@@ -126,7 +126,7 @@ function FormItem<T extends FieldValues>({
   }
 
   return (
-    <div className={`relative flex flex-col space-y-2 z-[50] ${className}`}>
+    <div className={`relative flex flex-col z-[50] ${className}`}>
       {label && (
         <label
           htmlFor={name as string}
@@ -165,13 +165,13 @@ function FormItem<T extends FieldValues>({
             : inputElement;
 
           return (
-            <div className="relative">
+            <div className="relative line-clamp-1">
               {styledInputElement}
-              {hasFeedback && hasError && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-red-500">
-                  <MdError className="w-4 h-4" />
+              {/* {hasFeedback && hasError && (
+                <div className="absolute right-2 top-6 transform -translate-y-1/2 text-red-500">
+                  <MdError className="w-3 h-3" />
                 </div>
-              )}
+              )} */}
             </div>
           );
         }}
@@ -179,19 +179,19 @@ function FormItem<T extends FieldValues>({
 
       {/* ส่วนแสดง Error, Help, Success ยังคงเหมือนเดิม */}
       {hasError && errorMessage && (
-        <div className="text-red-500 text-sm mt-1 flex items-center">
-          <MdError className="w-4 h-4 mr-1" />
+        <div className="text-red-500 text-[10px] flex items-center line-clamp-1">
+          <MdError className="w-3 h-3 mr-1" />
           {errorMessage}
         </div>
       )}
 
       {help && !hasError && (
-        <div className="text-gray-400 text-sm mt-1">{help}</div>
+        <div className="text-gray-400 text-[10px] line-clamp-1">{help}</div>
       )}
 
       {validateStatus === "success" && hasFeedback && !hasError && (
-        <div className="text-green-500 text-sm mt-1 flex items-center">
-          <MdCheckCircle className="w-4 h-4 mr-1" />
+        <div className="text-green-500 text-[10px] flex items-center line-clamp-1">
+          <MdCheckCircle className="w-3 h-3 mr-1" />
           Validation passed
         </div>
       )}

@@ -29,3 +29,8 @@ export interface IMidiInfo {
 }
 
 export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";
+
+
+export interface ISongInfo{
+
+}

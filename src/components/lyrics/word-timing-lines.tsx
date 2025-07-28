@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import ButtonCommon, { ButtonCommonProps } from "../common/button";
 import { LyricWordData } from "@/types/common.type";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 
 type WordWithState = LyricWordData & {
   isActive: boolean;
@@ -10,17 +11,21 @@ type WordWithState = LyricWordData & {
 };
 
 type WordTimingLinesProps = {
-  words: WordWithState[];
   lineStartTime: number | null;
   lineEndTime: number | null;
   buttonProps: ButtonCommonProps;
+  line: LyricWordData[];
+  editingLineIndex: number | null;
+  lineIndex: number;
 };
 
-export default function WordTimingLines({
-  words,
+function WordTimingLines({
   lineStartTime,
   lineEndTime,
   buttonProps,
+  line,
+  editingLineIndex,
+  lineIndex,
 }: WordTimingLinesProps) {
   if (!lineStartTime || !lineEndTime || lineEndTime === lineStartTime) {
     return null;
@@ -28,6 +33,41 @@ export default function WordTimingLines({
 
   const totalLineDuration = lineEndTime - lineStartTime;
   if (totalLineDuration <= 0) return null;
+
+  // ดึงค่า state จาก store มาใช้โดยตรง
+  const currentIndex = useKaraokeStore((state) => state.currentIndex);
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const playbackIndex = useKaraokeStore((state) => state.playbackIndex);
+
+  const words = useMemo<WordWithState[]>(() => {
+    return line.map((word) => {
+      // ใช้ค่า state ที่ดึงมา
+      const isActive =
+        currentIndex === word.index &&
+        (isTimingActive || correctionIndex !== null) &&
+        selectedLineIndex === lineIndex;
+
+      return {
+        ...word,
+        isActive,
+        isPendingCorrection: correctionIndex === word.index,
+        isEditing: editingLineIndex === word.lineIndex && !isTimingActive,
+        isPlaybackHighlight: playbackIndex === word.index,
+      };
+    });
+    // เพิ่มค่า state เข้าไปใน dependency array
+  }, [
+    line,
+    editingLineIndex,
+    lineIndex,
+    currentIndex,
+    isTimingActive,
+    correctionIndex,
+    selectedLineIndex,
+    playbackIndex,
+  ]);
 
   const getColorClass = (word: WordWithState) => {
     if (word.isPendingCorrection) return "bg-orange-500";
@@ -90,3 +130,5 @@ export default function WordTimingLines({
     </div>
   );
 }
+
+export default WordTimingLines;

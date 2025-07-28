@@ -1,36 +1,51 @@
 import { useState, useEffect, useRef } from "react";
-import InputCommon from "@/components/input/input";
 import ModalCommon from "../../common/modal";
 import { FaSave } from "react-icons/fa";
 import { LyricWordData } from "@/types/common.type";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import InputCommon from "@/components/common/data-input/input";
 
-type Props = {
+interface EditLyricLineModalProps {
   open?: boolean;
-  lineWords: LyricWordData[];
-  onClose: () => void;
-  onSave: (newText: string) => void;
-};
+  lyricsData: LyricWordData[];
+  handleEditLine: (lineIndex: number) => void;
+}
 
 export default function EditLyricLineModal({
   open,
-  lineWords,
-  onClose,
-  onSave,
-}: Props) {
-  const initialInputText = lineWords.map((w) => w.name).join("|");
+  lyricsData,
+  handleEditLine,
+}: EditLyricLineModalProps) {
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const actions = useKaraokeStore((state) => state.actions);
 
-  const [inputText, setInputText] = useState(initialInputText);
+  const [initialInputText, setInitialInputText] = useState<string>();
+
+  const [inputText, setInputText] = useState<string>();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const lineWord = lyricsData
+      .filter((w) => w.lineIndex === selectedLineIndex)
+      .map((w) => w.name)
+      .join("|");
+    setInitialInputText(lineWord);
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, []);
+  }, [open]);
 
   const handleSave = () => {
+    if (!inputText) return;
     if (inputText.trim()) {
-      onSave(inputText);
+      if (selectedLineIndex === null) return;
+      actions.updateLine(selectedLineIndex, inputText);
+      actions.closeEditModal();
+      handleEditLine(selectedLineIndex);
     }
+  };
+
+  const handleClose = () => {
+    actions.closeEditModal();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -49,12 +64,11 @@ export default function EditLyricLineModal({
       modalId="edit-lyrics"
       title="Edit Lyric Line"
       onClose={() => {
-        onClose();
         setInputText(initialInputText);
       }}
-      open={open ?? false}
+      open={(open ?? false) && selectedLineIndex !== null}
       cancelButtonProps={{
-        onClick: onClose,
+        onClick: handleClose,
       }}
       okButtonProps={{
         onClick: handleSave,

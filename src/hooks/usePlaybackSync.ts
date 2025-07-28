@@ -1,7 +1,6 @@
-// update/hooks/usePlaybackSync.ts
 import { useEffect, RefObject } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
-import { MidiPlayerRef } from "../modules/js-synth";
+import { MidiPlayerRef } from "../modules/js-synth/player";
 import { VideoPlayerRef } from "../modules/video/video-player";
 import { YouTubePlayerRef } from "../modules/youtube/youtube-player";
 
@@ -11,18 +10,15 @@ export const usePlaybackSync = (
   youtubeRef: RefObject<YouTubePlayerRef | null>,
   midiPlayerRef: RefObject<MidiPlayerRef | null>
 ) => {
-  const {
-    lyricsData,
-    mode,
-    isTimingActive,
-    correctionIndex,
-    selectedLineIndex,
-    editingLineIndex,
-    actions,
-  } = useKaraokeStore();
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const mode = useKaraokeStore((state) => state.mode);
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+  const actions = useKaraokeStore((state) => state.actions);
 
   const syncLogic = (currentTime: number) => {
-    // ลบ isPreviewing ออกไป, เหลือแค่เงื่อนไขตอนกำลังจับเวลา
     if (isTimingActive && correctionIndex === null) {
       actions.setPlaybackIndex(null);
       return;
@@ -57,18 +53,10 @@ export const usePlaybackSync = (
       if (!audio.paused) syncLogic(audio.currentTime);
     };
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    return () => audio.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [
-    audioRef,
-    mode,
-    isTimingActive,
-    correctionIndex,
-    lyricsData,
-    actions,
-    selectedLineIndex,
-    editingLineIndex,
-  ]);
+    const intervalId = setInterval(handleTimeUpdate, 50);
+
+    return () => clearInterval(intervalId);
+  }, [audioRef, mode, lyricsData, actions, isTimingActive, correctionIndex]);
 
   useEffect(() => {
     const videoPlayer = videoRef.current;
@@ -80,57 +68,25 @@ export const usePlaybackSync = (
       if (!video.paused) syncLogic(video.currentTime);
     };
 
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [
-    videoRef,
-    mode,
-    isTimingActive,
-    correctionIndex,
-    lyricsData,
-    actions,
-    selectedLineIndex,
-    editingLineIndex,
-  ]);
+    const intervalId = setInterval(handleTimeUpdate, 50);
+
+    return () => clearInterval(intervalId);
+  }, [videoRef, mode, lyricsData, actions, isTimingActive, correctionIndex]);
 
   useEffect(() => {
     const youtubePlayer = youtubeRef.current;
     if (!youtubePlayer || mode !== "youtube" || !youtubePlayer.isReady) return;
 
-    let animationFrameId: number | null = null;
-
-    const animate = () => {
-      if (!youtubePlayer.isPlaying()) {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-        return;
-      }
-      const currentTime = youtubePlayer.getCurrentTime();
-      actions.setCurrentTime(currentTime);
-      syncLogic(currentTime);
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
     const intervalId = setInterval(() => {
-      if (youtubePlayer.isPlaying() && !animationFrameId) {
-        animate();
+      if (youtubePlayer.isPlaying()) {
+        const currentTime = youtubePlayer.getCurrentTime();
+        actions.setCurrentTime(currentTime);
+        syncLogic(currentTime);
       }
-    }, 100);
+    }, 50);
 
-    return () => {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      clearInterval(intervalId);
-    };
-  }, [
-    youtubeRef,
-    mode,
-    isTimingActive,
-    correctionIndex,
-    lyricsData,
-    actions,
-    selectedLineIndex,
-    editingLineIndex,
-  ]);
+    return () => clearInterval(intervalId);
+  }, [youtubeRef, mode, lyricsData, actions, isTimingActive, correctionIndex]);
 
   useEffect(() => {
     const player = midiPlayerRef.current;
@@ -146,11 +102,9 @@ export const usePlaybackSync = (
   }, [
     midiPlayerRef,
     mode,
-    isTimingActive,
-    correctionIndex,
     lyricsData,
     actions,
-    selectedLineIndex,
-    editingLineIndex,
+    isTimingActive,
+    correctionIndex,
   ]);
 };

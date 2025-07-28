@@ -6,13 +6,22 @@ import React, {
   useRef,
 } from "react";
 import { FaPlay, FaPause, FaFolderOpen, FaStop } from "react-icons/fa";
-import { JsSynthEngine } from "./lib/js-synth-engine";
-import { JsSynthPlayerEngine } from "./lib/js-synth-player";
-import { MidiParseResult } from "../../lib/karaoke/midi-tags-decode";
-import * as LyrEditer from "../midi-klyr-parser/lib/processor";
-import Upload from "@/components/common/upload";
-import ButtonCommon from "../../components/common/button";
+import { JsSynthEngine } from "../lib/js-synth-engine";
+import { JsSynthPlayerEngine } from "../lib/js-synth-player";
+import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
+import Upload from "@/components/common/data-input/upload";
+import ButtonCommon from "../../../components/common/button";
+import {
+  ChordEvent,
+  LyricEvent,
+  SongInfo,
+} from "../../midi-klyr-parser/lib/processor";
 
+export interface MidiParseResult {
+  info: SongInfo;
+  lyrics: LyricEvent[][];
+  chords: ChordEvent[];
+}
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
 interface MidiPlayerProps {
@@ -31,7 +40,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const [player, setPlayer] = useState<JsSynthPlayerEngine | null>(null);
 
     const [isPlaying, setIsPlaying] = useState(false);
-    const [currentTick, setCurrentTick] = useState(0);
+    // const [currentTick, setCurrentTick] = useState(0);
     const [currentBpm, setCurrentBpm] = useState(120);
     const [duration, setDuration] = useState(0);
     const [fileName, setFileName] = useState("");
@@ -54,7 +63,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       if (!player) return;
 
       const handleTickUpdate = (tick: number, bpm: number) => {
-        setCurrentTick(tick);
+        // setCurrentTick(tick);
         setCurrentBpm(bpm);
         onTickChange?.(tick);
       };
@@ -63,7 +72,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       player.addEventListener("tickupdate", handleTickUpdate);
       player.addEventListener("statechange", handleStateChange);
 
-      setCurrentTick(player.currentTick);
+      // setCurrentTick(player.currentTick);
       setCurrentBpm(player.currentBpm);
       setIsPlaying(player.isPlaying);
       setDuration(player.durationTicks);
@@ -78,7 +87,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       if (player) {
         try {
           const midiDecoder = LyrEditer.parse(await file.arrayBuffer());
-          console.log(midiDecoder);
+          console.log(midiDecoder.info);
 
           const midiInfo = await player.loadMidi(file);
           setFileName(file.name);
@@ -106,27 +115,8 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const handleFileChange = (file: File) => {
       handleLoadMidiFile(file);
     };
-
-    const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!player || duration === 0) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clickPosition = (e.clientX - rect.left) / rect.width;
-      const seekTick = Math.floor(duration * clickPosition);
-      player.seek(seekTick);
-    };
-
-    const progressPercentage =
-      duration > 0 ? (currentTick / duration) * 100 : 0;
-
     return (
       <div className="bg-white/50 p-4 rounded-lg flex items-center justify-center gap-4">
-        {/* <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full flex items-center justify-center gap-2 p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition mb-4"
-        >
-          <FaFolderOpen className="h-5 w-5" />
-          <span>{fileName || "Select MIDI File"}</span>
-        </button> */}
         <Upload
           customNode={
             <ButtonCommon icon={<FaFolderOpen></FaFolderOpen>}>
@@ -145,21 +135,6 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
             }
           }}
         />
-
-        {/* <div
-          className="relative h-2 bg-gray-300 rounded-full cursor-pointer"
-          onClick={handleProgressBarClick}
-        >
-          <div
-            className="bg-blue-500 h-2 rounded-full"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div> */}
-        {/* <div className="flex justify-between text-xs font-mono mt-1">
-          <span>Tick: {currentTick}</span>
-          <span>BPM: {Math.round(currentBpm)}</span>
-          <span>Duration: {duration}</span>
-        </div> */}
 
         <div className="flex justify-center items-center gap-4">
           <button

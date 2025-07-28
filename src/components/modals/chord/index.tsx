@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
-import InputCommon from "@/components/input/input";
-import InputNumberCommon from "../../input/number";
+import InputCommon from "@/components/common/data-input/input";
+import InputNumberCommon from "@/components/common/data-input/input-number";
 
 type Props = {
   initialChord?: ChordEvent;
@@ -69,7 +69,7 @@ export default function ChordEditModal({
     onSave({ chord: chordText.trim(), tick });
   };
 
-  const handleTickChange = (tick: number | null) => {
+  const handleTickChange = (tick: number | undefined) => {
     let num = tick ?? 0;
     if (isNaN(num)) return;
 

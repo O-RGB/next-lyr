@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useKaraokeStore } from "../../stores/karaoke-store";
+import { useKaraokeStore } from "../../../stores/karaoke-store";
+import CurrentTickRuler from "./current-tick-ruler";
 
 type ClipType = "lyrics" | "chords";
 type Clip = {
@@ -16,15 +17,12 @@ const PIXELS_PER_SECOND_DEFAULT = 50;
 const PIXELS_PER_TICK_DEFAULT = 0.1;
 
 const TimelinePanel: React.FC = () => {
-  const {
-    lyricsData,
-    chordsData,
-    mode,
-    midiInfo,
-    audioDuration,
-    actions,
-    currentTime,
-  } = useKaraokeStore();
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const chordsData = useKaraokeStore((state) => state.chordsData);
+  const mode = useKaraokeStore((state) => state.mode);
+  const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const audioDuration = useKaraokeStore((state) => state.audioDuration);
+  const actions = useKaraokeStore((state) => state.actions);
 
   const [clips, setClips] = useState<Clip[]>([]);
   const [zoom, setZoom] = useState(100);
@@ -32,7 +30,6 @@ const TimelinePanel: React.FC = () => {
   const [totalTime, setTotalTime] = useState(0);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
-  const playheadRef = useRef<HTMLDivElement>(null);
 
   const [draggedClip, setDraggedClip] = useState<{
     clip: Clip;
@@ -81,24 +78,6 @@ const TimelinePanel: React.FC = () => {
       setTotalTime(audioDuration ?? 180);
     }
   }, [mode, midiInfo, audioDuration]);
-
-  useEffect(() => {
-    const timelineContainer = timelineContainerRef.current;
-    if (!timelineContainer || timelineContainer.clientWidth === 0) return;
-
-    const playheadPositionX = currentTime * pixelsPerUnit;
-    const containerWidth = timelineContainer.clientWidth;
-
-    const targetScrollLeft = playheadPositionX - containerWidth / 2;
-    const newScrollLeft = Math.max(0, targetScrollLeft);
-
-    if (Math.abs(newScrollLeft - timelineContainer.scrollLeft) > 1) {
-      timelineContainer.scrollTo({
-        left: newScrollLeft,
-        behavior: "smooth",
-      });
-    }
-  }, [currentTime, pixelsPerUnit]);
 
   const handleMouseDown = (e: React.MouseEvent, clip: Clip) => {
     e.preventDefault();
@@ -295,13 +274,10 @@ const TimelinePanel: React.FC = () => {
             {timeRulerContent}
           </div>
 
-          <div
-            ref={playheadRef}
-            className="absolute top-0 w-0.5 bg-red-500 h-full z-30"
-            style={{ left: `${currentTime * pixelsPerUnit}px` }}
-          >
-            <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></div>
-          </div>
+          <CurrentTickRuler
+            pixelsPerUnit={pixelsPerUnit}
+            timelineContainerRef={timelineContainerRef}
+          ></CurrentTickRuler>
 
           <div className="relative w-full h-full pt-4">
             <div className="h-16 border-b border-gray-600 relative">

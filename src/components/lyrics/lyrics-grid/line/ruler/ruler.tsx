@@ -1,23 +1,25 @@
+import { useKaraokeStore } from "@/stores/karaoke-store";
 import { MusicMode } from "@/types/common.type";
-import React from "react";
+import React, { useMemo } from "react";
+import CurrentRulerTick from "./current-ruler-tick";
 
 type RulerProps = {
   max?: number;
   step?: number;
   startTime?: number | null;
+  lineIndex?: number | null;
   endTime?: number | null;
   onRulerClick?: (percentage: number) => void;
-  currentPlaybackPercentage?: number | null;
   mode: MusicMode | null;
 };
 
-export default function Ruler({
+function RulerComponent({
   max = 300,
   step = 50,
   startTime = null,
+  lineIndex,
   endTime = null,
   onRulerClick,
-  currentPlaybackPercentage,
   mode,
 }: RulerProps) {
   const formatTimeValue = (value: number | null) => {
@@ -39,37 +41,32 @@ export default function Ruler({
     }
   };
 
-  const ticks = Array.from(
-    { length: Math.floor(max / step) + 1 },
-    (_, i) => i * step
+  // สร้าง tick lines ด้วย useMemo
+  const ticks = useMemo(
+    () =>
+      Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => i * step),
+    [max, step]
   );
 
-  // useEffect(() => {}, [buttonProps.hidden]);
   return (
     <div className="relative w-full" onClick={handleClick}>
       <div className="relative h-[1px] rounded-md bg-gray-200 shadow-inner">
         {ticks.map((tick, i) => (
           <div
             key={i}
-            className={`absolute h-1 w-[1px] bg-gray-400`}
+            className="absolute h-1 w-[1px] bg-gray-400"
             style={{
               left: `${(tick / max) * 100}%`,
               transform: "translateX(-50%)",
               opacity: i % 2 === 0 ? 1 : 0.5,
             }}
-          ></div>
+          />
         ))}
-
-        {currentPlaybackPercentage !== null && (
-          <div
-            className="absolute w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-lg"
-            style={{
-              left: `${currentPlaybackPercentage}%`,
-              top: "-0.5rem",
-              transform: "translateX(-50%)",
-              zIndex: 20,
-            }}
-          ></div>
+        {endTime && startTime && (
+          <CurrentRulerTick
+            endTime={endTime}
+            startTime={startTime}
+          ></CurrentRulerTick>
         )}
       </div>
 
@@ -87,3 +84,5 @@ export default function Ruler({
     </div>
   );
 }
+
+export default React.memo(RulerComponent);

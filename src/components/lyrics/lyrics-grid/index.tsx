@@ -1,5 +1,10 @@
-// update/components/lyrics/lyrics-grid/index.tsx
-import React, { useMemo, useRef, useEffect, useState } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   DndContext,
   PointerSensor,
@@ -10,17 +15,12 @@ import {
 } from "@dnd-kit/core";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
-import LineRow from "./line-row";
+import LineRow from "./line";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
+import AutoMoveToLine from "./line/render/auto-move";
 
 export interface LyricsGridProps {
   lyricsData: LyricWordData[];
-  currentIndex: number;
-  isTimingActive: boolean;
-  editingLineIndex: number | null;
-  correctionIndex: number | null;
-  playbackIndex: number | null;
-  selectedLineIndex: number | null;
   onWordClick: (index: number) => void;
   onEditLine: (lineIndex: number) => void;
   onDeleteLine: (lineIndex: number) => void;
@@ -33,13 +33,13 @@ export interface LyricsGridProps {
   ) => void;
   onChordClick: (chord: ChordEvent) => void;
   onAddChordClick: (lineIndex: number) => void;
-  currentPlaybackTime: number | null | undefined;
   mode: MusicMode | null;
   midiInfo: IMidiInfo | null;
 }
 
 const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
-  const { chordsData: chords, actions } = useKaraokeStore();
+  const chords = useKaraokeStore((state) => state.chordsData);
+  const actions = useKaraokeStore((state) => state.actions);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [draggingChord, setDraggingChord] = useState<{
     tick: number;
@@ -47,8 +47,9 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
     y: number;
   } | null>(null);
 
-  const lines = useMemo(() => {
+  const memoizedLines = useMemo(() => {
     if (!lyricsData || lyricsData.length === 0) return [];
+
     const groupedByLine: LyricWordData[][] = [];
     lyricsData.forEach((word: LyricWordData) => {
       if (!groupedByLine[word.lineIndex]) {
@@ -57,21 +58,32 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
       groupedByLine[word.lineIndex].push(word);
     });
     groupedByLine.forEach((line) => line.sort((a, b) => a.index - b.index));
-    lineRefs.current = lineRefs.current.slice(0, groupedByLine.length);
-    return groupedByLine;
-  }, [lyricsData]);
 
-  useEffect(() => {
-    if (
-      props.selectedLineIndex !== null &&
-      lineRefs.current[props.selectedLineIndex]
-    ) {
-      lineRefs.current[props.selectedLineIndex]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [props.selectedLineIndex]);
+    return groupedByLine.map((line, lineIndex) => {
+      const rulerStartTime = line[0]?.start ?? null;
+
+      const nextLine = groupedByLine[lineIndex + 1];
+      const nextLineStartTime = nextLine?.[0]?.start ?? Infinity;
+
+      const lineChords =
+        rulerStartTime !== null
+          ? chords.filter(
+              (chord: ChordEvent) =>
+                chord.tick >= rulerStartTime && chord.tick < nextLineStartTime
+            )
+          : [];
+
+      return {
+        line,
+        lineIndex,
+        lineChords,
+      };
+    });
+  }, [lyricsData, chords]);
+
+  const setLineRef = useCallback((el: HTMLDivElement | null, index: number) => {
+    lineRefs.current[index] = el;
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -97,7 +109,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
     const dropPositionX = active.rect.current.initial!.left + delta.x;
     const relativeX = dropPositionX - lineRect.left;
 
-    const lineWords = lines[targetLineIndex];
+    const lineWords = memoizedLines[targetLineIndex].line;
     const lineStartTime = lineWords[0]?.start;
     const lineEndTime = lineWords[lineWords.length - 1]?.end;
     if (lineStartTime === null || lineEndTime === null) return;
@@ -131,7 +143,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
     const dropPositionX = active.rect.current.initial!.left + delta.x;
     const relativeX = dropPositionX - lineRect.left;
 
-    const lineWords = lines[targetLineIndex];
+    const lineWords = memoizedLines[targetLineIndex].line;
     const lineStartTime = lineWords[0]?.start;
     const lineEndTime = lineWords[lineWords.length - 1]?.end;
 
@@ -155,6 +167,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
 
   return (
     <>
+      <AutoMoveToLine lineRefs={lineRefs}></AutoMoveToLine>
       <DndContext
         sensors={sensors}
         onDragMove={handleDragMove}
@@ -162,26 +175,13 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
       >
         <div className="h-full bg-white border border-slate-300 rounded-lg p-3 overflow-auto">
           <div className="flex flex-col divide-y">
-            {lines.map((line, lineIndex) => {
-              const lineChords = chords.filter((chord: ChordEvent) => {
-                const rulerStartTime = line[0]?.start;
-                if (rulerStartTime === null) return false;
-                const nextLine = lines[lineIndex + 1];
-                const nextLineStartTime =
-                  nextLine && nextLine[0]?.start !== null
-                    ? nextLine[0].start
-                    : Infinity;
-                return (
-                  chord.tick >= rulerStartTime && chord.tick < nextLineStartTime
-                );
-              });
-
+            {memoizedLines.map(({ line, lineIndex, lineChords }) => {
               return (
                 <LineRow
                   key={lineIndex}
                   line={line}
                   lineIndex={lineIndex}
-                  lineRef={(el) => (lineRefs.current[lineIndex] = el)}
+                  lineRef={(el) => setLineRef(el, lineIndex)}
                   chords={lineChords}
                   {...props}
                 />
@@ -190,7 +190,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
           </div>
         </div>
       </DndContext>
-
       {draggingChord && (
         <div
           style={{

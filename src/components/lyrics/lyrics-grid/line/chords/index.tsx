@@ -2,8 +2,8 @@
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import Tags from "../../common/tags";
-import { ChordEvent } from "@/lib/karaoke/midi-tags-decode";
+import Tags from "../../../../common/tags";
+import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 
 export interface DraggableChordTagProps {
   chord: ChordEvent;

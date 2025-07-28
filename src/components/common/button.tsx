@@ -160,7 +160,6 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
         {!isLoading && icon && iconPosition === "right" && <div>{icon}</div>}
       </>
     );
-    useEffect(() => {}, [props.hidden]);
 
     if (props.hidden) return null;
     return (

@@ -1,4 +1,4 @@
-import Upload from "@/components/common/upload";
+import Upload from "@/components/common/data-input/upload";
 import React, { useEffect, useState } from "react";
 import { SiMidi } from "react-icons/si";
 import ModalCommon from "../../common/modal";

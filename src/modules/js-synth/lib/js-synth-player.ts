@@ -2,15 +2,14 @@ import { fixMidiHeader } from "@/lib/karaoke/ncn";
 import { Synthesizer as JsSynthesizer } from "js-synthesizer";
 import { MidiData, parseMidi } from "midi-file";
 
-type TickUpdateCallback = (tick: number, bpm: number) => void; // ✅ ส่งค่า BPM ไปพร้อมกัน
+type TickUpdateCallback = (tick: number, bpm: number) => void;
 type StateChangeCallback = (isPlaying: boolean) => void;
 
 export class JsSynthPlayerEngine {
   private player: JsSynthesizer;
   private audioContext: AudioContext;
-  private animationFrameId: number | undefined = undefined;
+  private intervalId: number | undefined = undefined;
 
-  // --- Public Properties ---
   public currentTick: number = 0;
   public isPlaying: boolean = false;
   public durationTicks: number = 0;
@@ -18,7 +17,6 @@ export class JsSynthPlayerEngine {
   public ticksPerBeat: number = 480;
   public currentBpm: number = 120;
 
-  // --- Event Listeners ---
   private tickUpdateListeners: TickUpdateCallback[] = [];
   private stateChangeListeners: StateChangeCallback[] = [];
   private rawMidiFile: File | undefined = undefined;
@@ -28,7 +26,6 @@ export class JsSynthPlayerEngine {
     this.audioContext = audioContext;
   }
 
-  // --- Event Handling (ปรับปรุงให้รองรับ BPM) ---
   public addEventListener(
     event: "tickupdate",
     callback: TickUpdateCallback
@@ -69,11 +66,9 @@ export class JsSynthPlayerEngine {
     this.stateChangeListeners.forEach((cb) => cb(isPlaying));
   }
 
-  // --- Animation Loop (แก้ไขเพื่อดึง BPM) ---
-  private animationLoop = async () => {
+  private intervalLoop = async () => {
     if (!this.isPlaying) return;
 
-    // ✅ ดึงค่า Tick และ BPM พร้อมกัน
     const [tick, bpm] = await Promise.all([
       this.player.retrievePlayerCurrentTick(),
       this.player.retrievePlayerBpm(),
@@ -81,8 +76,8 @@ export class JsSynthPlayerEngine {
 
     if (tick !== undefined) {
       this.currentTick = tick;
-      if (bpm) this.currentBpm = bpm; // อัปเดต BPM
-      this.emitTickUpdate(this.currentTick, this.currentBpm); // ส่งค่าทั้งสองไปใน event
+      if (bpm) this.currentBpm = bpm;
+      this.emitTickUpdate(this.currentTick, this.currentBpm);
     }
 
     if (this.currentTick >= this.durationTicks) {
@@ -90,12 +85,9 @@ export class JsSynthPlayerEngine {
         this.seek(0);
         await this.loadMidi(this.rawMidiFile);
       }
-    } else {
-      this.animationFrameId = requestAnimationFrame(this.animationLoop);
     }
   };
 
-  // --- Player Controls (ไม่มีการเปลี่ยนแปลง) ---
   public play() {
     if (this.isPlaying || !this.midiData) return;
 
@@ -103,8 +95,8 @@ export class JsSynthPlayerEngine {
     this.player.playPlayer();
     this.isPlaying = true;
     this.emitStateChange(true);
-    // this.animationLoop();
-    this.animationFrameId = requestAnimationFrame(this.animationLoop); // <--- ต้องมีบรรทัดนี้
+
+    this.intervalId = window.setInterval(this.intervalLoop, 50); // ใช้ setInterval 50ms
   }
 
   public pause() {
@@ -112,9 +104,9 @@ export class JsSynthPlayerEngine {
     this.player.stopPlayer();
     this.isPlaying = false;
     this.emitStateChange(false);
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = undefined;
+    if (this.intervalId !== undefined) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
     }
   }
 
@@ -133,7 +125,6 @@ export class JsSynthPlayerEngine {
     });
   }
 
-  // --- Loading and Utility Methods (แก้ไขเพื่อหา BPM ที่ถูกต้อง) ---
   async loadMidi(
     resource: File
   ): Promise<{ durationTicks: number; ppq: number; bpm: number }> {
@@ -163,8 +154,6 @@ export class JsSynthPlayerEngine {
     );
     this.durationTicks = totalTicks;
 
-    // --- START: MODIFICATION ---
-    // Find initial BPM from the parsed MIDI data
     let initialBpm: number | undefined;
     for (const track of midiData.tracks) {
       for (const event of track) {
@@ -175,13 +164,11 @@ export class JsSynthPlayerEngine {
       }
       if (initialBpm) break;
     }
-    // --- END: MODIFICATION ---
 
     await this.player.resetPlayer();
     await this.player.addSMFDataToPlayer(midiBuffer);
     this.seek(0);
 
-    // Use the parsed BPM if found, otherwise fall back to the player's BPM
     const bpm = initialBpm ?? (await this.player.retrievePlayerBpm());
     if (initialBpm) {
       this.currentBpm = initialBpm;
