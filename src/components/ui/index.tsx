@@ -245,10 +245,15 @@ const LyrEditerPanel: React.FC = () => {
     [playerControls]
   );
 
-  const handleAddChordAtCurrentTime = useCallback(() => {
-    const tick = Math.round(playerControls?.getCurrentTime() ?? 0);
-    actions.openChordModal(undefined, tick);
-  }, [actions, playerControls]);
+  const handleAddChordAtCurrentTime = useCallback(
+    (setTick?: number) => {
+      const tick = setTick
+        ? setTick
+        : Math.round(playerControls?.getCurrentTime() ?? 0);
+      actions.openChordModal(undefined, tick);
+    },
+    [actions, playerControls]
+  );
 
   const handleDeleteChord = useCallback(
     (tick: number) => {

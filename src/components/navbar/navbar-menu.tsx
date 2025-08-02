@@ -1,17 +1,24 @@
+// src/components/navbar/navbar-menu.tsx
+
 import React from "react";
 import Dropdown from "../common/dropdown/dropdown";
-import { BiFile } from "react-icons/bi";
+import { BiFile, BiUndo, BiRedo } from "react-icons/bi"; // ++ เพิ่ม Icon ++
 import { MdOutlineLyrics } from "react-icons/md";
-import { IMenusType } from "./navbar";
+import { IMenusType } from "./navbar.d";
 import ButtonCommon from "@/components/common/button";
-import { FaCode, FaFile } from "react-icons/fa";
+import { FaCode } from "react-icons/fa";
 import Link from "next/link";
+import { useKaraokeStore } from "@/stores/karaoke-store"; // ++ เพิ่ม import store ++
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;
 }
 
 const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
+  // ++ ดึง actions และ history state จาก store ++
+  const { undo, redo } = useKaraokeStore((state) => state.actions);
+  const { past, future } = useKaraokeStore((state) => state.history);
+
   return (
     <div className="">
       <div className="flex justify-between px-2">
@@ -24,14 +31,6 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
           </div>
           <Dropdown
             items={[
-              // {
-              //   label: "เปิดไฟล์ (Mid)",
-              //   onClick: () => onSelectMenu?.("OPEN_MUSIC"),
-              // },
-              // {
-              //   label: "New File",
-              //   onClick: () => onSelectMenu?.("FILE_NEW"),
-              // },
               {
                 label: "บันทึก (NCN)",
                 onClick: () => onSelectMenu?.("SAVE_NCN"),
@@ -41,7 +40,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
             <ButtonCommon
               variant="ghost"
               className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-              icon={<BiFile></BiFile>}
+              icon={<BiFile />}
             >
               ไฟล์
             </ButtonCommon>
@@ -49,11 +48,34 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
           <ButtonCommon
             variant="ghost"
             className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-            icon={<MdOutlineLyrics></MdOutlineLyrics>}
+            icon={<MdOutlineLyrics />}
             onClick={() => onSelectMenu?.("LYRICS_ADD")}
           >
             เนื้อเพลง
           </ButtonCommon>
+
+          {/* ++ เพิ่มปุ่ม Undo/Redo ++ */}
+          <ButtonCommon
+            variant="ghost"
+            className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
+            icon={<BiUndo />}
+            onClick={undo}
+            disabled={past.length === 0}
+            title="ย้อนกลับ (Ctrl+Z)"
+          >
+            ย้อนกลับ
+          </ButtonCommon>
+          <ButtonCommon
+            variant="ghost"
+            className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
+            icon={<BiRedo />}
+            onClick={redo}
+            disabled={future.length === 0}
+            title="ทำซ้ำ (Ctrl+Y)"
+          >
+            ทำซ้ำ
+          </ButtonCommon>
+          {/* ++ จบส่วนปุ่ม Undo/Redo ++ */}
         </div>
         <div className="flex items-center">
           <Link href={"/lyr-decode"}>
@@ -61,7 +83,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
               color="white"
               size="sm"
               className="!p-1 !px-3"
-              icon={<FaCode></FaCode>}
+              icon={<FaCode />}
             >
               <span className="text-xs">Source Code</span>
             </ButtonCommon>

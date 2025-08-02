@@ -1,10 +1,4 @@
-import React, {
-  useMemo,
-  useRef,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -37,7 +31,19 @@ export interface LyricsGridProps {
   midiInfo: IMidiInfo | null;
 }
 
-const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
+const LyricsGrid: React.FC<LyricsGridProps> = ({
+  lyricsData,
+  onEditLine,
+  onDeleteLine,
+  onWordClick,
+  onWordUpdate,
+  onWordDelete,
+  onRulerClick,
+  onChordClick,
+  onAddChordClick,
+  mode,
+  midiInfo,
+}) => {
   const chords = useKaraokeStore((state) => state.chordsData);
   const actions = useKaraokeStore((state) => state.actions);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -47,6 +53,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
     y: number;
   } | null>(null);
 
+  // Group lyrics by line
   const memoizedLines = useMemo(() => {
     if (!lyricsData || lyricsData.length === 0) return [];
 
@@ -61,9 +68,8 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
 
     return groupedByLine.map((line, lineIndex) => {
       const rulerStartTime = line[0]?.start ?? null;
-
-      const nextLine = groupedByLine[lineIndex + 1];
-      const nextLineStartTime = nextLine?.[0]?.start ?? Infinity;
+      const nextLineStartTime =
+        groupedByLine[lineIndex + 1]?.[0]?.start ?? Infinity;
 
       const lineChords =
         rulerStartTime !== null
@@ -73,13 +79,24 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
             )
           : [];
 
-      return {
-        line,
-        lineIndex,
-        lineChords,
-      };
+      return { line, lineIndex, lineChords };
     });
   }, [lyricsData, chords]);
+
+  // Stable callbacks
+  const handleEditLine = useCallback(
+    (lineIndex: number) => {
+      onEditLine(lineIndex);
+    },
+    [onEditLine]
+  );
+
+  const handleDeleteLine = useCallback(
+    (lineIndex: number) => {
+      onDeleteLine(lineIndex);
+    },
+    [onDeleteLine]
+  );
 
   const setLineRef = useCallback((el: HTMLDivElement | null, index: number) => {
     lineRefs.current[index] = el;
@@ -87,9 +104,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
@@ -127,7 +142,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDraggingChord(null);
-
     const { active, over, delta } = event;
     if (!over || !active.data.current) return;
 
@@ -146,19 +160,12 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
     const lineWords = memoizedLines[targetLineIndex].line;
     const lineStartTime = lineWords[0]?.start;
     const lineEndTime = lineWords[lineWords.length - 1]?.end;
-
     if (lineStartTime === null || lineEndTime === null) return;
-    const lineDuration = lineEndTime - lineStartTime;
-    if (lineDuration <= 0) {
-      actions.updateChord(originalChord.tick, {
-        ...originalChord,
-        tick: lineStartTime,
-      });
-      return;
-    }
 
+    const lineDuration = lineEndTime - lineStartTime;
     const percentage = Math.max(0, Math.min(1, relativeX / lineRect.width));
     const newTick = Math.round(lineStartTime + percentage * lineDuration);
+
     actions.updateChord(originalChord.tick, {
       ...originalChord,
       tick: newTick,
@@ -167,7 +174,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
 
   return (
     <>
-      <AutoMoveToLine lineRefs={lineRefs}></AutoMoveToLine>
+      <AutoMoveToLine lineRefs={lineRefs} />
       <DndContext
         sensors={sensors}
         onDragMove={handleDragMove}
@@ -175,18 +182,25 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({ lyricsData, ...props }) => {
       >
         <div className="h-full bg-white border border-slate-300 rounded-lg p-3 overflow-auto">
           <div className="flex flex-col divide-y">
-            {memoizedLines.map(({ line, lineIndex, lineChords }) => {
-              return (
-                <LineRow
-                  key={lineIndex}
-                  line={line}
-                  lineIndex={lineIndex}
-                  lineRef={(el) => setLineRef(el, lineIndex)}
-                  chords={lineChords}
-                  {...props}
-                />
-              );
-            })}
+            {memoizedLines.map(({ line, lineIndex, lineChords }) => (
+              <LineRow
+                key={lineIndex}
+                line={line}
+                lineIndex={lineIndex}
+                lineRef={(el) => setLineRef(el, lineIndex)}
+                chords={lineChords}
+                onEditLine={handleEditLine}
+                onDeleteLine={handleDeleteLine}
+                onWordClick={onWordClick}
+                onWordUpdate={onWordUpdate}
+                onWordDelete={onWordDelete}
+                onRulerClick={onRulerClick}
+                onChordClick={onChordClick}
+                onAddChordClick={onAddChordClick}
+                mode={mode}
+                midiInfo={midiInfo}
+              />
+            ))}
           </div>
         </div>
       </DndContext>

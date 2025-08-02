@@ -131,4 +131,6 @@ function WordTimingLines({
   );
 }
 
-export default WordTimingLines;
+// vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+export default React.memo(WordTimingLines);
+// ^^^^^^^^^^ จุดแก้ไข ^^^^^^^^^^

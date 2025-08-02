@@ -10,14 +10,10 @@ interface LineActionProps {
   lineIndex: number;
 }
 
-const LineAction: React.FC<LineActionProps> = ({
-  onEditLine,
-  onDeleteLine,
-  editingLineIndex,
-  lineIndex,
-}) => {
-  return (
-    <>
+const LineAction: React.FC<LineActionProps> = React.memo(
+  ({ editingLineIndex, onEditLine, onDeleteLine, lineIndex }) => {
+    console.log("Render LineAction", lineIndex);
+    return (
       <div className="flex items-center gap-2 ml-4">
         <ButtonCommon
           onClick={() => onEditLine?.(lineIndex)}
@@ -29,12 +25,12 @@ const LineAction: React.FC<LineActionProps> = ({
           size="sm"
           icon={<BiPencil className="text-slate-600" />}
           className="z-20"
-        ></ButtonCommon>
+        />
         <PopConfirmCommon
           openbuttonProps={{
             disabled: editingLineIndex !== null,
             title: "Delete Line",
-            icon: <BiTrash></BiTrash>,
+            icon: <BiTrash />,
             circle: true,
             color: "danger",
             variant: "ghost",
@@ -42,10 +38,16 @@ const LineAction: React.FC<LineActionProps> = ({
             className: "z-20",
           }}
           onConfirm={() => onDeleteLine?.(lineIndex)}
-        ></PopConfirmCommon>
+        />
       </div>
-    </>
-  );
-};
+    );
+  },
+  (prev, next) =>
+    prev.editingLineIndex === next.editingLineIndex &&
+    prev.lineIndex === next.lineIndex &&
+    prev.onEditLine === next.onEditLine &&
+    prev.onDeleteLine === next.onDeleteLine
+);
 
+LineAction.displayName = "LineAction";
 export default LineAction;

@@ -18,7 +18,7 @@ type Props = {
   onChordClick: (chord: ChordEvent) => void;
   onAddChordClick: (lineIndex: number) => void;
   onChordBlockClick: (tick: number) => void;
-  onAddChordAtCurrentTime: (tick: number) => void;
+  onAddChordAtCurrentTime: (tick?: number) => void;
   onDeleteChord: (tick: number) => void;
   mode: MusicMode | null;
 };
@@ -66,12 +66,13 @@ export default function LyricsPanel({
             midiInfo={midiInfo}
           />
         </div>
-        <div className="w-[20%]">
+        <div className="w-[200px]">
           <ChordsBlock
             onChordClick={onChordBlockClick}
             onAddChord={onAddChordAtCurrentTime}
             onEditChord={onChordClick}
             onDeleteChord={onDeleteChord}
+            midiInfo={midiInfo}
           />
         </div>
       </div>

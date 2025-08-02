@@ -1,3 +1,5 @@
+// src/hooks/useKeyboardControls.ts
+
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
@@ -23,6 +25,13 @@ export const useKeyboardControls = (
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
   const midiInfo = useKaraokeStore((state) => state.midiInfo);
 
+  const isChordPanelAutoScrolling = useKaraokeStore(
+    (state) => state.isChordPanelAutoScrolling
+  );
+  const chordPanelCenterTick = useKaraokeStore(
+    (state) => state.chordPanelCenterTick
+  );
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -31,6 +40,19 @@ export const useKeyboardControls = (
         !player
       )
         return;
+
+      // ++ เพิ่มส่วนจัดการ Undo/Redo ++
+      if (e.ctrlKey && e.code === "KeyZ") {
+        e.preventDefault();
+        actions.undo();
+        return;
+      }
+      if (e.ctrlKey && e.code === "KeyY") {
+        e.preventDefault();
+        actions.redo();
+        return;
+      }
+      // ++ จบส่วนจัดการ Undo/Redo ++
 
       const totalLines = lyricsData.length
         ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
@@ -76,12 +98,17 @@ export const useKeyboardControls = (
         if (player.isPlaying()) {
           player.pause();
         } else {
-          if (selectedLineIndex !== null) {
-            const firstWord = lyricsData.find(
-              (w) => w.lineIndex === selectedLineIndex
-            );
-            const startTime = firstWord?.start ?? 0;
-            player.seek(startTime);
+          if (!isChordPanelAutoScrolling) {
+            player.seek(chordPanelCenterTick);
+            actions.setIsChordPanelAutoScrolling(true);
+          } else {
+            if (selectedLineIndex !== null) {
+              const firstWord = lyricsData.find(
+                (w) => w.lineIndex === selectedLineIndex
+              );
+              const startTime = firstWord?.start ?? 0;
+              player.seek(startTime);
+            }
           }
           player.play();
         }
@@ -168,5 +195,7 @@ export const useKeyboardControls = (
     currentIndex,
     onEditLine,
     editingLineIndex,
+    isChordPanelAutoScrolling,
+    chordPanelCenterTick,
   ]);
 };
