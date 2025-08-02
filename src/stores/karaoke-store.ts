@@ -110,6 +110,7 @@ export interface KaraokeState {
       durationTicks: number;
       ppq: number;
       bpm: number;
+      firstNoteOnTick: number;
     }) => void;
     importLyrics: (rawText: string) => void;
     deleteLine: (lineIndexToDelete: number) => void;

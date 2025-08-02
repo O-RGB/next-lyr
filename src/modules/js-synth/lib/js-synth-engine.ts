@@ -1,6 +1,9 @@
+// src/modules/js-synth/lib/js-synth-engine.ts
 import { Synthesizer as JsSynthesizer } from "js-synthesizer";
 import { JsSynthPlayerEngine } from "./js-synth-player";
 import { DEFAULT_SOUND_FONT } from "@/configs/value";
+
+type TickUpdateCallback = (time: number) => void;
 
 export class JsSynthEngine {
   public static instance: JsSynthEngine | undefined = undefined;
@@ -13,6 +16,10 @@ export class JsSynthEngine {
   public soundfontName: string | undefined;
   public soundfontFile: File | undefined;
   public bassLocked: number | undefined = undefined;
+
+  // Worker and Listeners
+  private timerWorker: Worker | undefined;
+  private tickUpdateListeners: TickUpdateCallback[] = [];
 
   private constructor() {}
 
@@ -40,9 +47,55 @@ export class JsSynthEngine {
     this.synth = synth;
     this.audio = audioContext;
 
-    this.player = new JsSynthPlayerEngine(synth, audioContext);
+    // --- Worker Initialization ---
+    this.timerWorker = new Worker(
+      new URL("/public/worker/timer-worker.ts", import.meta.url)
+    );
+    this.timerWorker.onmessage = (e: MessageEvent) => {
+      if (e.data.type === "tick") {
+        this.emitTickUpdate(e.data.time);
+      }
+    };
+
+    this.player = new JsSynthPlayerEngine(synth, audioContext, this);
 
     await this.loadDefaultSoundFont();
+  }
+
+  // --- Listener Management for Worker Ticks ---
+  public addEventListener(
+    event: "tickupdate",
+    callback: TickUpdateCallback
+  ): void {
+    if (event === "tickupdate") this.tickUpdateListeners.push(callback);
+  }
+
+  public removeEventListener(
+    event: "tickupdate",
+    callback: TickUpdateCallback
+  ): void {
+    if (event === "tickupdate") {
+      this.tickUpdateListeners = this.tickUpdateListeners.filter(
+        (cb) => cb !== callback
+      );
+    }
+  }
+
+  private emitTickUpdate(time: number) {
+    this.tickUpdateListeners.forEach((cb) => cb(time));
+  }
+
+  // --- Worker Control Methods ---
+  public startTimer() {
+    this.timerWorker?.postMessage({ command: "start" });
+  }
+
+  public stopTimer() {
+    this.timerWorker?.postMessage({ command: "stop" });
+  }
+
+  public seekTimer(timeInSeconds: number) {
+    this.timerWorker?.postMessage({ command: "seek", value: timeInSeconds });
   }
 
   public playBeep(isFirstBeat: boolean = false) {

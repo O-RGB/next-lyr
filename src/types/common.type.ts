@@ -26,11 +26,9 @@ export interface IMidiInfo {
   durationTicks: number;
   ppq: number;
   bpm: number;
+  firstNoteOnTick: number;
 }
 
 export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";
 
-
-export interface ISongInfo{
-
-}
+export interface ISongInfo {}

@@ -12,6 +12,7 @@ import SelectedColorLine from "./render/selected-color";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import ChordsListLine from "./chords/lists";
 import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
+import LineAction from "./actions";
 
 export interface LineRowProps {
   line: LyricWordData[];
@@ -114,7 +115,8 @@ const LineRow: React.FC<LineRowProps> = ({
           ))}
         </div>
         <div className="flex items-center gap-2 ml-4">
-          <ButtonCommon
+          <LineAction lineIndex={lineIndex}></LineAction>
+          {/* <ButtonCommon
             onClick={() => props.onEditLine(lineIndex)}
             disabled={editingLineIndex !== null}
             title="Start Timing Edit (Ctrl+Enter)"
@@ -137,7 +139,7 @@ const LineRow: React.FC<LineRowProps> = ({
               className: "z-20",
             }}
             onConfirm={() => props.onDeleteLine(lineIndex)}
-          ></PopConfirmCommon>
+          ></PopConfirmCommon> */}
         </div>
       </div>
     </div>

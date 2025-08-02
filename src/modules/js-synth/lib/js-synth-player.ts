@@ -1,6 +1,8 @@
+// src/modules/js-synth/lib/js-synth-player.ts
 import { fixMidiHeader } from "@/lib/karaoke/ncn";
 import { Synthesizer as JsSynthesizer } from "js-synthesizer";
 import { MidiData, parseMidi } from "midi-file";
+import { JsSynthEngine } from "./js-synth-engine";
 
 type TickUpdateCallback = (tick: number, bpm: number) => void;
 type StateChangeCallback = (isPlaying: boolean) => void;
@@ -8,7 +10,7 @@ type StateChangeCallback = (isPlaying: boolean) => void;
 export class JsSynthPlayerEngine {
   private player: JsSynthesizer;
   private audioContext: AudioContext;
-  private intervalId: number | undefined = undefined;
+  private engine: JsSynthEngine;
 
   public currentTick: number = 0;
   public isPlaying: boolean = false;
@@ -21,10 +23,30 @@ export class JsSynthPlayerEngine {
   private stateChangeListeners: StateChangeCallback[] = [];
   private rawMidiFile: File | undefined = undefined;
 
-  constructor(synth: JsSynthesizer, audioContext: AudioContext) {
+  constructor(
+    synth: JsSynthesizer,
+    audioContext: AudioContext,
+    engine: JsSynthEngine
+  ) {
     this.player = synth;
     this.audioContext = audioContext;
+    this.engine = engine;
+
+    this.engine.addEventListener("tickupdate", this.handleEngineTick);
   }
+
+  private handleEngineTick = async (timeInSeconds: number) => {
+    if (!this.midiData || this.ticksPerBeat === 0) return;
+
+    const secondsPerBeat = 60.0 / this.currentBpm;
+    const ticksPerSecond = this.ticksPerBeat / secondsPerBeat;
+    this.currentTick = Math.floor(timeInSeconds * ticksPerSecond);
+
+    const bpm = await this.player.retrievePlayerBpm();
+    if (bpm) this.currentBpm = bpm;
+
+    this.emitTickUpdate(this.currentTick, this.currentBpm);
+  };
 
   public addEventListener(
     event: "tickupdate",
@@ -66,48 +88,23 @@ export class JsSynthPlayerEngine {
     this.stateChangeListeners.forEach((cb) => cb(isPlaying));
   }
 
-  private intervalLoop = async () => {
-    if (!this.isPlaying) return;
-
-    const [tick, bpm] = await Promise.all([
-      this.player.retrievePlayerCurrentTick(),
-      this.player.retrievePlayerBpm(),
-    ]);
-
-    if (tick !== undefined) {
-      this.currentTick = tick;
-      if (bpm) this.currentBpm = bpm;
-      this.emitTickUpdate(this.currentTick, this.currentBpm);
-    }
-
-    if (this.currentTick >= this.durationTicks) {
-      if (this.rawMidiFile) {
-        this.seek(0);
-        await this.loadMidi(this.rawMidiFile);
-      }
-    }
-  };
-
   public play() {
     if (this.isPlaying || !this.midiData) return;
 
+    
     this.audioContext.resume();
     this.player.playPlayer();
+    this.engine.startTimer();
     this.isPlaying = true;
     this.emitStateChange(true);
-
-    this.intervalId = window.setInterval(this.intervalLoop, 50); // ใช้ setInterval 50ms
   }
 
   public pause() {
     if (!this.isPlaying) return;
     this.player.stopPlayer();
+    this.engine.stopTimer();
     this.isPlaying = false;
     this.emitStateChange(false);
-    if (this.intervalId !== undefined) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
   }
 
   public stop() {
@@ -119,6 +116,11 @@ export class JsSynthPlayerEngine {
     const clampedTick = Math.max(0, Math.min(tick, this.durationTicks));
     this.player.seekPlayer(clampedTick);
     this.currentTick = clampedTick;
+
+    const secondsPerBeat = 60.0 / this.currentBpm;
+    const timeInSeconds = (clampedTick / this.ticksPerBeat) * secondsPerBeat;
+    this.engine.seekTimer(timeInSeconds);
+
     this.player.retrievePlayerBpm().then((bpm) => {
       if (bpm) this.currentBpm = bpm;
       this.emitTickUpdate(clampedTick, this.currentBpm);
@@ -152,6 +154,7 @@ export class JsSynthPlayerEngine {
         ),
       0
     );
+
     this.durationTicks = totalTicks;
 
     let initialBpm: number | undefined;

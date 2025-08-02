@@ -238,6 +238,7 @@ export interface ParseResult {
   lyrics: LyricEvent[][];
   chords: ChordEvent[];
   detectedHeader: string;
+  firstNoteOnTick: number | null; // <-- เพิ่ม field นี้
 }
 
 export interface BuildOptions {
@@ -531,10 +532,29 @@ function _extractDataFromEvents(
   let chords: ChordEvent[] = [];
   let detectedHeader = "LyrHdr1";
   let foundLyrics = false;
+  let firstNoteOnTick: number | null = null;
 
   midiData.tracks.forEach((track) => {
     track.forEach((event) => {
-      if (event.type !== "meta") return;
+      // ตรวจหา Note On Event
+      if (
+        event.type === "channel" &&
+        event.status >= 0x90 &&
+        event.status <= 0x9f
+      ) {
+        const channelEvent = event as ChannelEvent;
+        // ตรวจสอบว่า velocity (ความดัง) > 0 (เพราะ velocity 0 คือ note off)
+        if (channelEvent.data && channelEvent.data[1] > 0) {
+          if (
+            firstNoteOnTick === null ||
+            event.absoluteTime < firstNoteOnTick
+          ) {
+            firstNoteOnTick = event.absoluteTime;
+          }
+        }
+      }
+
+      if (event.type !== "meta") return; // แก้ไข: ควรเป็น return ธรรมดา ไม่ใช่ continue
       if (event.metaType === 0x06 && event.text) {
         chords.push({ chord: event.text, tick: event.absoluteTime });
       }
@@ -574,7 +594,7 @@ function _extractDataFromEvents(
   });
 
   chords.sort((a, b) => a.tick - b.tick);
-  return { info: songInfo, lyrics, chords, detectedHeader };
+  return { info: songInfo, lyrics, chords, detectedHeader, firstNoteOnTick };
 }
 
 function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {

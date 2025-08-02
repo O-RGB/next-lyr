@@ -21,6 +21,7 @@ export interface MidiParseResult {
   info: SongInfo;
   lyrics: LyricEvent[][];
   chords: ChordEvent[];
+  firstNoteOnTick?: number;
 }
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
@@ -29,7 +30,8 @@ interface MidiPlayerProps {
     file: File,
     durationTicks: number,
     ppq: number,
-    bpm: number
+    bpm: number,
+    firstNoteOnTick: number
   ) => void;
   onTickChange?: (tick: number) => void;
   onLyricsParsed?: (data: MidiParseResult) => void;
@@ -87,7 +89,9 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       if (player) {
         try {
           const midiDecoder = LyrEditer.parse(await file.arrayBuffer());
+
           const midiInfo = await player.loadMidi(file);
+          console.log("midiInfo", midiDecoder);
           setFileName(file.name);
           setDuration(midiInfo.durationTicks);
 
@@ -95,13 +99,15 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
             file,
             midiInfo.durationTicks,
             midiInfo.ppq,
-            midiInfo.bpm
+            midiInfo.bpm,
+            midiDecoder.firstNoteOnTick ?? 0
           );
 
           onLyricsParsed?.({
             chords: midiDecoder.chords,
             info: midiDecoder.info,
             lyrics: midiDecoder.lyrics,
+            firstNoteOnTick: midiDecoder.firstNoteOnTick ?? undefined,
           });
         } catch (error) {
           console.error("Error loading MIDI file:", error);
