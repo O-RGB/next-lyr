@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ModalCommon from "../../common/modal";
 import { LyrBuilder } from "@/lib/karaoke/lyrics/generator";
 import curGenerator, {
@@ -8,6 +8,14 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import ButtonCommon from "@/components/common/button";
 import { MdOutlineFileDownload } from "react-icons/md";
 import Donate from "../donate/donate";
+import {
+  buildModifiedMidi,
+  ChordEvent,
+  SongInfo,
+} from "@/modules/midi-klyr-parser/lib/processor";
+import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
+import { LyricWordData } from "@/types/common.type";
+import { buildMp3, DEFAULT_MISC } from "@/modules/mp3-klyr-parser/procress";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -15,6 +23,8 @@ interface BuildNcnModalProps {
 }
 
 const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
+  const rawFile = useKaraokeStore((state) => state.rawFile);
+  const chordsData = useKaraokeStore((state) => state.chordsData);
   const midiInfo = useKaraokeStore((state) => state.midiInfo);
   const mode = useKaraokeStore((state) => state.mode);
   const metadata = useKaraokeStore((state) => state.metadata);
@@ -24,6 +34,93 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const handleCloseModal = () => {
     setOpenModal(false);
     onClose?.();
+  };
+
+  const handleSaveMp3 = async () => {
+    if (!metadata || !rawFile) return;
+    try {
+      let newLyricsData: LyricEvent[][] = [];
+      lyricsData.forEach((word: LyricWordData) => {
+        if (!newLyricsData[word.lineIndex]) {
+          newLyricsData[word.lineIndex] = [];
+        }
+        newLyricsData[word.lineIndex].push({
+          text: word.name,
+          tick: Math.floor((word.start ?? 0) * 1000),
+        });
+      });
+      newLyricsData = newLyricsData.map((line) =>
+        line.sort((a, b) => a.tick - b.tick)
+      );
+
+      let newChordsData = chordsData.map((x) => ({
+        ...x,
+        tick: Math.floor(x.tick * 1000),
+      }));
+
+      console.log(metadata, newLyricsData, newChordsData);
+      const buffer = buildMp3(
+        {
+          title: metadata.TITLE,
+          album: metadata.ALBUM,
+          artist: metadata.ARTIST,
+          chords: newChordsData,
+          info: metadata,
+          lyrics: newLyricsData,
+          // miscTags: DEFAULT_MISC,
+        },
+        await rawFile.arrayBuffer()
+      );
+      const blob = new Blob([buffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${metadata.TITLE || "edited_song"}.mid`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const err = error as Error;
+      console.error("Error saving MIDI file:", err);
+    }
+  };
+
+  const handleSaveMidi = () => {
+    if (!metadata || !midiInfo) return;
+    try {
+      const generator = new TickLyricSegmentGenerator(
+        midiInfo.bpm,
+        midiInfo.ppq
+      );
+
+      let newLyricsData: LyricEvent[][] =
+        generator.convertLyricsWordToCursor(lyricsData);
+
+      const newSongInfo: SongInfo = metadata;
+      const newChordsData: ChordEvent[] = chordsData;
+
+      const newMidiBuffer = buildModifiedMidi({
+        originalMidiData: midiInfo.raw.midiData,
+        newSongInfo,
+        newLyricsData,
+        newChordsData,
+        headerToUse: midiInfo.raw.detectedHeader,
+      });
+
+      const blob = new Blob([newMidiBuffer], { type: "audio/midi" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${newSongInfo.TITLE || "edited_song"}.mid`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const err = error as Error;
+      console.error("Error saving MIDI file:", err);
+    }
   };
 
   const buildLyr = () => {
@@ -107,6 +204,26 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
             >
               ดาวน์โหลดไฟล์ <span className="font-bold">.lyr</span>
             </ButtonCommon>
+
+            <hr />
+            {mode === "midi" && (
+              <ButtonCommon
+                onClick={handleSaveMidi}
+                color="secondary"
+                icon={<MdOutlineFileDownload className="text-lg" />}
+              >
+                บันทึก <span className="font-bold">.mid</span>
+              </ButtonCommon>
+            )}
+            {mode === "mp3" && (
+              <ButtonCommon
+                onClick={handleSaveMp3}
+                color="secondary"
+                icon={<MdOutlineFileDownload className="text-lg" />}
+              >
+                บันทึก <span className="font-bold">.mp3</span>
+              </ButtonCommon>
+            )}
           </div>
           <Donate show={false}></Donate>
         </div>

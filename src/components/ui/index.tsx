@@ -59,6 +59,7 @@ const LyrEditerPanel: React.FC = () => {
 
     return {
       play: () => {
+        actions.setIsPlaying(true);
         switch (mode) {
           case "mp3":
             audioRef.current?.play();
@@ -75,6 +76,7 @@ const LyrEditerPanel: React.FC = () => {
         }
       },
       pause: () => {
+        actions.setIsPlaying(false);
         switch (mode) {
           case "mp3":
             audioRef.current?.pause();
@@ -135,11 +137,12 @@ const LyrEditerPanel: React.FC = () => {
         }
       },
     };
-  }, [mode]);
+  }, [mode, actions]);
 
   const handleStop = useCallback(() => {
     playerControls?.pause();
     playerControls?.seek(0);
+    actions.setIsPlaying(false);
     actions.stopTiming();
     actions.setPlaybackIndex(null);
     actions.setCurrentIndex(0);
@@ -150,6 +153,9 @@ const LyrEditerPanel: React.FC = () => {
     (index: number) => {
       const word = lyricsData.find((w) => w.index === index);
       if (word?.start !== null && playerControls) {
+        // --- เพิ่มบรรทัดนี้เข้าไป ---
+        actions.setIsChordPanelAutoScrolling(true);
+
         playerControls.seek(word?.start ?? 0);
         if (!playerControls.isPlaying()) {
           playerControls.play();
@@ -317,7 +323,7 @@ const LyrEditerPanel: React.FC = () => {
               audioSrc={audioSrc}
               metadata={metadata}
               onAudioLoad={(file) => {
-                actions.setAudioSrc(URL.createObjectURL(file), file.name);
+                actions.setAudioSrc(URL.createObjectURL(file), file.name, file);
               }}
               onMetadataChange={setMetadata}
               onPlay={() => playerControls?.play()}
@@ -363,14 +369,14 @@ const LyrEditerPanel: React.FC = () => {
                   durationTicks,
                   ppq,
                   bpm,
-                  firstNoteOnTick
+                  raw
                 ) => {
                   actions.setMidiInfo({
                     fileName: file.name,
                     durationTicks,
                     ppq,
                     bpm,
-                    firstNoteOnTick,
+                    raw,
                   });
                 }}
                 onLyricsParsed={handleLyricsParsed}

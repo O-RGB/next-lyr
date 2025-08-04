@@ -3,7 +3,7 @@
 import React from "react";
 import Dropdown from "../common/dropdown/dropdown";
 import { BiFile, BiUndo, BiRedo } from "react-icons/bi"; // ++ เพิ่ม Icon ++
-import { MdOutlineLyrics } from "react-icons/md";
+import { MdOutlineLyrics, MdSwitchAccount } from "react-icons/md";
 import { IMenusType } from "./navbar.d";
 import ButtonCommon from "@/components/common/button";
 import { FaCode } from "react-icons/fa";
@@ -18,6 +18,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   // ++ ดึง actions และ history state จาก store ++
   const { undo, redo } = useKaraokeStore((state) => state.actions);
   const { past, future } = useKaraokeStore((state) => state.history);
+  const mode = useKaraokeStore((state) => state.mode);
 
   return (
     <div className="">
@@ -32,8 +33,24 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
           <Dropdown
             items={[
               {
-                label: "บันทึก (NCN)",
+                label: "บันทึกไฟล์",
                 onClick: () => onSelectMenu?.("SAVE_NCN"),
+              },
+              {
+                label: `MIDI ${mode === "midi" ? " ✓" : ""}`,
+                onClick: () => onSelectMenu?.("MODE_MIDI"),
+              },
+              {
+                label: `MP3 ${mode === "mp3" ? " ✓" : ""}`,
+                onClick: () => onSelectMenu?.("MODE_MP3"),
+              },
+              {
+                label: `MP4 ${mode === "mp4" ? " ✓" : ""}`,
+                onClick: () => onSelectMenu?.("MODE_MP4"),
+              },
+              {
+                label: `YouTube ${mode === "youtube" ? " ✓" : ""}`,
+                onClick: () => onSelectMenu?.("MODE_YOUTUBE"),
               },
             ]}
           >

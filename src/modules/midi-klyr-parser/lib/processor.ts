@@ -238,7 +238,7 @@ export interface ParseResult {
   lyrics: LyricEvent[][];
   chords: ChordEvent[];
   detectedHeader: string;
-  firstNoteOnTick: number | null; // <-- เพิ่ม field นี้
+  firstNoteOnTick: number | null;
 }
 
 export interface BuildOptions {
@@ -598,33 +598,42 @@ function _extractDataFromEvents(
 }
 
 function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<SONG_LYRIC>\n';
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n<SONG_LYRIC>\r\n';
+  const escapeXml = (str: string) =>
+    String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   if (infoData && Object.keys(infoData).length > 0) {
-    xml += "<INFO>\n";
+    xml += "  <INFO>\r\n";
     for (const [key, value] of Object.entries(infoData)) {
-      xml += `<${key}>${escapeXml(String(value))}</${key}>\n`;
+      xml += `    <${key}>${escapeXml(value)}</${key}>\r\n`;
     }
-    xml += "</INFO>\n";
+    xml += "  </INFO>\r\n";
   }
-  if (lyricsData && lyricsData.length > 0) {
-    xml += "<LYRIC>\n";
+  if (lyricsData?.length > 0) {
+    xml += "  <LYRIC>\r\n";
     lyricsData.forEach((line) => {
       if (line.length > 0) {
-        xml += "<LINE>\n";
-        xml += `<TIME>${line[0].tick}</TIME>\n`;
+        xml += "    <LINE>\r\n";
+        xml += `      <TIME>${line[0].tick}</TIME>\r\n`;
         line.forEach((word) => {
-          xml += "<WORD>\n";
-          xml += `<TIME>${word.tick}</TIME>\n`;
-          xml += `<TEXT>${escapeXml(word.text)}</TEXT>\n`;
-          xml += `<VOCAL>${word.vocal ? word.vocal : "9"}</VOCAL>\n`;
-          xml += "</WORD>\n";
+          xml += "      <WORD>\r\n";
+          xml += `        <TIME>${word.tick}</TIME>\r\n`;
+          xml += `        <TEXT>${escapeXml(word.text)}</TEXT>\r\n`;
+          xml += `        <VOCAL>${
+            word.vocal ? escapeXml(word.vocal) : "9"
+          }</VOCAL>\r\n`;
+          xml += "      </WORD>\r\n";
         });
-        xml += "</LINE>\n";
+        xml += "    </LINE>\r\n";
       }
     });
-    xml += "</LYRIC>\n";
+    xml += "  </LYRIC>\r\n";
   }
-  xml += "</SONG_LYRIC>";
+  xml += "</SONG_LYRIC>\r\n";
   return xml;
 }
 

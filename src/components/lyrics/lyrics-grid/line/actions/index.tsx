@@ -17,7 +17,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
       <div className="flex items-center gap-2 ml-4">
         <ButtonCommon
           onClick={() => onEditLine?.(lineIndex)}
-          disabled={editingLineIndex !== null}
+          // disabled={editingLineIndex !== null}
           title="Start Timing Edit (Ctrl+Enter)"
           color="white"
           circle
@@ -28,7 +28,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
         />
         <PopConfirmCommon
           openbuttonProps={{
-            disabled: editingLineIndex !== null,
+            // disabled: editingLineIndex !== null,
             title: "Delete Line",
             icon: <BiTrash />,
             circle: true,

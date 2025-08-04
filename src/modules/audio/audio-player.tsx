@@ -90,7 +90,7 @@ export default function AudioPlayer({
         htmlFor="audio-file-input"
         className="cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-slate-600 mb-3"
       >
-        <input type="file" className="h-4 w-4" /> Choose Audio File
+        Choose Audio File
       </label>
       <input
         type="file"
@@ -99,11 +99,7 @@ export default function AudioPlayer({
         className="sr-only"
         onChange={(e) => e.target.files && onFileChange(e.target.files[0])}
       />
-      <div className="flex items-center justify-center p-4 bg-slate-800 rounded-lg mb-3">
-        <p className="text-5xl font-mono font-bold text-white tracking-wider">
-          {currentTime}
-        </p>
-      </div>
+
       <audio ref={audioRef} src={src || ""} controls className="w-full" />
       <div className="flex justify-center items-center gap-2 mt-3">
         <ButtonCommon onClick={onPlay} disabled={isPlaying}>
@@ -116,13 +112,13 @@ export default function AudioPlayer({
           <BsStop className="mr-2 h-4 w-4" /> Stop
         </ButtonCommon>
       </div>
-      <div className="flex justify-center items-center gap-2 mt-3">
+      {/* <div className="flex justify-center items-center gap-2 mt-3">
         {[0.75, 1, 1.5].map((speed) => (
           <ButtonCommon key={speed} onClick={() => handleSpeedChange(speed)}>
             {speed}x
           </ButtonCommon>
         ))}
-      </div>
+      </div> */}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { LyricEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
 
 interface LyricSegmentGenerator {
@@ -15,17 +16,47 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
     this.ticksPerBeat = ppq;
   }
 
-  private convertTicksToCursor = (value: number[]) => {
+  public wordDataToEvent = (value: LyricWordData[]) => {
+    let newLyricsData: LyricEvent[][] = [];
+    value.forEach((word: LyricWordData) => {
+      if (!newLyricsData[word.lineIndex]) {
+        newLyricsData[word.lineIndex] = [];
+      }
+      newLyricsData[word.lineIndex].push({
+        text: word.name,
+        tick: this.tickToCursor(word.start ?? 0),
+      });
+    });
+    newLyricsData = newLyricsData.map((line) =>
+      line.sort((a, b) => a.tick - b.tick)
+    );
+
+    return newLyricsData;
+  };
+
+  public convertLyricsWordToCursor = (
+    value: LyricWordData[]
+  ): LyricEvent[][] => {
     if (this.ticksPerBeat === 0) {
       console.error("ticksPerBeat = 0");
       return [];
     }
 
-    let cursor = value.map((tick) =>
-      Math.round(tick / (this.ticksPerBeat / 24))
-    );
+    let newLyricsData: LyricEvent[][] = this.wordDataToEvent(value);
+    return newLyricsData;
+  };
+
+  private convertTicksToCursor = (value: number[]) => {
+    if (this.ticksPerBeat === 0) {
+      console.error("ticksPerBeat = 0");
+      return [];
+    }
+    let cursor = value.map(this.tickToCursor);
     return cursor;
   };
+
+  private tickToCursor = (value: number) =>
+    Math.round(value / (this.ticksPerBeat / 24));
 
   public export = () => {
     if (this.cursor.length === 0) return;

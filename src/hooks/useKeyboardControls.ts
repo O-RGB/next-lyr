@@ -1,5 +1,3 @@
-// src/hooks/useKeyboardControls.ts
-
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
@@ -23,8 +21,9 @@ export const useKeyboardControls = (
   const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
-
+  const isChordPanelHovered = useKaraokeStore(
+    (state) => state.isChordPanelHovered
+  );
   const isChordPanelAutoScrolling = useKaraokeStore(
     (state) => state.isChordPanelAutoScrolling
   );
@@ -41,7 +40,6 @@ export const useKeyboardControls = (
       )
         return;
 
-      // ++ เพิ่มส่วนจัดการ Undo/Redo ++
       if (e.ctrlKey && e.code === "KeyZ") {
         e.preventDefault();
         actions.undo();
@@ -52,7 +50,6 @@ export const useKeyboardControls = (
         actions.redo();
         return;
       }
-      // ++ จบส่วนจัดการ Undo/Redo ++
 
       const totalLines = lyricsData.length
         ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
@@ -93,23 +90,35 @@ export const useKeyboardControls = (
         return;
       }
 
-      if (e.code === "Space" && midiInfo) {
+      if (e.code === "Space") {
         e.preventDefault();
         if (player.isPlaying()) {
           player.pause();
+          actions.setIsChordPanelAutoScrolling(false);
+          actions.setChordPanelCenterTick(player.getCurrentTime());
         } else {
-          if (!isChordPanelAutoScrolling) {
-            player.seek(chordPanelCenterTick);
-            actions.setIsChordPanelAutoScrolling(true);
-          } else {
-            if (selectedLineIndex !== null) {
-              const firstWord = lyricsData.find(
-                (w) => w.lineIndex === selectedLineIndex
-              );
-              const startTime = firstWord?.start ?? 0;
-              player.seek(startTime);
+          let seekTime: number;
+
+          if (isChordPanelHovered && !isChordPanelAutoScrolling) {
+            seekTime = chordPanelCenterTick;
+          } else if (selectedLineIndex !== null) {
+            const firstWordOfLine = lyricsData.find(
+              (w) => w.lineIndex === selectedLineIndex
+            );
+            if (firstWordOfLine && firstWordOfLine.start !== null) {
+              seekTime = firstWordOfLine.start;
+            } else {
+              seekTime = chordPanelCenterTick;
             }
+          } else {
+            seekTime = chordPanelCenterTick;
           }
+
+          actions.setIsChordPanelAutoScrolling(true);
+
+          actions.setCurrentTime(seekTime);
+
+          player.seek(seekTime);
           player.play();
         }
         return;
@@ -195,6 +204,7 @@ export const useKeyboardControls = (
     currentIndex,
     onEditLine,
     editingLineIndex,
+    isChordPanelHovered,
     isChordPanelAutoScrolling,
     chordPanelCenterTick,
   ]);

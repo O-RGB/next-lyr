@@ -1,3 +1,5 @@
+import { ParseResult } from "@/modules/midi-klyr-parser/lib/processor";
+
 export interface IOptions {
   value?: string | number | string[] | number[];
   label?: React.ReactNode;
@@ -26,7 +28,7 @@ export interface IMidiInfo {
   durationTicks: number;
   ppq: number;
   bpm: number;
-  firstNoteOnTick: number;
+  raw: ParseResult;
 }
 
 export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";

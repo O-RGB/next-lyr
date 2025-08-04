@@ -14,6 +14,7 @@ import ButtonCommon from "../../../components/common/button";
 import {
   ChordEvent,
   LyricEvent,
+  ParseResult,
   SongInfo,
 } from "../../midi-klyr-parser/lib/processor";
 
@@ -31,7 +32,7 @@ interface MidiPlayerProps {
     durationTicks: number,
     ppq: number,
     bpm: number,
-    firstNoteOnTick: number
+    raw: ParseResult
   ) => void;
   onTickChange?: (tick: number) => void;
   onLyricsParsed?: (data: MidiParseResult) => void;
@@ -100,7 +101,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
             midiInfo.durationTicks,
             midiInfo.ppq,
             midiInfo.bpm,
-            midiDecoder.firstNoteOnTick ?? 0
+            midiDecoder
           );
 
           onLyricsParsed?.({

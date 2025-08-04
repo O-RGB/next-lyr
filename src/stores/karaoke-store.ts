@@ -1,5 +1,3 @@
-// src/stores/karaoke-store.ts
-
 import { create } from "zustand";
 
 import { processRawLyrics, convertCursorToTick } from "../lib/karaoke/utils";
@@ -13,17 +11,16 @@ import {
   ChordEvent,
   DEFAULT_SONG_INFO,
   LyricEvent,
+  ParseResult,
   SongInfo,
 } from "../modules/midi-klyr-parser/lib/processor";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 
-// --- ส่วนของ State ที่เราจะติดตามและบันทึกใน History ---
 type HistoryState = Pick<
   KaraokeState,
   "lyricsData" | "chordsData" | "metadata"
 >;
 
-// --- Helper Function ---
 const _processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
@@ -72,20 +69,19 @@ const _processLyricsForPlayer = (
   return arrayRange;
 };
 
-// --- STATE TYPE ---
 export interface KaraokeState {
-  // Mode & Data
   mode: MusicMode;
   lyricsData: LyricWordData[];
   metadata: SongInfo | null;
   audioSrc: string | null;
+  rawFile: File | null;
   videoSrc: string | null;
   youtubeId: string | null;
   audioDuration: number | null;
   midiInfo: IMidiInfo | null;
   chordsData: ChordEvent[];
+  isPlaying: boolean;
 
-  // Timing & Playback
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
@@ -94,7 +90,6 @@ export interface KaraokeState {
   selectedLineIndex: number | null;
   currentTime: number;
 
-  // UI State
   isEditModalOpen: boolean;
   lyricsProcessed?: LyricsRangeArray<ISentence>;
   isChordModalOpen: boolean;
@@ -104,19 +99,18 @@ export interface KaraokeState {
   maxChordTickRange: number | null;
   isChordPanelAutoScrolling: boolean;
   chordPanelCenterTick: number;
+  isChordPanelHovered: boolean;
 
-  // ++ เพิ่ม State สำหรับ History ++
   history: {
     past: HistoryState[];
     future: HistoryState[];
   };
 
   setMetadata: (metadata: Partial<SongInfo>) => void;
-  // Actions
+
   actions: {
-    // Mode & Data
     setMode: (mode: MusicMode) => void;
-    setAudioSrc: (src: string, fileName: string) => void;
+    setAudioSrc: (src: string, fileName: string, rawFile: File) => void;
     setVideoSrc: (src: string, fileName: string) => void;
     setYoutubeId: (url: string) => void;
     setAudioDuration: (duration: number) => void;
@@ -125,7 +119,7 @@ export interface KaraokeState {
       durationTicks: number;
       ppq: number;
       bpm: number;
-      firstNoteOnTick: number;
+      raw: ParseResult;
     }) => void;
     importLyrics: (rawText: string) => void;
     deleteLine: (lineIndexToDelete: number) => void;
@@ -140,8 +134,8 @@ export interface KaraokeState {
     deleteChord: (tickToDelete: number) => void;
     updateWordTiming: (index: number, start: number, end: number) => void;
     processLyricsForPlayer: () => void;
+    setIsPlaying: (playing: boolean) => void;
 
-    // Timing & Playback
     startTiming: (currentTime: number) => void;
     recordTiming: (currentTime: number) => { isLineEnd: boolean };
     goToNextWord: () => void;
@@ -152,7 +146,6 @@ export interface KaraokeState {
     setCurrentTime: (time: number) => void;
     setCorrectionIndex: (index: number | null) => void;
 
-    // Line Selection & Editing
     selectLine: (lineIndex: number | null) => void;
     startEditLine: (lineIndex: number) => {
       success: boolean;
@@ -162,7 +155,6 @@ export interface KaraokeState {
     openEditModal: () => void;
     closeEditModal: () => void;
 
-    // Chord Modal
     openChordModal: (
       chord?: ChordEvent,
       suggestedTick?: number,
@@ -172,16 +164,14 @@ export interface KaraokeState {
     closeChordModal: () => void;
     setIsChordPanelAutoScrolling: (isAuto: boolean) => void;
     setChordPanelCenterTick: (tick: number) => void;
+    setIsChordPanelHovered: (isHovered: boolean) => void;
 
-    // ++ เพิ่ม Actions สำหรับ History ++
     undo: () => void;
     redo: () => void;
   };
 }
 
-// --- STORE IMPLEMENTATION ---
 export const useKaraokeStore = create<KaraokeState>()((set, get) => {
-  // ++ สร้างฟังก์ชันสำหรับบันทึก history ++
   const saveToHistory = () => {
     set((state) => {
       const { history, lyricsData, chordsData, metadata } = state;
@@ -193,7 +183,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
       const newPast: HistoryState[] = [...history.past, currentHistoryState];
 
-      // จำกัด history ไว้ที่ 50 รายการล่าสุด
       if (newPast.length > 50) {
         newPast.shift();
       }
@@ -201,7 +190,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       return {
         history: {
           past: newPast,
-          future: [], // การกระทำใหม่จะล้าง future ทั้งหมด
+          future: [],
         },
       };
     });
@@ -232,16 +221,17 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
   };
 
   return {
-    // --- INITIAL STATE ---
     mode: "midi",
     lyricsData: [],
     metadata: null,
     audioSrc: null,
+    rawFile: null,
     videoSrc: null,
     youtubeId: null,
     audioDuration: null,
     midiInfo: null,
     chordsData: [],
+    isPlaying: false,
     currentIndex: 0,
     isTimingActive: false,
     editingLineIndex: null,
@@ -258,18 +248,20 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     maxChordTickRange: null,
     isChordPanelAutoScrolling: true,
     chordPanelCenterTick: 0,
+    isChordPanelHovered: false,
     history: {
       past: [],
       future: [],
     },
     setMetadata: (metadata) => {
-      saveToHistory(); // ++ บันทึก history ก่อนเปลี่ยน metadata ++
+      saveToHistory();
       set({
         metadata: { ...DEFAULT_SONG_INFO, ...get().metadata, ...metadata },
       });
     },
-    // --- ACTIONS ---
+
     actions: {
+      setIsPlaying: (playing) => set({ isPlaying: playing }),
       processLyricsForPlayer: () => {
         const { lyricsData, mode, midiInfo } = get();
         const processed = _processLyricsForPlayer(lyricsData, mode, midiInfo);
@@ -277,7 +269,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       },
       setCurrentTime: (time) => set({ currentTime: time }),
       updateWordTiming: (index, start, end) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => ({
           lyricsData: state.lyricsData.map((word) =>
             word.index === index
@@ -290,6 +282,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       setMode: (mode) =>
         set({
           mode,
+          rawFile: null,
           audioSrc: null,
           videoSrc: null,
           youtubeId: null,
@@ -299,7 +292,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           lyricsData: [],
           chordsData: [],
           lyricsProcessed: undefined,
-          history: { past: [], future: [] }, // Reset history when mode changes
+          history: { past: [], future: [] },
         }),
       setVideoSrc: (src, fileName) =>
         set({
@@ -331,10 +324,11 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }
       },
 
-      setAudioSrc: (src, fileName) =>
+      setAudioSrc: (src, fileName, file) =>
         set({
           audioSrc: src,
           audioDuration: null,
+          rawFile: file,
           metadata: {
             ...DEFAULT_SONG_INFO,
             TITLE: fileName.replace(/\.[^/.]+$/, ""),
@@ -348,10 +342,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             ...DEFAULT_SONG_INFO,
             TITLE: info.fileName.replace(/\.[^/.]+$/, ""),
           },
-          history: { past: [], future: [] }, // Reset history on new file
+          history: { past: [], future: [] },
         }),
       importParsedMidiData: (data) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         if (!data.lyrics || data.lyrics.length === 0) {
           set({ chordsData: data.chords || [] });
           return;
@@ -404,7 +398,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         get().actions.processLyricsForPlayer();
       },
       addChord: (newChord) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => ({
           chordsData: [...state.chordsData, newChord].sort(
             (a, b) => a.tick - b.tick
@@ -417,7 +411,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }));
       },
       updateChord: (oldTick, updatedChord) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => ({
           chordsData: state.chordsData
             .map((chord) =>
@@ -432,7 +426,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }));
       },
       deleteChord: (tickToDelete) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => ({
           chordsData: state.chordsData.filter(
             (chord) => chord.tick !== tickToDelete
@@ -445,7 +439,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }));
       },
       importLyrics: (rawText) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         if (!rawText) return;
         set({
           lyricsData: processRawLyrics(rawText),
@@ -459,7 +453,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
       },
       deleteLine: (lineIndexToDelete) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => {
           const remainingWords = state.lyricsData.filter(
             (word) => word.lineIndex !== lineIndexToDelete
@@ -489,7 +483,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         get().actions.processLyricsForPlayer();
       },
       updateLine: (lineIndexToUpdate, newText) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         const newWordsForLine = processRawLyrics(newText).map((word) => ({
           ...word,
           lineIndex: lineIndexToUpdate,
@@ -518,7 +512,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         get().actions.processLyricsForPlayer();
       },
       updateWord: (index, newWordData) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         set((state) => ({
           lyricsData: state.lyricsData.map((word, i) =>
             i === index ? { ...word, ...newWordData } : word
@@ -623,7 +617,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       setCorrectionIndex: (index) => set({ correctionIndex: index }),
       selectLine: (lineIndex) => set({ selectedLineIndex: lineIndex }),
       startEditLine: (lineIndex) => {
-        saveToHistory(); // ++ บันทึก ++
+        saveToHistory();
         const { lyricsData } = get();
         const firstWordOfLine = lyricsData.find(
           (w) => w.lineIndex === lineIndex
@@ -670,8 +664,9 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       setIsChordPanelAutoScrolling: (isAuto) =>
         set({ isChordPanelAutoScrolling: isAuto }),
       setChordPanelCenterTick: (tick) => set({ chordPanelCenterTick: tick }),
+      setIsChordPanelHovered: (isHovered) =>
+        set({ isChordPanelHovered: isHovered }),
 
-      // ++ Action สำหรับ Undo ++
       undo: () => {
         set((state) => {
           const { past, future } = state.history;
@@ -697,7 +692,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         get().actions.processLyricsForPlayer();
       },
 
-      // ++ Action สำหรับ Redo ++
       redo: () => {
         set((state) => {
           const { past, future } = state.history;

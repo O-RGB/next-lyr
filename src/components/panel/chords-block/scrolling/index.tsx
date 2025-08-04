@@ -17,10 +17,7 @@ export const AutoScroller: React.FC<{
     const targetScrollTop = currentTime * pixelsPerTick - playheadPosition;
     const clampedScrollTop = Math.max(0, targetScrollTop);
 
-    containerRef.current.scrollTo({
-      top: clampedScrollTop,
-      behavior: "auto",
-    });
+    containerRef.current.scrollTop = clampedScrollTop;
   }, [
     currentTime,
     isAutoScrolling,

@@ -11,6 +11,8 @@ export const convertCursorToTick = (
   const originalTick = (cursorValue * ppq) / 24;
   return originalTick;
 };
+
+
 export function processRawLyrics(rawText: string): LyricWordData[] {
   const lines = rawText.split("\n");
   const words: LyricWordData[] = [];

@@ -20,6 +20,7 @@ type Props = {
 
 export default function MetadataForm({ metadata, onMetadataChange }: Props) {
   const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const rawFile = useKaraokeStore((state) => state.rawFile);
 
   // ใช้ ref เพื่อเก็บ callback ล่าสุด
   const onMetadataChangeRef = useRef(onMetadataChange);
@@ -78,7 +79,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Song Title :"
               inputSize="sm"
             />
@@ -89,7 +90,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             {(field) => (
               <SelectCommon
                 {...field}
-                disabled={!midiInfo}
+                disabled={!midiInfo && !rawFile}
                 options={keyOption}
                 label="Key :"
                 inputSize="sm"
@@ -100,7 +101,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             {(field) => (
               <InputNumberCommon
                 {...field}
-                disabled={!midiInfo}
+                disabled={!midiInfo && !rawFile}
                 label="Tempo :"
                 inputSize="sm"
               />
@@ -110,7 +111,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             {(field) => (
               <SelectCommon
                 {...field}
-                disabled={!midiInfo}
+                disabled={!midiInfo && !rawFile}
                 options={artistTypeOption}
                 label="Gender :"
                 inputSize="sm"
@@ -122,7 +123,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Album :"
               inputSize="sm"
             />
@@ -132,7 +133,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Artist :"
               inputSize="sm"
             />
@@ -142,7 +143,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Composer :"
               inputSize="sm"
             />
@@ -152,7 +153,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Rhythm/Genre :"
               inputSize="sm"
             />
@@ -162,7 +163,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Creator :"
               inputSize="sm"
             />
@@ -172,7 +173,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <InputCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               label="Music Label :"
               inputSize="sm"
             />
@@ -182,7 +183,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
           {(field) => (
             <SelectCommon
               {...field}
-              disabled={!midiInfo}
+              disabled={!midiInfo && !rawFile}
               options={languageOption}
               label="Language :"
               inputSize="sm"
@@ -194,7 +195,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             {(field) => (
               <InputNumberCommon
                 {...field}
-                disabled={!midiInfo}
+                disabled={!midiInfo && !rawFile}
                 label="Year :"
                 inputSize="sm"
               />
@@ -204,7 +205,7 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
             {(field) => (
               <SelectCommon
                 {...field}
-                disabled={!midiInfo}
+                disabled={!midiInfo && !rawFile}
                 options={vocalChannelOption}
                 label="Vocal Channel :"
                 inputSize="sm"

@@ -7,7 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { BsPlusCircleFill, BsPinAngleFill } from "react-icons/bs";
+import { BsPlusCircleFill } from "react-icons/bs";
 import {
   DndContext,
   PointerSensor,
@@ -16,7 +16,7 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import ChordItem from "./chords/item";
-import { IMidiInfo } from "@/types/common.type";
+import { IMidiInfo, MusicMode } from "@/types/common.type";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
 
@@ -26,9 +26,12 @@ interface ChordsBlockProps {
   onEditChord: (chord: any) => void;
   onDeleteChord: (tick: number) => void;
   midiInfo: IMidiInfo | null;
+  audioDuration: number | null;
+  mode: MusicMode | null;
 }
 
-const PIXELS_PER_100_TICKS = 100;
+const PIXELS_PER_UNIT_BASE_MIDI = 1;
+const PIXELS_PER_UNIT_BASE_TIME = 50;
 
 const ChordsBlock: React.FC<ChordsBlockProps> = ({
   onChordClick,
@@ -36,26 +39,25 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   onEditChord,
   onDeleteChord,
   midiInfo,
+  audioDuration,
+  mode,
 }) => {
   const chordsData = useKaraokeStore((state) => state.chordsData);
   const actions = useKaraokeStore((state) => state.actions);
-  const isAutoScrolling = useKaraokeStore(
-    (state) => state.isChordPanelAutoScrolling
-  );
-  // ไม่ต้องดึง chordPanelCenterTick มาตรงนี้แล้ว
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [zoom, setZoom] = useState(1); // Local state for zoom
+  const [zoom, setZoom] = useState(1);
 
-  // Set initial zoom based on BPM
   useEffect(() => {
-    if (midiInfo && midiInfo.bpm > 0) {
+    if (mode === "midi" && midiInfo && midiInfo.bpm > 0) {
       const newZoom = 120 / midiInfo.bpm;
-      // Clamp the zoom value between a reasonable range (e.g., 0.25x to 4x)
       setZoom(Math.max(0.25, Math.min(4, newZoom)));
+    } else {
+      setZoom(1);
     }
-  }, [midiInfo]);
+  }, [mode, midiInfo]);
 
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -63,28 +65,66 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
     }
   }, []);
 
-  const pixelsPerTick = (PIXELS_PER_100_TICKS / 100) * zoom;
+  const pixelsPerUnit = useMemo(() => {
+    const base =
+      mode === "midi" ? PIXELS_PER_UNIT_BASE_MIDI : PIXELS_PER_UNIT_BASE_TIME;
+    return base * zoom;
+  }, [mode, zoom]);
+
   const playheadPosition = containerHeight / 2;
-  const totalDurationTicks = midiInfo?.durationTicks ?? 30000;
-  const trackHeight = totalDurationTicks * pixelsPerTick;
+
+  const totalDuration = useMemo(() => {
+    if (mode === "midi" && midiInfo) {
+      return midiInfo.durationTicks;
+    }
+    if (audioDuration) {
+      return audioDuration;
+    }
+    return 0;
+  }, [mode, midiInfo, audioDuration]);
+
+  const trackHeight = totalDuration * pixelsPerUnit + playheadPosition;
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      if (isAutoScrolling) return;
-
+      const state = useKaraokeStore.getState();
+      if (state.isChordPanelAutoScrolling) {
+        return;
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
       const scrollTop = e.currentTarget.scrollTop;
-      const newCenterTick = (scrollTop + playheadPosition) / pixelsPerTick;
+      const newCenterTick = (scrollTop + playheadPosition) / pixelsPerUnit;
       actions.setChordPanelCenterTick(newCenterTick);
+
+      if (state.isPlaying) {
+        scrollTimeoutRef.current = setTimeout(() => {
+          actions.setIsChordPanelAutoScrolling(true);
+        }, 250);
+      }
     },
-    [isAutoScrolling, playheadPosition, pixelsPerTick, actions]
+    [playheadPosition, pixelsPerUnit, actions]
   );
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
-      actions.setIsChordPanelAutoScrolling(false);
+      const state = useKaraokeStore.getState();
+      if (state.isChordPanelAutoScrolling && state.isPlaying) {
+        actions.setIsChordPanelAutoScrolling(false);
+        actions.setChordPanelCenterTick(state.currentTime);
+      }
     },
     [actions]
   );
+
+  const handleMouseEnter = useCallback(() => {
+    actions.setIsChordPanelHovered(true);
+  }, [actions]);
+
+  const handleMouseLeave = useCallback(() => {
+    actions.setIsChordPanelHovered(false);
+  }, [actions]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -95,22 +135,15 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       const { active, delta } = event;
       const originalTick = parseInt(active.id.toString().split("-")[1]);
       const draggedChord = chordsData.find((c) => c.tick === originalTick);
-
       if (!draggedChord) return;
-
-      const tickChange = delta.y / pixelsPerTick;
+      const tickChange = delta.y / pixelsPerUnit;
       const newTick = Math.round(originalTick + tickChange);
       const finalTick = Math.max(0, newTick);
       actions.updateChord(originalTick, { ...draggedChord, tick: finalTick });
     },
-    [chordsData, pixelsPerTick, actions]
+    [chordsData, pixelsPerUnit, actions]
   );
 
-  const followPlayback = useCallback(() => {
-    actions.setIsChordPanelAutoScrolling(true);
-  }, [actions]);
-
-  // สร้างฟังก์ชันสำหรับจัดการการคลิกปุ่มเพิ่มคอร์ด
   const handleAddChordAtPlayhead = useCallback(() => {
     const { isChordPanelAutoScrolling, chordPanelCenterTick } =
       useKaraokeStore.getState();
@@ -121,39 +154,39 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
     }
   }, [onAddChord]);
 
-  const stableOnChordClick = useCallback(
-    (tick: number) => {
-      onChordClick(tick);
-    },
-    [onChordClick]
-  );
-
-  const stableOnEditChord = useCallback(
-    (chord: any) => {
-      onEditChord(chord);
-    },
-    [onEditChord]
-  );
-
-  const stableOnDeleteChord = useCallback(
-    (tick: number) => {
-      onDeleteChord(tick);
-    },
-    [onDeleteChord]
-  );
-
   const Ruler = useMemo(() => {
+    if (totalDuration === 0) return null;
     const ticks = [];
-    const majorInterval = midiInfo?.ppq ?? 480;
-    const minorInterval = majorInterval / 4;
+    let majorInterval: number;
+    let minorInterval: number;
 
-    for (let i = 0; i <= totalDurationTicks; i += minorInterval) {
-      const isMajor = i % majorInterval === 0;
+    if (mode === "midi") {
+      majorInterval = midiInfo?.ppq ?? 480;
+      minorInterval = majorInterval / 4;
+    } else {
+      if (zoom > 2.5) {
+        majorInterval = 1;
+        minorInterval = 0.2;
+      } else if (zoom > 0.75) {
+        majorInterval = 5;
+        minorInterval = 1;
+      } else {
+        majorInterval = 10;
+        minorInterval = 2;
+      }
+    }
+
+    for (let i = 0; i <= totalDuration; i += minorInterval) {
+      const isMajor =
+        Math.abs(i % majorInterval) < 1e-9 ||
+        Math.abs((i % majorInterval) - majorInterval) < 1e-9;
+      const label =
+        mode === "midi" ? i : i.toFixed(i < 10 && minorInterval < 1 ? 1 : 0);
       ticks.push(
         <div
           key={`tick-${i}`}
           className="absolute left-0 w-full"
-          style={{ top: `${i * pixelsPerTick}px` }}
+          style={{ top: `${i * pixelsPerUnit}px` }}
         >
           <div
             className={`absolute h-px ${
@@ -161,15 +194,16 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
             }`}
           ></div>
           {isMajor && (
-            <span className="absolute left-5 text-[8px] text-gray-400 -translate-y-1/2">
-              {i}
+            <span className="absolute left-5 text-[8px] text-gray-400 -translate-y-1/2 whitespace-nowrap">
+              {label}
+              {mode !== "midi" && "s"}
             </span>
           )}
         </div>
       );
     }
     return ticks;
-  }, [totalDurationTicks, midiInfo?.ppq, pixelsPerTick]);
+  }, [totalDuration, mode, midiInfo?.ppq, pixelsPerUnit, zoom]);
 
   return (
     <div className="h-full flex flex-col gap-2">
@@ -189,12 +223,12 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       <div className="relative h-full">
         <AutoScroller
           containerRef={containerRef}
-          pixelsPerTick={pixelsPerTick}
+          pixelsPerTick={pixelsPerUnit}
           playheadPosition={playheadPosition}
         />
         <ManualScroller
           containerRef={containerRef}
-          pixelsPerTick={pixelsPerTick}
+          pixelsPerTick={pixelsPerUnit}
           playheadPosition={playheadPosition}
         />
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -203,49 +237,38 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
             className="relative h-full bg-white border border-slate-300 rounded-lg overflow-auto"
             onScroll={handleScroll}
             onWheel={handleWheel}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
-            {!isAutoScrolling && (
-              <button
-                onClick={followPlayback}
-                className="fixed bottom-2 right-2 z-30 p-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition"
-                title="Follow Playback"
-              >
-                <BsPinAngleFill />
-              </button>
-            )}
-
-            {/* Playhead indicator */}
             <div
               className="sticky top-1/2 -translate-y-1/2 left-0 w-full h-0.5 bg-purple-500 z-20 flex items-center pointer-events-none"
               style={{ top: `${playheadPosition}px` }}
             >
               <button
                 onClick={handleAddChordAtPlayhead}
-                className="z-50 absolute left-1/2 -translate-x-1/2 text-purple-500 hover:text-purple-700 bg-white rounded-full transition-colors pointer-events-auto"
+                className="z-50 absolute left-1/2 -translate-x-1/2 text-purple-500 hover:text-purple-700 bg-white transition-colors pointer-events-auto"
                 title="Add new chord at current time"
               >
                 <BsPlusCircleFill />
               </button>
               <div className="absolute -left-1.5 w-3 h-3 border-2 border-purple-500 bg-white rounded-full z-10"></div>
             </div>
-
-            {/* Track content */}
             <div
               className="relative w-full"
               style={{ height: `${trackHeight}px` }}
             >
               <div className="absolute top-0 left-4 h-full w-px bg-gray-100 z-0">
-                {Ruler}
+                {totalDuration > 0 && Ruler}
               </div>
               {chordsData.map((chord, index) => (
                 <ChordItem
                   key={`${chord.tick}-${index}`}
                   chord={chord}
                   index={index}
-                  pixelsPerTick={pixelsPerTick}
-                  onChordClick={stableOnChordClick}
-                  onEditChord={stableOnEditChord}
-                  onDeleteChord={stableOnDeleteChord}
+                  pixelsPerTick={pixelsPerUnit}
+                  onChordClick={onChordClick}
+                  onEditChord={onEditChord}
+                  onDeleteChord={onDeleteChord}
                 />
               ))}
             </div>

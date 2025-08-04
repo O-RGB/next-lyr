@@ -37,6 +37,7 @@ export default function LyricsPanel({
 }: Props) {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const audioDuration = useKaraokeStore((state) => state.audioDuration);
   const actions = useKaraokeStore((state) => state.actions);
 
   return (
@@ -73,6 +74,8 @@ export default function LyricsPanel({
             onEditChord={onChordClick}
             onDeleteChord={onDeleteChord}
             midiInfo={midiInfo}
+            audioDuration={audioDuration}
+            mode={mode}
           />
         </div>
       </div>
