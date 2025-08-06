@@ -1,3 +1,4 @@
+// src/components/lyrics/lyrics-grid/line/index.tsx
 import React from "react";
 import LyricWord from "./word";
 import Ruler from "./ruler/ruler";
@@ -7,7 +8,7 @@ import ChordsListLine from "./chords/lists";
 import LineAction from "./actions";
 import { useDroppable } from "@dnd-kit/core";
 import { BsPlusCircle } from "react-icons/bs";
-import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
+import { LyricWordData, MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 
@@ -15,6 +16,9 @@ export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
   lineRef: (el: HTMLDivElement | null) => void;
+  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+  setWordRef: (el: HTMLDivElement | null, index: number) => void;
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
   chords: ChordEvent[];
   mode: MusicMode | null;
   onRulerClick: (
@@ -36,6 +40,7 @@ const LineRow: React.FC<LineRowProps> = React.memo(
     line,
     lineIndex,
     lineRef,
+    setWordRef, // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
     chords,
     mode,
     onRulerClick,
@@ -99,9 +104,10 @@ const LineRow: React.FC<LineRowProps> = React.memo(
           />
         </div>
         <div className="flex w-full justify-between items-center">
-          <div className="flex flex-nowrap gap-2">
+          <div className="flex-1 flex flex-nowrap gap-2 overflow-x-auto pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1">
             {line.map((word) => (
               <LyricWord
+                ref={(el) => setWordRef(el, word.index)}
                 key={word.index}
                 lineIndex={lineIndex}
                 wordData={word}
@@ -112,6 +118,7 @@ const LineRow: React.FC<LineRowProps> = React.memo(
               />
             ))}
           </div>
+
           <LineAction
             editingLineIndex={editingLineIndex ?? undefined}
             lineIndex={lineIndex}

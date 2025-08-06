@@ -46,8 +46,10 @@ export default function LyricsPanel({
           <TimeStampe />
         </div>
       </div>
-      <div className="flex gap-2 h-full overflow-hidden">
-        <div className="w-full">
+
+      <div className="flex w-full gap-2 h-full overflow-hidden">
+        {/* LyricsGrid */}
+        <div className="flex-grow min-w-0">
           <LyricsGrid
             lyricsData={lyricsData}
             onWordClick={onWordClick}
@@ -64,7 +66,9 @@ export default function LyricsPanel({
             mode={mode}
           />
         </div>
-        <div className="w-[200px]">
+
+        {/* ChordsBlock */}
+        <div className="w-[150px] flex-shrink-0">
           <ChordsBlock
             onChordClick={onChordBlockClick}
             onAddChord={onAddChordAtCurrentTime}

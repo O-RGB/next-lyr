@@ -1,4 +1,11 @@
-import React, { useMemo, useRef, useState, useCallback } from "react";
+// src/components/lyrics/lyrics-grid/index.tsx
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import {
   DndContext,
   PointerSensor,
@@ -10,7 +17,7 @@ import {
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
 import LineRow from "./line";
-import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
+import { LyricWordData, MusicMode } from "@/types/common.type";
 import AutoMoveToLine from "./line/render/auto-move";
 
 export interface LyricsGridProps {
@@ -45,13 +52,68 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
   const chords = useKaraokeStore((state) => state.chordsData);
   const actions = useKaraokeStore((state) => state.actions);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const wordRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const currentIndex = useKaraokeStore((state) => state.currentIndex);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+  const playbackIndex = useKaraokeStore((state) => state.playbackIndex);
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
   const [draggingChord, setDraggingChord] = useState<{
     tick: number;
     x: number;
     y: number;
   } | null>(null);
 
-  // Group lyrics by line
+  // useEffect สำหรับการเลื่อนอัตโนมัติไปยัง word ที่ active (ตอนแก้ไข)
+  useEffect(() => {
+    const currentWordData = lyricsData.find(
+      (word) => word.index === currentIndex
+    );
+    if (!currentWordData || selectedLineIndex !== currentWordData.lineIndex) {
+      return;
+    }
+
+    const wordElement = wordRefs.current[currentIndex];
+    if (wordElement) {
+      wordElement.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [currentIndex, lyricsData, selectedLineIndex]);
+
+  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+  // useEffect สำหรับการเลื่อนอัตโนมัติไปยัง word ที่กำลังเล่น (playback)
+  useEffect(() => {
+    if (playbackIndex === null) return;
+
+    const wordElement = wordRefs.current[playbackIndex];
+    if (wordElement) {
+      // ตรวจสอบว่า word element มองเห็นในหน้าจอหรือไม่
+      const parent = wordElement.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        const wordRect = wordElement.getBoundingClientRect();
+
+        const isVisible =
+          wordRect.left >= parentRect.left &&
+          wordRect.right <= parentRect.right;
+
+        // ถ้าไม่เห็น ให้เลื่อนไปหา
+        if (!isVisible) {
+          wordElement.scrollIntoView({
+            behavior: "auto",
+            block: "nearest",
+            inline: "center",
+          });
+        }
+      }
+    }
+  }, [playbackIndex]);
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
   const memoizedLines = useMemo(() => {
     if (!lyricsData || lyricsData.length === 0) return [];
 
@@ -81,7 +143,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
     });
   }, [lyricsData, chords]);
 
-  // Stable callbacks
   const handleEditLine = useCallback(
     (lineIndex: number) => {
       onEditLine(lineIndex);
@@ -98,6 +159,10 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
 
   const setLineRef = useCallback((el: HTMLDivElement | null, index: number) => {
     lineRefs.current[index] = el;
+  }, []);
+
+  const setWordRef = useCallback((el: HTMLDivElement | null, index: number) => {
+    wordRefs.current[index] = el;
   }, []);
 
   const sensors = useSensors(
@@ -186,6 +251,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
                 line={line}
                 lineIndex={lineIndex}
                 lineRef={(el) => setLineRef(el, lineIndex)}
+                setWordRef={setWordRef}
                 chords={lineChords}
                 onEditLine={handleEditLine}
                 onDeleteLine={handleDeleteLine}
