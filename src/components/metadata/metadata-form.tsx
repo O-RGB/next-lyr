@@ -19,13 +19,11 @@ type Props = {
 };
 
 export default function MetadataForm({ metadata, onMetadataChange }: Props) {
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
-  const rawFile = useKaraokeStore((state) => state.rawFile);
+  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
+  const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
 
-  // ใช้ ref เพื่อเก็บ callback ล่าสุด
   const onMetadataChangeRef = useRef(onMetadataChange);
 
-  // อัปเดต ref เมื่อ prop เปลี่ยน
   useEffect(() => {
     onMetadataChangeRef.current = onMetadataChange;
   }, [onMetadataChange]);
@@ -48,14 +46,13 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
     },
   });
 
-  // ใช้ throttle/debounce เพื่อลดการเรียก callback
   const handleFormChange = useCallback((values: Partial<SongInfo>) => {
     console.log(values);
-    // เรียกใช้ callback จาก ref
+
     if (onMetadataChangeRef.current) {
       onMetadataChangeRef.current(values);
     }
-  }, []); // ไม่มี dependency เพราะใช้ ref
+  }, []);
 
   useLayoutEffect(() => {
     if (metadata) {

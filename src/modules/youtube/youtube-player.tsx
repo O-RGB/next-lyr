@@ -1,4 +1,5 @@
-// update/modules/youtube/youtube-player.tsx
+// src/modules/youtube/youtube-player.tsx
+
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import YouTube from "react-youtube";
 import type { YouTubePlayer } from "react-youtube";
@@ -10,6 +11,7 @@ import InputCommon from "@/components/common/data-input/input";
 type Props = {
   youtubeId: string | null;
   onUrlChange: (url: string) => void;
+  onReady: (event: { target: any }) => void;
 };
 
 export type YouTubePlayerRef = {
@@ -19,16 +21,15 @@ export type YouTubePlayerRef = {
   getCurrentTime: () => number;
   isPlaying: () => boolean;
   isReady: boolean;
+  destroy: () => void; // <--- เพิ่ม destroy method
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
-  ({ youtubeId, onUrlChange }, ref) => {
+  ({ youtubeId, onUrlChange, onReady }, ref) => {
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
-    const actions = useKaraokeStore((state) => state.actions);
-    const setMetadata = useKaraokeStore((state) => state.setMetadata);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.playVideo(),
@@ -37,16 +38,13 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
       isPlaying: () => playerState === 1,
       isReady: isReady,
+      destroy: () => playerRef.current?.destroy(), // <--- เพิ่มการเรียก destroy
     }));
 
-    const onPlayerReady = (event: { target: YouTubePlayer }) => {
+    const handleReady = (event: { target: YouTubePlayer }) => {
       playerRef.current = event.target;
       setIsReady(true);
-      // ดึงข้อมูลวิดีโอเมื่อพร้อม
-      const duration = event.target.getDuration();
-      const videoData = event.target.getVideoData();
-      actions.setAudioDuration(duration);
-      setMetadata({ TITLE: videoData.title, ARTIST: videoData.author });
+      onReady(event);
     };
 
     const opts = {
@@ -64,7 +62,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
           <YouTube
             videoId={youtubeId}
             opts={opts}
-            onReady={onPlayerReady}
+            onReady={handleReady}
             onStateChange={(e) => setPlayerState(e.data)}
             className="rounded-lg overflow-hidden"
           />

@@ -17,7 +17,6 @@ export interface LineRowProps {
   lineRef: (el: HTMLDivElement | null) => void;
   chords: ChordEvent[];
   mode: MusicMode | null;
-  midiInfo: IMidiInfo | null;
   onRulerClick: (
     lineIndex: number,
     percentage: number,
@@ -39,7 +38,6 @@ const LineRow: React.FC<LineRowProps> = React.memo(
     lineRef,
     chords,
     mode,
-    midiInfo,
     onRulerClick,
     onChordClick,
     onAddChordClick,
@@ -128,8 +126,7 @@ const LineRow: React.FC<LineRowProps> = React.memo(
     prev.line === next.line &&
     prev.chords === next.chords &&
     prev.lineIndex === next.lineIndex &&
-    prev.mode === next.mode &&
-    prev.midiInfo === next.midiInfo
+    prev.mode === next.mode
 );
 
 LineRow.displayName = "LineRow";

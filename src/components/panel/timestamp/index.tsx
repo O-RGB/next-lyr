@@ -7,14 +7,14 @@ interface TimeStampeProps {}
 const TimeStampe: React.FC<TimeStampeProps> = ({}) => {
   const currentTime = useKaraokeStore((state) => state.currentTime);
   const mode = useKaraokeStore((state) => state.mode);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
 
   const currentBeat = useMemo(() => {
     if (mode !== "midi" || !midiInfo || !midiInfo.ppq) {
       return -1;
     }
 
-    const firstNoteTick = midiInfo.firstNoteOnTick ?? 0;
+    const firstNoteTick = midiInfo.raw.firstNoteOnTick ?? 0;
     if (currentTime < firstNoteTick) {
       return -1;
     }

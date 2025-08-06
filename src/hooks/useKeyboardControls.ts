@@ -1,3 +1,4 @@
+// src/hooks/useKeyboardControls.ts
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
@@ -21,11 +22,9 @@ export const useKeyboardControls = (
   const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
-  const isChordPanelHovered = useKaraokeStore(
-    (state) => state.isChordPanelHovered
-  );
-  const isChordPanelAutoScrolling = useKaraokeStore(
-    (state) => state.isChordPanelAutoScrolling
+  // ดึง state เพิ่มเติมจาก store
+  const playFromScrolledPosition = useKaraokeStore(
+    (state) => state.playFromScrolledPosition
   );
   const chordPanelCenterTick = useKaraokeStore(
     (state) => state.chordPanelCenterTick
@@ -55,6 +54,7 @@ export const useKeyboardControls = (
         ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
         : 0;
 
+      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
       if (e.code === "ArrowUp") {
         e.preventDefault();
         actions.selectLine(
@@ -64,6 +64,8 @@ export const useKeyboardControls = (
               : null
             : Math.max(0, selectedLineIndex - 1)
         );
+        // เมื่อผู้ใช้เลือกบรรทัดใหม่ ให้รีเซ็ตสถานะการเล่นจากตำแหน่งที่เลื่อน
+        actions.setPlayFromScrolledPosition(false);
         return;
       }
       if (e.code === "ArrowDown") {
@@ -75,8 +77,11 @@ export const useKeyboardControls = (
               : null
             : Math.min(totalLines - 1, selectedLineIndex + 1)
         );
+        // เมื่อผู้ใช้เลือกบรรทัดใหม่ ให้รีเซ็ตสถานะการเล่นจากตำแหน่งที่เลื่อน
+        actions.setPlayFromScrolledPosition(false);
         return;
       }
+      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
       if (e.code === "Enter" && !e.ctrlKey && selectedLineIndex !== null) {
         e.preventDefault();
@@ -99,25 +104,32 @@ export const useKeyboardControls = (
         } else {
           let seekTime: number;
 
-          if (isChordPanelHovered && !isChordPanelAutoScrolling) {
+          // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+          // ตรวจสอบว่าควรเล่นจากตำแหน่งที่เลื่อนไปหรือไม่
+          if (playFromScrolledPosition) {
             seekTime = chordPanelCenterTick;
+            // **สำคัญมาก:** รีเซ็ตสถานะกลับเป็น false ทันทีหลังจากใช้งานแล้ว
+            // เพื่อให้การกดเล่นครั้งต่อไป (โดยไม่เลื่อน) กลับไปใช้ค่าเริ่มต้น
+            actions.setPlayFromScrolledPosition(false);
           } else if (selectedLineIndex !== null) {
+            // ถ้าไม่ได้เลื่อนเอง ให้หาเวลาเริ่มต้นของบรรทัดที่เลือก
             const firstWordOfLine = lyricsData.find(
               (w) => w.lineIndex === selectedLineIndex
             );
             if (firstWordOfLine && firstWordOfLine.start !== null) {
               seekTime = firstWordOfLine.start;
             } else {
+              // ถ้าบรรทัดนั้นยังไม่มีเวลา ให้เล่นจากตำแหน่งตรงกลางปัจจุบัน
               seekTime = chordPanelCenterTick;
             }
           } else {
+            // ถ้าไม่มีบรรทัดที่เลือก ให้เล่นจากตำแหน่งตรงกลางปัจจุบัน
             seekTime = chordPanelCenterTick;
           }
+          // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
           actions.setIsChordPanelAutoScrolling(true);
-
           actions.setCurrentTime(seekTime);
-
           player.seek(seekTime);
           player.play();
         }
@@ -204,8 +216,7 @@ export const useKeyboardControls = (
     currentIndex,
     onEditLine,
     editingLineIndex,
-    isChordPanelHovered,
-    isChordPanelAutoScrolling,
+    playFromScrolledPosition,
     chordPanelCenterTick,
   ]);
 };

@@ -147,5 +147,5 @@ export function buildMp3(
   }
 
   const id3Buffer = buildID3v2(newTags);
-  return concat([id3Buffer, new Uint8Array(audioData)]).buffer;
+  return concat([id3Buffer, new Uint8Array(audioData)]).buffer as ArrayBuffer;
 }

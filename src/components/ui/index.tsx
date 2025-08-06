@@ -1,41 +1,26 @@
 "use client";
 
-import React, {
-  useRef,
-  useMemo,
-  useCallback,
-  useLayoutEffect,
-  useState,
-} from "react";
-import ControlPanel from "../panel/control-panel";
+import React, { useRef, useMemo, useCallback } from "react";
 import LyricsPanel from "../panel/lyrics-panel";
 import ChordEditModal from "../modals/chord";
-import MidiPlayer, {
-  MusicParseResult,
-  MidiPlayerRef,
-} from "../../modules/js-synth/player";
 import MetadataForm from "../metadata/metadata-form";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-
-import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor";
-import YoutubePlayer, {
-  YouTubePlayerRef,
-} from "../../modules/youtube/youtube-player";
-import VideoPlayer, { VideoPlayerRef } from "../../modules/video/video-player";
+import {
+  ChordEvent,
+  SongInfo,
+} from "../../modules/midi-klyr-parser/lib/processor";
 import EditLyricLineModal from "../modals/edit-lyrics/edit-lyric-line-modal";
 import { PlayerControls } from "@/hooks/useKeyboardControls";
 import KeyboardRender from "./keybord-render";
 import LyricsPlayer from "../lyrics/karaoke-lyrics";
 import DonateModal from "../modals/donate";
+import PlayerHost, { PlayerRef } from "./player-host";
 
 const LyrEditerPanel: React.FC = () => {
+  // ดึง State จาก Store
   const mode = useKaraokeStore((state) => state.mode);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const metadata = useKaraokeStore((state) => state.metadata);
-  const audioSrc = useKaraokeStore((state) => state.audioSrc);
-  const videoSrc = useKaraokeStore((state) => state.videoSrc);
-  const youtubeId = useKaraokeStore((state) => state.youtubeId);
-
   const lyricsProcessed = useKaraokeStore((state) => state.lyricsProcessed);
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
   const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
@@ -45,100 +30,25 @@ const LyrEditerPanel: React.FC = () => {
   );
   const minChordTickRange = useKaraokeStore((state) => state.minChordTickRange);
   const maxChordTickRange = useKaraokeStore((state) => state.maxChordTickRange);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
   const actions = useKaraokeStore((state) => state.actions);
-  const setMetadata = useKaraokeStore((state) => state.setMetadata);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const videoRef = useRef<VideoPlayerRef | null>(null);
-  const youtubeRef = useRef<YouTubePlayerRef | null>(null);
-  const midiPlayerRef = useRef<MidiPlayerRef | null>(null);
+  // Ref สำหรับ Player
+  const playerRef = useRef<PlayerRef>(null);
 
+  // Player Controls ที่รวมทุกอย่างไว้ในที่เดียว
   const playerControls = useMemo<PlayerControls | null>(() => {
-    if (!mode) return null;
+    if (!mode || !playerRef.current) return null;
 
     return {
-      play: () => {
-        actions.setIsPlaying(true);
-        switch (mode) {
-          case "mp3":
-            audioRef.current?.play();
-            break;
-          case "mp4":
-            videoRef.current?.play();
-            break;
-          case "youtube":
-            youtubeRef.current?.play();
-            break;
-          case "midi":
-            midiPlayerRef.current?.play();
-            break;
-        }
-      },
-      pause: () => {
-        actions.setIsPlaying(false);
-        switch (mode) {
-          case "mp3":
-            audioRef.current?.pause();
-            break;
-          case "mp4":
-            videoRef.current?.pause();
-            break;
-          case "youtube":
-            youtubeRef.current?.pause();
-            break;
-          case "midi":
-            midiPlayerRef.current?.pause();
-            break;
-        }
-      },
-      seek: (time: number) => {
-        switch (mode) {
-          case "mp3":
-            if (audioRef.current) audioRef.current.currentTime = time;
-            break;
-          case "mp4":
-            videoRef.current?.seek(time);
-            break;
-          case "youtube":
-            youtubeRef.current?.seek(time);
-            break;
-          case "midi":
-            midiPlayerRef.current?.seek(time);
-            break;
-        }
-      },
-      getCurrentTime: () => {
-        switch (mode) {
-          case "mp3":
-            return audioRef.current?.currentTime ?? 0;
-          case "mp4":
-            return videoRef.current?.getCurrentTime() ?? 0;
-          case "youtube":
-            return youtubeRef.current?.getCurrentTime() ?? 0;
-          case "midi":
-            return midiPlayerRef.current?.currentTick ?? 0;
-          default:
-            return 0;
-        }
-      },
-      isPlaying: () => {
-        switch (mode) {
-          case "mp3":
-            return !!audioRef.current && !audioRef.current.paused;
-          case "mp4":
-            return videoRef.current?.isPlaying() ?? false;
-          case "youtube":
-            return youtubeRef.current?.isPlaying() ?? false;
-          case "midi":
-            return midiPlayerRef.current?.isPlaying ?? false;
-          default:
-            return false;
-        }
-      },
+      play: () => playerRef.current?.play(),
+      pause: () => playerRef.current?.pause(),
+      seek: (time: number) => playerRef.current?.seek(time),
+      getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
+      isPlaying: () => playerRef.current?.isPlaying() ?? false,
     };
-  }, [mode, actions]);
+  }, [mode, playerRef.current]);
 
+  // Callbacks สำหรับ Event ต่างๆ (ส่วนใหญ่ยังคงเดิม)
   const handleStop = useCallback(() => {
     playerControls?.pause();
     playerControls?.seek(0);
@@ -153,9 +63,7 @@ const LyrEditerPanel: React.FC = () => {
     (index: number) => {
       const word = lyricsData.find((w) => w.index === index);
       if (word?.start !== null && playerControls) {
-        // --- เพิ่มบรรทัดนี้เข้าไป ---
         actions.setIsChordPanelAutoScrolling(true);
-
         playerControls.seek(word?.start ?? 0);
         if (!playerControls.isPlaying()) {
           playerControls.play();
@@ -168,14 +76,13 @@ const LyrEditerPanel: React.FC = () => {
 
   const handleEditLine = useCallback(
     (lineIndex: number) => {
-      if (lineIndex === null || midiInfo === null) return;
       const { success, preRollTime } = actions.startEditLine(lineIndex);
       if (success && playerControls) {
         playerControls.seek(preRollTime);
         playerControls.play();
       }
     },
-    [midiInfo, actions, playerControls]
+    [actions, playerControls]
   );
 
   const handleRulerClick = useCallback(
@@ -269,124 +176,71 @@ const LyrEditerPanel: React.FC = () => {
     },
     [actions]
   );
-
-  const handleLyricsParsed = useCallback(
-    (data: MusicParseResult) => {
-      setMetadata(data.info);
-      actions.importParsedMidiData({
-        lyrics: data.lyrics,
-        chords: data.chords,
-      });
-    },
-    [setMetadata, actions]
-  );
-
   return (
     <main className="flex h-[calc(100vh-36px)]">
-      <DonateModal></DonateModal>
+      <DonateModal />
       <KeyboardRender
-        audioRef={audioRef}
-        handleEditLine={handleEditLine}
-        midiPlayerRef={midiPlayerRef}
         playerControls={playerControls}
-        videoRef={videoRef}
-        youtubeRef={youtubeRef}
-      ></KeyboardRender>
+        handleEditLine={handleEditLine}
+      />
+
       <div className="flex gap-2 overflow-hidden w-full h-full p-4">
-        {/* Top Section */}
+        {/* Left Section */}
         <div className="w-full flex flex-col gap-2 overflow-hidden">
           <div className="h-[70%]">
-            <LyricsPanel
-              onWordClick={handleWordClick}
-              onEditLine={handleEditLine}
-              onStopTiming={handleStop}
-              onRulerClick={handleRulerClick}
-              onChordClick={handleChordClick}
-              onAddChordClick={handleAddChordClick}
-              onChordBlockClick={handleChordBlockClick}
-              onAddChordAtCurrentTime={handleAddChordAtCurrentTime}
-              onDeleteChord={handleDeleteChord}
-              mode={mode}
-            />
+            {mode ? (
+              <LyricsPanel
+                onWordClick={handleWordClick}
+                onEditLine={handleEditLine}
+                onStopTiming={handleStop}
+                onRulerClick={handleRulerClick}
+                onChordClick={handleChordClick}
+                onAddChordClick={handleAddChordClick}
+                onChordBlockClick={handleChordBlockClick}
+                onAddChordAtCurrentTime={handleAddChordAtCurrentTime}
+                onDeleteChord={handleDeleteChord}
+                mode={mode}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+                <p className="text-gray-500">
+                  Please select a mode from the File menu to begin.
+                </p>
+              </div>
+            )}
           </div>
           {/* Real-time Preview Section */}
           <div className="h-[30%] bg-gray-400 rounded-lg flex items-center justify-center">
-            {(lyricsProcessed?.ranges.length ?? 0) > 0 && lyricsProcessed && (
+            {lyricsProcessed?.ranges.length && lyricsProcessed ? (
               <LyricsPlayer lyricsProcessed={lyricsProcessed} />
+            ) : (
+              <p className="text-white">Lyrics Preview</p>
             )}
           </div>
         </div>
-        <div className="w-[40%] relative p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg h-full overflow-auto">
-          {mode === "mp3" && (
-            <ControlPanel
-              audioRef={audioRef}
-              audioSrc={audioSrc}
-              metadata={metadata}
-              onAudioLoad={(file, lyricsParsed) => {
-                actions.setAudioSrc(URL.createObjectURL(file), file.name, file);
-                actions.importParsedMidiData({
-                  chords: lyricsParsed.chords,
-                  lyrics: lyricsParsed.lyrics,
-                });
-              }}
-              onMetadataChange={setMetadata}
-              onPlay={() => playerControls?.play()}
-              onPause={() => playerControls?.pause()}
-              onStop={handleStop}
-            />
-          )}
 
-          {mode === "mp4" && (
-            <div className="space-y-4">
-              <VideoPlayer
-                ref={videoRef}
-                src={videoSrc}
-                onFileChange={(file) =>
-                  actions.setVideoSrc(URL.createObjectURL(file), file.name)
-                }
-              />
-              <MetadataForm
-                metadata={metadata}
-                onMetadataChange={setMetadata}
-              />
-            </div>
-          )}
-          {mode === "youtube" && (
-            <div className="space-y-4">
-              <YoutubePlayer
-                ref={youtubeRef}
-                youtubeId={youtubeId}
-                onUrlChange={(url) => actions.setYoutubeId(url)}
-              />
-              <MetadataForm
-                metadata={metadata}
-                onMetadataChange={setMetadata}
-              />
-            </div>
-          )}
-          {mode === "midi" && (
-            <div className="space-y-4">
-              <MidiPlayer
-                ref={midiPlayerRef}
-                onFileLoaded={(file, durationTicks, ppq, bpm, raw) => {
-                  actions.setMidiInfo({
-                    fileName: file.name,
-                    durationTicks,
-                    ppq,
-                    bpm,
-                    raw,
-                  });
-                }}
-                onLyricsParsed={handleLyricsParsed}
-              />
-              <MetadataForm
-                metadata={metadata}
-                onMetadataChange={setMetadata}
-              />
+        {/* Right Section */}
+        <div className="w-[40%] relative p-4 gap-6 bg-slate-200/50 border border-slate-300 rounded-lg h-full overflow-auto">
+          {mode ? (
+            <>
+              <PlayerHost ref={playerRef} />
+              <div className="mt-4">
+                <MetadataForm
+                  metadata={metadata}
+                  onMetadataChange={actions.setMetadata}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-center">
+                Control Panel will appear here after selecting a mode.
+              </p>
             </div>
           )}
         </div>
       </div>
+
       <EditLyricLineModal
         open={isEditModalOpen}
         lyricsData={lyricsData}

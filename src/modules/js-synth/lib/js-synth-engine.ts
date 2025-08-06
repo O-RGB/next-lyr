@@ -1,4 +1,3 @@
-// src/modules/js-synth/lib/js-synth-engine.ts
 import { Synthesizer as JsSynthesizer } from "js-synthesizer";
 import { JsSynthPlayerEngine } from "./js-synth-player";
 import { DEFAULT_SOUND_FONT } from "@/configs/value";
@@ -10,6 +9,7 @@ export class JsSynthEngine {
 
   public synth: JsSynthesizer | undefined;
   public audio: AudioContext | undefined;
+  private node: AudioNode | undefined;
   public player: JsSynthPlayerEngine | undefined;
   public preset: number[] = [];
   public analysers: AnalyserNode[] = [];
@@ -17,7 +17,6 @@ export class JsSynthEngine {
   public soundfontFile: File | undefined;
   public bassLocked: number | undefined = undefined;
 
-  // Worker and Listeners
   private timerWorker: Worker | undefined;
   private tickUpdateListeners: TickUpdateCallback[] = [];
 
@@ -41,13 +40,13 @@ export class JsSynthEngine {
 
     const node = synth.createAudioNode(audioContext, 8192);
     node.connect(audioContext.destination);
+    this.node = node;
 
     synth.setGain(0.3);
 
     this.synth = synth;
     this.audio = audioContext;
 
-    // --- Worker Initialization ---
     this.timerWorker = new Worker(
       new URL("/public/worker/timer-worker.ts", import.meta.url)
     );
@@ -62,7 +61,32 @@ export class JsSynthEngine {
     await this.loadDefaultSoundFont();
   }
 
-  // --- Listener Management for Worker Ticks ---
+  public shutdown() {
+    if (!JsSynthEngine.instance) return;
+
+    console.log("Shutting down JsSynthEngine synchronously...");
+
+    this.player?.stop();
+    this.stopTimer();
+    this.timerWorker?.terminate();
+    this.node?.disconnect();
+    this.audio?.suspend();
+
+    this.audio
+      ?.close()
+      .catch((e) => console.error("Error closing AudioContext:", e));
+
+    this.synth = undefined;
+    this.audio = undefined;
+    this.player = undefined;
+    this.timerWorker = undefined;
+    this.node = undefined;
+    this.tickUpdateListeners = [];
+
+    JsSynthEngine.instance = undefined;
+    console.log("JsSynthEngine instance shut down.");
+  }
+
   public addEventListener(
     event: "tickupdate",
     callback: TickUpdateCallback
@@ -85,7 +109,6 @@ export class JsSynthEngine {
     this.tickUpdateListeners.forEach((cb) => cb(time));
   }
 
-  // --- Worker Control Methods ---
   public startTimer() {
     this.timerWorker?.postMessage({ command: "start" });
   }

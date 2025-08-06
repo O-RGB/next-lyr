@@ -36,8 +36,6 @@ export default function LyricsPanel({
   mode,
 }: Props) {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
-  const audioDuration = useKaraokeStore((state) => state.audioDuration);
   const actions = useKaraokeStore((state) => state.actions);
 
   return (
@@ -45,7 +43,7 @@ export default function LyricsPanel({
       <div className="flex justify-between">
         <div className="text-lg font-semibold mb-2 ">Lyric</div>
         <div>
-          <TimeStampe></TimeStampe>
+          <TimeStampe />
         </div>
       </div>
       <div className="flex gap-2 h-full overflow-hidden">
@@ -64,7 +62,6 @@ export default function LyricsPanel({
             onChordClick={onChordClick}
             onAddChordClick={onAddChordClick}
             mode={mode}
-            midiInfo={midiInfo}
           />
         </div>
         <div className="w-[200px]">
@@ -73,9 +70,6 @@ export default function LyricsPanel({
             onAddChord={onAddChordAtCurrentTime}
             onEditChord={onChordClick}
             onDeleteChord={onDeleteChord}
-            midiInfo={midiInfo}
-            audioDuration={audioDuration}
-            mode={mode}
           />
         </div>
       </div>

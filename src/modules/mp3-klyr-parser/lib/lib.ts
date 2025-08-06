@@ -81,10 +81,20 @@ export function stringToTIS620(str: string): Uint8Array {
 
 // READ
 
+// export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+//   let clean = base64.replace(/^LyrHdr\d*/, "").replace(/[\r\n\s]+/g, "");
+//   while (clean.length % 4 !== 0) clean += "=";
+//   return Buffer.from(clean, "base64");
+// }
+
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
   let clean = base64.replace(/^LyrHdr\d*/, "").replace(/[\r\n\s]+/g, "");
   while (clean.length % 4 !== 0) clean += "=";
-  return Buffer.from(clean, "base64");
+  const buffer = Buffer.from(clean, "base64");
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  );
 }
 
 export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {

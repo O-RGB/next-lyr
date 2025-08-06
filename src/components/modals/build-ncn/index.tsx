@@ -23,9 +23,9 @@ interface BuildNcnModalProps {
 }
 
 const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
-  const rawFile = useKaraokeStore((state) => state.rawFile);
+  const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
   const chordsData = useKaraokeStore((state) => state.chordsData);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
+  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
   const mode = useKaraokeStore((state) => state.mode);
   const metadata = useKaraokeStore((state) => state.metadata);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);

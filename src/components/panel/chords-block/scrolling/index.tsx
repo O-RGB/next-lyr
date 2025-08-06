@@ -5,7 +5,7 @@ export const AutoScroller: React.FC<{
   containerRef: React.RefObject<HTMLDivElement | null>;
   pixelsPerTick: number;
   playheadPosition: number;
-}> = ({ containerRef, pixelsPerTick, playheadPosition }) => {
+}> = ({ containerRef, pixelsPerTick }) => {
   const currentTime = useKaraokeStore((state) => state.currentTime);
   const isAutoScrolling = useKaraokeStore(
     (state) => state.isChordPanelAutoScrolling
@@ -14,17 +14,12 @@ export const AutoScroller: React.FC<{
   useLayoutEffect(() => {
     if (!containerRef.current || !isAutoScrolling) return;
 
-    const targetScrollTop = currentTime * pixelsPerTick - playheadPosition;
+    const targetScrollTop = currentTime * pixelsPerTick;
+
     const clampedScrollTop = Math.max(0, targetScrollTop);
 
     containerRef.current.scrollTop = clampedScrollTop;
-  }, [
-    currentTime,
-    isAutoScrolling,
-    pixelsPerTick,
-    playheadPosition,
-    containerRef,
-  ]);
+  }, [currentTime, isAutoScrolling, pixelsPerTick, containerRef]);
 
   return null;
 };

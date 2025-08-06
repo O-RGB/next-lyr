@@ -20,8 +20,8 @@ const TimelinePanel: React.FC = () => {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const chordsData = useKaraokeStore((state) => state.chordsData);
   const mode = useKaraokeStore((state) => state.mode);
-  const midiInfo = useKaraokeStore((state) => state.midiInfo);
-  const audioDuration = useKaraokeStore((state) => state.audioDuration);
+  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
+  const audioDuration = useKaraokeStore((state) => state.playerState.duration);
   const actions = useKaraokeStore((state) => state.actions);
 
   const [clips, setClips] = useState<Clip[]>([]);

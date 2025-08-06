@@ -13,7 +13,7 @@ export class JsSynthPlayerEngine {
   private engine: JsSynthEngine;
 
   public currentTick: number = 0;
-  public isPlaying: boolean = false;
+  private _isPlaying: boolean = false;
   public durationTicks: number = 0;
   public midiData: MidiData | undefined = undefined;
   public ticksPerBeat: number = 480;
@@ -88,28 +88,38 @@ export class JsSynthPlayerEngine {
     this.stateChangeListeners.forEach((cb) => cb(isPlaying));
   }
 
-  public play() {
-    if (this.isPlaying || !this.midiData) return;
+  public isPlaying(): boolean {
+    return this._isPlaying;
+  }
 
-    
+  public play() {
+    if (this._isPlaying || !this.midiData) return;
+
     this.audioContext.resume();
     this.player.playPlayer();
     this.engine.startTimer();
-    this.isPlaying = true;
+    this._isPlaying = true;
     this.emitStateChange(true);
   }
 
   public pause() {
-    if (!this.isPlaying) return;
+    if (!this._isPlaying) return;
     this.player.stopPlayer();
     this.engine.stopTimer();
-    this.isPlaying = false;
+    this._isPlaying = false;
     this.emitStateChange(false);
   }
 
   public stop() {
     this.pause();
     this.seek(0);
+  }
+
+  public destroy() {
+    this.engine.removeEventListener("tickupdate", this.handleEngineTick);
+    this.stop();
+
+    this.engine.shutdown();
   }
 
   public seek(tick: number) {
@@ -125,6 +135,10 @@ export class JsSynthPlayerEngine {
       if (bpm) this.currentBpm = bpm;
       this.emitTickUpdate(clampedTick, this.currentBpm);
     });
+  }
+
+  public getCurrentTime(): number {
+    return this.currentTick;
   }
 
   async loadMidi(

@@ -1,3 +1,4 @@
+// src/components/panel/chords-block/index.tsx
 import React, {
   useLayoutEffect,
   useRef,
@@ -16,7 +17,6 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import ChordItem from "./chords/item";
-import { IMidiInfo, MusicMode } from "@/types/common.type";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
 
@@ -25,25 +25,19 @@ interface ChordsBlockProps {
   onAddChord: (tick?: number) => void;
   onEditChord: (chord: any) => void;
   onDeleteChord: (tick: number) => void;
-  midiInfo: IMidiInfo | null;
-  audioDuration: number | null;
-  mode: MusicMode | null;
 }
 
-const PIXELS_PER_UNIT_BASE_MIDI = 1;
+const PIXELS_PER_UNIT_BASE_MIDI = 0.1;
 const PIXELS_PER_UNIT_BASE_TIME = 50;
+const CHORD_ITEM_HEIGHT_PX = 34;
 
 const ChordsBlock: React.FC<ChordsBlockProps> = ({
   onChordClick,
   onAddChord,
   onEditChord,
   onDeleteChord,
-  midiInfo,
-  audioDuration,
-  mode,
 }) => {
-  const chordsData = useKaraokeStore((state) => state.chordsData);
-  const actions = useKaraokeStore((state) => state.actions);
+  const { mode, playerState, chordsData, actions } = useKaraokeStore();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,13 +45,17 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
-    if (mode === "midi" && midiInfo && midiInfo.bpm > 0) {
-      const newZoom = 120 / midiInfo.bpm;
+    if (
+      mode === "midi" &&
+      playerState.midiInfo &&
+      playerState.midiInfo.bpm > 0
+    ) {
+      const newZoom = 120 / playerState.midiInfo.bpm;
       setZoom(Math.max(0.25, Math.min(4, newZoom)));
     } else {
       setZoom(1);
     }
-  }, [mode, midiInfo]);
+  }, [mode, playerState.midiInfo]);
 
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -72,18 +70,11 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   }, [mode, zoom]);
 
   const playheadPosition = containerHeight / 2;
-
-  const totalDuration = useMemo(() => {
-    if (mode === "midi" && midiInfo) {
-      return midiInfo.durationTicks;
-    }
-    if (audioDuration) {
-      return audioDuration;
-    }
-    return 0;
-  }, [mode, midiInfo, audioDuration]);
-
-  const trackHeight = totalDuration * pixelsPerUnit + playheadPosition;
+  const totalDuration = playerState.duration ?? 0;
+  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+  // เพิ่มความสูงของ Track ทั้งหมดเท่ากับความสูงของ container เพื่อสร้าง padding บนและล่าง
+  const trackHeight = totalDuration * pixelsPerUnit + containerHeight;
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -91,11 +82,16 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       if (state.isChordPanelAutoScrolling) {
         return;
       }
+      actions.setPlayFromScrolledPosition(true);
+
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
       const scrollTop = e.currentTarget.scrollTop;
-      const newCenterTick = (scrollTop + playheadPosition) / pixelsPerUnit;
+      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+      // คำนวณ tick ที่อยู่ตรงกลางจอใหม่ให้ถูกต้องตาม layout ใหม่
+      const newCenterTick = scrollTop / pixelsPerUnit;
+      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
       actions.setChordPanelCenterTick(newCenterTick);
 
       if (state.isPlaying) {
@@ -104,7 +100,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
         }, 250);
       }
     },
-    [playheadPosition, pixelsPerUnit, actions]
+    [pixelsPerUnit, actions]
   );
 
   const handleWheel = useCallback(
@@ -113,6 +109,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       if (state.isChordPanelAutoScrolling && state.isPlaying) {
         actions.setIsChordPanelAutoScrolling(false);
         actions.setChordPanelCenterTick(state.currentTime);
+        actions.setPlayFromScrolledPosition(true);
       }
     },
     [actions]
@@ -133,26 +130,33 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, delta } = event;
-      const originalTick = parseInt(active.id.toString().split("-")[1]);
+      const originalTick = parseFloat(active.id.toString().split("-")[1]);
       const draggedChord = chordsData.find((c) => c.tick === originalTick);
       if (!draggedChord) return;
       const tickChange = delta.y / pixelsPerUnit;
-      const newTick = Math.round(originalTick + tickChange);
-      const finalTick = Math.max(0, newTick);
+      const newTick = originalTick + tickChange;
+      const finalTick = Math.max(
+        0,
+        mode === "midi" ? Math.round(newTick) : newTick
+      );
       actions.updateChord(originalTick, { ...draggedChord, tick: finalTick });
     },
-    [chordsData, pixelsPerUnit, actions]
+    [chordsData, pixelsPerUnit, actions, mode]
   );
 
   const handleAddChordAtPlayhead = useCallback(() => {
-    const { isChordPanelAutoScrolling, chordPanelCenterTick } =
+    const { isChordPanelAutoScrolling, chordPanelCenterTick, currentTime } =
       useKaraokeStore.getState();
+    const chordHeightInTicks = CHORD_ITEM_HEIGHT_PX / 2 / pixelsPerUnit;
+    let tickToAdd: number;
     if (isChordPanelAutoScrolling) {
-      onAddChord();
+      tickToAdd = currentTime - chordHeightInTicks;
     } else {
-      onAddChord(chordPanelCenterTick);
+      tickToAdd = chordPanelCenterTick - chordHeightInTicks;
     }
-  }, [onAddChord]);
+    const finalTick = Math.max(0, tickToAdd);
+    onAddChord(finalTick);
+  }, [onAddChord, pixelsPerUnit]);
 
   const Ruler = useMemo(() => {
     if (totalDuration === 0) return null;
@@ -161,7 +165,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
     let minorInterval: number;
 
     if (mode === "midi") {
-      majorInterval = midiInfo?.ppq ?? 480;
+      majorInterval = playerState.midiInfo?.ppq ?? 480;
       minorInterval = majorInterval / 4;
     } else {
       if (zoom > 2.5) {
@@ -203,7 +207,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       );
     }
     return ticks;
-  }, [totalDuration, mode, midiInfo?.ppq, pixelsPerUnit, zoom]);
+  }, [totalDuration, mode, playerState.midiInfo?.ppq, pixelsPerUnit, zoom]);
 
   return (
     <div className="h-full flex flex-col gap-2">
@@ -257,20 +261,28 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
               className="relative w-full"
               style={{ height: `${trackHeight}px` }}
             >
-              <div className="absolute top-0 left-4 h-full w-px bg-gray-100 z-0">
-                {totalDuration > 0 && Ruler}
+              {/* vvvvvvvvvv จุดแก้ไข vvvvvvvvvv */}
+              {/* เพิ่ม Div ครอบเพื่อสร้าง Padding ด้านบน */}
+              <div
+                className="relative"
+                style={{ top: `${playheadPosition}px` }}
+              >
+                {/* ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^ */}
+                <div className="absolute top-0 left-4 h-full w-px bg-gray-100 z-0">
+                  {totalDuration > 0 && Ruler}
+                </div>
+                {chordsData.map((chord, index) => (
+                  <ChordItem
+                    key={`${chord.tick}-${index}`}
+                    chord={chord}
+                    index={index}
+                    pixelsPerTick={pixelsPerUnit}
+                    onChordClick={onChordClick}
+                    onEditChord={onEditChord}
+                    onDeleteChord={onDeleteChord}
+                  />
+                ))}
               </div>
-              {chordsData.map((chord, index) => (
-                <ChordItem
-                  key={`${chord.tick}-${index}`}
-                  chord={chord}
-                  index={index}
-                  pixelsPerTick={pixelsPerUnit}
-                  onChordClick={onChordClick}
-                  onEditChord={onEditChord}
-                  onDeleteChord={onDeleteChord}
-                />
-              ))}
             </div>
           </div>
         </DndContext>

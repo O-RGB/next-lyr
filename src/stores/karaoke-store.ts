@@ -1,6 +1,6 @@
+// src/stores/karaoke-store.ts
 import { create } from "zustand";
-
-import { processRawLyrics, convertCursorToTick } from "../lib/karaoke/utils";
+import { convertCursorToTick, processRawLyrics } from "../lib/karaoke/utils";
 import { ISentence } from "../lib/karaoke/lyrics/types";
 import { LyricsRangeArray } from "../lib/karaoke/lyrics/lyrics-mapping";
 import {
@@ -21,10 +21,153 @@ type HistoryState = Pick<
   "lyricsData" | "chordsData" | "metadata"
 >;
 
+interface PlayerState {
+  midiInfo: IMidiInfo | null;
+  audioSrc: string | null;
+  rawFile: File | null;
+  videoSrc: string | null;
+  youtubeId: string | null;
+  duration: number | null;
+}
+
+export interface KaraokeState {
+  mode: MusicMode | null;
+  playerState: PlayerState;
+  lyricsData: LyricWordData[];
+  metadata: SongInfo | null;
+  chordsData: ChordEvent[];
+  isPlaying: boolean;
+
+  currentIndex: number;
+  isTimingActive: boolean;
+  editingLineIndex: number | null;
+  playbackIndex: number | null;
+  correctionIndex: number | null;
+  selectedLineIndex: number | null;
+  currentTime: number;
+
+  isEditModalOpen: boolean;
+  lyricsProcessed?: LyricsRangeArray<ISentence>;
+  isChordModalOpen: boolean;
+  selectedChord: ChordEvent | null;
+  suggestedChordTick: number | null;
+  minChordTickRange: number | null;
+  maxChordTickRange: number | null;
+  isChordPanelAutoScrolling: boolean;
+  chordPanelCenterTick: number;
+  isChordPanelHovered: boolean;
+  playFromScrolledPosition: boolean; // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+
+  history: {
+    past: HistoryState[];
+    future: HistoryState[];
+  };
+
+  actions: {
+    initializeMode: (mode: MusicMode) => void;
+    loadMidiFile: (
+      info: IMidiInfo,
+      parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">
+    ) => void;
+    loadAudioFile: (
+      src: string,
+      file: File,
+      parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+      duration: number
+    ) => void;
+    loadVideoFile: (src: string, fileName: string, duration: number) => void;
+    loadYoutubeVideo: (id: string, title: string, duration: number) => void;
+
+    setMetadata: (metadata: Partial<SongInfo>) => void;
+    importLyrics: (rawText: string) => void;
+    deleteLine: (lineIndexToDelete: number) => void;
+    updateLine: (lineIndexToUpdate: number, newText: string) => void;
+    updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
+    addChord: (chord: ChordEvent) => void;
+    updateChord: (oldTick: number, newChord: ChordEvent) => void;
+    deleteChord: (tickToDelete: number) => void;
+    updateWordTiming: (index: number, start: number, end: number) => void;
+    processLyricsForPlayer: () => void;
+    setIsPlaying: (playing: boolean) => void;
+
+    startTiming: (currentTime: number) => void;
+    recordTiming: (currentTime: number) => { isLineEnd: boolean };
+    goToNextWord: () => void;
+    correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
+    stopTiming: () => void;
+    setPlaybackIndex: (index: number | null) => void;
+    setCurrentIndex: (index: number) => void;
+    setCurrentTime: (time: number) => void;
+    setCorrectionIndex: (index: number | null) => void;
+
+    selectLine: (lineIndex: number | null) => void;
+    startEditLine: (lineIndex: number) => {
+      success: boolean;
+      firstWordIndex: number;
+      preRollTime: number;
+    };
+    openEditModal: () => void;
+    closeEditModal: () => void;
+
+    openChordModal: (
+      chord?: ChordEvent,
+      suggestedTick?: number,
+      minTick?: number,
+      maxTick?: number
+    ) => void;
+    closeChordModal: () => void;
+    setIsChordPanelAutoScrolling: (isAuto: boolean) => void;
+    setChordPanelCenterTick: (tick: number) => void;
+    setIsChordPanelHovered: (isHovered: boolean) => void;
+    setPlayFromScrolledPosition: (shouldPlay: boolean) => void; // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+
+    undo: () => void;
+    redo: () => void;
+  };
+}
+
+const initialPlayerState: PlayerState = {
+  midiInfo: null,
+  audioSrc: null,
+  rawFile: null,
+  videoSrc: null,
+  youtubeId: null,
+  duration: null,
+};
+
+const initialState: Omit<KaraokeState, "actions"> = {
+  mode: null,
+  playerState: initialPlayerState,
+  lyricsData: [],
+  metadata: null,
+  chordsData: [],
+  isPlaying: false,
+  currentIndex: 0,
+  isTimingActive: false,
+  editingLineIndex: null,
+  playbackIndex: null,
+  correctionIndex: null,
+  selectedLineIndex: null,
+  currentTime: 0,
+  isEditModalOpen: false,
+  lyricsProcessed: undefined,
+  isChordModalOpen: false,
+  selectedChord: null,
+  suggestedChordTick: null,
+  minChordTickRange: null,
+  maxChordTickRange: null,
+  isChordPanelAutoScrolling: true,
+  chordPanelCenterTick: 0,
+  isChordPanelHovered: false,
+  playFromScrolledPosition: false, // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+  history: { past: [], future: [] },
+};
+
+// ... (โค้ดส่วน _processLyricsForPlayer ไม่เปลี่ยนแปลง) ...
 const _processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
-  midiInfo: KaraokeState["midiInfo"]
+  midiInfo: KaraokeState["playerState"]["midiInfo"]
 ): LyricsRangeArray<ISentence> | undefined => {
   const timedWords = lyricsData.filter(
     (w) => w.start !== null && w.end !== null
@@ -68,108 +211,6 @@ const _processLyricsForPlayer = (
 
   return arrayRange;
 };
-
-export interface KaraokeState {
-  mode: MusicMode;
-  lyricsData: LyricWordData[];
-  metadata: SongInfo | null;
-  audioSrc: string | null;
-  rawFile: File | null;
-  videoSrc: string | null;
-  youtubeId: string | null;
-  audioDuration: number | null;
-  midiInfo: IMidiInfo | null;
-  chordsData: ChordEvent[];
-  isPlaying: boolean;
-
-  currentIndex: number;
-  isTimingActive: boolean;
-  editingLineIndex: number | null;
-  playbackIndex: number | null;
-  correctionIndex: number | null;
-  selectedLineIndex: number | null;
-  currentTime: number;
-
-  isEditModalOpen: boolean;
-  lyricsProcessed?: LyricsRangeArray<ISentence>;
-  isChordModalOpen: boolean;
-  selectedChord: ChordEvent | null;
-  suggestedChordTick: number | null;
-  minChordTickRange: number | null;
-  maxChordTickRange: number | null;
-  isChordPanelAutoScrolling: boolean;
-  chordPanelCenterTick: number;
-  isChordPanelHovered: boolean;
-
-  history: {
-    past: HistoryState[];
-    future: HistoryState[];
-  };
-
-  setMetadata: (metadata: Partial<SongInfo>) => void;
-
-  actions: {
-    setMode: (mode: MusicMode) => void;
-    setAudioSrc: (src: string, fileName: string, rawFile: File) => void;
-    setVideoSrc: (src: string, fileName: string) => void;
-    setYoutubeId: (url: string) => void;
-    setAudioDuration: (duration: number) => void;
-    setMidiInfo: (info: {
-      fileName: string;
-      durationTicks: number;
-      ppq: number;
-      bpm: number;
-      raw: ParseResult;
-    }) => void;
-    importLyrics: (rawText: string) => void;
-    deleteLine: (lineIndexToDelete: number) => void;
-    updateLine: (lineIndexToUpdate: number, newText: string) => void;
-    updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
-    importParsedMidiData: (data: {
-      lyrics: LyricEvent[][];
-      chords: ChordEvent[];
-    }) => void;
-    addChord: (chord: ChordEvent) => void;
-    updateChord: (oldTick: number, newChord: ChordEvent) => void;
-    deleteChord: (tickToDelete: number) => void;
-    updateWordTiming: (index: number, start: number, end: number) => void;
-    processLyricsForPlayer: () => void;
-    setIsPlaying: (playing: boolean) => void;
-
-    startTiming: (currentTime: number) => void;
-    recordTiming: (currentTime: number) => { isLineEnd: boolean };
-    goToNextWord: () => void;
-    correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
-    stopTiming: () => void;
-    setPlaybackIndex: (index: number | null) => void;
-    setCurrentIndex: (index: number) => void;
-    setCurrentTime: (time: number) => void;
-    setCorrectionIndex: (index: number | null) => void;
-
-    selectLine: (lineIndex: number | null) => void;
-    startEditLine: (lineIndex: number) => {
-      success: boolean;
-      firstWordIndex: number;
-      preRollTime: number;
-    };
-    openEditModal: () => void;
-    closeEditModal: () => void;
-
-    openChordModal: (
-      chord?: ChordEvent,
-      suggestedTick?: number,
-      minTick?: number,
-      maxTick?: number
-    ) => void;
-    closeChordModal: () => void;
-    setIsChordPanelAutoScrolling: (isAuto: boolean) => void;
-    setChordPanelCenterTick: (tick: number) => void;
-    setIsChordPanelHovered: (isHovered: boolean) => void;
-
-    undo: () => void;
-    redo: () => void;
-  };
-}
 
 export const useKaraokeStore = create<KaraokeState>()((set, get) => {
   const saveToHistory = () => {
@@ -220,193 +261,166 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     return lastTimedWordBefore?.end ?? 0;
   };
 
-  return {
-    mode: "midi",
-    lyricsData: [],
-    metadata: null,
-    audioSrc: null,
-    rawFile: null,
-    videoSrc: null,
-    youtubeId: null,
-    audioDuration: null,
-    midiInfo: null,
-    chordsData: [],
-    isPlaying: false,
-    currentIndex: 0,
-    isTimingActive: false,
-    editingLineIndex: null,
-    playbackIndex: null,
-    correctionIndex: null,
-    selectedLineIndex: null,
-    currentTime: 0,
-    isEditModalOpen: false,
-    lyricsProcessed: undefined,
-    isChordModalOpen: false,
-    selectedChord: null,
-    suggestedChordTick: null,
-    minChordTickRange: null,
-    maxChordTickRange: null,
-    isChordPanelAutoScrolling: true,
-    chordPanelCenterTick: 0,
-    isChordPanelHovered: false,
-    history: {
-      past: [],
-      future: [],
-    },
-    setMetadata: (metadata) => {
-      saveToHistory();
-      set({
-        metadata: { ...DEFAULT_SONG_INFO, ...get().metadata, ...metadata },
-      });
-    },
-
-    actions: {
-      setIsPlaying: (playing) => set({ isPlaying: playing }),
-      processLyricsForPlayer: () => {
-        const { lyricsData, mode, midiInfo } = get();
-        const processed = _processLyricsForPlayer(lyricsData, mode, midiInfo);
-        set({ lyricsProcessed: processed });
+  const resetStateForNewFile = (fileName: string) => {
+    return {
+      metadata: {
+        ...DEFAULT_SONG_INFO,
+        TITLE: fileName.replace(/\.[^/.]+$/, ""),
       },
-      setCurrentTime: (time) => set({ currentTime: time }),
-      updateWordTiming: (index, start, end) => {
+      lyricsData: [],
+      chordsData: [],
+      lyricsProcessed: undefined,
+      history: { past: [], future: [] },
+      isPlaying: false,
+      currentIndex: 0,
+      currentTime: 0,
+      selectedLineIndex: null,
+      editingLineIndex: null,
+      playbackIndex: null,
+      correctionIndex: null,
+      playFromScrolledPosition: false, // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+    };
+  };
+
+  const importParsedData = (data: {
+    lyrics: LyricEvent[][];
+    chords: ChordEvent[];
+  }) => {
+    if (!data.lyrics || data.lyrics.length === 0) {
+      set({ chordsData: data.chords || [] });
+      return;
+    }
+
+    const finalWords: LyricWordData[] = [];
+    let globalWordIndex = 0;
+    const isMidi = get().mode === "midi";
+    const songPpq = get().playerState.midiInfo?.ppq ?? 480;
+
+    const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
+
+    data.lyrics.forEach((line, lineIndex) => {
+      line.forEach((wordEvent) => {
+        const isMidi = get().mode === "midi";
+        const convertedTick = isMidi
+          ? convertCursorToTick(wordEvent.tick, songPpq)
+          : wordEvent.tick / 1000 - 0.6;
+
+        const currentFlatIndex = flatLyrics.findIndex(
+          (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
+        );
+        const nextEvent = flatLyrics[currentFlatIndex + 1];
+
+        let endTime;
+        if (nextEvent) {
+          endTime = isMidi
+            ? convertCursorToTick(nextEvent.tick, songPpq)
+            : nextEvent.tick / 1000 - 0.6;
+        } else {
+          endTime = isMidi ? convertedTick + songPpq : convertedTick + 1;
+        }
+
+        const length = endTime - convertedTick;
+
+        finalWords.push({
+          name: wordEvent.text,
+          start: convertedTick,
+          end: endTime,
+          length: length,
+          index: globalWordIndex++,
+          lineIndex: lineIndex,
+        });
+      });
+    });
+
+    const convertedChords = data.chords
+      .map((chord) => ({
+        ...chord,
+        tick: isMidi ? chord.tick : chord.tick / 1000,
+      }))
+      .sort((a, b) => a.tick - b.tick);
+
+    set({
+      lyricsData: finalWords,
+      chordsData: convertedChords,
+    });
+    get().actions.processLyricsForPlayer();
+  };
+
+  return {
+    ...initialState,
+    actions: {
+      initializeMode: (mode) => {
+        set({
+          ...initialState,
+          mode: mode,
+        });
+      },
+      loadMidiFile: (info, parsedData) => {
+        set({
+          playerState: {
+            ...initialPlayerState,
+            midiInfo: info,
+            duration: info.durationTicks,
+          },
+          ...resetStateForNewFile(info.fileName),
+          metadata: { ...DEFAULT_SONG_INFO, ...parsedData.info },
+        });
+        importParsedData(parsedData);
+      },
+      loadAudioFile: (src, file, parsedData, duration) => {
+        set({
+          playerState: {
+            ...initialPlayerState,
+            audioSrc: src,
+            rawFile: file,
+            duration,
+          },
+          ...resetStateForNewFile(file.name),
+          metadata: { ...DEFAULT_SONG_INFO, ...parsedData.info },
+        });
+        importParsedData(parsedData);
+      },
+      loadVideoFile: (src, fileName, duration) => {
+        set({
+          playerState: { ...initialPlayerState, videoSrc: src, duration },
+          ...resetStateForNewFile(fileName),
+        });
+      },
+      loadYoutubeVideo: (id, title, duration) => {
+        set({
+          playerState: { ...initialPlayerState, youtubeId: id, duration },
+          ...resetStateForNewFile(title),
+        });
+      },
+      setMetadata: (metadata) => {
         saveToHistory();
         set((state) => ({
-          lyricsData: state.lyricsData.map((word) =>
-            word.index === index
-              ? { ...word, start, end, length: end - start }
-              : word
-          ),
+          metadata: { ...DEFAULT_SONG_INFO, ...state.metadata, ...metadata },
         }));
-        get().actions.processLyricsForPlayer();
       },
-      setMode: (mode) =>
-        set({
+      processLyricsForPlayer: () => {
+        const { lyricsData, mode, playerState } = get();
+        const processed = _processLyricsForPlayer(
+          lyricsData,
           mode,
-          rawFile: null,
-          audioSrc: null,
-          videoSrc: null,
-          youtubeId: null,
-          midiInfo: null,
-          audioDuration: null,
-          metadata: null,
-          lyricsData: [],
-          chordsData: [],
-          lyricsProcessed: undefined,
-          history: { past: [], future: [] },
-        }),
-      setVideoSrc: (src, fileName) =>
-        set({
-          videoSrc: src,
-          audioDuration: null,
-          metadata: {
-            ...DEFAULT_SONG_INFO,
-            TITLE: fileName.replace(/\.[^/.]+$/, ""),
-          },
-        }),
-      setYoutubeId: (url) => {
-        const getYouTubeId = (url: string): string | null => {
-          const regExp =
-            /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-          const match = url.match(regExp);
-          return match && match[2].length === 11 ? match[2] : null;
-        };
-        const videoId = getYouTubeId(url);
-        if (videoId) {
-          set({
-            youtubeId: videoId,
-            metadata: {
-              ...DEFAULT_SONG_INFO,
-              TITLE: "YouTube Video",
-            },
-          });
-        } else {
-          alert("Invalid YouTube URL.");
-        }
+          playerState.midiInfo
+        );
+        set({ lyricsProcessed: processed });
       },
-
-      setAudioSrc: (src, fileName, file) =>
-        set({
-          audioSrc: src,
-          audioDuration: null,
-          rawFile: file,
-          metadata: {
-            ...DEFAULT_SONG_INFO,
-            TITLE: fileName.replace(/\.[^/.]+$/, ""),
-          },
-        }),
-      setAudioDuration: (duration) => set({ audioDuration: duration }),
-      setMidiInfo: (info) =>
-        set({
-          midiInfo: info,
-          metadata: {
-            ...DEFAULT_SONG_INFO,
-            TITLE: info.fileName.replace(/\.[^/.]+$/, ""),
-          },
-          history: { past: [], future: [] },
-        }),
-      importParsedMidiData: (data) => {
+      setIsPlaying: (playing) => set({ isPlaying: playing }),
+      setCurrentTime: (time) => set({ currentTime: time }),
+      importLyrics: (rawText) => {
         saveToHistory();
-        if (!data.lyrics || data.lyrics.length === 0) {
-          set({ chordsData: data.chords || [] });
-          return;
-        }
-
-        const finalWords: LyricWordData[] = [];
-        let globalWordIndex = 0;
-        const songPpq = get().midiInfo?.ppq ?? 480;
-
-        const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
-
-        data.lyrics.forEach((line, lineIndex) => {
-          line.forEach((wordEvent) => {
-            const isMidi = get().mode === "midi";
-            const convertedTick = isMidi
-              ? convertCursorToTick(wordEvent.tick, songPpq)
-              : wordEvent.tick / 1000 - 0.6;
-
-            const currentFlatIndex = flatLyrics.findIndex(
-              (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
-            );
-            const nextEvent = flatLyrics[currentFlatIndex + 1];
-
-            let endTime;
-            if (nextEvent) {
-              endTime = isMidi
-                ? convertCursorToTick(nextEvent.tick, songPpq)
-                : nextEvent.tick / 1000 - 0.6;
-            } else {
-              endTime = isMidi ? convertedTick + songPpq : convertedTick + 1;
-            }
-
-            const length = endTime - convertedTick;
-
-            finalWords.push({
-              name: wordEvent.text,
-              start: convertedTick,
-              end: endTime,
-              length: length,
-              index: globalWordIndex++,
-              lineIndex: lineIndex,
-            });
-          });
-        });
-
-        const convertedChords = data.chords
-          .map((chord) => ({ ...chord, tick: chord.tick }))
-          .sort((a, b) => a.tick - b.tick);
-
+        if (!rawText) return;
         set({
-          lyricsData: finalWords,
-          chordsData: convertedChords,
+          lyricsData: processRawLyrics(rawText),
           isTimingActive: false,
           editingLineIndex: null,
           currentIndex: 0,
           correctionIndex: null,
           selectedLineIndex: null,
         });
-        get().actions.processLyricsForPlayer();
       },
-
       addChord: (newChord) => {
         saveToHistory();
         set((state) => ({
@@ -448,84 +462,13 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           maxChordTickRange: null,
         }));
       },
-      importLyrics: (rawText) => {
-        saveToHistory();
-        if (!rawText) return;
-        set({
-          lyricsData: processRawLyrics(rawText),
-          chordsData: [],
-          lyricsProcessed: undefined,
-          isTimingActive: false,
-          editingLineIndex: null,
-          currentIndex: 0,
-          correctionIndex: null,
-          selectedLineIndex: null,
-        });
-      },
-      deleteLine: (lineIndexToDelete) => {
-        saveToHistory();
-        set((state) => {
-          const remainingWords = state.lyricsData.filter(
-            (word) => word.lineIndex !== lineIndexToDelete
-          );
-          const newLyricsData: LyricWordData[] = [];
-          let globalWordIndex = 0;
-          const lineMap = new Map<number, number>();
-          let newLineIndexCounter = 0;
-
-          remainingWords.forEach((word) => {
-            let newLineIndex;
-            if (lineMap.has(word.lineIndex)) {
-              newLineIndex = lineMap.get(word.lineIndex)!;
-            } else {
-              newLineIndex = newLineIndexCounter;
-              lineMap.set(word.lineIndex, newLineIndex);
-              newLineIndexCounter++;
-            }
-            newLyricsData.push({
-              ...word,
-              lineIndex: newLineIndex,
-              index: globalWordIndex++,
-            });
-          });
-          return { lyricsData: newLyricsData, selectedLineIndex: null };
-        });
-        get().actions.processLyricsForPlayer();
-      },
-      updateLine: (lineIndexToUpdate, newText) => {
-        saveToHistory();
-        const newWordsForLine = processRawLyrics(newText).map((word) => ({
-          ...word,
-          lineIndex: lineIndexToUpdate,
-        }));
-        set((state) => {
-          const otherLinesWords = state.lyricsData.filter(
-            (word) => word.lineIndex !== lineIndexToUpdate
-          );
-          const updatedLyrics = [...otherLinesWords, ...newWordsForLine];
-          updatedLyrics.sort((a, b) => {
-            if (a.lineIndex !== b.lineIndex) {
-              return a.lineIndex - b.lineIndex;
-            }
-            const aTime = a.start !== null ? a.start : a.index;
-            const bTime = b.start !== null ? b.start : b.index;
-            return aTime - bTime;
-          });
-          return {
-            lyricsData: updatedLyrics.map((word, index) => ({
-              ...word,
-              index,
-            })),
-            isEditModalOpen: false,
-          };
-        });
-        get().actions.processLyricsForPlayer();
-      },
-      updateWord: (index, newWordData) => {
+      updateWordTiming: (index, start, end) => {
         saveToHistory();
         set((state) => ({
-          lyricsData: state.lyricsData.map((word, i) =>
-            i === index ? { ...word, ...newWordData } : word
+          lyricsData: state.lyricsData.map((word) =>
+            word.index === index
+              ? { ...word, start, end, length: end - start }
+              : word
           ),
         }));
         get().actions.processLyricsForPlayer();
@@ -676,7 +619,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       setChordPanelCenterTick: (tick) => set({ chordPanelCenterTick: tick }),
       setIsChordPanelHovered: (isHovered) =>
         set({ isChordPanelHovered: isHovered }),
-
+      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+      setPlayFromScrolledPosition: (shouldPlay) =>
+        set({ playFromScrolledPosition: shouldPlay }),
+      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
       undo: () => {
         set((state) => {
           const { past, future } = state.history;
@@ -701,7 +647,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         get().actions.processLyricsForPlayer();
       },
-
       redo: () => {
         set((state) => {
           const { past, future } = state.history;
@@ -724,6 +669,74 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             },
           };
         });
+        get().actions.processLyricsForPlayer();
+      },
+      deleteLine: (lineIndexToDelete: number) => {
+        saveToHistory();
+        set((state) => {
+          const remainingWords = state.lyricsData.filter(
+            (word) => word.lineIndex !== lineIndexToDelete
+          );
+          const newLyricsData: LyricWordData[] = [];
+          let globalWordIndex = 0;
+          const lineMap = new Map<number, number>();
+          let newLineIndexCounter = 0;
+
+          remainingWords.forEach((word) => {
+            let newLineIndex;
+            if (lineMap.has(word.lineIndex)) {
+              newLineIndex = lineMap.get(word.lineIndex)!;
+            } else {
+              newLineIndex = newLineIndexCounter;
+              lineMap.set(word.lineIndex, newLineIndex);
+              newLineIndexCounter++;
+            }
+            newLyricsData.push({
+              ...word,
+              lineIndex: newLineIndex,
+              index: globalWordIndex++,
+            });
+          });
+          return { lyricsData: newLyricsData, selectedLineIndex: null };
+        });
+        get().actions.processLyricsForPlayer();
+      },
+      updateLine: (lineIndexToUpdate, newText) => {
+        saveToHistory();
+        const newWordsForLine = processRawLyrics(newText).map((word) => ({
+          ...word,
+          lineIndex: lineIndexToUpdate,
+        }));
+        set((state) => {
+          const otherLinesWords = state.lyricsData.filter(
+            (word) => word.lineIndex !== lineIndexToUpdate
+          );
+          const updatedLyrics = [...otherLinesWords, ...newWordsForLine];
+          updatedLyrics.sort((a, b) => {
+            if (a.lineIndex !== b.lineIndex) {
+              return a.lineIndex - b.lineIndex;
+            }
+            const aTime = a.start !== null ? a.start : a.index;
+            const bTime = b.start !== null ? b.start : b.index;
+            return aTime - bTime;
+          });
+          return {
+            lyricsData: updatedLyrics.map((word, index) => ({
+              ...word,
+              index,
+            })),
+            isEditModalOpen: false,
+          };
+        });
+        get().actions.processLyricsForPlayer();
+      },
+      updateWord: (index, newWordData) => {
+        saveToHistory();
+        set((state) => ({
+          lyricsData: state.lyricsData.map((word, i) =>
+            i === index ? { ...word, ...newWordData } : word
+          ),
+        }));
         get().actions.processLyricsForPlayer();
       },
     },

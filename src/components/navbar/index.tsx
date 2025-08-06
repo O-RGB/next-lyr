@@ -11,21 +11,23 @@ interface HandleNavbarModalProps {}
 
 const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
   const [modal, setModal] = useState<IMenusType>();
-  const { setMode } = useKaraokeStore((state) => state.actions);
+  const initializeMode = useKaraokeStore(
+    (state) => state.actions.initializeMode
+  );
 
   const onSelectMenu = (value: IMenusType) => {
     switch (value) {
       case "MODE_MIDI":
-        setMode("midi");
+        initializeMode("midi");
         break;
       case "MODE_MP3":
-        setMode("mp3");
+        initializeMode("mp3");
         break;
       case "MODE_MP4":
-        setMode("mp4");
+        initializeMode("mp4");
         break;
       case "MODE_YOUTUBE":
-        setMode("youtube");
+        initializeMode("youtube");
         break;
       default:
         setModal(value);

@@ -28,7 +28,6 @@ export interface LyricsGridProps {
   onChordClick: (chord: ChordEvent) => void;
   onAddChordClick: (lineIndex: number) => void;
   mode: MusicMode | null;
-  midiInfo: IMidiInfo | null;
 }
 
 const LyricsGrid: React.FC<LyricsGridProps> = ({
@@ -42,7 +41,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
   onChordClick,
   onAddChordClick,
   mode,
-  midiInfo,
 }) => {
   const chords = useKaraokeStore((state) => state.chordsData);
   const actions = useKaraokeStore((state) => state.actions);
@@ -198,7 +196,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
                 onChordClick={onChordClick}
                 onAddChordClick={onAddChordClick}
                 mode={mode}
-                midiInfo={midiInfo}
               />
             ))}
           </div>
