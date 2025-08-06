@@ -11,7 +11,7 @@ import ControlPanel from "../panel/control-panel";
 import LyricsPanel from "../panel/lyrics-panel";
 import ChordEditModal from "../modals/chord";
 import MidiPlayer, {
-  MidiParseResult,
+  MusicParseResult,
   MidiPlayerRef,
 } from "../../modules/js-synth/player";
 import MetadataForm from "../metadata/metadata-form";
@@ -271,7 +271,7 @@ const LyrEditerPanel: React.FC = () => {
   );
 
   const handleLyricsParsed = useCallback(
-    (data: MidiParseResult) => {
+    (data: MusicParseResult) => {
       setMetadata(data.info);
       actions.importParsedMidiData({
         lyrics: data.lyrics,
@@ -322,8 +322,12 @@ const LyrEditerPanel: React.FC = () => {
               audioRef={audioRef}
               audioSrc={audioSrc}
               metadata={metadata}
-              onAudioLoad={(file) => {
+              onAudioLoad={(file, lyricsParsed) => {
                 actions.setAudioSrc(URL.createObjectURL(file), file.name, file);
+                actions.importParsedMidiData({
+                  chords: lyricsParsed.chords,
+                  lyrics: lyricsParsed.lyrics,
+                });
               }}
               onMetadataChange={setMetadata}
               onPlay={() => playerControls?.play()}
@@ -364,13 +368,7 @@ const LyrEditerPanel: React.FC = () => {
             <div className="space-y-4">
               <MidiPlayer
                 ref={midiPlayerRef}
-                onFileLoaded={(
-                  file,
-                  durationTicks,
-                  ppq,
-                  bpm,
-                  raw
-                ) => {
+                onFileLoaded={(file, durationTicks, ppq, bpm, raw) => {
                   actions.setMidiInfo({
                     fileName: file.name,
                     durationTicks,

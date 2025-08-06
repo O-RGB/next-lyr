@@ -15,7 +15,7 @@ import {
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
 import { LyricWordData } from "@/types/common.type";
-import { buildMp3, DEFAULT_MISC } from "@/modules/mp3-klyr-parser/procress";
+import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -46,7 +46,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         }
         newLyricsData[word.lineIndex].push({
           text: word.name,
-          tick: Math.floor((word.start ?? 0) * 1000),
+          tick: Math.floor(((word.start ?? 0) + 0.6) * 1000),
         });
       });
       newLyricsData = newLyricsData.map((line) =>
@@ -55,10 +55,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       let newChordsData = chordsData.map((x) => ({
         ...x,
-        tick: Math.floor(x.tick * 1000),
+        tick: Math.floor((x.tick + 0.6) * 1000),
       }));
 
       console.log(metadata, newLyricsData, newChordsData);
+      metadata.TIME_FORMAT = "TIME_MS";
       const buffer = buildMp3(
         {
           title: metadata.TITLE,
@@ -67,6 +68,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           chords: newChordsData,
           info: metadata,
           lyrics: newLyricsData,
+
           // miscTags: DEFAULT_MISC,
         },
         await rawFile.arrayBuffer()
@@ -75,7 +77,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${metadata.TITLE || "edited_song"}.mid`;
+      a.download = `${metadata.TITLE || "edited_song"}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

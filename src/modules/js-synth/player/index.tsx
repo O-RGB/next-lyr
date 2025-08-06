@@ -18,7 +18,7 @@ import {
   SongInfo,
 } from "../../midi-klyr-parser/lib/processor";
 
-export interface MidiParseResult {
+export interface MusicParseResult {
   info: SongInfo;
   lyrics: LyricEvent[][];
   chords: ChordEvent[];
@@ -35,7 +35,7 @@ interface MidiPlayerProps {
     raw: ParseResult
   ) => void;
   onTickChange?: (tick: number) => void;
-  onLyricsParsed?: (data: MidiParseResult) => void;
+  onLyricsParsed?: (data: MusicParseResult) => void;
 }
 
 const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(

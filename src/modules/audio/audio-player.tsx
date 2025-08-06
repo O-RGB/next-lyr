@@ -4,11 +4,14 @@ import { useKaraokeStore } from "../../stores/karaoke-store"; // <-- import stor
 import { BsPlay, BsPause, BsStop } from "react-icons/bs";
 import ButtonCommon from "../../components/common/button";
 import Card from "../../components/common/card";
+import { MusicParseResult } from "../js-synth/player";
+import { LyricEvent } from "../midi-klyr-parser/klyr-parser-lib";
+import { readMp3 } from "../mp3-klyr-parser/read";
 
 type Props = {
   src: string | null;
   audioRef: RefObject<HTMLAudioElement | null>;
-  onFileChange: (file: File) => void;
+  onFileChange: (file: File, lyricsParsed: MusicParseResult) => void;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
@@ -59,6 +62,20 @@ export default function AudioPlayer({
     };
   }, [src, audioRef, actions]);
 
+  const onUploadFile = async (file?: File) => {
+    if (!file) return;
+    const { parsedData, audioData } = await readMp3(file);
+    // const lyricsToSce: LyricEvent[][] = parsedData.lyrics.map((x) => {
+    //   return x.map((y) => ({ ...y, tick: y.tick / 1000 }));
+    // });
+    // console.log("lyricsToSce, ", lyricsToSce);
+    onFileChange?.(file, {
+      chords: parsedData.chords,
+      info: parsedData.info,
+      lyrics: parsedData.lyrics,
+    });
+  };
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -97,7 +114,7 @@ export default function AudioPlayer({
         id="audio-file-input"
         accept="audio/*"
         className="sr-only"
-        onChange={(e) => e.target.files && onFileChange(e.target.files[0])}
+        onChange={(e) => e.target.files && onUploadFile(e.target.files[0])}
       />
 
       <audio ref={audioRef} src={src || ""} controls className="w-full" />

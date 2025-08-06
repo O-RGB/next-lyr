@@ -359,15 +359,24 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
         data.lyrics.forEach((line, lineIndex) => {
           line.forEach((wordEvent) => {
-            const convertedTick = convertCursorToTick(wordEvent.tick, songPpq);
+            const isMidi = get().mode === "midi";
+            const convertedTick = isMidi
+              ? convertCursorToTick(wordEvent.tick, songPpq)
+              : wordEvent.tick / 1000 - 0.6;
 
             const currentFlatIndex = flatLyrics.findIndex(
               (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
             );
             const nextEvent = flatLyrics[currentFlatIndex + 1];
-            const endTime = nextEvent
-              ? convertCursorToTick(nextEvent.tick, songPpq)
-              : convertedTick + songPpq;
+
+            let endTime;
+            if (nextEvent) {
+              endTime = isMidi
+                ? convertCursorToTick(nextEvent.tick, songPpq)
+                : nextEvent.tick / 1000 - 0.6;
+            } else {
+              endTime = isMidi ? convertedTick + songPpq : convertedTick + 1;
+            }
 
             const length = endTime - convertedTick;
 
@@ -397,6 +406,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         get().actions.processLyricsForPlayer();
       },
+
       addChord: (newChord) => {
         saveToHistory();
         set((state) => ({

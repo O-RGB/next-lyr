@@ -1,8 +1,10 @@
 "use client";
 
-import { buildMp3, DEFAULT_MISC, IParsedMp3Data, readMp3 } from "@/modules/mp3-klyr-parser/procress";
+import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
+import { readMp3 } from "@/modules/mp3-klyr-parser/read";
+import { IParsedMp3Data } from "@/modules/mp3-klyr-parser/type";
 import React, { useState } from "react";
-// ⬇️ นำเข้าฟังก์ชันและ Types จากไฟล์ที่คุณสร้างไว้ 
+// ⬇️ นำเข้าฟังก์ชันและ Types จากไฟล์ที่คุณสร้างไว้
 
 export default function Mp3EditorPage() {
   // --- State Management ---
@@ -71,7 +73,7 @@ export default function Mp3EditorPage() {
     try {
       // ✅ เรียกใช้ Logic จาก processor.ts
       const currentData: IParsedMp3Data = JSON.parse(jsonText);
-      currentData.miscTags = DEFAULT_MISC;
+      // currentData.miscTags = DEFAULT_MISC;
       const newMp3Buffer = buildMp3(currentData, audioData);
 
       const blob = new Blob([newMp3Buffer], { type: "audio/mpeg" });
