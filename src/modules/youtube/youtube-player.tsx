@@ -1,12 +1,17 @@
-// src/modules/youtube/youtube-player.tsx
-
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useState,
+  useEffect,
+} from "react";
 import YouTube from "react-youtube";
 import type { YouTubePlayer } from "react-youtube";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-import ButtonCommon from "../../components/common/button";
 import Card from "../../components/common/card";
 import InputCommon from "@/components/common/data-input/input";
+import ButtonCommon from "@/components/common/button";
+import CommonPlayerStyle from "@/components/common/player";
 
 type Props = {
   youtubeId: string | null;
@@ -21,7 +26,7 @@ export type YouTubePlayerRef = {
   getCurrentTime: () => number;
   isPlaying: () => boolean;
   isReady: boolean;
-  destroy: () => void; // <--- เพิ่ม destroy method
+  destroy: () => void;
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
@@ -30,6 +35,13 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
+    const { setIsPlaying, loadYoutubeVideo } = useKaraokeStore(
+      (state) => state.actions
+    );
+    const [fileName, setFileName] = useState("Load a YouTube URL");
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.playVideo(),
@@ -38,13 +50,39 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
       isPlaying: () => playerState === 1,
       isReady: isReady,
-      destroy: () => playerRef.current?.destroy(), // <--- เพิ่มการเรียก destroy
+      destroy: () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        playerRef.current?.destroy();
+      },
     }));
+
+    useEffect(() => {
+      if (playerState === 1) {
+        // Playing
+        intervalRef.current = setInterval(() => {
+          setCurrentTime(playerRef.current?.getCurrentTime() ?? 0);
+        }, 250);
+      } else {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      }
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    }, [playerState]);
 
     const handleReady = (event: { target: YouTubePlayer }) => {
       playerRef.current = event.target;
       setIsReady(true);
+      const videoData = event.target.getVideoData();
+      setFileName(videoData.title);
+      setDuration(event.target.getDuration());
       onReady(event);
+    };
+
+    const handleStateChange = (e: { data: number }) => {
+      setPlayerState(e.data);
+      const isCurrentlyPlaying = e.data === 1;
+      setIsPlaying(isCurrentlyPlaying);
     };
 
     const opts = {
@@ -52,25 +90,66 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       width: "100%",
       playerVars: {
         autoplay: 0,
-        controls: 1,
+        controls: 0, // ซ่อนคอนโทรลของ YouTube
+        disablekb: 1,
+        modestbranding: 1,
+        showinfo: 0,
+        rel: 0,
+        iv_load_policy: 3,
       },
+    };
+
+    const isPlaying = playerState === 1;
+
+    const togglePlayPause = () => {
+      if (isPlaying) {
+        playerRef.current?.pauseVideo();
+      } else {
+        playerRef.current?.playVideo();
+      }
+    };
+
+    const handleStop = () => {
+      playerRef.current?.seekTo(0, true);
+      playerRef.current?.pauseVideo();
+    };
+
+    const handleSeek = (value: number) => {
+      playerRef.current?.seekTo(value, true);
     };
 
     return (
       <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
-        {youtubeId ? (
-          <YouTube
-            videoId={youtubeId}
-            opts={opts}
-            onReady={handleReady}
-            onStateChange={(e) => setPlayerState(e.data)}
-            className="rounded-lg overflow-hidden"
-          />
-        ) : (
-          <div className="h-[320px] w-full bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
-            Please load a YouTube URL
-          </div>
-        )}
+        <div className="relative">
+          {youtubeId ? (
+            <YouTube
+              videoId={youtubeId}
+              opts={opts}
+              onReady={handleReady}
+              onStateChange={handleStateChange}
+              className="rounded-lg overflow-hidden"
+            />
+          ) : (
+            <div className="h-[320px] w-full bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
+              Please load a YouTube URL
+            </div>
+          )}
+          <div className="absolute top-0 left-0 w-full h-full bg-transparent z-10"></div>
+        </div>
+
+        <CommonPlayerStyle
+          fileName={fileName}
+          isPlaying={isPlaying}
+          onFileChange={() => {}}
+          onPlayPause={togglePlayPause}
+          onStop={handleStop}
+          onSeek={handleSeek}
+          duration={duration}
+          currentTime={currentTime}
+          accept=""
+          upload={false}
+        />
+
         <div className="flex gap-2">
           <InputCommon
             value={url}

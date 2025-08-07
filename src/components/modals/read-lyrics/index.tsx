@@ -28,13 +28,43 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   };
 
   const autoCut = async () => {
-    const test = await loadWords();
-    const splitText = lyricsText.split("\n");
-    const segment = splitText.map((v) =>
-      test.segmentText(v.replaceAll("|", " "))
-    );
-    const st = segment.map((b) => b.join("|"));
-    setLyricsText(st.join("\n"));
+    const segmenter = await loadWords();
+    const lines = lyricsText.split("\n");
+
+    const processedLines = lines.map((line) => {
+      const preProcessedLine = line
+        .replaceAll("|", " ")
+        .replace(/([\u0e00-\u0e7f])([a-zA-Z'’])/g, "$1 $2")
+        .replace(/([a-zA-Z'’])([\u0e00-\u0e7f])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const thaiParts = segmenter.segmentText(preProcessedLine);
+      const allWords = thaiParts
+        .flatMap((part) => part.split(/\s+/))
+        .filter(Boolean);
+
+      if (allWords.length === 0) return "";
+
+      let result = allWords[0];
+      for (let i = 1; i < allWords.length; i++) {
+        const currentWord = allWords[i];
+        const prevWord = allWords[i - 1];
+
+        const isCurrentEnglish = /^[a-zA-Z'’]/.test(currentWord);
+        const isPrevEnglish = /^[a-zA-Z'’]/.test(prevWord);
+
+        if (isCurrentEnglish || isPrevEnglish) {
+          result += " | ";
+        } else {
+          result += "|";
+        }
+        result += currentWord;
+      }
+      return result;
+    });
+
+    setLyricsText(processedLines.join("\n"));
   };
 
   const onTextChange = async (

@@ -1,4 +1,3 @@
-// src/components/lyrics/lyrics-grid/index.tsx
 import React, {
   useMemo,
   useRef,
@@ -53,11 +52,11 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
   const actions = useKaraokeStore((state) => state.actions);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const wordRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
-  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
-  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
   const playbackIndex = useKaraokeStore((state) => state.playbackIndex);
-  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
 
   const [draggingChord, setDraggingChord] = useState<{
     tick: number;
@@ -65,54 +64,35 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
     y: number;
   } | null>(null);
 
-  // useEffect สำหรับการเลื่อนอัตโนมัติไปยัง word ที่ active (ตอนแก้ไข)
   useEffect(() => {
-    const currentWordData = lyricsData.find(
-      (word) => word.index === currentIndex
-    );
-    if (!currentWordData || selectedLineIndex !== currentWordData.lineIndex) {
-      return;
-    }
+    const isStamping = isTimingActive || editingLineIndex !== null;
+    const activeIndex = isStamping ? currentIndex : playbackIndex;
 
-    const wordElement = wordRefs.current[currentIndex];
-    if (wordElement) {
-      wordElement.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
-  }, [currentIndex, lyricsData, selectedLineIndex]);
+    if (activeIndex === null) return;
 
-  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-  // useEffect สำหรับการเลื่อนอัตโนมัติไปยัง word ที่กำลังเล่น (playback)
-  useEffect(() => {
-    if (playbackIndex === null) return;
+    const wordElement = wordRefs.current[activeIndex];
+    const lineContentElement = wordElement?.parentElement;
 
-    const wordElement = wordRefs.current[playbackIndex];
-    if (wordElement) {
-      // ตรวจสอบว่า word element มองเห็นในหน้าจอหรือไม่
-      const parent = wordElement.parentElement;
-      if (parent) {
-        const parentRect = parent.getBoundingClientRect();
-        const wordRect = wordElement.getBoundingClientRect();
+    if (wordElement && lineContentElement) {
+      const lineRect = lineContentElement.getBoundingClientRect();
+      const wordRect = wordElement.getBoundingClientRect();
 
-        const isVisible =
-          wordRect.left >= parentRect.left &&
-          wordRect.right <= parentRect.right;
+      const isVisibleHorizontally =
+        wordRect.left >= lineRect.left && wordRect.right <= lineRect.right;
 
-        // ถ้าไม่เห็น ให้เลื่อนไปหา
-        if (!isVisible) {
-          wordElement.scrollIntoView({
-            behavior: "auto",
-            block: "nearest",
-            inline: "center",
-          });
-        }
+      if (!isVisibleHorizontally) {
+        const scrollLeftTarget =
+          wordElement.offsetLeft +
+          wordElement.offsetWidth / 2 -
+          lineContentElement.offsetWidth / 2;
+
+        lineContentElement.scrollTo({
+          left: scrollLeftTarget,
+          behavior: "auto",
+        });
       }
     }
-  }, [playbackIndex]);
-  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+  }, [currentIndex, playbackIndex, isTimingActive, editingLineIndex]);
 
   const memoizedLines = useMemo(() => {
     if (!lyricsData || lyricsData.length === 0) return [];

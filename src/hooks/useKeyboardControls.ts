@@ -22,13 +22,13 @@ export const useKeyboardControls = (
   const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
-  // ดึง state เพิ่มเติมจาก store
   const playFromScrolledPosition = useKaraokeStore(
     (state) => state.playFromScrolledPosition
   );
   const chordPanelCenterTick = useKaraokeStore(
     (state) => state.chordPanelCenterTick
   );
+  const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,6 +38,11 @@ export const useKeyboardControls = (
         !player
       )
         return;
+
+      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+      // สร้างตัวแปรเช็คสถานะ "กำลังปาดเนื้อร้อง"
+      const isStampingMode = isTimingActive || editingLineIndex !== null;
+      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
       if (e.ctrlKey && e.code === "KeyZ") {
         e.preventDefault();
@@ -55,89 +60,91 @@ export const useKeyboardControls = (
         : 0;
 
       // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-      if (e.code === "ArrowUp") {
-        e.preventDefault();
-        actions.selectLine(
-          selectedLineIndex === null
-            ? totalLines > 0
-              ? 0
-              : null
-            : Math.max(0, selectedLineIndex - 1)
-        );
-        // เมื่อผู้ใช้เลือกบรรทัดใหม่ ให้รีเซ็ตสถานะการเล่นจากตำแหน่งที่เลื่อน
-        actions.setPlayFromScrolledPosition(false);
-        return;
-      }
-      if (e.code === "ArrowDown") {
-        e.preventDefault();
-        actions.selectLine(
-          selectedLineIndex === null
-            ? totalLines > 0
-              ? 0
-              : null
-            : Math.min(totalLines - 1, selectedLineIndex + 1)
-        );
-        // เมื่อผู้ใช้เลือกบรรทัดใหม่ ให้รีเซ็ตสถานะการเล่นจากตำแหน่งที่เลื่อน
-        actions.setPlayFromScrolledPosition(false);
-        return;
+      // ถ้าไม่ได้อยู่ในโหมดปาดเนื้อร้อง ให้ทำงานตามปกติ
+      if (!isStampingMode) {
+        if (e.code === "ArrowUp") {
+          e.preventDefault();
+          actions.selectLine(
+            selectedLineIndex === null
+              ? totalLines > 0
+                ? 0
+                : null
+              : Math.max(0, selectedLineIndex - 1)
+          );
+          actions.setPlayFromScrolledPosition(false);
+          return;
+        }
+        if (e.code === "ArrowDown") {
+          e.preventDefault();
+          actions.selectLine(
+            selectedLineIndex === null
+              ? totalLines > 0
+                ? 0
+                : null
+              : Math.min(totalLines - 1, selectedLineIndex + 1)
+          );
+          actions.setPlayFromScrolledPosition(false);
+          return;
+        }
+
+        if (e.code === "Enter" && !e.ctrlKey && selectedLineIndex !== null) {
+          e.preventDefault();
+          actions.openEditModal();
+          return;
+        }
+
+        if (e.ctrlKey && e.code === "Enter" && selectedLineIndex !== null) {
+          e.preventDefault();
+          onEditLine(selectedLineIndex);
+          return;
+        }
       }
       // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
-      if (e.code === "Enter" && !e.ctrlKey && selectedLineIndex !== null) {
-        e.preventDefault();
-        actions.openEditModal();
-        return;
-      }
-
-      if (e.ctrlKey && e.code === "Enter" && selectedLineIndex !== null) {
-        e.preventDefault();
-        onEditLine(selectedLineIndex);
-        return;
-      }
-
       if (e.code === "Space") {
         e.preventDefault();
-        if (player.isPlaying()) {
+        // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+        // ถ้ากำลังปาดเนื้อร้องอยู่ ห้ามกด Spacebar เพื่อหยุดเพลง
+        if (isStampingMode) {
+          return;
+        }
+        // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
+        if (isPlaying) {
           player.pause();
+          actions.setIsPlaying(false);
           actions.setIsChordPanelAutoScrolling(false);
           actions.setChordPanelCenterTick(player.getCurrentTime());
         } else {
           let seekTime: number;
 
-          // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-          // ตรวจสอบว่าควรเล่นจากตำแหน่งที่เลื่อนไปหรือไม่
           if (playFromScrolledPosition) {
             seekTime = chordPanelCenterTick;
-            // **สำคัญมาก:** รีเซ็ตสถานะกลับเป็น false ทันทีหลังจากใช้งานแล้ว
-            // เพื่อให้การกดเล่นครั้งต่อไป (โดยไม่เลื่อน) กลับไปใช้ค่าเริ่มต้น
             actions.setPlayFromScrolledPosition(false);
           } else if (selectedLineIndex !== null) {
-            // ถ้าไม่ได้เลื่อนเอง ให้หาเวลาเริ่มต้นของบรรทัดที่เลือก
             const firstWordOfLine = lyricsData.find(
               (w) => w.lineIndex === selectedLineIndex
             );
             if (firstWordOfLine && firstWordOfLine.start !== null) {
               seekTime = firstWordOfLine.start;
             } else {
-              // ถ้าบรรทัดนั้นยังไม่มีเวลา ให้เล่นจากตำแหน่งตรงกลางปัจจุบัน
               seekTime = chordPanelCenterTick;
             }
           } else {
-            // ถ้าไม่มีบรรทัดที่เลือก ให้เล่นจากตำแหน่งตรงกลางปัจจุบัน
             seekTime = chordPanelCenterTick;
           }
-          // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
           actions.setIsChordPanelAutoScrolling(true);
           actions.setCurrentTime(seekTime);
           player.seek(seekTime);
           player.play();
+          actions.setIsPlaying(true);
         }
         return;
       }
 
       if (
-        (isTimingActive || editingLineIndex !== null) &&
+        isStampingMode && // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
         e.code === "ArrowLeft"
       ) {
         e.preventDefault();
@@ -196,6 +203,7 @@ export const useKeyboardControls = (
             player.pause();
             actions.stopTiming();
           } else if (isLineEnd) {
+            // ไม่ต้องทำอะไรพิเศษเมื่อจบ line, ปล่อยให้ stopTiming ทำงานเอง
           } else {
             actions.goToNextWord();
           }
@@ -218,5 +226,6 @@ export const useKeyboardControls = (
     editingLineIndex,
     playFromScrolledPosition,
     chordPanelCenterTick,
+    isPlaying,
   ]);
 };

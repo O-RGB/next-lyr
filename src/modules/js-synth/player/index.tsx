@@ -3,16 +3,12 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
-  useRef,
 } from "react";
-import { FaPlay, FaPause, FaFolderOpen, FaStop } from "react-icons/fa";
 import { JsSynthEngine } from "../lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "../lib/js-synth-player";
 import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
-import Upload from "@/components/common/data-input/upload";
-import ButtonCommon from "../../../components/common/button";
-import { ParseResult } from "../../midi-klyr-parser/lib/processor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import CommonPlayerStyle from "@/components/common/player";
 
 export type MidiPlayerRef = JsSynthPlayerEngine | null;
 
@@ -22,6 +18,8 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>((props, ref) => {
   const [player, setPlayer] = useState<JsSynthPlayerEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTimeState] = useState(0);
   const {
     loadMidiFile,
     setCurrentTime,
@@ -43,7 +41,10 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>((props, ref) => {
   useEffect(() => {
     if (!player) return;
 
-    const handleTickUpdate = (tick: number) => setCurrentTime(tick);
+    const handleTickUpdate = (tick: number) => {
+      setCurrentTime(tick);
+      setCurrentTimeState(tick);
+    };
     const handleStateChange = (playing: boolean) => {
       setIsPlaying(playing);
       setGlobalIsPlaying(playing);
@@ -66,7 +67,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>((props, ref) => {
       try {
         const parsedMidi = await LyrEditer.loadMidiFile(file);
         const midiInfo = await player.loadMidi(file);
-
+        setDuration(midiInfo.durationTicks);
         setFileName(file.name);
 
         loadMidiFile(
@@ -87,46 +88,34 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>((props, ref) => {
     }
   };
 
-  return (
-    <div className="bg-white/50 p-4 rounded-lg flex items-center justify-center gap-4">
-      <Upload
-        customNode={
-          <ButtonCommon icon={<FaFolderOpen />}>
-            <div className="line-clamp-1">{fileName || "Select MIDI File"}</div>
-          </ButtonCommon>
-        }
-        accept=".mid,.midi"
-        className="w-full"
-        preview={false}
-        onChange={(files) => {
-          const [file] = files;
-          if (file) handleFileChange(file);
-        }}
-      />
+  const handlePlayPause = () => {
+    if (player?.isPlaying()) {
+      player?.pause();
+    } else {
+      player?.play();
+    }
+  };
 
-      <div className="flex justify-center items-center gap-4">
-        <button
-          onClick={() =>
-            player?.isPlaying() ? player?.pause() : player?.play()
-          }
-          disabled={!fileName}
-          className="p-3 bg-white rounded-full shadow-md disabled:opacity-50"
-        >
-          {isPlaying ? (
-            <FaPause className="h-6 w-6 text-gray-700" />
-          ) : (
-            <FaPlay className="h-6 w-6 text-gray-700" />
-          )}
-        </button>
-        <button
-          onClick={() => player?.stop()}
-          disabled={!fileName}
-          className="p-3 bg-white rounded-full shadow-md disabled:opacity-50"
-        >
-          <FaStop className="h-6 w-6 text-gray-700" />
-        </button>
-      </div>
-    </div>
+  const handleStop = () => {
+    player?.stop();
+  };
+
+  const handleSeek = (value: number) => {
+    player?.seek(value);
+  };
+
+  return (
+    <CommonPlayerStyle
+      fileName={fileName}
+      isPlaying={isPlaying}
+      onFileChange={handleFileChange}
+      onPlayPause={handlePlayPause}
+      onStop={handleStop}
+      onSeek={handleSeek}
+      duration={duration}
+      currentTime={currentTime}
+      accept=".mid,.midi"
+    />
   );
 });
 

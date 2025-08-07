@@ -110,7 +110,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         headerToUse: midiInfo.raw.detectedHeader,
       });
 
-      const blob = new Blob([newMidiBuffer], { type: "audio/midi" });
+      const blob = new Blob([newMidiBuffer as BlobPart], {
+        type: "audio/midi",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -175,6 +177,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   useEffect(() => {
     setOpenModal(open ?? false);
   }, [open]);
+
   return (
     <>
       <ModalCommon
@@ -187,48 +190,54 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           children: "Close",
         }}
       >
-        <div className="grid grid-cols-2">
-          <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
-            <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>
+        {rawFile && lyricsData.length > 0 ? (
+          <div className="grid grid-cols-2">
+            <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
+              <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>
+              {mode === "midi" && (
+                <>
+                  <ButtonCommon
+                    onClick={buildCur}
+                    color="primary"
+                    icon={<MdOutlineFileDownload className="text-lg" />}
+                  >
+                    ดาวน์โหลดไฟล์ <span className="font-bold">.cur</span>
+                  </ButtonCommon>
 
-            <ButtonCommon
-              onClick={buildCur}
-              color="primary"
-              icon={<MdOutlineFileDownload className="text-lg" />}
-            >
-              ดาวน์โหลดไฟล์ <span className="font-bold">.cur</span>
-            </ButtonCommon>
+                  <ButtonCommon
+                    onClick={buildLyr}
+                    color="success"
+                    icon={<MdOutlineFileDownload className="text-lg" />}
+                  >
+                    ดาวน์โหลดไฟล์ <span className="font-bold">.lyr</span>
+                  </ButtonCommon>
 
-            <ButtonCommon
-              onClick={buildLyr}
-              color="success"
-              icon={<MdOutlineFileDownload className="text-lg" />}
-            >
-              ดาวน์โหลดไฟล์ <span className="font-bold">.lyr</span>
-            </ButtonCommon>
+                  <hr />
 
-            <hr />
-            {mode === "midi" && (
-              <ButtonCommon
-                onClick={handleSaveMidi}
-                color="secondary"
-                icon={<MdOutlineFileDownload className="text-lg" />}
-              >
-                บันทึก <span className="font-bold">.mid</span>
-              </ButtonCommon>
-            )}
-            {mode === "mp3" && (
-              <ButtonCommon
-                onClick={handleSaveMp3}
-                color="secondary"
-                icon={<MdOutlineFileDownload className="text-lg" />}
-              >
-                บันทึก <span className="font-bold">.mp3</span>
-              </ButtonCommon>
-            )}
+                  <ButtonCommon
+                    onClick={handleSaveMidi}
+                    color="secondary"
+                    icon={<MdOutlineFileDownload className="text-lg" />}
+                  >
+                    บันทึก <span className="font-bold">.mid</span>
+                  </ButtonCommon>
+                </>
+              )}
+              {mode === "mp3" && (
+                <ButtonCommon
+                  onClick={handleSaveMp3}
+                  color="secondary"
+                  icon={<MdOutlineFileDownload className="text-lg" />}
+                >
+                  บันทึก <span className="font-bold">.mp3</span>
+                </ButtonCommon>
+              )}
+            </div>
+            <Donate show={false}></Donate>
           </div>
-          <Donate show={false}></Donate>
-        </div>
+        ) : (
+          <>กรุณาเริ่มสร้างเนื้อร้องก่อน</>
+        )}
       </ModalCommon>
     </>
   );

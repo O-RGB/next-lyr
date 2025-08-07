@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import MidiPlayer, { MidiPlayerRef } from "@/modules/js-synth/player";
-import AudioPlayer from "@/modules/audio/audio-player";
+import AudioPlayer, { AudioPlayerRef } from "@/modules/audio/audio-player";
 import VideoPlayer, { VideoPlayerRef } from "@/modules/video/video-player";
 import YoutubePlayer, {
   YouTubePlayerRef,
@@ -27,25 +27,18 @@ const PlayerHost = forwardRef<PlayerRef, {}>((props, ref) => {
   const { playerState, actions } = useKaraokeStore();
 
   const midiPlayerRef = useRef<MidiPlayerRef>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioPlayerRef = useRef<AudioPlayerRef>(null);
   const videoRef = useRef<VideoPlayerRef>(null);
   const youtubeRef = useRef<YouTubePlayerRef>(null);
 
   useEffect(() => {
     const activeMidiPlayer = midiPlayerRef.current;
-    const activeAudioPlayer = audioRef.current;
     const activeVideoPlayer = videoRef.current;
     const activeYoutubePlayer = youtubeRef.current;
 
     return () => {
       if (activeMidiPlayer) {
         activeMidiPlayer.destroy();
-      }
-
-      if (activeAudioPlayer) {
-        activeAudioPlayer.pause();
-        activeAudioPlayer.removeAttribute("src");
-        activeAudioPlayer.load();
       }
 
       if (activeVideoPlayer) {
@@ -68,20 +61,12 @@ const PlayerHost = forwardRef<PlayerRef, {}>((props, ref) => {
   useImperativeHandle(ref, () => {
     const refs = {
       midi: midiPlayerRef.current,
-      mp3: {
-        play: () => audioRef.current?.play(),
-        pause: () => audioRef.current?.pause(),
-        seek: (time: number) => {
-          if (audioRef.current) audioRef.current.currentTime = time;
-        },
-        getCurrentTime: () => audioRef.current?.currentTime ?? 0,
-        isPlaying: () => !!audioRef.current && !audioRef.current.paused,
-      },
+      mp3: audioPlayerRef.current,
       mp4: videoRef.current,
       youtube: youtubeRef.current,
     };
 
-    return refs[mode!] as any
+    return refs[mode!] as any;
   });
 
   const handleYoutubeUrlChange = (url: string) => {
@@ -113,21 +98,7 @@ const PlayerHost = forwardRef<PlayerRef, {}>((props, ref) => {
     case "midi":
       return <MidiPlayer ref={midiPlayerRef} />;
     case "mp3":
-      return (
-        <AudioPlayer
-          audioRef={audioRef}
-          src={playerState.audioSrc}
-          onPlay={() => actions.setIsPlaying(true)}
-          onPause={() => actions.setIsPlaying(false)}
-          onStop={() => {
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.currentTime = 0;
-              actions.setIsPlaying(false);
-            }
-          }}
-        />
-      );
+      return <AudioPlayer ref={audioPlayerRef} src={playerState.audioSrc} />;
     case "mp4":
       return <VideoPlayer ref={videoRef} src={playerState.videoSrc} />;
     case "youtube":

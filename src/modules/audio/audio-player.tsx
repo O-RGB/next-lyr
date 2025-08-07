@@ -1,50 +1,89 @@
-import { useState, useEffect, RefObject } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-import { BsPlay, BsPause, BsStop } from "react-icons/bs";
-import ButtonCommon from "../../components/common/button";
-import Card from "../../components/common/card";
 import { readMp3 } from "../mp3-klyr-parser/read";
+import CommonPlayerStyle from "@/components/common/player";
 
 type Props = {
   src: string | null;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  onPlay: () => void;
-  onPause: () => void;
-  onStop: () => void;
 };
 
-export default function AudioPlayer({
-  src,
-  audioRef,
-  onPlay,
-  onPause,
-  onStop,
-}: Props) {
-  const { loadAudioFile } = useKaraokeStore((state) => state.actions);
+export type AudioPlayerRef = {
+  play: () => void;
+  pause: () => void;
+  seek: (time: number) => void;
+  getCurrentTime: () => number;
+  isPlaying: () => boolean;
+};
+
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src }, ref) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const { loadAudioFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
+    (state) => state.actions
+  );
   const [isPlaying, setIsPlaying] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useImperativeHandle(ref, () => ({
+    play: () => audioRef.current?.play(),
+    pause: () => audioRef.current?.pause(),
+    seek: (time: number) => {
+      if (audioRef.current) audioRef.current.currentTime = time;
+    },
+    getCurrentTime: () => audioRef.current?.currentTime ?? 0,
+    isPlaying: () => !!audioRef.current && !audioRef.current.paused,
+  }));
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updatePlayState = () => setIsPlaying(!audio.paused);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      setGlobalIsPlaying(true);
+    };
+    const handlePause = () => {
+      setIsPlaying(false);
+      setGlobalIsPlaying(false);
+    };
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleDurationChange = () => setDuration(audio.duration);
 
-    audio.addEventListener("play", updatePlayState);
-    audio.addEventListener("pause", updatePlayState);
-    audio.addEventListener("ended", updatePlayState);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handlePause);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("durationchange", handleDurationChange);
 
     return () => {
-      audio.removeEventListener("play", updatePlayState);
-      audio.removeEventListener("pause", updatePlayState);
-      audio.removeEventListener("ended", updatePlayState);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handlePause);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("durationchange", handleDurationChange);
     };
-  }, [audioRef]);
+  }, [setGlobalIsPlaying]);
+
+  useEffect(() => {
+    if (src && audioRef.current) {
+      audioRef.current.src = src;
+      audioRef.current.load();
+    }
+  }, [src]);
 
   const onUploadFile = async (file?: File) => {
     if (!file) return;
     try {
       const { parsedData } = await readMp3(file);
       const audioUrl = URL.createObjectURL(file);
+      setFileName(file.name);
 
       const tempAudio = document.createElement("audio");
       tempAudio.src = audioUrl;
@@ -61,34 +100,48 @@ export default function AudioPlayer({
     }
   };
 
-  return (
-    <Card className="bg-white/50 p-4 rounded-lg w-full">
-      <label
-        htmlFor="audio-file-input"
-        className="cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-slate-600 mb-3"
-      >
-        Choose Audio File
-      </label>
-      <input
-        type="file"
-        id="audio-file-input"
-        accept="audio/mp3, audio/mpeg"
-        className="sr-only"
-        onChange={(e) => e.target.files && onUploadFile(e.target.files[0])}
-      />
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      audioRef.current?.pause();
+    } else {
+      audioRef.current?.play();
+    }
+  };
 
-      <audio ref={audioRef} src={src || ""} controls className="w-full" />
-      <div className="flex justify-center items-center gap-2 mt-3">
-        <ButtonCommon onClick={onPlay} disabled={isPlaying || !src}>
-          <BsPlay className="mr-2 h-4 w-4" /> Play
-        </ButtonCommon>
-        <ButtonCommon onClick={onPause} disabled={!isPlaying}>
-          <BsPause className="mr-2 h-4 w-4" /> Pause
-        </ButtonCommon>
-        <ButtonCommon onClick={onStop} disabled={!src}>
-          <BsStop className="mr-2 h-4 w-4" /> Stop
-        </ButtonCommon>
-      </div>
-    </Card>
+  const handleStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  const handleSeek = (value: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value;
+    }
+  };
+
+  return (
+    <>
+      <audio
+        ref={audioRef}
+        src={src ?? undefined}
+        className="hidden"
+        preload="auto"
+      />
+      <CommonPlayerStyle
+        fileName={fileName}
+        isPlaying={isPlaying}
+        onFileChange={onUploadFile}
+        onPlayPause={handlePlayPause}
+        onStop={handleStop}
+        onSeek={handleSeek}
+        duration={duration}
+        currentTime={currentTime}
+      />
+    </>
   );
-}
+});
+
+AudioPlayer.displayName = "AudioPlayer";
+export default AudioPlayer;

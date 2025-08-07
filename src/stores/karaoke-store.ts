@@ -419,6 +419,8 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           currentIndex: 0,
           correctionIndex: null,
           selectedLineIndex: null,
+          currentTime: 0, // รีเซ็ตเวลาเป็น 0
+          playbackIndex: null, // รีเซ็ต highlight การเล่นเพลง
         });
       },
       addChord: (newChord) => {

@@ -71,10 +71,8 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
 
   const playheadPosition = containerHeight / 2;
   const totalDuration = playerState.duration ?? 0;
-  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-  // เพิ่มความสูงของ Track ทั้งหมดเท่ากับความสูงของ container เพื่อสร้าง padding บนและล่าง
+
   const trackHeight = totalDuration * pixelsPerUnit + containerHeight;
-  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -88,10 +86,9 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
         clearTimeout(scrollTimeoutRef.current);
       }
       const scrollTop = e.currentTarget.scrollTop;
-      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-      // คำนวณ tick ที่อยู่ตรงกลางจอใหม่ให้ถูกต้องตาม layout ใหม่
+
       const newCenterTick = scrollTop / pixelsPerUnit;
-      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
       actions.setChordPanelCenterTick(newCenterTick);
 
       if (state.isPlaying) {
@@ -210,7 +207,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   }, [totalDuration, mode, playerState.midiInfo?.ppq, pixelsPerUnit, zoom]);
 
   return (
-    <div className="h-full flex flex-col gap-2">
+    <div className="h-full flex flex-col gap-2 overflow-hidden">
       <div className="flex items-center p-2 bg-gray-100 rounded-md">
         <span className="text-xs font-bold mr-2">Zoom:</span>
         <input
@@ -250,7 +247,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
             >
               <button
                 onClick={handleAddChordAtPlayhead}
-                className="z-50 absolute left-1/2 -translate-x-1/2 text-purple-500 hover:text-purple-700 bg-white transition-colors pointer-events-auto"
+                className="z-50 absolute left-1/2 -translate-x-1/2 text-purple-500 hover:text-purple-700 bg-white rounded-full transition-colors pointer-events-auto"
                 title="Add new chord at current time"
               >
                 <BsPlusCircleFill />
@@ -261,13 +258,10 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
               className="relative w-full"
               style={{ height: `${trackHeight}px` }}
             >
-              {/* vvvvvvvvvv จุดแก้ไข vvvvvvvvvv */}
-              {/* เพิ่ม Div ครอบเพื่อสร้าง Padding ด้านบน */}
               <div
                 className="relative"
                 style={{ top: `${playheadPosition}px` }}
               >
-                {/* ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^ */}
                 <div className="absolute top-0 left-4 h-full w-px bg-gray-100 z-0">
                   {totalDuration > 0 && Ruler}
                 </div>

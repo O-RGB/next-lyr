@@ -93,6 +93,7 @@ function readID3Tags(buffer: ArrayBuffer): {
 
 export async function readMp3(file: File): Promise<IReadMp3Result> {
   const buffer = await file.arrayBuffer();
+  console.log("buffer")
   const { tags, audioData } = readID3Tags(buffer);
 
   console.log(tags);

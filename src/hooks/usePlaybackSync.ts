@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from "react";
+import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 import { PlayerControls } from "./useKeyboardControls";
 
@@ -9,6 +9,8 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
   const actions = useKaraokeStore((state) => state.actions);
+  // --- 💡 จุดแก้ไข: ดึงสถานะ isPlaying มาจาก store ---
+  const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
   useEffect(() => {
     if (!playerControls) return;
@@ -42,7 +44,8 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     };
 
     const intervalId = setInterval(() => {
-      if (playerControls.isPlaying()) {
+      // --- 💡 จุดแก้ไข: ตรวจสอบ isPlaying จาก store ก่อนทำงาน ---
+      if (isPlaying && playerControls.isPlaying()) {
         const currentTime = playerControls.getCurrentTime();
         actions.setCurrentTime(currentTime);
         syncLogic(currentTime);
@@ -58,5 +61,6 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     correctionIndex,
     selectedLineIndex,
     editingLineIndex,
+    isPlaying, // --- 💡 จุดแก้ไข: เพิ่ม isPlaying ใน dependency array ---
   ]);
 };

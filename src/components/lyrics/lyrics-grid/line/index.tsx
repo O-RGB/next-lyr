@@ -1,4 +1,3 @@
-// src/components/lyrics/lyrics-grid/line/index.tsx
 import React from "react";
 import LyricWord from "./word";
 import Ruler from "./ruler/ruler";
@@ -16,9 +15,9 @@ export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
   lineRef: (el: HTMLDivElement | null) => void;
-  // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+
   setWordRef: (el: HTMLDivElement | null, index: number) => void;
-  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
   chords: ChordEvent[];
   mode: MusicMode | null;
   onRulerClick: (
@@ -40,7 +39,7 @@ const LineRow: React.FC<LineRowProps> = React.memo(
     line,
     lineIndex,
     lineRef,
-    setWordRef, // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
+    setWordRef,
     chords,
     mode,
     onRulerClick,
@@ -63,17 +62,12 @@ const LineRow: React.FC<LineRowProps> = React.memo(
 
     return (
       <div
+        ref={lineRef}
         data-line-index={lineIndex}
         className="relative flex flex-col gap-4 rounded-sm p-4"
       >
         <SelectedColorLine lineIndex={lineIndex} />
-        <div
-          ref={(el) => {
-            lineRef(el);
-            setNodeRef(el);
-          }}
-          className="relative w-[80%] h-4"
-        >
+        <div ref={setNodeRef} className="relative w-[80%] h-4">
           <Ruler
             lineIndex={lineIndex}
             startTime={rulerStartTime}

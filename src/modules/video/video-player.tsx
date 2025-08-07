@@ -1,11 +1,14 @@
-// src/modules/video/video-player.tsx
-
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useState,
+  useEffect,
+} from "react";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-import ButtonCommon from "../../components/common/button";
 import Card from "../../components/common/card";
+import CommonPlayerStyle from "@/components/common/player";
 
-// *** แก้ไข: ลบ onFileChange ออกจาก Props ***
 type Props = {
   src: string | null;
 };
@@ -21,9 +24,12 @@ export type VideoPlayerRef = {
 
 const VideoPlayer = forwardRef<VideoPlayerRef, Props>(({ src }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  // *** แก้ไข: ดึง action มาใช้โดยตรง ***
   const { loadVideoFile } = useKaraokeStore((state) => state.actions);
+
+  const [fileName, setFileName] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
 
   useImperativeHandle(ref, () => ({
     play: () => videoRef.current?.play(),
@@ -36,12 +42,34 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(({ src }, ref) => {
     videoEl: videoRef.current,
   }));
 
-  // *** แก้ไข: handleFileChange เรียก action จาก store ***
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+    const handleDurationChange = () => setDuration(video.duration);
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("durationchange", handleDurationChange);
+
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("durationchange", handleDurationChange);
+    };
+  }, []);
+
   const handleFileChange = (file?: File) => {
     if (!file) return;
     const videoUrl = URL.createObjectURL(file);
     const tempVideo = document.createElement("video");
     tempVideo.src = videoUrl;
+    setFileName(file.name);
 
     const handleMetadata = () => {
       loadVideoFile(videoUrl, file.name, tempVideo.duration);
@@ -51,26 +79,45 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(({ src }, ref) => {
     tempVideo.addEventListener("loadedmetadata", handleMetadata);
   };
 
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      videoRef.current?.pause();
+    } else {
+      videoRef.current?.play();
+    }
+  };
+
+  const handleStop = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  const handleSeek = (value: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = value;
+    }
+  };
+
   return (
-    <Card className="bg-white/50 p-4 rounded-lg w-full">
+    <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
       <video
         ref={videoRef}
         src={src || ""}
-        className="w-full rounded-lg bg-black mb-4"
-        controls
+        className="w-full rounded-lg bg-black"
+        controls={false}
       />
-      <ButtonCommon
-        onClick={() => fileInputRef.current?.click()}
-        className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-      >
-        Choose Video File
-      </ButtonCommon>
-      <input
-        type="file"
-        ref={fileInputRef}
+      <CommonPlayerStyle
+        fileName={fileName}
+        isPlaying={isPlaying}
+        onFileChange={handleFileChange}
+        onPlayPause={handlePlayPause}
+        onStop={handleStop}
+        onSeek={handleSeek}
+        duration={duration}
+        currentTime={currentTime}
         accept="video/mp4"
-        className="hidden"
-        onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
       />
     </Card>
   );

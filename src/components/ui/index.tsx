@@ -17,7 +17,6 @@ import DonateModal from "../modals/donate";
 import PlayerHost, { PlayerRef } from "./player-host";
 
 const LyrEditerPanel: React.FC = () => {
-  // ดึง State จาก Store
   const mode = useKaraokeStore((state) => state.mode);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const metadata = useKaraokeStore((state) => state.metadata);
@@ -32,10 +31,8 @@ const LyrEditerPanel: React.FC = () => {
   const maxChordTickRange = useKaraokeStore((state) => state.maxChordTickRange);
   const actions = useKaraokeStore((state) => state.actions);
 
-  // Ref สำหรับ Player
   const playerRef = useRef<PlayerRef>(null);
 
-  // Player Controls ที่รวมทุกอย่างไว้ในที่เดียว
   const playerControls = useMemo<PlayerControls | null>(() => {
     if (!mode || !playerRef.current) return null;
 
@@ -48,7 +45,6 @@ const LyrEditerPanel: React.FC = () => {
     };
   }, [mode, playerRef.current]);
 
-  // Callbacks สำหรับ Event ต่างๆ (ส่วนใหญ่ยังคงเดิม)
   const handleStop = useCallback(() => {
     playerControls?.pause();
     playerControls?.seek(0);
@@ -78,6 +74,8 @@ const LyrEditerPanel: React.FC = () => {
     (lineIndex: number) => {
       const { success, preRollTime } = actions.startEditLine(lineIndex);
       if (success && playerControls) {
+        actions.setIsPlaying(true);
+
         playerControls.seek(preRollTime);
         playerControls.play();
       }
@@ -176,6 +174,7 @@ const LyrEditerPanel: React.FC = () => {
     },
     [actions]
   );
+
   return (
     <main className="flex h-[calc(100vh-36px)]">
       <DonateModal />
