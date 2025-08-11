@@ -15,9 +15,7 @@ export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
   lineRef: (el: HTMLDivElement | null) => void;
-
   setWordRef: (el: HTMLDivElement | null, index: number) => void;
-
   chords: ChordEvent[];
   mode: MusicMode | null;
   onRulerClick: (
@@ -62,63 +60,74 @@ const LineRow: React.FC<LineRowProps> = React.memo(
 
     return (
       <div
+        className="relative flex h-auto gap-3 py-3"
         ref={lineRef}
         data-line-index={lineIndex}
-        className="relative flex flex-col gap-4 rounded-sm p-4"
       >
         <SelectedColorLine lineIndex={lineIndex} />
-        <div ref={setNodeRef} className="relative w-[80%] h-4">
-          <Ruler
-            lineIndex={lineIndex}
-            startTime={rulerStartTime}
-            endTime={rulerEndTime}
-            onRulerClick={(percentage) =>
-              onRulerClick(lineIndex, percentage, lineDuration)
-            }
-            mode={mode}
-          />
-          <WordTimingLines
-            lineIndex={lineIndex}
-            buttonProps={{
-              onClick: () => onAddChordClick(lineIndex),
-              disabled: editingLineIndex !== null,
-              title: "Add New Chord to this Line",
-              icon: <BsPlusCircle className="text-xs text-purple-800" />,
-            }}
-            line={line}
-            lineStartTime={rulerStartTime}
-            lineEndTime={rulerEndTime}
-            editingLineIndex={editingLineIndex}
-          />
-          <ChordsListLine
-            chords={chords}
-            lineDuration={lineDuration}
-            onChordClick={onChordClick}
-            rulerStartTime={rulerStartTime}
-          />
+
+        <div className="relative w-4 -my-3 flex items-center justify-center bg-gray-100 z-20">
+          <div className="px-2 text-[9px]">{lineIndex + 1}</div>
         </div>
-        <div className="flex w-full justify-between items-center">
-          <div className="flex-1 flex flex-nowrap gap-2 overflow-x-auto pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1">
-            {line.map((word) => (
-              <LyricWord
-                ref={(el) => setWordRef(el, word.index)}
-                key={word.index}
-                lineIndex={lineIndex}
-                wordData={word}
-                editingLineIndex={editingLineIndex}
-                onClick={onWordClick}
-                onUpdate={() => {}}
-                onDelete={() => {}}
-              />
-            ))}
+
+        <div className="relative flex flex-col gap-1 lg:gap-2 flex-1 min-w-0">
+          <div
+            ref={setNodeRef}
+            className="relative w-[85%] h-4 hidden lg:block"
+          >
+            <Ruler
+              lineIndex={lineIndex}
+              startTime={rulerStartTime}
+              endTime={rulerEndTime}
+              onRulerClick={(percentage) =>
+                onRulerClick(lineIndex, percentage, lineDuration)
+              }
+              mode={mode}
+            />
+            <WordTimingLines
+              lineIndex={lineIndex}
+              buttonProps={{
+                onClick: () => onAddChordClick(lineIndex),
+                disabled: editingLineIndex !== null,
+                title: "Add New Chord to this Line",
+                icon: <BsPlusCircle className="text-xs text-purple-800" />,
+              }}
+              line={line}
+              lineStartTime={rulerStartTime}
+              lineEndTime={rulerEndTime}
+              editingLineIndex={editingLineIndex}
+            />
+            <ChordsListLine
+              chords={chords}
+              lineDuration={lineDuration}
+              onChordClick={onChordClick}
+              rulerStartTime={rulerStartTime}
+            />
           </div>
 
-          <LineAction
-            editingLineIndex={editingLineIndex ?? undefined}
-            lineIndex={lineIndex}
-            onDeleteLine={onDeleteLine}
-            onEditLine={onEditLine}
-          />
+          <div className="flex w-full justify-between items-center">
+            <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1">
+              {line.map((word) => (
+                <LyricWord
+                  ref={(el) => setWordRef(el, word.index)}
+                  key={word.index}
+                  lineIndex={lineIndex}
+                  wordData={word}
+                  editingLineIndex={editingLineIndex}
+                  onClick={onWordClick}
+                  onUpdate={() => {}}
+                  onDelete={() => {}}
+                />
+              ))}
+            </div>
+
+            <LineAction
+              editingLineIndex={editingLineIndex ?? undefined}
+              lineIndex={lineIndex}
+              onDeleteLine={onDeleteLine}
+              onEditLine={onEditLine}
+            />
+          </div>
         </div>
       </div>
     );

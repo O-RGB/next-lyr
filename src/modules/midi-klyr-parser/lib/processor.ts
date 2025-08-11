@@ -536,14 +536,13 @@ function _extractDataFromEvents(
 
   midiData.tracks.forEach((track) => {
     track.forEach((event) => {
-      // ตรวจหา Note On Event
       if (
         event.type === "channel" &&
         event.status >= 0x90 &&
         event.status <= 0x9f
       ) {
         const channelEvent = event as ChannelEvent;
-        // ตรวจสอบว่า velocity (ความดัง) > 0 (เพราะ velocity 0 คือ note off)
+
         if (channelEvent.data && channelEvent.data[1] > 0) {
           if (
             firstNoteOnTick === null ||
@@ -554,7 +553,7 @@ function _extractDataFromEvents(
         }
       }
 
-      if (event.type !== "meta") return; // แก้ไข: ควรเป็น return ธรรมดา ไม่ใช่ continue
+      if (event.type !== "meta") return;
       if (event.metaType === 0x06 && event.text) {
         chords.push({ chord: event.text, tick: event.absoluteTime });
       }

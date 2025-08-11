@@ -14,7 +14,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
   ({ editingLineIndex, onEditLine, onDeleteLine, lineIndex }) => {
     console.log("Render LineAction", lineIndex);
     return (
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex flex-col lg:flex-row items-center">
         <ButtonCommon
           onClick={() => onEditLine?.(lineIndex)}
           // disabled={editingLineIndex !== null}

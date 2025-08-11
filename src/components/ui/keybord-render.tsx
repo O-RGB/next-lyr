@@ -15,7 +15,7 @@ const KeyboardRender: React.FC<KeyboardRenderProps> = ({
   handleEditLine,
 }) => {
   useKeyboardControls(playerControls, handleEditLine);
-  usePlaybackSync(playerControls); // ส่ง playerControls ไปตรงๆ
+  usePlaybackSync(playerControls);
   return <></>;
 };
 

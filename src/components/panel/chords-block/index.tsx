@@ -19,6 +19,8 @@ import {
 import ChordItem from "./chords/item";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
+import useIsMobile from "@/hooks/useIsMobile";
+import ZoomControl from "./zoom";
 
 interface ChordsBlockProps {
   onChordClick: (tick: number) => void;
@@ -31,17 +33,52 @@ const PIXELS_PER_UNIT_BASE_MIDI = 0.1;
 const PIXELS_PER_UNIT_BASE_TIME = 50;
 const CHORD_ITEM_HEIGHT_PX = 34;
 
+// --- Playhead Component ---
+const Playhead = ({
+  onAddChord,
+  isMobile,
+}: {
+  onAddChord: () => void;
+  isMobile: boolean;
+}) => {
+  return (
+    <div className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none">
+      <div
+        className={
+          isMobile
+            ? "absolute top-0 left-1/2 w-0.5 h-full bg-purple-500 -translate-x-1/2"
+            : "absolute left-0 top-1/2 h-0.5 w-full bg-purple-500 -translate-y-1/2"
+        }
+      >
+        <button
+          onClick={onAddChord}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-purple-500 hover:text-purple-700 bg-white rounded-full transition-colors pointer-events-auto"
+          title="Add new chord at current time"
+        >
+          <BsPlusCircleFill />
+        </button>
+        <div className="absolute top-1/2 left-1/2 w-3 h-3 border-2 border-purple-500 bg-white rounded-full z-10 -translate-x-1/2 -translate-y-1/2"></div>
+      </div>
+    </div>
+  );
+};
+
 const ChordsBlock: React.FC<ChordsBlockProps> = ({
   onChordClick,
   onAddChord,
   onEditChord,
   onDeleteChord,
 }) => {
-  const { mode, playerState, chordsData, actions } = useKaraokeStore();
+  const mode = useKaraokeStore((state) => state.mode);
+  const playerState = useKaraokeStore((state) => state.playerState);
+  const chordsData = useKaraokeStore((state) => state.chordsData);
+  const actions = useKaraokeStore((state) => state.actions);
+  const isMobile = useIsMobile();
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null); // For getting stable size
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null); // For scrolling
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [containerHeight, setContainerHeight] = useState(0);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
@@ -58,9 +95,23 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
   }, [mode, playerState.midiInfo]);
 
   useLayoutEffect(() => {
-    if (containerRef.current) {
-      setContainerHeight(containerRef.current.clientHeight);
-    }
+    const element = containerRef.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver(() => {
+      setContainerSize({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
+    });
+
+    observer.observe(element);
+    setContainerSize({
+      width: element.clientWidth,
+      height: element.clientHeight,
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   const pixelsPerUnit = useMemo(() => {
@@ -69,10 +120,11 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
     return base * zoom;
   }, [mode, zoom]);
 
-  const playheadPosition = containerHeight / 2;
+  const playheadPosition = isMobile
+    ? containerSize.width / 2
+    : containerSize.height / 2;
   const totalDuration = playerState.duration ?? 0;
-
-  const trackHeight = totalDuration * pixelsPerUnit + containerHeight;
+  const trackSize = totalDuration * pixelsPerUnit;
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -85,9 +137,11 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      const scrollTop = e.currentTarget.scrollTop;
 
-      const newCenterTick = scrollTop / pixelsPerUnit;
+      const scrollPos = isMobile
+        ? e.currentTarget.scrollLeft
+        : e.currentTarget.scrollTop;
+      const newCenterTick = scrollPos / pixelsPerUnit;
 
       actions.setChordPanelCenterTick(newCenterTick);
 
@@ -97,7 +151,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
         }, 250);
       }
     },
-    [pixelsPerUnit, actions]
+    [pixelsPerUnit, actions, isMobile]
   );
 
   const handleWheel = useCallback(
@@ -130,7 +184,10 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       const originalTick = parseFloat(active.id.toString().split("-")[1]);
       const draggedChord = chordsData.find((c) => c.tick === originalTick);
       if (!draggedChord) return;
-      const tickChange = delta.y / pixelsPerUnit;
+
+      const deltaPos = isMobile ? delta.x : delta.y;
+      const tickChange = deltaPos / pixelsPerUnit;
+
       const newTick = originalTick + tickChange;
       const finalTick = Math.max(
         0,
@@ -138,7 +195,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       );
       actions.updateChord(originalTick, { ...draggedChord, tick: finalTick });
     },
-    [chordsData, pixelsPerUnit, actions, mode]
+    [chordsData, pixelsPerUnit, actions, mode, isMobile]
   );
 
   const handleAddChordAtPlayhead = useCallback(() => {
@@ -183,19 +240,32 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
         Math.abs((i % majorInterval) - majorInterval) < 1e-9;
       const label =
         mode === "midi" ? i : i.toFixed(i < 10 && minorInterval < 1 ? 1 : 0);
+
+      const rulerItemStyle: React.CSSProperties = isMobile
+        ? { left: `${i * pixelsPerUnit}px` }
+        : { top: `${i * pixelsPerUnit}px` };
+
+      const lineClasses = isMobile
+        ? `absolute h-full ${
+            isMajor ? "bg-gray-400 w-px h-4" : "bg-gray-200 w-px h-2"
+          }`
+        : `absolute h-px ${isMajor ? "bg-gray-400 w-4" : "bg-gray-200 w-2"}`;
+
+      const labelClasses = isMobile
+        ? "absolute top-5 text-[8px] text-gray-400 -translate-x-1/2 whitespace-nowrap"
+        : "absolute left-5 text-[8px] text-gray-400 -translate-y-1/2 whitespace-nowrap";
+
       ticks.push(
         <div
           key={`tick-${i}`}
-          className="absolute left-0 w-full"
-          style={{ top: `${i * pixelsPerUnit}px` }}
+          className={
+            isMobile ? "absolute top-0 h-full" : "absolute left-0 w-full"
+          }
+          style={rulerItemStyle}
         >
-          <div
-            className={`absolute h-px ${
-              isMajor ? "bg-gray-400 w-4" : "bg-gray-200 w-2"
-            }`}
-          ></div>
+          <div className={lineClasses}></div>
           {isMajor && (
-            <span className="absolute left-5 text-[8px] text-gray-400 -translate-y-1/2 whitespace-nowrap">
+            <span className={labelClasses}>
               {label}
               {mode !== "midi" && "s"}
             </span>
@@ -204,78 +274,105 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
       );
     }
     return ticks;
-  }, [totalDuration, mode, playerState.midiInfo?.ppq, pixelsPerUnit, zoom]);
+  }, [
+    totalDuration,
+    mode,
+    playerState.midiInfo?.ppq,
+    pixelsPerUnit,
+    zoom,
+    isMobile,
+  ]);
 
   return (
-    <div className="h-full flex flex-col gap-2 overflow-hidden">
-      <div className="flex items-center p-2 bg-gray-100 rounded-md">
-        <span className="text-xs font-bold mr-2">Zoom:</span>
-        <input
-          type="range"
-          min="0.25"
-          max="4"
-          step="0.05"
-          value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
-          className="w-full"
-        />
-        <span className="text-xs w-12 text-center">{zoom.toFixed(2)}x</span>
-      </div>
-      <div className="relative h-full">
+    <div className="h-full flex flex-row md:flex-col gap-2 overflow-hidden">
+      <ZoomControl isMobile={isMobile} zoom={zoom} setZoom={setZoom} />
+
+      <div className="relative flex-grow h-full">
         <AutoScroller
-          containerRef={containerRef}
+          containerRef={scrollContainerRef}
           pixelsPerTick={pixelsPerUnit}
           playheadPosition={playheadPosition}
+          isMobile={isMobile}
         />
         <ManualScroller
-          containerRef={containerRef}
+          containerRef={scrollContainerRef}
           pixelsPerTick={pixelsPerUnit}
           playheadPosition={playheadPosition}
+          isMobile={isMobile}
         />
+
+        <Playhead onAddChord={handleAddChordAtPlayhead} isMobile={isMobile} />
+
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div
             ref={containerRef}
-            className="relative h-full bg-white border border-slate-300 rounded-lg overflow-auto"
-            onScroll={handleScroll}
-            onWheel={handleWheel}
+            className="h-full w-full bg-white border border-slate-300 rounded-lg relative"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             <div
-              className="sticky top-1/2 -translate-y-1/2 left-0 w-full h-0.5 bg-purple-500 z-20 flex items-center pointer-events-none"
-              style={{ top: `${playheadPosition}px` }}
-            >
-              <button
-                onClick={handleAddChordAtPlayhead}
-                className="z-50 absolute left-1/2 -translate-x-1/2 text-purple-500 hover:text-purple-700 bg-white rounded-full transition-colors pointer-events-auto"
-                title="Add new chord at current time"
-              >
-                <BsPlusCircleFill />
-              </button>
-              <div className="absolute -left-1.5 w-3 h-3 border-2 border-purple-500 bg-white rounded-full z-10"></div>
-            </div>
-            <div
-              className="relative w-full"
-              style={{ height: `${trackHeight}px` }}
+              ref={scrollContainerRef}
+              className="absolute inset-0 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              onScroll={handleScroll}
+              onWheel={handleWheel}
             >
               <div
-                className="relative"
-                style={{ top: `${playheadPosition}px` }}
+                style={
+                  isMobile
+                    ? { display: "flex", height: "100%" }
+                    : {
+                        paddingTop: `${playheadPosition}px`,
+                        paddingBottom: `${playheadPosition}px`,
+                        width: "100%",
+                      }
+                }
               >
-                <div className="absolute top-0 left-4 h-full w-px bg-gray-100 z-0">
-                  {totalDuration > 0 && Ruler}
-                </div>
-                {chordsData.map((chord, index) => (
-                  <ChordItem
-                    key={`${chord.tick}-${index}`}
-                    chord={chord}
-                    index={index}
-                    pixelsPerTick={pixelsPerUnit}
-                    onChordClick={onChordClick}
-                    onEditChord={onEditChord}
-                    onDeleteChord={onDeleteChord}
+                {isMobile && (
+                  <div
+                    style={{ width: `${playheadPosition}px`, flexShrink: 0 }}
+                    aria-hidden="true"
                   />
-                ))}
+                )}
+                <div
+                  className="relative"
+                  style={
+                    isMobile
+                      ? {
+                          width: `${trackSize}px`,
+                          height: "100%",
+                          flexShrink: 0,
+                        }
+                      : { height: `${trackSize}px`, width: "100%" }
+                  }
+                >
+                  <div
+                    className={
+                      isMobile
+                        ? "absolute top-0 left-0 w-full h-px bg-gray-100 z-0"
+                        : "absolute top-0 left-4 h-full w-px bg-gray-100 z-0"
+                    }
+                  >
+                    {totalDuration > 0 && Ruler}
+                  </div>
+                  {chordsData.map((chord, index) => (
+                    <ChordItem
+                      key={`${chord.tick}-${index}`}
+                      chord={chord}
+                      index={index}
+                      pixelsPerTick={pixelsPerUnit}
+                      onChordClick={onChordClick}
+                      onEditChord={onEditChord}
+                      onDeleteChord={onDeleteChord}
+                      isMobile={isMobile}
+                    />
+                  ))}
+                </div>
+                {isMobile && (
+                  <div
+                    style={{ width: `${playheadPosition}px`, flexShrink: 0 }}
+                    aria-hidden="true"
+                  />
+                )}
               </div>
             </div>
           </div>

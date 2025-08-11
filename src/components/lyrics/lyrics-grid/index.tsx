@@ -223,8 +223,8 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
       >
-        <div className="h-full bg-white border border-slate-300 rounded-lg p-3 overflow-auto">
-          <div className="flex flex-col divide-y">
+        <div className="h-full bg-white border border-slate-300 overflow-auto">
+          <div className="flex flex-col divide-y ">
             {memoizedLines.map(({ line, lineIndex, lineChords }) => (
               <LineRow
                 key={lineIndex}
@@ -256,7 +256,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
             backgroundColor: "rgba(0,0,0,0.75)",
             color: "#fff",
             padding: "2px 6px",
-            borderRadius: "4px",
             fontSize: "10px",
             pointerEvents: "none",
             transform: "translate(-50%, -100%)",

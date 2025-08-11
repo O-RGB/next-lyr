@@ -58,7 +58,6 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
 
     useEffect(() => {
       if (playerState === 1) {
-        // Playing
         intervalRef.current = setInterval(() => {
           setCurrentTime(playerRef.current?.getCurrentTime() ?? 0);
         }, 250);
@@ -71,11 +70,13 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     }, [playerState]);
 
     const handleReady = (event: { target: YouTubePlayer }) => {
-      playerRef.current = event.target;
-      setIsReady(true);
+      playerRef.current = event.target; // set ค่า YouTube API instance
       const videoData = event.target.getVideoData();
       setFileName(videoData.title);
       setDuration(event.target.getDuration());
+      setIsReady(true);
+
+      // เรียก onReady หลังจาก playerRef ถูก set แล้ว
       onReady(event);
     };
 
@@ -90,7 +91,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       width: "100%",
       playerVars: {
         autoplay: 0,
-        controls: 0, // ซ่อนคอนโทรลของ YouTube
+        controls: 0,
         disablekb: 1,
         modestbranding: 1,
         showinfo: 0,

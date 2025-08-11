@@ -18,7 +18,7 @@ const ChordsListLine: React.FC<ChordsListLineProps> = ({
   return (
     <>
       {chords.length > 0 && (
-        <div className="absolute h-5 w-full -top-2">
+        <div className="absolute h-5 w-full -top-1">
           {chords.map((chord, i) => {
             const firstWordTick = rulerStartTime ?? 0;
             const totalLineTick = lineDuration || 1;

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { LyricsRangeArray } from "@/lib/karaoke/lyrics/lyrics-mapping";
 import { ISentence } from "@/lib/karaoke/lyrics/types";
 import { useKaraokeStore } from "@/stores/karaoke-store";
@@ -8,11 +8,13 @@ import LyricsList from "./line";
 interface LyricsPlayerProps {
   lyricsProcessed: LyricsRangeArray<ISentence>;
   textStyle?: LyricsCharacterStyle;
+  playerControls?: ReactNode | null;
 }
 
 const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   lyricsProcessed,
   textStyle,
+  playerControls,
 }) => {
   const currentTime = useKaraokeStore((state) => state.currentTime);
   const chordsData = useKaraokeStore((state) => state.chordsData);
@@ -40,26 +42,27 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   const isTopActive = active?.lyrics.tag === "top";
   const isBottomActive = active?.lyrics.tag === "bottom";
 
-  const className = `flex items-center justify-center relative w-full h-full rounded-lg text-center overflow-auto [&::-webkit-scrollbar]:hidden duration-300`;
-
   return (
-    <div className={className}>
-      <div className="flex flex-col items-center justify-center text-white drop-shadow-lg w-full overflow-visible pt-4">
-        <LyricsList
-          tick={isTopActive ? currentTime : 0}
-          sentence={topSentence}
-          nextSentence={isTopActive ? next?.value : undefined}
-          chords={isTopActive ? chordsData : []}
-          textStyle={textStyle}
-        />
-        <LyricsList
-          tick={isBottomActive ? currentTime : 0}
-          sentence={bottomSentence}
-          nextSentence={isBottomActive ? next?.value : undefined}
-          chords={isBottomActive ? chordsData : []}
-          textStyle={textStyle}
-        />
+    <div className="flex flex-col h-full w-full">
+      <div className="flex-grow flex items-center justify-center relative w-full rounded-lg text-center overflow-auto [&::-webkit-scrollbar]:hidden duration-300">
+        <div className="flex flex-col items-center justify-center text-white drop-shadow-lg w-full overflow-visible pt-4">
+          <LyricsList
+            tick={isTopActive ? currentTime : 0}
+            sentence={topSentence}
+            nextSentence={isTopActive ? next?.value : undefined}
+            chords={isTopActive ? chordsData : []}
+            textStyle={textStyle}
+          />
+          <LyricsList
+            tick={isBottomActive ? currentTime : 0}
+            sentence={bottomSentence}
+            nextSentence={isBottomActive ? next?.value : undefined}
+            chords={isBottomActive ? chordsData : []}
+            textStyle={textStyle}
+          />
+        </div>
       </div>
+      {playerControls && <>{playerControls}</>}
     </div>
   );
 };

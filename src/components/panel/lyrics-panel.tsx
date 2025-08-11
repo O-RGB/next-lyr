@@ -1,3 +1,4 @@
+// src/components/panel/lyrics-panel.tsx
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import { ChordEvent } from "../../modules/midi-klyr-parser/lib/processor";
 import LyricsGrid from "../lyrics/lyrics-grid";
@@ -5,6 +6,7 @@ import Card from "../common/card";
 import { MusicMode } from "@/types/common.type";
 import TimeStampe from "./timestamp";
 import ChordsBlock from "./chords-block";
+import useIsMobile from "@/hooks/useIsMobile"; // <<< เพิ่มเข้ามา
 
 type Props = {
   onEditLine: (lineIndex: number) => void;
@@ -47,9 +49,8 @@ export default function LyricsPanel({
         </div>
       </div>
 
-      <div className="flex w-full gap-2 h-full overflow-hidden">
-        {/* LyricsGrid */}
-        <div className="flex-grow min-w-0">
+      <div className="flex flex-col-reverse md:flex-row w-full gap-2 h-full overflow-hidden">
+        <div className="flex-grow min-h-0 md:min-w-0">
           <LyricsGrid
             lyricsData={lyricsData}
             onWordClick={onWordClick}
@@ -66,9 +67,7 @@ export default function LyricsPanel({
             mode={mode}
           />
         </div>
-
-        {/* ChordsBlock */}
-        <div className="w-[150px] flex-shrink-0">
+        <div className="h-[100px] md:h-full md:w-[150px] flex-shrink-0">
           <ChordsBlock
             onChordClick={onChordBlockClick}
             onAddChord={onAddChordAtCurrentTime}

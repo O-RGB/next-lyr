@@ -30,7 +30,7 @@ const CurrentRulerTick: React.FC<CurrentRulerTickProps> = ({
     <>
       {playbackPercentage > 0 && (
         <div
-          className="absolute w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-lg z-50"
+          className="absolute w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-lg z-30"
           style={{
             left: `${playbackPercentage}%`,
             top: "-0.5rem",

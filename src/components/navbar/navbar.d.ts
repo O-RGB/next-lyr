@@ -1,8 +1,9 @@
+// src/components/navbar/navbar.d.ts
 export type IMenuType = "FILE";
 export type ISubMenuType =
-  | "FILE_NEW"
-  | "SAVE_NCN"
+  | "EXPORT_FILE" // <<< เปลี่ยน
   | "LYRICS_ADD"
+  | "PROJECT_OPEN" // <<< เปลี่ยน
   | "OPEN_MUSIC"
   | "MODE_MIDI"
   | "MODE_MP3"

@@ -1,3 +1,4 @@
+// src/components/panel/chords-block/chords/item.tsx
 import React, { useCallback } from "react";
 import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import Chord from ".";
@@ -9,6 +10,7 @@ interface ChordItemProps {
   onChordClick: (tick: number) => void;
   onEditChord: (chord: ChordEvent) => void;
   onDeleteChord: (tick: number) => void;
+  isMobile: boolean;
 }
 
 const ChordItem: React.FC<ChordItemProps> = React.memo(
@@ -19,6 +21,7 @@ const ChordItem: React.FC<ChordItemProps> = React.memo(
     onChordClick,
     onEditChord,
     onDeleteChord,
+    isMobile,
   }) => {
     const handleClick = useCallback(
       () => onChordClick(chord.tick),
@@ -33,11 +36,24 @@ const ChordItem: React.FC<ChordItemProps> = React.memo(
       [onDeleteChord, chord.tick]
     );
 
+    const itemStyle: React.CSSProperties = isMobile
+      ? {
+          left: `${chord.tick * pixelsPerTick}px`,
+          top: "50%",
+          transform: "translateY(-50%)",
+        }
+      : {
+          top: `${chord.tick * pixelsPerTick}px`,
+          left: "50%",
+          transform: "translateX(-50%)",
+        };
+
+    const containerClasses = isMobile
+      ? "absolute h-[calc(100%-2rem)] top-1/2 -translate-y-1/2 z-10"
+      : "absolute w-[calc(100%-2rem)] left-1/2 -translate-x-1/2 z-10";
+
     return (
-      <div
-        className="absolute w-[calc(100%-2rem)] left-1/2 -translate-x-1/2 z-10"
-        style={{ top: `${chord.tick * pixelsPerTick}px` }}
-      >
+      <div className={containerClasses} style={itemStyle}>
         <Chord
           id={`chord-${chord.tick}-${index}`}
           title={chord.chord}
@@ -45,10 +61,12 @@ const ChordItem: React.FC<ChordItemProps> = React.memo(
           onClick={handleClick}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          isMobile={isMobile}
         />
       </div>
     );
   }
 );
 
+ChordItem.displayName = "ChordItem";
 export default ChordItem;

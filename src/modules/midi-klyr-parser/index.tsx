@@ -121,7 +121,9 @@ export default function MidiEditorComponent() {
         headerToUse: parsedData.detectedHeader,
       });
 
-      const blob = new Blob([newMidiBuffer], { type: "audio/midi" });
+      const blob = new Blob([newMidiBuffer as BlobPart], {
+        type: "audio/midi",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

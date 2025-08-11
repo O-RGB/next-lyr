@@ -1,100 +1,117 @@
 // src/components/navbar/navbar-menu.tsx
-
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Dropdown from "../common/dropdown/dropdown";
-import { BiFile, BiUndo, BiRedo } from "react-icons/bi"; // ++ เพิ่ม Icon ++
-import { MdOutlineLyrics, MdSwitchAccount } from "react-icons/md";
+import { BiFile, BiUndo, BiRedo, BiMenu, BiFolderOpen } from "react-icons/bi";
+import { MdOutlineLyrics } from "react-icons/md";
 import { IMenusType } from "./navbar.d";
 import ButtonCommon from "@/components/common/button";
-import { FaCode } from "react-icons/fa";
+import { FaCode, FaFileUpload } from "react-icons/fa"; // <<< เพิ่ม
 import Link from "next/link";
-import { useKaraokeStore } from "@/stores/karaoke-store"; // ++ เพิ่ม import store ++
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import Drawer, { MenuItem } from "../common/drawer";
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;
 }
 
 const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
-  // ++ ดึง actions และ history state จาก store ++
   const { undo, redo } = useKaraokeStore((state) => state.actions);
   const { past, future } = useKaraokeStore((state) => state.history);
   const mode = useKaraokeStore((state) => state.mode);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) setIsDrawerOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleMenuClick = (value: IMenusType) => {
+    onSelectMenu?.(value);
+    setIsDrawerOpen(false);
+  };
+
+  const menuConfig: MenuItem[] = [
+    {
+      label: "เปิดโปรเจกต์", // <<< เปลี่ยน
+      icon: <BiFolderOpen />,
+      onClick: () => handleMenuClick("PROJECT_OPEN"), // <<< เปลี่ยน
+    },
+    {
+      label: "ส่งออก", // <<< เปลี่ยน
+      icon: <FaFileUpload />, // <<< เปลี่ยน
+      onClick: () => handleMenuClick("EXPORT_FILE"), // <<< เปลี่ยน
+    },
+    {
+      label: "เนื้อเพลง",
+      icon: <MdOutlineLyrics />,
+      onClick: () => handleMenuClick("LYRICS_ADD"),
+    },
+    {
+      label: "ย้อนกลับ",
+      icon: <BiUndo />,
+      onClick: () => {
+        undo();
+        setIsDrawerOpen(false);
+      },
+      disabled: past.length === 0,
+      title: "ย้อนกลับ (Ctrl+Z)",
+    },
+    {
+      label: "ทำซ้ำ",
+      icon: <BiRedo />,
+      onClick: () => {
+        redo();
+        setIsDrawerOpen(false);
+      },
+      disabled: future.length === 0,
+      title: "ทำซ้ำ (Ctrl+Y)",
+    },
+  ];
 
   return (
-    <div className="">
-      <div className="flex justify-between px-2">
-        <div className="flex">
-          <div className="flex items-center justify-center px-2">
-            <div className="font-bold text-white select-none cursor-default flex gap-2 items-center">
-              <img src="/image.png" alt="" className="w-5 h-5 mb-1" />
-              <span>Lyrics Editor</span>
-            </div>
-          </div>
-          <Dropdown
-            items={[
-              {
-                label: "บันทึกไฟล์",
-                onClick: () => onSelectMenu?.("SAVE_NCN"),
-              },
-              {
-                label: `MIDI ${mode === "midi" ? " ✓" : ""}`,
-                onClick: () => onSelectMenu?.("MODE_MIDI"),
-              },
-              {
-                label: `MP3 ${mode === "mp3" ? " ✓" : ""}`,
-                onClick: () => onSelectMenu?.("MODE_MP3"),
-              },
-              {
-                label: `MP4 ${mode === "mp4" ? " ✓" : ""}`,
-                onClick: () => onSelectMenu?.("MODE_MP4"),
-              },
-              {
-                label: `YouTube ${mode === "youtube" ? " ✓" : ""}`,
-                onClick: () => onSelectMenu?.("MODE_YOUTUBE"),
-              },
-            ]}
-          >
-            <ButtonCommon
-              variant="ghost"
-              className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-              icon={<BiFile />}
-            >
-              ไฟล์
-            </ButtonCommon>
-          </Dropdown>
-          <ButtonCommon
-            variant="ghost"
-            className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-            icon={<MdOutlineLyrics />}
-            onClick={() => onSelectMenu?.("LYRICS_ADD")}
-          >
-            เนื้อเพลง
-          </ButtonCommon>
-
-          {/* ++ เพิ่มปุ่ม Undo/Redo ++ */}
-          <ButtonCommon
-            variant="ghost"
-            className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-            icon={<BiUndo />}
-            onClick={undo}
-            disabled={past.length === 0}
-            title="ย้อนกลับ (Ctrl+Z)"
-          >
-            ย้อนกลับ
-          </ButtonCommon>
-          <ButtonCommon
-            variant="ghost"
-            className="!shadow-none !rounded-none !border-none !text-start text-sm !text-white hover:!bg-white/20"
-            icon={<BiRedo />}
-            onClick={redo}
-            disabled={future.length === 0}
-            title="ทำซ้ำ (Ctrl+Y)"
-          >
-            ทำซ้ำ
-          </ButtonCommon>
-          {/* ++ จบส่วนปุ่ม Undo/Redo ++ */}
+    <div className="flex justify-between px-2 h-9 items-center">
+      <div className="flex items-center">
+        <div className="font-bold text-white select-none cursor-default flex gap-2 items-center mr-2">
+          <img src="/image.png" alt="Logo" className="w-5 h-5" />
+          <span className="hidden sm:inline">Lyrics Editor</span>
         </div>
-        <div className="flex items-center">
+
+        {/* Desktop Menu: สร้างจาก config */}
+        <div className="flex">
+          {menuConfig.map((item, index) =>
+            item.children ? (
+              <Dropdown key={index} items={item.children}>
+                <ButtonCommon
+                  variant="ghost"
+                  className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
+                  icon={item.icon}
+                >
+                  {item.label}
+                </ButtonCommon>
+              </Dropdown>
+            ) : (
+              <ButtonCommon
+                key={index}
+                variant="ghost"
+                childrenClassName="hidden lg:block"
+                className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
+                icon={item.icon}
+                onClick={item.onClick}
+                disabled={item.disabled}
+                title={item.title}
+              >
+                {item.label}
+              </ButtonCommon>
+            )
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center">
+        <div className="hidden md:flex items-center">
           <Link href={"/lyr-decode"}>
             <ButtonCommon
               color="white"
@@ -106,7 +123,32 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
             </ButtonCommon>
           </Link>
         </div>
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <ButtonCommon
+            onClick={() => setIsDrawerOpen(true)}
+            variant="ghost"
+            className="text-white"
+            size="sm"
+          >
+            <BiMenu size={24} />
+          </ButtonCommon>
+        </div>
       </div>
+
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        menuItems={[
+          ...menuConfig,
+          {
+            label: "Source Code",
+            icon: <FaCode />,
+            href: "/lyr-decode",
+          },
+        ]}
+      />
     </div>
   );
 };

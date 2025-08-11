@@ -1,8 +1,8 @@
 import React, { forwardRef, useEffect } from "react";
 
-type ButtonSize = "sm" | "md" | "lg";
-type ButtonVariant = "solid" | "outline" | "ghost";
-type ButtonColor =
+export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonVariant = "solid" | "outline" | "ghost";
+export type ButtonColor =
   | "primary"
   | "secondary"
   | "danger"
@@ -25,6 +25,7 @@ export interface ButtonCommonProps
   iconPosition?: "left" | "right";
   isLoading?: boolean;
   hidden?: boolean;
+  childrenClassName?: string;
 }
 
 const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
@@ -43,6 +44,7 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
       isLoading = false,
       disabled,
       className = "",
+      childrenClassName,
       ...props
     },
     ref
@@ -156,7 +158,7 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
           </svg>
         )}
         {!isLoading && icon && iconPosition === "left" && <div>{icon}</div>}
-        {children && <span>{children}</span>}
+        {children && <span className={childrenClassName}>{children}</span>}
         {!isLoading && icon && iconPosition === "right" && <div>{icon}</div>}
       </>
     );

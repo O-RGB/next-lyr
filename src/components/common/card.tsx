@@ -7,7 +7,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={[
-      "rounded-xl border bg-card text-card-foreground shadow-sm",
+      "bg-card text-card-foreground shadow-sm",
       className,
     ].join(" ")}
     {...props}

@@ -32,6 +32,8 @@ export const useKeyboardControls = (
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log("includes((e.target as HTMLElement).tagName)", ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName));
+      console.log("player", player);
       if (
         ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
         isEditModalOpen ||
@@ -41,6 +43,8 @@ export const useKeyboardControls = (
 
       // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
       // สร้างตัวแปรเช็คสถานะ "กำลังปาดเนื้อร้อง"
+      console.log("isTimingActive", isTimingActive);
+      console.log("editingLineIndex", editingLineIndex);
       const isStampingMode = isTimingActive || editingLineIndex !== null;
       // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
@@ -102,9 +106,11 @@ export const useKeyboardControls = (
       // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
       if (e.code === "Space") {
+        console.log("Space");
         e.preventDefault();
         // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
         // ถ้ากำลังปาดเนื้อร้องอยู่ ห้ามกด Spacebar เพื่อหยุดเพลง
+        console.log("isStampingMode", isStampingMode);
         if (isStampingMode) {
           return;
         }

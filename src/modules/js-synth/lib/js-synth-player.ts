@@ -118,8 +118,7 @@ export class JsSynthPlayerEngine {
   public destroy() {
     this.engine.removeEventListener("tickupdate", this.handleEngineTick);
     this.stop();
-
-    this.engine.shutdown();
+    // this.engine.shutdown(); // <-- REMOVED THIS LINE
   }
 
   public seek(tick: number) {
@@ -145,6 +144,7 @@ export class JsSynthPlayerEngine {
     resource: File
   ): Promise<{ durationTicks: number; ppq: number; bpm: number }> {
     this.rawMidiFile = resource;
+    this.stop();
     const buffer = await this.loadBinaryFromFile(resource);
     let midiData: MidiData, midiBuffer: ArrayBuffer;
 

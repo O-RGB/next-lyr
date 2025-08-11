@@ -34,7 +34,6 @@ function WordTimingLines({
   const totalLineDuration = lineEndTime - lineStartTime;
   if (totalLineDuration <= 0) return null;
 
-  // ดึงค่า state จาก store มาใช้โดยตรง
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
   const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
@@ -43,7 +42,6 @@ function WordTimingLines({
 
   const words = useMemo<WordWithState[]>(() => {
     return line.map((word) => {
-      // ใช้ค่า state ที่ดึงมา
       const isActive =
         currentIndex === word.index &&
         (isTimingActive || correctionIndex !== null) &&
@@ -57,7 +55,6 @@ function WordTimingLines({
         isPlaybackHighlight: playbackIndex === word.index,
       };
     });
-    // เพิ่มค่า state เข้าไปใน dependency array
   }, [
     line,
     editingLineIndex,
@@ -118,7 +115,7 @@ function WordTimingLines({
         );
       })}
 
-      <div className="absolute -bottom-3 -right-7 z-50">
+      <div className="absolute -bottom-3 -right-7 z-20">
         <ButtonCommon
           {...buttonProps}
           circle
@@ -131,6 +128,4 @@ function WordTimingLines({
   );
 }
 
-// vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
 export default React.memo(WordTimingLines);
-// ^^^^^^^^^^ จุดแก้ไข ^^^^^^^^^^
