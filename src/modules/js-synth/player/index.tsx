@@ -9,28 +9,61 @@ import { JsSynthPlayerEngine } from "../lib/js-synth-player";
 import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import CommonPlayerStyle from "@/components/common/player";
+import { TimerControls } from "@/components/ui/player-host";
 
-export type MidiPlayerRef = JsSynthPlayerEngine | null;
+// vvvvvvvvvv จุดแก้ไข: กำหนด Type ของ Ref ให้ชัดเจน vvvvvvvvvv
+export type MidiPlayerRef = {
+  play: () => void;
+  pause: () => void;
+  seek: (tick: number) => void;
+  getCurrentTime: () => number;
+  isPlaying: () => boolean;
+};
+// ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
 interface MidiPlayerProps {
   file?: File | null;
   onReady?: () => void;
+  timerControls: TimerControls;
 }
 
 const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
-  ({ file, onReady }, ref) => {
+  ({ file, onReady, timerControls }, ref) => {
     const [player, setPlayer] = useState<JsSynthPlayerEngine | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTimeState] = useState(0);
-    const {
-      loadMidiFile,
-      setCurrentTime,
-      setIsPlaying: setGlobalIsPlaying,
-    } = useKaraokeStore((state) => state.actions);
 
-    useImperativeHandle(ref, () => (player ? player : null)!, [player]);
+    const currentTime = useKaraokeStore((state) => state.currentTime);
+    const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
+    const { loadMidiFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
+      (state) => state.actions
+    );
+
+    // vvvvvvvvvv จุดแก้ไข: สร้างฟังก์ชันสำหรับ Ref เพื่อให้มี context ที่ถูกต้อง vvvvvvvvvv
+    useImperativeHandle(
+      ref,
+      () => ({
+        play: () => {
+          player?.play();
+        },
+        pause: () => {
+          player?.pause();
+        },
+        seek: (tick: number) => {
+          player?.seek(tick);
+          // แปลงค่า ticks เป็นวินาที แล้วสั่งให้ worker ทำงาน
+          if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
+            const timeInSeconds = (tick / midiInfo.ppq) * (60 / midiInfo.bpm);
+            timerControls.seekTimer(timeInSeconds);
+          }
+        },
+        getCurrentTime: () => player?.getCurrentTime() ?? 0,
+        isPlaying: () => player?.isPlaying() ?? false,
+      }),
+      [player, midiInfo, timerControls]
+    ); // ใส่ dependencies ให้ครบ
+    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
     useEffect(() => {
       const initialize = async () => {
@@ -43,35 +76,41 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     }, []);
 
     useEffect(() => {
-      console.log(file, player);
       if (file && player) {
         handleFileChange(file);
       }
     }, [file, player]);
 
+    // vvvvvvvvvv จุดแก้ไข: จัดการการ Play/Pause และ Sync กับ Worker vvvvvvvvvv
     useEffect(() => {
       if (!player) return;
 
-      const handleTickUpdate = (tick: number) => {
-        setCurrentTime(tick);
-        setCurrentTimeState(tick);
-      };
       const handleStateChange = (playing: boolean) => {
         setIsPlaying(playing);
         setGlobalIsPlaying(playing);
+
+        if (playing) {
+          // เมื่อเริ่มเล่น, Sync เวลาของ worker กับ player ก่อน
+          if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
+            const timeInSeconds =
+              (player.getCurrentTime() / midiInfo.ppq) * (60 / midiInfo.bpm);
+            timerControls.seekTimer(timeInSeconds);
+          }
+          timerControls.startTimer();
+        } else {
+          timerControls.stopTimer();
+        }
       };
 
-      player.addEventListener("tickupdate", handleTickUpdate);
       player.addEventListener("statechange", handleStateChange);
-
       setIsPlaying(player.isPlaying());
       setGlobalIsPlaying(player.isPlaying());
 
       return () => {
-        player.removeEventListener("tickupdate", handleTickUpdate);
         player.removeEventListener("statechange", handleStateChange);
       };
-    }, [player, setCurrentTime, setGlobalIsPlaying]);
+    }, [player, setGlobalIsPlaying, timerControls, midiInfo]);
+    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
     const handleFileChange = async (file: File) => {
       if (player) {
@@ -93,6 +132,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
             file
           );
 
+          timerControls.resetTimer();
           setTimeout(() => {
             onReady?.();
           }, 100);
@@ -116,9 +156,12 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       player?.stop();
     };
 
+    // vvvvvvvvvv จุดแก้ไข: ให้ handleSeek เรียกใช้ฟังก์ชันที่ expose ผ่าน ref vvvvvvvvvv
     const handleSeek = (value: number) => {
-      player?.seek(value);
+      const currentRef = ref as React.RefObject<MidiPlayerRef>;
+      currentRef.current?.seek(value);
     };
+    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
     return (
       <CommonPlayerStyle

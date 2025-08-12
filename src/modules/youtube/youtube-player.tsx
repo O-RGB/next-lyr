@@ -12,11 +12,13 @@ import Card from "../../components/common/card";
 import InputCommon from "@/components/common/data-input/input";
 import ButtonCommon from "@/components/common/button";
 import CommonPlayerStyle from "@/components/common/player";
+import { TimerControls } from "@/components/ui/player-host";
 
 type Props = {
   youtubeId: string | null;
   onUrlChange: (url: string) => void;
   onReady: (event: { target: any }) => void;
+  timerControls: TimerControls;
 };
 
 export type YouTubePlayerRef = {
@@ -30,60 +32,52 @@ export type YouTubePlayerRef = {
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
-  ({ youtubeId, onUrlChange, onReady }, ref) => {
+  ({ youtubeId, onUrlChange, onReady, timerControls }, ref) => {
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
-    const { setIsPlaying, loadYoutubeVideo } = useKaraokeStore(
-      (state) => state.actions
-    );
+
+    const { setIsPlaying } = useKaraokeStore((state) => state.actions);
+    const currentTime = useKaraokeStore((state) => state.currentTime);
+
     const [fileName, setFileName] = useState("Load a YouTube URL");
     const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.playVideo(),
       pause: () => playerRef.current?.pauseVideo(),
-      seek: (time: number) => playerRef.current?.seekTo(time, true),
+      seek: (time: number) => {
+        playerRef.current?.seekTo(time, true);
+        timerControls.seekTimer(time); // <<< เพิ่มบรรทัดนี้
+      },
       getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
       isPlaying: () => playerState === 1,
       isReady: isReady,
       destroy: () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
         playerRef.current?.destroy();
       },
     }));
 
-    useEffect(() => {
-      if (playerState === 1) {
-        intervalRef.current = setInterval(() => {
-          setCurrentTime(playerRef.current?.getCurrentTime() ?? 0);
-        }, 250);
-      } else {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      }
-      return () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    }, [playerState]);
-
     const handleReady = (event: { target: YouTubePlayer }) => {
-      playerRef.current = event.target; // set ค่า YouTube API instance
-      const videoData = event.target.getVideoData();
-      setFileName(videoData.title);
+      playerRef.current = event.target;
       setDuration(event.target.getDuration());
       setIsReady(true);
-
-      // เรียก onReady หลังจาก playerRef ถูก set แล้ว
       onReady(event);
+      timerControls.resetTimer();
     };
 
     const handleStateChange = (e: { data: number }) => {
       setPlayerState(e.data);
       const isCurrentlyPlaying = e.data === 1;
       setIsPlaying(isCurrentlyPlaying);
+
+      if (isCurrentlyPlaying) {
+        timerControls.seekTimer(playerRef.current?.getCurrentTime() ?? 0);
+        timerControls.startTimer();
+      } else {
+        timerControls.stopTimer();
+      }
     };
 
     const opts = {
@@ -113,10 +107,12 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const handleStop = () => {
       playerRef.current?.seekTo(0, true);
       playerRef.current?.pauseVideo();
+      timerControls.seekTimer(0); // <<< เพิ่มเพื่อ Sync เวลาเมื่อกด Stop
     };
 
     const handleSeek = (value: number) => {
       playerRef.current?.seekTo(value, true);
+      timerControls.seekTimer(value);
     };
 
     return (

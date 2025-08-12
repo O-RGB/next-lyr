@@ -2,86 +2,49 @@
 import { fixMidiHeader } from "@/lib/karaoke/ncn";
 import { Synthesizer as JsSynthesizer } from "js-synthesizer";
 import { MidiData, parseMidi } from "midi-file";
-import { JsSynthEngine } from "./js-synth-engine";
 
-type TickUpdateCallback = (tick: number, bpm: number) => void;
 type StateChangeCallback = (isPlaying: boolean) => void;
 
 export class JsSynthPlayerEngine {
   private player: JsSynthesizer;
   private audioContext: AudioContext;
-  private engine: JsSynthEngine;
 
-  public currentTick: number = 0;
+  private currentTick: number = 0; // Tick position when paused
   private _isPlaying: boolean = false;
+
+  // vvvvvvvvvv จุดแก้ไข: เพิ่ม State สำหรับคำนวณเวลา vvvvvvvvvv
+  private _performanceStartTime: number = 0; // Timestamp from performance.now() when play starts
+  private _tickAtPlayStart: number = 0; // The tick value when play() was called
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
   public durationTicks: number = 0;
   public midiData: MidiData | undefined = undefined;
   public ticksPerBeat: number = 480;
   public currentBpm: number = 120;
 
-  private tickUpdateListeners: TickUpdateCallback[] = [];
   private stateChangeListeners: StateChangeCallback[] = [];
   private rawMidiFile: File | undefined = undefined;
 
-  constructor(
-    synth: JsSynthesizer,
-    audioContext: AudioContext,
-    engine: JsSynthEngine
-  ) {
+  constructor(synth: JsSynthesizer, audioContext: AudioContext) {
     this.player = synth;
     this.audioContext = audioContext;
-    this.engine = engine;
-
-    this.engine.addEventListener("tickupdate", this.handleEngineTick);
   }
 
-  private handleEngineTick = async (timeInSeconds: number) => {
-    if (!this.midiData || this.ticksPerBeat === 0) return;
-
-    const secondsPerBeat = 60.0 / this.currentBpm;
-    const ticksPerSecond = this.ticksPerBeat / secondsPerBeat;
-    this.currentTick = Math.floor(timeInSeconds * ticksPerSecond);
-
-    const bpm = await this.player.retrievePlayerBpm();
-    if (bpm) this.currentBpm = bpm;
-
-    this.emitTickUpdate(this.currentTick, this.currentBpm);
-  };
-
-  public addEventListener(
-    event: "tickupdate",
-    callback: TickUpdateCallback
-  ): void;
   public addEventListener(
     event: "statechange",
     callback: StateChangeCallback
-  ): void;
-  public addEventListener(event: string, callback: any): void {
-    if (event === "tickupdate") this.tickUpdateListeners.push(callback);
-    else if (event === "statechange") this.stateChangeListeners.push(callback);
+  ): void {
+    if (event === "statechange") this.stateChangeListeners.push(callback);
   }
 
   public removeEventListener(
-    event: "tickupdate",
-    callback: TickUpdateCallback
-  ): void;
-  public removeEventListener(
     event: "statechange",
     callback: StateChangeCallback
-  ): void;
-  public removeEventListener(event: string, callback: any): void {
-    if (event === "tickupdate")
-      this.tickUpdateListeners = this.tickUpdateListeners.filter(
-        (cb) => cb !== callback
-      );
-    else if (event === "statechange")
+  ): void {
+    if (event === "statechange")
       this.stateChangeListeners = this.stateChangeListeners.filter(
         (cb) => cb !== callback
       );
-  }
-
-  private emitTickUpdate(tick: number, bpm: number) {
-    this.tickUpdateListeners.forEach((cb) => cb(tick, bpm));
   }
 
   private emitStateChange(isPlaying: boolean) {
@@ -92,23 +55,39 @@ export class JsSynthPlayerEngine {
     return this._isPlaying;
   }
 
+  // vvvvvvvvvv จุดแก้ไข: ฟังก์ชัน play ใหม่ vvvvvvvvvv
   public play() {
     if (this._isPlaying || !this.midiData) return;
 
     this.audioContext.resume();
-    this.player.playPlayer();
-    this.engine.startTimer();
+    this.player.playPlayer(); // สั่งให้ synthesizer เล่น
+
     this._isPlaying = true;
+    this._performanceStartTime = performance.now(); // บันทึกเวลาที่เริ่มเล่น
+    this._tickAtPlayStart = this.currentTick; // บันทึก tick ณ จุดที่เริ่มเล่น
+
     this.emitStateChange(true);
   }
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
+  // vvvvvvvvvv จุดแก้ไข: ฟังก์ชัน pause ใหม่ vvvvvvvvvv
   public pause() {
     if (!this._isPlaying) return;
-    this.player.stopPlayer();
-    this.engine.stopTimer();
+
+    // คำนวณ tick ที่ผ่านไปตั้งแต่กด play ครั้งล่าสุด
+    const elapsedMs = performance.now() - this._performanceStartTime;
+    const elapsedSec = elapsedMs / 1000;
+    const beatsElapsed = elapsedSec * (this.currentBpm / 60);
+    const ticksElapsed = beatsElapsed * this.ticksPerBeat;
+
+    this.player.stopPlayer(); // สั่งให้ synthesizer หยุด
     this._isPlaying = false;
+    // อัปเดต currentTick ไปยังตำแหน่งล่าสุดก่อนที่จะหยุด
+    this.currentTick = this._tickAtPlayStart + ticksElapsed;
+
     this.emitStateChange(false);
   }
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
   public stop() {
     this.pause();
@@ -116,29 +95,35 @@ export class JsSynthPlayerEngine {
   }
 
   public destroy() {
-    this.engine.removeEventListener("tickupdate", this.handleEngineTick);
     this.stop();
-    // this.engine.shutdown(); // <-- REMOVED THIS LINE
   }
 
+  // vvvvvvvvvv จุดแก้ไข: ฟังก์ชัน seek ใหม่ vvvvvvvvvv
   public seek(tick: number) {
     const clampedTick = Math.max(0, Math.min(tick, this.durationTicks));
     this.player.seekPlayer(clampedTick);
+
     this.currentTick = clampedTick;
-
-    const secondsPerBeat = 60.0 / this.currentBpm;
-    const timeInSeconds = (clampedTick / this.ticksPerBeat) * secondsPerBeat;
-    this.engine.seekTimer(timeInSeconds);
-
-    this.player.retrievePlayerBpm().then((bpm) => {
-      if (bpm) this.currentBpm = bpm;
-      this.emitTickUpdate(clampedTick, this.currentBpm);
-    });
+    this._tickAtPlayStart = clampedTick; // อัปเดต tick เริ่มต้นใหม่
+    this._performanceStartTime = performance.now(); // รีเซ็ตเวลาเริ่มต้นใหม่
   }
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
+  // vvvvvvvvvv จุดแก้ไข: ฟังก์ชัน getCurrentTime ใหม่ (หัวใจหลัก) vvvvvvvvvv
   public getCurrentTime(): number {
-    return this.currentTick;
+    if (!this._isPlaying) {
+      return this.currentTick; // ถ้าหยุดอยู่ ให้คืนค่า tick ล่าสุดที่เก็บไว้
+    }
+
+    // ถ้ากำลังเล่น, ให้คำนวณ tick ปัจจุบันแบบ real-time
+    const elapsedMs = performance.now() - this._performanceStartTime;
+    const elapsedSec = elapsedMs / 1000;
+    const beatsElapsed = elapsedSec * (this.currentBpm / 60);
+    const ticksElapsed = beatsElapsed * this.ticksPerBeat;
+
+    return this._tickAtPlayStart + ticksElapsed;
   }
+  // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
   async loadMidi(
     resource: File
@@ -186,10 +171,8 @@ export class JsSynthPlayerEngine {
     await this.player.addSMFDataToPlayer(midiBuffer);
     this.seek(0);
 
-    const bpm = initialBpm ?? (await this.player.retrievePlayerBpm());
-    if (initialBpm) {
-      this.currentBpm = initialBpm;
-    }
+    const bpm = initialBpm ?? 120; // Default to 120 if not found
+    this.currentBpm = bpm;
 
     return {
       durationTicks: this.durationTicks,
@@ -200,7 +183,6 @@ export class JsSynthPlayerEngine {
 
   private extractMidiMetadata(midi: MidiData): void {
     this.ticksPerBeat = midi.header.ticksPerBeat || 480;
-    console.log("ticksPerBeat", this.ticksPerBeat);
   }
 
   private async loadBinaryFromFile(file: File): Promise<ArrayBuffer> {

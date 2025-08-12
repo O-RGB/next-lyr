@@ -21,6 +21,7 @@ import PlayerHost, { PlayerRef } from "./player-host";
 import { FaMusic, FaListAlt } from "react-icons/fa";
 import { FloatingButtonGroup } from "../common/floating-button";
 import ModalCommon from "../common/modal";
+import { useTimerWorker } from "@/hooks/useTimerWorker";
 
 const LyrEditerPanel: React.FC = () => {
   const projectId = useKaraokeStore((state) => state.projectId);
@@ -44,12 +45,14 @@ const LyrEditerPanel: React.FC = () => {
   const playerRef = useRef<PlayerRef>(null);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+
+  const timerControls = useTimerWorker();
 
   useEffect(() => {
     setIsPlayerReady(false);
-  }, [projectId, rawFile]);
+    timerControls.resetTimer();
+  }, [projectId, rawFile, timerControls]);
 
   useEffect(() => {
     if (mode && playerRef.current && isPlayerReady) {
@@ -73,27 +76,59 @@ const LyrEditerPanel: React.FC = () => {
     actions.setCorrectionIndex(null);
   }, [playerControls, actions]);
 
+  // =================================================================
+  // vvvvvvvvvvvvvvvv START: โค้ดส่วนที่แก้ไข vvvvvvvvvvvvvvvvvvvvvvvvv
+  // =================================================================
   const handleWordClick = useCallback(
     (index: number) => {
       const word = lyricsData.find((w) => w.index === index);
-      if (word?.start !== null && playerRef.current) {
-        actions.setIsChordPanelAutoScrolling(true);
-        playerRef.current.seek(word?.start ?? 0);
-        if (!playerRef.current.isPlaying()) {
-          playerRef.current.play();
+      if (!word || !playerControls) return;
+
+      let seekTo: number | null = null;
+
+      // ตรวจสอบโหมดการทำงาน
+      if (mode === "midi") {
+        // สำหรับโหมด MIDI, word.start ควรมีค่าเสมอ (เป็น ticks)
+        if (word.start !== null) {
+          seekTo = word.start;
         }
+      } else {
+        // สำหรับโหมดอื่นๆ (MP3, MP4, etc.)
+        if (word.start !== null) {
+          // ถ้าคำนั้นมีเวลาแล้ว ก็ใช้เวลานั้น (เป็นวินาที)
+          seekTo = word.start;
+        } else {
+          // ถ้ายังไม่มีเวลา, ให้หาคำสุดท้ายที่มีเวลาก่อนหน้า
+          const lastTimedWord = lyricsData
+            .slice(0, index)
+            .filter((w) => w.start !== null)
+            .pop();
+          // ถ้าเจอ ให้ใช้เวลาของคำนั้น, ถ้าไม่เจอเลย ให้เริ่มจาก 0
+          seekTo = lastTimedWord?.start ?? 0;
+        }
+      }
+
+      // ถ้ามีตำแหน่งที่จะเล่น...
+      if (seekTo !== null) {
+        actions.setIsChordPanelAutoScrolling(true);
         actions.stopTiming();
+        playerControls.seek(seekTo);
+        if (!playerControls.isPlaying()) {
+          playerControls.play();
+        }
       }
     },
-    [lyricsData, actions]
+    [lyricsData, playerControls, actions, mode] // เพิ่ม mode เข้าไปใน dependency array
   );
+  // =================================================================
+  // ^^^^^^^^^^^^^^^^^^^ END: โค้ดส่วนที่แก้ไข ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  // =================================================================
 
   const handleEditLine = useCallback(
     (lineIndex: number) => {
       const { success, preRollTime } = actions.startEditLine(lineIndex);
       if (success && playerControls) {
         actions.setIsPlaying(true);
-
         playerControls.seek(preRollTime);
         playerControls.play();
       }
@@ -259,6 +294,7 @@ const LyrEditerPanel: React.FC = () => {
                   key={projectId}
                   ref={playerRef}
                   onReady={() => setIsPlayerReady(true)}
+                  timerControls={timerControls}
                 />
                 <div className="hidden md:block mt-4">
                   <MetadataForm
@@ -320,6 +356,7 @@ const LyrEditerPanel: React.FC = () => {
                     key={projectId}
                     ref={playerRef}
                     onReady={() => setIsPlayerReady(true)}
+                    timerControls={timerControls}
                   />
                 }
               />

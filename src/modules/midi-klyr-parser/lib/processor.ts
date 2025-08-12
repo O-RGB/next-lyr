@@ -1,5 +1,4 @@
 import pako from "pako";
-import { DEFAULT_CIPHERS } from "tls";
 
 export interface MIDIOptionValue<T> {
   label: string;

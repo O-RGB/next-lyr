@@ -8,11 +8,13 @@ import {
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import { readMp3 } from "../mp3-klyr-parser/read";
 import CommonPlayerStyle from "@/components/common/player";
+import { TimerControls } from "@/components/ui/player-host";
 
 type Props = {
   src: string | null;
   file?: File | null;
   onReady?: () => void;
+  timerControls: TimerControls;
 };
 
 export type AudioPlayerRef = {
@@ -24,7 +26,7 @@ export type AudioPlayerRef = {
 };
 
 const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
-  ({ src, file, onReady }, ref) => {
+  ({ src, file, onReady, timerControls }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const { loadAudioFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
       (state) => state.actions
@@ -32,13 +34,17 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
+
+    const currentTime = useKaraokeStore((state) => state.currentTime);
 
     useImperativeHandle(ref, () => ({
       play: () => audioRef.current?.play(),
       pause: () => audioRef.current?.pause(),
       seek: (time: number) => {
-        if (audioRef.current) audioRef.current.currentTime = time;
+        if (audioRef.current) {
+          audioRef.current.currentTime = time;
+          timerControls.seekTimer(time); // <<< เพิ่มบรรทัดนี้
+        }
       },
       getCurrentTime: () => audioRef.current?.currentTime ?? 0,
       isPlaying: () => !!audioRef.current && !audioRef.current.paused,
@@ -57,28 +63,27 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       const handlePlay = () => {
         setIsPlaying(true);
         setGlobalIsPlaying(true);
+        timerControls.startTimer();
       };
       const handlePause = () => {
         setIsPlaying(false);
         setGlobalIsPlaying(false);
+        timerControls.stopTimer();
       };
-      const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
       const handleDurationChange = () => setDuration(audio.duration);
 
       audio.addEventListener("play", handlePlay);
       audio.addEventListener("pause", handlePause);
       audio.addEventListener("ended", handlePause);
-      audio.addEventListener("timeupdate", handleTimeUpdate);
       audio.addEventListener("durationchange", handleDurationChange);
 
       return () => {
         audio.removeEventListener("play", handlePlay);
         audio.removeEventListener("pause", handlePause);
         audio.removeEventListener("ended", handlePause);
-        audio.removeEventListener("timeupdate", handleTimeUpdate);
         audio.removeEventListener("durationchange", handleDurationChange);
       };
-    }, [setGlobalIsPlaying]);
+    }, [setGlobalIsPlaying, timerControls]);
 
     useEffect(() => {
       if (src && audioRef.current) {
@@ -99,6 +104,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
 
         const handleMetadata = () => {
           loadAudioFile(audioUrl, file, parsedData, tempAudio.duration);
+          timerControls.resetTimer();
           tempAudio.removeEventListener("loadedmetadata", handleMetadata);
         };
 
@@ -121,12 +127,14 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        timerControls.seekTimer(0);
       }
     };
 
     const handleSeek = (value: number) => {
       if (audioRef.current) {
         audioRef.current.currentTime = value;
+        timerControls.seekTimer(value);
       }
     };
 

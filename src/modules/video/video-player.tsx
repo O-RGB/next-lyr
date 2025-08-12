@@ -8,11 +8,13 @@ import {
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
 import CommonPlayerStyle from "@/components/common/player";
+import { TimerControls } from "@/components/ui/player-host";
 
 type Props = {
   src: string | null;
   file?: File | null;
   onReady?: () => void;
+  timerControls: TimerControls;
 };
 
 export type VideoPlayerRef = {
@@ -25,20 +27,25 @@ export type VideoPlayerRef = {
 };
 
 const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
-  ({ src, file, onReady }, ref) => {
+  ({ src, file, onReady, timerControls }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const { loadVideoFile } = useKaraokeStore((state) => state.actions);
+    const { loadVideoFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
+      (state) => state.actions
+    );
+    const currentTime = useKaraokeStore((state) => state.currentTime);
 
     const [fileName, setFileName] = useState("");
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
 
     useImperativeHandle(ref, () => ({
       play: () => videoRef.current?.play(),
       pause: () => videoRef.current?.pause(),
       seek: (time: number) => {
-        if (videoRef.current) videoRef.current.currentTime = time;
+        if (videoRef.current) {
+          videoRef.current.currentTime = time;
+          timerControls.seekTimer(time); // <<< เพิ่มบรรทัดนี้
+        }
       },
       getCurrentTime: () => videoRef.current?.currentTime ?? 0,
       isPlaying: () => !!videoRef.current && !videoRef.current.paused,
@@ -49,23 +56,28 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       const video = videoRef.current;
       if (!video) return;
 
-      const handlePlay = () => setIsPlaying(true);
-      const handlePause = () => setIsPlaying(false);
-      const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+      const handlePlay = () => {
+        setIsPlaying(true);
+        setGlobalIsPlaying(true);
+        timerControls.startTimer();
+      };
+      const handlePause = () => {
+        setIsPlaying(false);
+        setGlobalIsPlaying(false);
+        timerControls.stopTimer();
+      };
       const handleDurationChange = () => setDuration(video.duration);
 
       video.addEventListener("play", handlePlay);
       video.addEventListener("pause", handlePause);
-      video.addEventListener("timeupdate", handleTimeUpdate);
       video.addEventListener("durationchange", handleDurationChange);
 
       return () => {
         video.removeEventListener("play", handlePlay);
         video.removeEventListener("pause", handlePause);
-        video.removeEventListener("timeupdate", handleTimeUpdate);
         video.removeEventListener("durationchange", handleDurationChange);
       };
-    }, []);
+    }, [setGlobalIsPlaying, timerControls]);
 
     useEffect(() => {
       if (file) {
@@ -88,6 +100,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
 
       const handleMetadata = () => {
         loadVideoFile(videoUrl, file, tempVideo.duration);
+        timerControls.resetTimer();
         tempVideo.removeEventListener("loadedmetadata", handleMetadata);
       };
 
@@ -106,12 +119,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
+        timerControls.seekTimer(0);
       }
     };
 
     const handleSeek = (value: number) => {
       if (videoRef.current) {
         videoRef.current.currentTime = value;
+        timerControls.seekTimer(value);
       }
     };
 
