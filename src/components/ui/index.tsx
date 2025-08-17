@@ -109,6 +109,7 @@ const usePlayerHandlers = (
   const handleWordClick = useCallback(
     (index: number) => {
       const word = lyricsData.find((w) => w.index === index);
+      console.log("playerControls", playerControls);
       if (!word || !playerControls) return;
 
       const seekTo = calculateSeekTime(word, lyricsData, mode, index);

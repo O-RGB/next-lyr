@@ -136,7 +136,13 @@ const LineRow: React.FC<LineRowProps> = React.memo(
     prev.line === next.line &&
     prev.chords === next.chords &&
     prev.lineIndex === next.lineIndex &&
-    prev.mode === next.mode
+    prev.mode === next.mode &&
+    prev.onWordClick === next.onWordClick &&
+    prev.onEditLine === next.onEditLine &&
+    prev.onDeleteLine === next.onDeleteLine &&
+    prev.onRulerClick === next.onRulerClick &&
+    prev.onChordClick === next.onChordClick &&
+    prev.onAddChordClick === next.onAddChordClick
 );
 
 LineRow.displayName = "LineRow";
