@@ -1,4 +1,3 @@
-// src/stores/karaoke-store.ts
 import { create } from "zustand";
 import { convertCursorToTick, processRawLyrics } from "../lib/karaoke/utils";
 import { ISentence } from "../lib/karaoke/lyrics/types";
@@ -27,16 +26,128 @@ type HistoryState = Pick<
   "lyricsData" | "chordsData" | "metadata"
 >;
 
-// <<< แก้ไข: อัปเดต PlayerState ใน Store
 interface PlayerState {
   midiInfo: IMidiInfo | null;
-  audioSrc: string | null; // สำหรับเล่นเพลงใน Session ปัจจุบัน
-  videoSrc: string | null; // สำหรับเล่นวิดีโอใน Session ปัจจุบัน
-  rawFile: File | null; // สำหรับอ้างอิงไฟล์ใน Session ปัจจุบัน
-  storedFile: StoredFile | null; // <<< เพิ่ม: สำหรับเก็บข้อมูลไฟล์ที่จะบันทึกลง DB
+  audioSrc: string | null;
+  videoSrc: string | null;
+  rawFile: File | null;
+  storedFile: StoredFile | null;
   youtubeId: string | null;
   duration: number | null;
 }
+
+interface TimingState {
+  currentIndex: number;
+  isTimingActive: boolean;
+  editingLineIndex: number | null;
+  playbackIndex: number | null;
+  correctionIndex: number | null;
+  selectedLineIndex: number | null;
+  currentTime: number;
+}
+
+interface ModalState {
+  isEditModalOpen: boolean;
+  isChordModalOpen: boolean;
+  selectedChord: ChordEvent | null;
+  suggestedChordTick: number | null;
+  minChordTickRange: number | null;
+  maxChordTickRange: number | null;
+}
+
+interface ChordPanelState {
+  isChordPanelAutoScrolling: boolean;
+  chordPanelCenterTick: number;
+  isChordPanelHovered: boolean;
+  playFromScrolledPosition: boolean;
+}
+
+interface ProjectActions {
+  loadProject: (project: Project) => void;
+  clearProject: () => void;
+  saveCurrentProject: () => void;
+}
+
+interface FileActions {
+  initializeMode: (mode: MusicMode) => void;
+  loadMidiFile: (
+    info: IMidiInfo,
+    parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+    file: File
+  ) => void;
+  loadAudioFile: (
+    src: string,
+    file: File,
+    parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+    duration: number
+  ) => void;
+  loadVideoFile: (src: string, file: File, duration: number) => void;
+  loadYoutubeVideo: (id: string, title: string, duration: number) => void;
+}
+
+interface ContentActions {
+  setMetadata: (metadata: Partial<SongInfo>) => void;
+  importLyrics: (rawText: string) => void;
+  deleteLine: (lineIndexToDelete: number) => void;
+  updateLine: (lineIndexToUpdate: number, newText: string) => void;
+  updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
+  addChord: (chord: ChordEvent) => void;
+  updateChord: (oldTick: number, newChord: ChordEvent) => void;
+  deleteChord: (tickToDelete: number) => void;
+  updateWordTiming: (index: number, start: number, end: number) => void;
+  processLyricsForPlayer: () => void;
+}
+
+interface PlaybackActions {
+  setIsPlaying: (playing: boolean) => void;
+  startTiming: (currentTime: number) => void;
+  recordTiming: (currentTime: number) => { isLineEnd: boolean };
+  goToNextWord: () => void;
+  correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
+  stopTiming: () => void;
+  setPlaybackIndex: (index: number | null) => void;
+  setCurrentIndex: (index: number) => void;
+  setCurrentTime: (time: number) => void;
+  setCorrectionIndex: (index: number | null) => void;
+}
+
+interface ModalActions {
+  selectLine: (lineIndex: number | null) => void;
+  startEditLine: (lineIndex: number) => {
+    success: boolean;
+    firstWordIndex: number;
+    preRollTime: number;
+  };
+  openEditModal: () => void;
+  closeEditModal: () => void;
+  openChordModal: (
+    chord?: ChordEvent,
+    suggestedTick?: number,
+    minTick?: number,
+    maxTick?: number
+  ) => void;
+  closeChordModal: () => void;
+}
+
+interface ChordPanelActions {
+  setIsChordPanelAutoScrolling: (isAuto: boolean) => void;
+  setChordPanelCenterTick: (tick: number) => void;
+  setIsChordPanelHovered: (isHovered: boolean) => void;
+  setPlayFromScrolledPosition: (shouldPlay: boolean) => void;
+}
+
+interface HistoryActions {
+  undo: () => void;
+  redo: () => void;
+}
+
+type AllActions = ProjectActions &
+  FileActions &
+  ContentActions &
+  PlaybackActions &
+  ModalActions &
+  ChordPanelActions &
+  HistoryActions;
 
 export interface KaraokeState {
   projectId: number | null;
@@ -62,6 +173,7 @@ export interface KaraokeState {
   suggestedChordTick: number | null;
   minChordTickRange: number | null;
   maxChordTickRange: number | null;
+
   isChordPanelAutoScrolling: boolean;
   chordPanelCenterTick: number;
   isChordPanelHovered: boolean;
@@ -72,73 +184,12 @@ export interface KaraokeState {
     future: HistoryState[];
   };
 
-  actions: {
-    loadProject: (project: Project) => void;
-    clearProject: () => void;
-    saveCurrentProject: () => void;
-
-    initializeMode: (mode: MusicMode) => void;
-    loadMidiFile: (
-      info: IMidiInfo,
-      parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
-      file: File
-    ) => void;
-    loadAudioFile: (
-      src: string,
-      file: File,
-      parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
-      duration: number
-    ) => void;
-    loadVideoFile: (src: string, file: File, duration: number) => void;
-    loadYoutubeVideo: (id: string, title: string, duration: number) => void;
-
-    setMetadata: (metadata: Partial<SongInfo>) => void;
-    importLyrics: (rawText: string) => void;
-    deleteLine: (lineIndexToDelete: number) => void;
-    updateLine: (lineIndexToUpdate: number, newText: string) => void;
-    updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
-    addChord: (chord: ChordEvent) => void;
-    updateChord: (oldTick: number, newChord: ChordEvent) => void;
-    deleteChord: (tickToDelete: number) => void;
-    updateWordTiming: (index: number, start: number, end: number) => void;
-    processLyricsForPlayer: () => void;
-    setIsPlaying: (playing: boolean) => void;
-
-    startTiming: (currentTime: number) => void;
-    recordTiming: (currentTime: number) => { isLineEnd: boolean };
-    goToNextWord: () => void;
-    correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
-    stopTiming: () => void;
-    setPlaybackIndex: (index: number | null) => void;
-    setCurrentIndex: (index: number) => void;
-    setCurrentTime: (time: number) => void;
-    setCorrectionIndex: (index: number | null) => void;
-
-    selectLine: (lineIndex: number | null) => void;
-    startEditLine: (lineIndex: number) => {
-      success: boolean;
-      firstWordIndex: number;
-      preRollTime: number;
-    };
-    openEditModal: () => void;
-    closeEditModal: () => void;
-
-    openChordModal: (
-      chord?: ChordEvent,
-      suggestedTick?: number,
-      minTick?: number,
-      maxTick?: number
-    ) => void;
-    closeChordModal: () => void;
-    setIsChordPanelAutoScrolling: (isAuto: boolean) => void;
-    setChordPanelCenterTick: (tick: number) => void;
-    setIsChordPanelHovered: (isHovered: boolean) => void;
-    setPlayFromScrolledPosition: (shouldPlay: boolean) => void;
-
-    undo: () => void;
-    redo: () => void;
-  };
+  actions: AllActions;
 }
+
+const MAX_HISTORY_SIZE = 50;
+const DEFAULT_PRE_ROLL_OFFSET = 0.6;
+const DEFAULT_CHORD_DURATION = 1;
 
 const initialPlayerState: PlayerState = {
   midiInfo: null,
@@ -150,22 +201,35 @@ const initialPlayerState: PlayerState = {
   duration: null,
 };
 
-const transientState = {
-  isPlaying: false,
+const initialTimingState: TimingState = {
   currentIndex: 0,
   isTimingActive: false,
   editingLineIndex: null,
   playbackIndex: null,
   correctionIndex: null,
+  selectedLineIndex: null,
+  currentTime: 0,
+};
+
+const initialModalState: ModalState = {
   isEditModalOpen: false,
-  lyricsProcessed: undefined,
   isChordModalOpen: false,
   selectedChord: null,
   suggestedChordTick: null,
   minChordTickRange: null,
   maxChordTickRange: null,
+};
+
+const initialChordPanelState: ChordPanelState = {
+  isChordPanelAutoScrolling: true,
+  chordPanelCenterTick: 0,
   isChordPanelHovered: false,
   playFromScrolledPosition: false,
+};
+
+const transientState = {
+  isPlaying: false,
+  lyricsProcessed: undefined,
   history: { past: [], future: [] },
 };
 
@@ -176,17 +240,48 @@ const initialState: Omit<KaraokeState, "actions"> = {
   lyricsData: [],
   metadata: null,
   chordsData: [],
-  currentTime: 0,
-  selectedLineIndex: null,
-  isChordPanelAutoScrolling: true,
-  chordPanelCenterTick: 0,
+  ...initialTimingState,
+  ...initialModalState,
+  ...initialChordPanelState,
   ...transientState,
 };
 
-const _processLyricsForPlayer = (
+const createStoredFileFromFile = async (file: File): Promise<StoredFile> => {
+  const buffer = await file.arrayBuffer();
+  return {
+    buffer,
+    name: file.name,
+    type: file.type,
+  };
+};
+
+const createObjectURLFromStoredFile = (
+  storedFile: StoredFile
+): { file: File; url: string } => {
+  const file = new File([storedFile.buffer], storedFile.name, {
+    type: storedFile.type,
+  });
+  const url = URL.createObjectURL(file);
+  return { file, url };
+};
+
+const resetStateForNewFile = (fileName: string): Partial<KaraokeState> => ({
+  metadata: {
+    ...DEFAULT_SONG_INFO,
+    TITLE: fileName.replace(/\.[^/.]+$/, ""),
+  },
+  lyricsData: [],
+  chordsData: [],
+  ...initialTimingState,
+  ...initialModalState,
+  ...initialChordPanelState,
+  ...transientState,
+});
+
+const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
-  midiInfo: KaraokeState["playerState"]["midiInfo"]
+  midiInfo: IMidiInfo | null
 ): LyricsRangeArray<ISentence> | undefined => {
   const timedWords = lyricsData.filter(
     (w) => w.start !== null && w.end !== null
@@ -210,16 +305,19 @@ const _processLyricsForPlayer = (
 
   const arrayRange = new LyricsRangeArray<ISentence>();
   let cursorIndex = 0;
+
   lyrInline
     .map((line) => {
       const lineLength = line.length;
       if (lineLength === 0) return undefined;
+
       const lineCursor = timestamps.slice(
         cursorIndex,
         cursorIndex + lineLength + 1
       );
       cursorIndex += lineLength + 1;
       if (!lineCursor.length) return undefined;
+
       const [start, ...valueName] = lineCursor;
       const end = valueName[lineLength - 1] || start;
       const value = { text: line, start, valueName, end };
@@ -234,36 +332,41 @@ const _processLyricsForPlayer = (
 export const useKaraokeStore = create<KaraokeState>()((set, get) => {
   const saveCurrentProject = async () => {
     const state = get();
-    if (state.projectId) {
-      const dataToSave: ProjectData = {
-        playerState: {
-          midiInfo: state.playerState.midiInfo,
-          storedFile: state.playerState.storedFile,
-          duration: state.playerState.duration,
-          youtubeId: state.playerState.youtubeId,
-        },
-        lyricsData: state.lyricsData,
-        chordsData: state.chordsData,
-        metadata: state.metadata,
-        currentTime: state.currentTime,
-        selectedLineIndex: state.selectedLineIndex,
-        chordPanelCenterTick: state.chordPanelCenterTick,
-        isChordPanelAutoScrolling: state.isChordPanelAutoScrolling,
-      };
+    if (!state.projectId) return;
+
+    const dataToSave: ProjectData = {
+      playerState: {
+        midiInfo: state.playerState.midiInfo,
+        storedFile: state.playerState.storedFile,
+        duration: state.playerState.duration,
+        youtubeId: state.playerState.youtubeId,
+      },
+      lyricsData: state.lyricsData,
+      chordsData: state.chordsData,
+      metadata: state.metadata,
+      currentTime: state.currentTime,
+      chordPanelCenterTick: state.chordPanelCenterTick,
+      isChordPanelAutoScrolling: state.isChordPanelAutoScrolling,
+    };
+
+    try {
       await updateProject(state.projectId, dataToSave);
+    } catch (error) {
+      console.error("Failed to save project:", error);
     }
   };
 
   const saveToHistoryAndDB = () => {
-    set((state) => {
-      const { history, lyricsData, chordsData, metadata } = state;
-      const currentHistoryState: HistoryState = {
-        lyricsData,
-        chordsData,
-        metadata,
-      };
-      const newPast: HistoryState[] = [...history.past, currentHistoryState];
-      if (newPast.length > 50) {
+    const state = get();
+    const currentHistoryState: HistoryState = {
+      lyricsData: state.lyricsData,
+      chordsData: state.chordsData,
+      metadata: state.metadata,
+    };
+
+    set((prevState) => {
+      const newPast = [...prevState.history.past, currentHistoryState];
+      if (newPast.length > MAX_HISTORY_SIZE) {
         newPast.shift();
       }
       return {
@@ -273,6 +376,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         },
       };
     });
+
     saveCurrentProject();
   };
 
@@ -283,8 +387,11 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     const firstWordOfPrevLine = lyricsData.find(
       (w) => w.lineIndex === lineIndex - 1
     );
-    if (firstWordOfPrevLine?.start !== null) {
-      return firstWordOfPrevLine?.start ?? 0;
+    if (
+      firstWordOfPrevLine?.start !== null &&
+      firstWordOfPrevLine?.start !== undefined
+    ) {
+      return firstWordOfPrevLine.start;
     }
 
     const firstWordOfCurrentLine = lyricsData.find(
@@ -300,22 +407,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
     return lastTimedWordBefore?.end ?? 0;
   };
 
-  const resetStateForNewFile = (fileName: string) => {
-    return {
-      metadata: {
-        ...DEFAULT_SONG_INFO,
-        TITLE: fileName.replace(/\.[^/.]+$/, ""),
-      },
-      lyricsData: [],
-      chordsData: [],
-      ...transientState,
-      currentTime: 0,
-      selectedLineIndex: null,
-      isChordPanelAutoScrolling: true,
-      chordPanelCenterTick: 0,
-    };
-  };
-
   const importParsedData = (data: {
     lyrics: LyricEvent[][];
     chords: ChordEvent[];
@@ -328,39 +419,39 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
     const finalWords: LyricWordData[] = [];
     let globalWordIndex = 0;
-    const isMidi = get().mode === "midi";
-    const songPpq = get().playerState.midiInfo?.ppq ?? 480;
+    const state = get();
+    const isMidi = state.mode === "midi";
+    const songPpq = state.playerState.midiInfo?.ppq ?? 480;
 
     const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
     data.lyrics.forEach((line, lineIndex) => {
       line.forEach((wordEvent) => {
-        const isMidi = get().mode === "midi";
         const convertedTick = isMidi
           ? convertCursorToTick(wordEvent.tick, songPpq)
-          : wordEvent.tick / 1000 - 0.6;
+          : wordEvent.tick / 1000 - DEFAULT_PRE_ROLL_OFFSET;
 
         const currentFlatIndex = flatLyrics.findIndex(
           (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
         );
         const nextEvent = flatLyrics[currentFlatIndex + 1];
 
-        let endTime;
+        let endTime: number;
         if (nextEvent) {
           endTime = isMidi
             ? convertCursorToTick(nextEvent.tick, songPpq)
-            : nextEvent.tick / 1000 - 0.6;
+            : nextEvent.tick / 1000 - DEFAULT_PRE_ROLL_OFFSET;
         } else {
-          endTime = isMidi ? convertedTick + songPpq : convertedTick + 1;
+          endTime = isMidi
+            ? convertedTick + songPpq
+            : convertedTick + DEFAULT_CHORD_DURATION;
         }
-
-        const length = endTime - convertedTick;
 
         finalWords.push({
           name: wordEvent.text,
           start: convertedTick,
           end: endTime,
-          length: length,
+          length: endTime - convertedTick,
           index: globalWordIndex++,
           lineIndex: lineIndex,
         });
@@ -378,6 +469,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       lyricsData: finalWords,
       chordsData: convertedChords,
     });
+
     get().actions.processLyricsForPlayer();
     saveCurrentProject();
   };
@@ -388,20 +480,20 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
       saveCurrentProject,
       loadProject: (project) => {
         const { playerState, ...restOfData } = project.data;
-        let audioSrc = null;
-        let videoSrc = null;
-        let rawFile = null;
+        let audioSrc: string | null = null;
+        let videoSrc: string | null = null;
+        let rawFile: File | null = null;
 
         if (playerState.storedFile) {
-          const { buffer, name, type } = playerState.storedFile;
-          const file = new File([buffer], name, { type });
+          const { file, url } = createObjectURLFromStoredFile(
+            playerState.storedFile
+          );
           rawFile = file;
-          const objectURL = URL.createObjectURL(file);
 
-          if (type.startsWith("audio/") || type === "audio/midi") {
-            audioSrc = objectURL;
-          } else if (type.startsWith("video/")) {
-            videoSrc = objectURL;
+          if (file.type.startsWith("audio/") || file.type === "audio/midi") {
+            audioSrc = url;
+          } else if (file.type.startsWith("video/")) {
+            videoSrc = url;
           }
         }
 
@@ -413,53 +505,47 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           playerState: {
             ...initialPlayerState,
             ...playerState,
-            rawFile: rawFile,
-            audioSrc: audioSrc,
-            videoSrc: videoSrc,
+            rawFile,
+            audioSrc,
+            videoSrc,
           },
         });
+
         get().actions.processLyricsForPlayer();
       },
+
       clearProject: () => {
         set({ ...initialState });
       },
+
       initializeMode: (mode) => {
-        set({ ...initialState, mode: mode });
+        set({ ...initialState, mode });
       },
 
       loadMidiFile: async (info, parsedData, file) => {
-        const buffer = await file.arrayBuffer();
-        const storedFile: StoredFile = {
-          buffer,
-          name: file.name,
-          type: file.type,
-        };
+        const storedFile = await createStoredFileFromFile(file);
         set({
           playerState: {
             ...initialPlayerState,
             midiInfo: info,
             duration: info.durationTicks,
             rawFile: file,
-            storedFile: storedFile,
+            storedFile,
           },
           ...resetStateForNewFile(info.fileName),
           metadata: { ...DEFAULT_SONG_INFO, ...parsedData.info },
         });
         importParsedData(parsedData);
       },
+
       loadAudioFile: async (src, file, parsedData, duration) => {
-        const buffer = await file.arrayBuffer();
-        const storedFile: StoredFile = {
-          buffer,
-          name: file.name,
-          type: file.type,
-        };
+        const storedFile = await createStoredFileFromFile(file);
         set({
           playerState: {
             ...initialPlayerState,
             audioSrc: src,
             rawFile: file,
-            storedFile: storedFile,
+            storedFile,
             duration,
           },
           ...resetStateForNewFile(file.name),
@@ -467,25 +553,22 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         importParsedData(parsedData);
       },
+
       loadVideoFile: async (src, file, duration) => {
-        const buffer = await file.arrayBuffer();
-        const storedFile: StoredFile = {
-          buffer,
-          name: file.name,
-          type: file.type,
-        };
+        const storedFile = await createStoredFileFromFile(file);
         set({
           playerState: {
             ...initialPlayerState,
             videoSrc: src,
             rawFile: file,
-            storedFile: storedFile,
+            storedFile,
             duration,
           },
           ...resetStateForNewFile(file.name),
         });
         saveCurrentProject();
       },
+
       loadYoutubeVideo: (id, title, duration) => {
         set({
           playerState: {
@@ -499,15 +582,17 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         saveCurrentProject();
       },
+
       setMetadata: (metadata) => {
         saveToHistoryAndDB();
         set((state) => ({
           metadata: { ...DEFAULT_SONG_INFO, ...state.metadata, ...metadata },
         }));
       },
+
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();
-        const processed = _processLyricsForPlayer(
+        const processed = processLyricsForPlayer(
           lyricsData,
           mode,
           playerState.midiInfo
@@ -515,35 +600,27 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         set({ lyricsProcessed: processed });
         saveCurrentProject();
       },
-      setIsPlaying: (playing) => set({ isPlaying: playing }),
-      setCurrentTime: (time) => set({ currentTime: time }),
+
       importLyrics: (rawText) => {
-        saveToHistoryAndDB();
         if (!rawText) return;
+
+        saveToHistoryAndDB();
         set({
           lyricsData: processRawLyrics(rawText),
-          isTimingActive: false,
-          editingLineIndex: null,
-          currentIndex: 0,
-          correctionIndex: null,
-          selectedLineIndex: null,
-          currentTime: 0,
-          playbackIndex: null,
+          ...initialTimingState,
         });
       },
+
       addChord: (newChord) => {
         saveToHistoryAndDB();
         set((state) => ({
           chordsData: [...state.chordsData, newChord].sort(
             (a, b) => a.tick - b.tick
           ),
-          isChordModalOpen: false,
-          selectedChord: null,
-          suggestedChordTick: null,
-          minChordTickRange: null,
-          maxChordTickRange: null,
+          ...initialModalState,
         }));
       },
+
       updateChord: (oldTick, updatedChord) => {
         saveToHistoryAndDB();
         set((state) => ({
@@ -552,26 +629,20 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
               chord.tick === oldTick ? { ...updatedChord } : chord
             )
             .sort((a, b) => a.tick - b.tick),
-          isChordModalOpen: false,
-          selectedChord: null,
-          suggestedChordTick: null,
-          minChordTickRange: null,
-          maxChordTickRange: null,
+          ...initialModalState,
         }));
       },
+
       deleteChord: (tickToDelete) => {
         saveToHistoryAndDB();
         set((state) => ({
           chordsData: state.chordsData.filter(
             (chord) => chord.tick !== tickToDelete
           ),
-          isChordModalOpen: false,
-          selectedChord: null,
-          suggestedChordTick: null,
-          minChordTickRange: null,
-          maxChordTickRange: null,
+          ...initialModalState,
         }));
       },
+
       updateWordTiming: (index, start, end) => {
         saveToHistoryAndDB();
         set((state) => ({
@@ -583,6 +654,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         }));
         get().actions.processLyricsForPlayer();
       },
+
+      setIsPlaying: (playing) => set({ isPlaying: playing }),
+      setCurrentTime: (time) => set({ currentTime: time }),
+
       startTiming: (currentTime) => {
         set((state) => {
           if (
@@ -601,16 +676,19 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         });
         saveCurrentProject();
       },
+
       recordTiming: (currentTime) => {
         let isLineEnd = false;
         set((state) => {
           const newData = [...state.lyricsData];
           const currentWord = newData[state.currentIndex];
+
           if (currentWord) {
             currentWord.end = currentTime;
             currentWord.length =
               currentWord.end - (currentWord.start ?? currentTime);
           }
+
           const nextWord = newData[state.currentIndex + 1];
           if (nextWord) {
             nextWord.start = currentTime;
@@ -622,6 +700,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
               isLineEnd = true;
             }
           }
+
           return { lyricsData: newData };
         });
 
@@ -632,6 +711,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         saveCurrentProject();
         return { isLineEnd };
       },
+
       goToNextWord: () => {
         set((state) => {
           if (state.currentIndex + 1 < state.lyricsData.length) {
@@ -648,6 +728,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           return { isTimingActive: false, editingLineIndex: null };
         });
       },
+
       correctTimingStep: (newCurrentIndex) => {
         let lineStartTime = 0;
         set((state) => {
@@ -664,6 +745,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             newData[newCurrentIndex].end = null;
             newData[newCurrentIndex].length = 0;
           }
+
           return {
             lyricsData: newData,
             currentIndex: newCurrentIndex,
@@ -671,26 +753,33 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             isTimingActive: true,
           };
         });
+
         saveCurrentProject();
         return { lineStartTime };
       },
+
       stopTiming: () => {
         set({ isTimingActive: false, editingLineIndex: null });
         get().actions.processLyricsForPlayer();
         saveCurrentProject();
       },
+
       setPlaybackIndex: (index) => set({ playbackIndex: index }),
       setCurrentIndex: (index) => set({ currentIndex: index }),
       setCorrectionIndex: (index) => set({ correctionIndex: index }),
+
       selectLine: (lineIndex) => set({ selectedLineIndex: lineIndex }),
+
       startEditLine: (lineIndex) => {
         saveToHistoryAndDB();
         const { lyricsData } = get();
         const firstWordOfLine = lyricsData.find(
           (w) => w.lineIndex === lineIndex
         );
-        if (!firstWordOfLine)
+
+        if (!firstWordOfLine) {
           return { success: false, firstWordIndex: 0, preRollTime: 0 };
+        }
 
         const firstWordIndex = firstWordOfLine.index;
         const preRollTime = getPreRollTime(lineIndex);
@@ -708,10 +797,13 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           correctionIndex: null,
           lyricsProcessed: undefined,
         }));
+
         return { success: true, firstWordIndex, preRollTime };
       },
+
       openEditModal: () => set({ isEditModalOpen: true }),
       closeEditModal: () => set({ isEditModalOpen: false }),
+
       openChordModal: (chord, suggestedTick, minTick, maxTick) =>
         set({
           isChordModalOpen: true,
@@ -720,14 +812,9 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
           minChordTickRange: minTick || null,
           maxChordTickRange: maxTick || null,
         }),
-      closeChordModal: () =>
-        set({
-          isChordModalOpen: false,
-          selectedChord: null,
-          suggestedChordTick: null,
-          minChordTickRange: null,
-          maxChordTickRange: null,
-        }),
+
+      closeChordModal: () => set({ ...initialModalState }),
+
       setIsChordPanelAutoScrolling: (isAuto) =>
         set({ isChordPanelAutoScrolling: isAuto }),
       setChordPanelCenterTick: (tick) => set({ chordPanelCenterTick: tick }),
@@ -735,6 +822,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
         set({ isChordPanelHovered: isHovered }),
       setPlayFromScrolledPosition: (shouldPlay) =>
         set({ playFromScrolledPosition: shouldPlay }),
+
       undo: () => {
         set((state) => {
           const { past, future } = state.history;
@@ -742,7 +830,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
           const previousState = past[past.length - 1];
           const newPast = past.slice(0, past.length - 1);
-
           const currentState: HistoryState = {
             lyricsData: state.lyricsData,
             chordsData: state.chordsData,
@@ -757,9 +844,11 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             },
           };
         });
+
         get().actions.processLyricsForPlayer();
         saveCurrentProject();
       },
+
       redo: () => {
         set((state) => {
           const { past, future } = state.history;
@@ -767,7 +856,6 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
 
           const nextState = future[0];
           const newFuture = future.slice(1);
-
           const currentState: HistoryState = {
             lyricsData: state.lyricsData,
             chordsData: state.chordsData,
@@ -782,9 +870,11 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             },
           };
         });
+
         get().actions.processLyricsForPlayer();
         saveCurrentProject();
       },
+
       deleteLine: (lineIndexToDelete: number) => {
         saveToHistoryAndDB();
         set((state) => {
@@ -805,27 +895,33 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
               lineMap.set(word.lineIndex, newLineIndex);
               newLineIndexCounter++;
             }
+
             newLyricsData.push({
               ...word,
               lineIndex: newLineIndex,
               index: globalWordIndex++,
             });
           });
+
           return { lyricsData: newLyricsData, selectedLineIndex: null };
         });
+
         get().actions.processLyricsForPlayer();
       },
+
       updateLine: (lineIndexToUpdate, newText) => {
         saveToHistoryAndDB();
         const newWordsForLine = processRawLyrics(newText).map((word) => ({
           ...word,
           lineIndex: lineIndexToUpdate,
         }));
+
         set((state) => {
           const otherLinesWords = state.lyricsData.filter(
             (word) => word.lineIndex !== lineIndexToUpdate
           );
           const updatedLyrics = [...otherLinesWords, ...newWordsForLine];
+
           updatedLyrics.sort((a, b) => {
             if (a.lineIndex !== b.lineIndex) {
               return a.lineIndex - b.lineIndex;
@@ -834,6 +930,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             const bTime = b.start !== null ? b.start : b.index;
             return aTime - bTime;
           });
+
           return {
             lyricsData: updatedLyrics.map((word, index) => ({
               ...word,
@@ -842,8 +939,10 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             isEditModalOpen: false,
           };
         });
+
         get().actions.processLyricsForPlayer();
       },
+
       updateWord: (index, newWordData) => {
         saveToHistoryAndDB();
         set((state) => ({
@@ -851,6 +950,7 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => {
             i === index ? { ...word, ...newWordData } : word
           ),
         }));
+
         get().actions.processLyricsForPlayer();
       },
     },

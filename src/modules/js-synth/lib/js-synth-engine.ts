@@ -3,136 +3,64 @@ import { JsSynthPlayerEngine } from "./js-synth-player";
 import { DEFAULT_SOUND_FONT } from "@/configs/value";
 
 export class JsSynthEngine {
-  public static instance: JsSynthEngine | undefined = undefined;
-
   public synth: JsSynthesizer | undefined;
   public audio: AudioContext | undefined;
   private node: AudioNode | undefined;
   public player: JsSynthPlayerEngine | undefined;
-  public preset: number[] = [];
-  public analysers: AnalyserNode[] = [];
-  public soundfontName: string | undefined;
-  public soundfontFile: File | undefined;
-  public bassLocked: number | undefined = undefined;
 
-  private constructor() {}
+  constructor() {}
 
-  public static async getInstance(): Promise<JsSynthEngine> {
-    if (!JsSynthEngine.instance) {
-      const engine = new JsSynthEngine();
-      await engine.startup();
-      JsSynthEngine.instance = engine;
+  public async startup(): Promise<void> {
+    if (this.audio) {
+      return;
     }
-    return JsSynthEngine.instance!;
+
+    try {
+      const audioContext = new AudioContext();
+      this.audio = audioContext;
+
+      const synth = new JsSynthesizer();
+      await synth.init(audioContext.sampleRate);
+      this.synth = synth;
+
+      const node = synth.createAudioNode(audioContext, 8192);
+      node.connect(audioContext.destination);
+      this.node = node;
+
+      synth.setGain(0.3);
+
+      this.player = new JsSynthPlayerEngine(synth, audioContext);
+
+      const res = await fetch(DEFAULT_SOUND_FONT);
+      const arraybuffer = await res.arrayBuffer();
+      this.synth?.loadSFont(arraybuffer);
+      console.info("JsSynthEngine started up successfully.");
+    } catch (error) {
+      console.error("Error during JsSynthEngine startup:", error);
+
+      this.shutdown();
+      throw error;
+    }
   }
 
-  private async startup() {
-    const audioContext = new AudioContext();
+  public shutdown(): void {
+    if (!this.audio) {
+      return;
+    }
 
-    const { Synthesizer } = await import("js-synthesizer");
-    const synth = new Synthesizer();
-    synth.init(audioContext.sampleRate);
-
-    const node = synth.createAudioNode(audioContext, 8192);
-    node.connect(audioContext.destination);
-    this.node = node;
-
-    synth.setGain(0.3);
-
-    this.synth = synth;
-    this.audio = audioContext;
-
-    // <<< จุดแก้ไข: สร้าง Player โดยไม่ส่ง instance ของ engine เข้าไปแล้ว
-    this.player = new JsSynthPlayerEngine(synth, audioContext);
-
-    await this.loadDefaultSoundFont();
-  }
-
-  public shutdown() {
-    if (!JsSynthEngine.instance) return;
-
-    console.log("Shutting down JsSynthEngine synchronously...");
-
-    this.player?.stop();
+    this.player?.destroy();
     this.node?.disconnect();
-    this.audio?.suspend();
 
-    this.audio
-      ?.close()
-      .catch((e) => console.error("Error closing AudioContext:", e));
+    if (this.audio.state !== "closed") {
+      this.audio
+        .close()
+        .catch((e) => console.error("Error closing AudioContext:", e));
+    }
 
     this.synth = undefined;
     this.audio = undefined;
     this.player = undefined;
     this.node = undefined;
-
-    JsSynthEngine.instance = undefined;
-    console.log("JsSynthEngine instance shut down.");
-  }
-
-  public playBeep(isFirstBeat: boolean = false) {
-    if (!this.audio) {
-      return;
-    }
-    const osc = this.audio.createOscillator();
-    const gain = this.audio.createGain();
-
-    const frequency = isFirstBeat ? 880.0 : 440.0;
-    osc.frequency.setValueAtTime(frequency, this.audio.currentTime);
-    osc.type = "sine";
-
-    gain.gain.setValueAtTime(0.2, this.audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      this.audio.currentTime + 0.08
-    );
-
-    osc.connect(gain);
-    gain.connect(this.audio.destination);
-
-    osc.start(this.audio.currentTime);
-    osc.stop(this.audio.currentTime + 0.1);
-  }
-
-  async loadPresetSoundFont(sfId?: number) {
-    if (!sfId) {
-      return [];
-    }
-    this.synth?.getSFontObject(sfId)?.getPresetIterable();
-  }
-
-  async loadDefaultSoundFont() {
-    let arraybuffer: ArrayBuffer | undefined = undefined;
-    if (this.soundfontFile) {
-      arraybuffer = await this.soundfontFile.arrayBuffer();
-    } else {
-      const res = await fetch(DEFAULT_SOUND_FONT);
-      arraybuffer = await res.arrayBuffer();
-
-      const blob = new Blob([arraybuffer], {
-        type: "application/octet-stream",
-      });
-      const fileBlob = new File([blob], "soundfont.sf2", {
-        type: "application/octet-stream",
-      });
-      this.soundfontFile = fileBlob;
-    }
-
-    const sfId = await this.synth?.loadSFont(arraybuffer);
-    this.soundfontName = "Default Soundfont sf2";
-
-    this.loadPresetSoundFont(sfId);
-  }
-
-  async setSoundFont(file: File) {
-    const bf = await file.arrayBuffer();
-    try {
-      const sfId = await this.synth?.loadSFont(bf);
-      this.soundfontName = file.name;
-      this.loadPresetSoundFont(sfId);
-      return true;
-    } catch (error) {
-      return false;
-    }
+    console.info("JsSynthEngine instance shut down.");
   }
 }

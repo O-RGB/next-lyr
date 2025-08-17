@@ -27,27 +27,26 @@ self.onmessage = (e: MessageEvent) => {
     case "seek":
       accumulatedTime = value;
       if (!isRunning) {
-         // ถ้าไม่ได้กำลังเล่นอยู่ ให้ส่งค่าเวลาที่ seek ไปเลย
-         self.postMessage({ type: 'tick', time: accumulatedTime });
+        self.postMessage({ type: "tick", time: accumulatedTime });
       }
       break;
     case "reset":
-        isRunning = false;
-        clearInterval(intervalId);
-        intervalId = null;
-        lastTickTime = null;
-        accumulatedTime = 0;
-        break;
+      isRunning = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      lastTickTime = null;
+      accumulatedTime = 0;
+      break;
   }
 };
 
 function tick() {
-    if(!isRunning || !lastTickTime) return;
+  if (!isRunning || !lastTickTime) return;
 
-    const now = performance.now();
-    const deltaTime = now - lastTickTime;
-    lastTickTime = now;
-    accumulatedTime += deltaTime / 1000; // convert ms to seconds
+  const now = performance.now();
+  const deltaTime = now - lastTickTime;
+  lastTickTime = now;
+  accumulatedTime += deltaTime / 1000; // convert ms to seconds
 
-    self.postMessage({ type: 'tick', time: accumulatedTime });
+  self.postMessage({ type: "tick", time: accumulatedTime });
 }

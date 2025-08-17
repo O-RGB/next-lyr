@@ -12,7 +12,7 @@ interface CommonPlayerStyleProps {
   onSeek: (value: number) => void;
   duration: number;
   currentTime: number;
-  accept?: string; // เพิ่ม prop สำหรับรับประเภทไฟล์
+  accept?: string;
   upload?: boolean;
 }
 
@@ -67,7 +67,6 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
         </button>
       </div>
 
-      {/* แถบ Seek */}
       <input
         type="range"
         min="0"

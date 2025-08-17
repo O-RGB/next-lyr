@@ -11,7 +11,6 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import CommonPlayerStyle from "@/components/common/player";
 import { TimerControls } from "@/components/ui/player-host";
 
-// vvvvvvvvvv จุดแก้ไข: กำหนด Type ของ Ref ให้ชัดเจน vvvvvvvvvv
 export type MidiPlayerRef = {
   play: () => void;
   pause: () => void;
@@ -19,7 +18,6 @@ export type MidiPlayerRef = {
   getCurrentTime: () => number;
   isPlaying: () => boolean;
 };
-// ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
 interface MidiPlayerProps {
   file?: File | null;
@@ -40,7 +38,6 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       (state) => state.actions
     );
 
-    // vvvvvvvvvv จุดแก้ไข: สร้างฟังก์ชันสำหรับ Ref เพื่อให้มี context ที่ถูกต้อง vvvvvvvvvv
     useImperativeHandle(
       ref,
       () => ({
@@ -52,7 +49,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         },
         seek: (tick: number) => {
           player?.seek(tick);
-          // แปลงค่า ticks เป็นวินาที แล้วสั่งให้ worker ทำงาน
+
           if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
             const timeInSeconds = (tick / midiInfo.ppq) * (60 / midiInfo.bpm);
             timerControls.seekTimer(timeInSeconds);
@@ -62,55 +59,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         isPlaying: () => player?.isPlaying() ?? false,
       }),
       [player, midiInfo, timerControls]
-    ); // ใส่ dependencies ให้ครบ
-    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
-
-    useEffect(() => {
-      const initialize = async () => {
-        const engine = await JsSynthEngine.getInstance();
-        if (engine.player) {
-          setPlayer(engine.player);
-        }
-      };
-      initialize();
-    }, []);
-
-    useEffect(() => {
-      if (file && player) {
-        handleFileChange(file);
-      }
-    }, [file, player]);
-
-    // vvvvvvvvvv จุดแก้ไข: จัดการการ Play/Pause และ Sync กับ Worker vvvvvvvvvv
-    useEffect(() => {
-      if (!player) return;
-
-      const handleStateChange = (playing: boolean) => {
-        setIsPlaying(playing);
-        setGlobalIsPlaying(playing);
-
-        if (playing) {
-          // เมื่อเริ่มเล่น, Sync เวลาของ worker กับ player ก่อน
-          if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
-            const timeInSeconds =
-              (player.getCurrentTime() / midiInfo.ppq) * (60 / midiInfo.bpm);
-            timerControls.seekTimer(timeInSeconds);
-          }
-          timerControls.startTimer();
-        } else {
-          timerControls.stopTimer();
-        }
-      };
-
-      player.addEventListener("statechange", handleStateChange);
-      setIsPlaying(player.isPlaying());
-      setGlobalIsPlaying(player.isPlaying());
-
-      return () => {
-        player.removeEventListener("statechange", handleStateChange);
-      };
-    }, [player, setGlobalIsPlaying, timerControls, midiInfo]);
-    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+    );
 
     const handleFileChange = async (file: File) => {
       if (player) {
@@ -156,12 +105,57 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       player?.stop();
     };
 
-    // vvvvvvvvvv จุดแก้ไข: ให้ handleSeek เรียกใช้ฟังก์ชันที่ expose ผ่าน ref vvvvvvvvvv
     const handleSeek = (value: number) => {
       const currentRef = ref as React.RefObject<MidiPlayerRef>;
       currentRef.current?.seek(value);
     };
-    // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
+
+    const handleStateChange = (playing: boolean) => {
+      setIsPlaying(playing);
+      setGlobalIsPlaying(playing);
+
+      if (playing) {
+        if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
+          const timeInSeconds =
+            ((player?.getCurrentTime() ?? 0) / midiInfo.ppq) *
+            (60 / midiInfo.bpm);
+          timerControls.seekTimer(timeInSeconds);
+        }
+        timerControls.startTimer();
+      } else {
+        timerControls.stopTimer();
+      }
+    };
+
+    const initialize = async () => {
+      const engine = new JsSynthEngine();
+      await engine.startup();
+      if (engine.player) {
+        setPlayer(engine.player);
+      }
+    };
+
+    useEffect(() => {
+      initialize();
+    }, []);
+
+    useEffect(() => {
+      if (!player) return;
+
+      player.addEventListener("statechange", handleStateChange);
+      setIsPlaying(player.isPlaying());
+      setGlobalIsPlaying(player.isPlaying());
+
+      return () => {
+        player.removeEventListener("statechange", handleStateChange);
+      };
+    }, [player, setGlobalIsPlaying, timerControls, midiInfo]);
+
+    useEffect(() => {
+      if (file && player) {
+        handleFileChange(file);
+      }
+    }, [file, player]);
 
     return (
       <CommonPlayerStyle

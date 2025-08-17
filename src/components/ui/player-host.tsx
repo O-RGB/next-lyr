@@ -14,7 +14,6 @@ import YoutubePlayer, {
   YouTubePlayerRef,
 } from "@/modules/youtube/youtube-player";
 
-// <<< เพิ่ม Type สำหรับ Timer Controls
 export type TimerControls = {
   startTimer: () => void;
   stopTimer: () => void;
@@ -30,7 +29,6 @@ export type PlayerRef = {
   isPlaying: () => boolean;
 };
 
-// <<< เพิ่ม timerControls ใน Props
 type PlayerHostProps = {
   onReady?: () => void;
   timerControls: TimerControls;
@@ -47,9 +45,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
     const videoRef = useRef<VideoPlayerRef>(null);
     const youtubeRef = useRef<YouTubePlayerRef>(null);
 
-    useEffect(() => {
-      // ... (cleanup logic เดิม)
-    }, [mode]);
+    useEffect(() => {}, [mode]);
 
     useImperativeHandle(ref, () => {
       const refs = {
@@ -94,7 +90,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             ref={midiPlayerRef}
             file={playerState.rawFile}
             onReady={onReady}
-            timerControls={timerControls} // <<< ส่ง timerControls
+            timerControls={timerControls}
           />
         );
       case "mp3":
@@ -104,7 +100,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             src={playerState.audioSrc}
             file={playerState.rawFile}
             onReady={onReady}
-            timerControls={timerControls} // <<< ส่ง timerControls
+            timerControls={timerControls}
           />
         );
       case "mp4":
@@ -114,7 +110,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             src={playerState.videoSrc}
             file={playerState.rawFile}
             onReady={onReady}
-            timerControls={timerControls} // <<< ส่ง timerControls
+            timerControls={timerControls}
           />
         );
       case "youtube":
@@ -124,7 +120,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             youtubeId={playerState.youtubeId}
             onUrlChange={handleYoutubeUrlChange}
             onReady={onPlayerReady}
-            timerControls={timerControls} // <<< ส่ง timerControls
+            timerControls={timerControls}
           />
         );
       default:
