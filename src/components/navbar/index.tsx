@@ -12,7 +12,6 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   const onSelectMenu = (value: IMenusType) => {
-    console.log(value);
     if (value === "PROJECT_OPEN") {
       setIsProjectModalOpen(true);
     } else {

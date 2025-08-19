@@ -188,7 +188,7 @@ const TimelinePanel: React.FC = () => {
     if (!clipToDelete) return;
 
     if (clipToDelete.type === "lyrics") {
-      console.log("Deleting lyrics requires more complex store logic.");
+      console.info("Deleting lyrics requires more complex store logic.");
     } else {
       actions.deleteChord(chordsData[clipToDelete.originalIndex].tick);
     }

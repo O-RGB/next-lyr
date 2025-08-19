@@ -12,7 +12,6 @@ interface LineActionProps {
 
 const LineAction: React.FC<LineActionProps> = React.memo(
   ({ editingLineIndex, onEditLine, onDeleteLine, lineIndex }) => {
-    console.log("Render LineAction", lineIndex);
     return (
       <div className="flex flex-col lg:flex-row items-center">
         <ButtonCommon

@@ -47,8 +47,6 @@ export default function MetadataForm({ metadata, onMetadataChange }: Props) {
   });
 
   const handleFormChange = useCallback((values: Partial<SongInfo>) => {
-    console.log(values);
-
     if (onMetadataChangeRef.current) {
       onMetadataChangeRef.current(values);
     }

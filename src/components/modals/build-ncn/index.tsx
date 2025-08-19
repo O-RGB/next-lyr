@@ -58,7 +58,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         tick: Math.floor((x.tick + 0.6) * 1000),
       }));
 
-      console.log(metadata, newLyricsData, newChordsData);
       metadata.TIME_FORMAT = "TIME_MS";
       const buffer = buildMp3(
         {

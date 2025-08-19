@@ -16,13 +16,11 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     if (!playerControls) return;
     if (!isPlaying) return;
 
-    // เช็คว่า playerControls ยังเล่นอยู่หรือไม่
     if (!playerControls.isPlaying() && currentTime > 0) {
       actions.setIsPlaying(false);
-      return;
+            return;
     }
 
-    // sync logic
     if (isTimingActive && correctionIndex === null) {
       actions.setPlaybackIndex(null);
       return;

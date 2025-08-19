@@ -38,7 +38,6 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
           className="flex-none"
           preview={false}
           onChange={(files) => {
-            console.log(files);
             const [file] = files;
             if (file) onFileChange(file);
           }}

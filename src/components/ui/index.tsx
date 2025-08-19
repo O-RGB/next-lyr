@@ -38,7 +38,6 @@ const FLOATING_ACTIONS_CONFIG = [
   },
 ];
 
-// Custom hook for managing player setup and controls
 const usePlayerSetup = (
   projectId: string | null,
   rawFile: File | null,
@@ -46,48 +45,23 @@ const usePlayerSetup = (
   mode: string | null,
   duration: number | null
 ) => {
-  console.log("[usePlayerSetup] Hook called with:", {
-    projectId,
-    isPlayerReady,
-    mode,
-    duration,
-  });
   const [playerControls, setControls] = useState<PlayerControls | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const timerControls = useTimerWorker();
 
-  // Effect to reset player when project or file changes
   useEffect(() => {
-    console.log(
-      "[usePlayerSetup] useEffect [projectId, rawFile] triggered. Project:",
-      projectId,
-      "File:",
-      rawFile?.name
-    );
-    console.log(
-      "[usePlayerSetup] Project/file changed, stopping timer and resetting controls."
-    );
     setControls(null);
     timerControls.forceStopTimer();
   }, [projectId, rawFile, timerControls]);
 
-  // Effect to stop timer when mode changes
   useEffect(() => {
-    console.log("[usePlayerSetup] useEffect [mode] triggered. New mode:", mode);
     if (mode) {
-      console.log("[usePlayerSetup] Mode changed, stopping timer.");
       timerControls.forceStopTimer();
     }
   }, [mode, timerControls]);
 
-  // Effect to set up player controls when ready
   useEffect(() => {
-    console.log(
-      "[usePlayerSetup] useEffect [mode, isPlayerReady, duration] triggered.",
-      { mode, isPlayerReady, duration }
-    );
     if (mode && playerRef.current && isPlayerReady) {
-      console.log("[usePlayerSetup] Conditions met. Setting player controls.");
       setControls({
         play: () => playerRef.current?.play(),
         pause: () => playerRef.current?.pause(),
@@ -95,34 +69,26 @@ const usePlayerSetup = (
         getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
         isPlaying: () => playerRef.current?.isPlaying() ?? false,
       });
-    } else {
-      console.log("[usePlayerSetup] Conditions not met for setting controls.");
     }
   }, [mode, isPlayerReady, duration]);
 
   return { playerControls, playerRef, timerControls };
 };
 
-// Custom hook for managing modal states
 const useModalState = () => {
-  console.log("[useModalState] Hook initialized.");
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const closeMetadata = useCallback(() => {
-    console.log("[useModalState] Closing metadata modal.");
     setIsMetadataOpen(false);
   }, []);
   const closePreview = useCallback(() => {
-    console.log("[useModalState] Closing preview modal.");
     setIsPreviewOpen(false);
   }, []);
   const openMetadata = useCallback(() => {
-    console.log("[useModalState] Opening metadata modal.");
     setIsMetadataOpen(true);
   }, []);
   const openPreview = useCallback(() => {
-    console.log("[useModalState] Opening preview modal.");
     setIsPreviewOpen(true);
   }, []);
 
@@ -136,23 +102,18 @@ const useModalState = () => {
   };
 };
 
-// Custom hook for player action handlers
 const usePlayerHandlers = (
   lyricsData: any[],
   playerControls: PlayerControls | null,
   actions: any,
   mode: string | null
 ) => {
-  console.log("[usePlayerHandlers] Hook called. Setting up handlers.");
-
   const handleStop = useCallback(() => {
-    console.log("[handleStop] Stop requested.");
     if (!playerControls) {
       console.warn("[handleStop] Aborted: playerControls not available.");
       return;
     }
 
-    console.log("[handleStop] Executing stop actions.");
     playerControls.pause();
     playerControls.seek(0);
     actions.setIsPlaying(false);
@@ -164,7 +125,6 @@ const usePlayerHandlers = (
 
   const handleWordClick = useCallback(
     (index: number) => {
-      console.log(`[handleWordClick] Word clicked with index: ${index}.`);
       const word = lyricsData.find((w) => w.index === index);
 
       if (!word || !playerControls) {
@@ -175,22 +135,17 @@ const usePlayerHandlers = (
         return;
       }
 
-      console.log("[handleWordClick] Found word data:", word);
       const seekTo = calculateSeekTime(word, lyricsData, mode, index);
-      console.log(`[handleWordClick] Calculated seek time: ${seekTo}.`);
 
       if (seekTo !== null) {
-        console.log("[handleWordClick] Seeking player to", seekTo);
         actions.setIsChordPanelAutoScrolling(true);
         actions.stopTiming();
         playerControls.seek(seekTo);
 
         if (!playerControls.isPlaying()) {
-          console.log("[handleWordClick] Player was paused, now playing.");
           playerControls.play();
         }
       } else {
-        console.log("[handleWordClick] No valid seek time calculated.");
       }
     },
     [lyricsData, playerControls, actions, mode]
@@ -198,23 +153,14 @@ const usePlayerHandlers = (
 
   const handleEditLine = useCallback(
     (lineIndex: number) => {
-      console.log(
-        `[handleEditLine] Edit line requested for index: ${lineIndex}.`
-      );
       if (!playerControls) {
         console.warn("[handleEditLine] Aborted: playerControls not available.");
         return;
       }
 
       const { success, preRollTime } = actions.startEditLine(lineIndex);
-      console.log(
-        `[handleEditLine] startEditLine action result: success=${success}, preRollTime=${preRollTime}`
-      );
+
       if (success) {
-        console.log(
-          "[handleEditLine] Starting edit pre-roll. Seeking to:",
-          preRollTime
-        );
         actions.setIsPlaying(true);
         playerControls.seek(preRollTime);
         playerControls.play();
@@ -226,59 +172,31 @@ const usePlayerHandlers = (
   return { handleStop, handleWordClick, handleEditLine };
 };
 
-// Helper function to calculate seek time
 const calculateSeekTime = (
   word: any,
   lyricsData: any[],
   mode: string | null,
   index: number
 ): number | null => {
-  console.log(
-    "[calculateSeekTime] Calculating seek time for word index:",
-    index,
-    "in mode:",
-    mode
-  );
-
   if (mode === "midi") {
-    console.log(
-      "[calculateSeekTime] Mode is 'midi', returning word.start:",
-      word.start
-    );
     return word.start;
   }
 
   if (word.start !== null) {
-    console.log(
-      "[calculateSeekTime] Word has a start time, returning:",
-      word.start
-    );
     return word.start;
   }
 
-  console.log(
-    "[calculateSeekTime] Word has no start time. Finding last timed word."
-  );
   const lastTimedWord = lyricsData
     .slice(0, index)
     .filter((w) => w.start !== null)
     .pop();
 
   const result = lastTimedWord?.start ?? 0;
-  console.log(
-    "[calculateSeekTime] Found last timed word:",
-    lastTimedWord,
-    "Returning its start time or 0:",
-    result
-  );
+
   return result;
 };
 
-// Main Component
 const LyrEditerPanel: React.FC = () => {
-  console.log("[LyrEditerPanel] Component rendering...");
-
-  // State from Zustand store
   const projectId = useKaraokeStore((state) => state.projectId);
   const mode = useKaraokeStore((state) => state.mode);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
@@ -296,21 +214,9 @@ const LyrEditerPanel: React.FC = () => {
   const maxChordTickRange = useKaraokeStore((state) => state.maxChordTickRange);
   const actions = useKaraokeStore((state) => state.actions);
 
-  console.log("[LyrEditerPanel] State from store:", {
-    projectId,
-    mode,
-    duration,
-    isEditModalOpen,
-    isChordModalOpen,
-  });
-
-  // Local state
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const modalState = useModalState();
 
-  console.log("[LyrEditerPanel] Local state isPlayerReady:", isPlayerReady);
-
-  // Hooks
   const { playerControls, playerRef, timerControls } = usePlayerSetup(
     projectId,
     rawFile,
@@ -326,59 +232,33 @@ const LyrEditerPanel: React.FC = () => {
     mode
   );
 
-  // Memoized chord handlers
   const chordHandlers = useMemo(() => {
-    console.log(
-      "[LyrEditerPanel] Re-memoizing chordHandlers. Dependencies changed."
-    );
     return {
       handleRulerClick: (
         lineIndex: number,
         percentage: number,
         lineDuration: number
       ) => {
-        console.log("[chordHandlers.handleRulerClick] Fired:", {
-          lineIndex,
-          percentage,
-          lineDuration,
-        });
         const firstWordOfLine = lyricsData.find(
           (w) => w.lineIndex === lineIndex
         );
         if (firstWordOfLine?.start !== null) {
           const clickedTick =
             (firstWordOfLine?.start ?? 0) + lineDuration * percentage;
-          console.log(
-            "[chordHandlers.handleRulerClick] Opening chord modal with calculated tick:",
-            clickedTick
-          );
+
           actions.openChordModal(undefined, Math.round(clickedTick));
         } else {
           const currentTime = playerControls?.getCurrentTime() ?? 0;
-          console.log(
-            "[chordHandlers.handleRulerClick] No timed word in line. Opening chord modal at current time:",
-            currentTime
-          );
+
           actions.openChordModal(undefined, currentTime);
         }
       },
 
       handleChordClick: (chord: ChordEvent) => {
-        console.log(
-          "[chordHandlers.handleChordClick] Fired with chord:",
-          chord
-        );
         actions.openChordModal(chord);
       },
 
       handleAddChordClick: (lineIndex: number) => {
-        console.log(
-          "[chordHandlers.handleAddChordClick] Fired for line index:",
-          lineIndex
-        );
-        // ... (existing logic is complex but side-effect free until the action call)
-        // For brevity, logging the final action call
-        // The original logic is preserved.
         const wordsInLine = lyricsData.filter((w) => w.lineIndex === lineIndex);
         const timedWordsInLine = wordsInLine.filter(
           (w) => w.start !== null && w.end !== null
@@ -399,12 +279,7 @@ const LyrEditerPanel: React.FC = () => {
         } else if (suggestedTick === 0) {
           suggestedTick = 1;
         }
-        console.log(
-          "[chordHandlers.handleAddChordClick] Opening chord modal with suggestedTick:",
-          suggestedTick,
-          "Range:",
-          { minLineTick, maxLineTick }
-        );
+
         actions.openChordModal(
           undefined,
           Math.round(suggestedTick),
@@ -414,10 +289,6 @@ const LyrEditerPanel: React.FC = () => {
       },
 
       handleChordBlockClick: (tick: number) => {
-        console.log(
-          "[chordHandlers.handleChordBlockClick] Fired. Seeking to tick:",
-          tick
-        );
         if (playerControls) {
           playerControls.seek(tick);
           if (!playerControls.isPlaying()) {
@@ -429,38 +300,23 @@ const LyrEditerPanel: React.FC = () => {
       handleAddChordAtCurrentTime: (setTick?: number) => {
         const tick =
           setTick ?? Math.round(playerControls?.getCurrentTime() ?? 0);
-        console.log(
-          "[chordHandlers.handleAddChordAtCurrentTime] Fired. Opening modal for tick:",
-          tick
-        );
+
         actions.openChordModal(undefined, tick);
       },
 
       handleDeleteChord: (tick: number) => {
-        console.log("[chordHandlers.handleDeleteChord] Fired for tick:", tick);
         if (window.confirm("Are you sure you want to delete this chord?")) {
-          console.log(
-            "[chordHandlers.handleDeleteChord] User confirmed deletion."
-          );
           actions.deleteChord(tick);
         } else {
-          console.log(
-            "[chordHandlers.handleDeleteChord] User canceled deletion."
-          );
         }
       },
     };
   }, [lyricsData, actions, playerControls]);
 
-  // Memoized floating actions
   const floatingActions = useMemo(() => {
-    console.log("[LyrEditerPanel] Re-memoizing floatingActions.");
     return FLOATING_ACTIONS_CONFIG.map((config) => ({
       icon: config.icon,
       onClick: () => {
-        console.log(
-          `[floatingActions.onClick] Action '${config.action}' triggered.`
-        );
         if (config.action === "preview") {
           modalState.openPreview();
         } else {
@@ -472,13 +328,8 @@ const LyrEditerPanel: React.FC = () => {
     }));
   }, [modalState.openPreview, modalState.openMetadata]);
 
-  // Render function for main content area
   const renderMainContent = () => {
-    console.log("[renderMainContent] Determining which content to render.");
     if (!projectId) {
-      console.log(
-        "[renderMainContent] No project ID. Rendering welcome screen."
-      );
       return (
         <div className="flex-grow flex items-center justify-center bg-gray-100">
           <div className="text-center text-gray-500">
@@ -492,9 +343,6 @@ const LyrEditerPanel: React.FC = () => {
     }
 
     if (!mode) {
-      console.log(
-        "[renderMainContent] No mode selected. Rendering mode selection prompt."
-      );
       return (
         <div className="flex flex-col md:flex-row flex-grow w-full h-full overflow-hidden">
           <div className="flex-grow flex items-center justify-center bg-gray-100">
@@ -513,9 +361,6 @@ const LyrEditerPanel: React.FC = () => {
       );
     }
 
-    console.log(
-      "[renderMainContent] Project and mode available. Rendering main editor panel."
-    );
     return (
       <div className="flex flex-col md:flex-row flex-grow w-full h-full overflow-hidden">
         <div className="flex-grow flex flex-col overflow-hidden h-full order-2 md:order-1">
@@ -550,7 +395,6 @@ const LyrEditerPanel: React.FC = () => {
             key={projectId}
             ref={playerRef}
             onReady={() => {
-              console.log("[PlayerHost.onReady] Player is now ready.");
               setIsPlayerReady(true);
             }}
             timerControls={timerControls}
@@ -566,7 +410,6 @@ const LyrEditerPanel: React.FC = () => {
     );
   };
 
-  // Main component return
   return (
     <main className="flex flex-col h-[calc(100vh-36px)]">
       <DonateModal />
@@ -607,16 +450,8 @@ const LyrEditerPanel: React.FC = () => {
               <LyricsPlayer
                 lyricsProcessed={lyricsProcessed}
                 playerControls={
-                  // Note: Re-rendering PlayerHost here might create a new instance.
-                  // For logging purposes, this is acceptable. In a real app,
-                  // you might want to share the player instance differently.
                   <PlayerHost
-                    key={`${projectId}-preview`} // Use a different key
-                    onReady={() =>
-                      console.log(
-                        "[PlayerHost.onReady] Preview player is ready."
-                      )
-                    }
+                    key={`${projectId}-preview`}
                     timerControls={timerControls}
                   />
                 }
@@ -642,21 +477,15 @@ const LyrEditerPanel: React.FC = () => {
         maxTick={maxChordTickRange ?? undefined}
         onClose={actions.closeChordModal}
         onSave={(chord) => {
-          console.log("[ChordEditModal.onSave] Saving chord:", chord);
           if (selectedChord) {
-            console.log("[ChordEditModal.onSave] Updating existing chord.");
             actions.updateChord(selectedChord.tick, chord);
           } else {
-            console.log("[ChordEditModal.onSave] Adding new chord.");
             actions.addChord(chord);
           }
         }}
         onDelete={
           selectedChord
             ? () => {
-                console.log(
-                  "[ChordEditModal.onDelete] Deleting chord via modal button."
-                );
                 actions.deleteChord(selectedChord.tick);
               }
             : undefined

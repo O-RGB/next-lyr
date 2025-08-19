@@ -131,7 +131,6 @@ export class ThaiWordDict {
     // Final cleanup: remove any empty strings
     const finalResult = result.filter((word) => word.trim());
 
-    console.log(`Total lookup operations: ${count}`);
     return finalResult;
   }
 }

@@ -47,15 +47,10 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
     const youtubeRef = useRef<YouTubePlayerRef>(null);
 
     useEffect(() => {
-      console.log("[PlayerHost] mounted with mode:", mode);
-      return () => {
-        console.log("[PlayerHost] unmounted");
-      };
+      return () => {};
     }, []);
 
-    useEffect(() => {
-      console.log("[PlayerHost] mode changed →", mode);
-    }, [mode]);
+    useEffect(() => {}, [mode]);
 
     useImperativeHandle(ref, () => {
       const refs = {
@@ -64,12 +59,11 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
         mp4: videoRef.current,
         youtube: youtubeRef.current,
       };
-      console.log("[PlayerHost] expose ref for mode:", mode, refs[mode!]);
+
       return refs[mode!] as any;
     });
 
     const handleYoutubeUrlChange = (url: string) => {
-      console.log("[PlayerHost] YouTube URL changed:", url);
       const getYouTubeId = (url: string): string | null => {
         const regExp =
           /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -78,7 +72,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
       };
       const videoId = getYouTubeId(url);
       if (videoId) {
-        console.log("[PlayerHost] Parsed YouTube videoId:", videoId);
         useKaraokeStore.setState({
           playerState: { ...playerState, youtubeId: videoId },
         });
@@ -89,12 +82,10 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
     };
 
     const onPlayerReady = (event: { target: any }) => {
-      console.log("[PlayerHost] onPlayerReady event:", event);
       const duration = event.target.getDuration();
       const videoData = event.target.getVideoData();
-      console.log("[PlayerHost] Video Data:", videoData, "Duration:", duration);
+
       if (videoData.video_id) {
-        console.log("[PlayerHost] Loading YouTube video into store");
         actions.loadYoutubeVideo(videoData.video_id, videoData.title, duration);
       }
       onReady?.();
@@ -102,48 +93,41 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
 
     switch (mode) {
       case "midi":
-        console.log("[PlayerHost] rendering MidiPlayer", playerState);
         return (
           <MidiPlayer
             ref={midiPlayerRef}
             file={playerState.rawFile}
             onReady={() => {
-              console.log("[MidiPlayer] ready");
               onReady?.();
             }}
             timerControls={timerControls}
           />
         );
       case "mp3":
-        console.log("[PlayerHost] rendering AudioPlayer", playerState);
         return (
           <AudioPlayer
             ref={audioPlayerRef}
             src={playerState.audioSrc}
             file={playerState.rawFile}
             onReady={() => {
-              console.log("[AudioPlayer] ready");
               onReady?.();
             }}
             timerControls={timerControls}
           />
         );
       case "mp4":
-        console.log("[PlayerHost] rendering VideoPlayer", playerState);
         return (
           <VideoPlayer
             ref={videoRef}
             src={playerState.videoSrc}
             file={playerState.rawFile}
             onReady={() => {
-              console.log("[VideoPlayer] ready");
               onReady?.();
             }}
             timerControls={timerControls}
           />
         );
       case "youtube":
-        console.log("[PlayerHost] rendering YoutubePlayer", playerState);
         return (
           <YoutubePlayer
             ref={youtubeRef}
