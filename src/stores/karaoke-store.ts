@@ -150,7 +150,7 @@ type AllActions = ProjectActions &
   HistoryActions;
 
 export interface KaraokeState {
-  projectId: number | null;
+  projectId: string | null;
   mode: MusicMode | null;
   playerState: PlayerState;
   lyricsData: LyricWordData[];

@@ -1,4 +1,3 @@
-// src/components/modals/project/project-list.tsx
 import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
@@ -18,9 +17,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
-  const { loadProject, clearProject } = useKaraokeStore(
-    (state) => state.actions
-  );
+  const clearProject = useKaraokeStore((state) => state.actions.clearProject);
 
   const fetchProjects = async () => {
     const allProjects = await getAllProjects();
@@ -34,25 +31,17 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   }, [open]);
 
   const handleSelectProject = (project: Project) => {
-    loadProject(project);
-    onClose();
+    window.location.href = `/project/${project.id}`;
   };
 
-  const handleDeleteProject = async (id: number) => {
+  const handleDeleteProject = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
       await deleteProject(id);
-      fetchProjects(); // Refresh the list
-      // If the deleted project is the current one, clear the state
+      fetchProjects();
       if (useKaraokeStore.getState().projectId === id) {
         clearProject();
       }
     }
-  };
-
-  const handleNewProjectCreated = () => {
-    fetchProjects();
-    setIsNewProjectModalOpen(false);
-    onClose(); // ปิด modal หลักด้วย
   };
 
   return (
@@ -111,7 +100,6 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
       <NewProjectModal
         open={isNewProjectModalOpen}
         onClose={() => setIsNewProjectModalOpen(false)}
-        onProjectCreated={handleNewProjectCreated}
       />
     </>
   );

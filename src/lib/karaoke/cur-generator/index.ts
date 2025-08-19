@@ -249,7 +249,6 @@ export class TimestampLyricSegmentGenerator implements LyricSegmentGenerator {
       }
     }
 
-    console.log("timings", timings);
     return timings;
   }
 }

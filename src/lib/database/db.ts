@@ -1,6 +1,7 @@
 import Dexie, { Table } from "dexie";
 import { KaraokeState } from "@/stores/karaoke-store";
 import { MusicMode, IMidiInfo } from "@/types/common.type";
+import { generateUUID } from "@/lib/uuid"; // Import a function to generate UUIDs
 
 export interface StoredFile {
   buffer: ArrayBuffer;
@@ -26,7 +27,7 @@ export interface ProjectData {
 }
 
 export interface Project {
-  id?: number;
+  id: string; // Changed from number to string for UUID
   name: string;
   mode: MusicMode;
   data: ProjectData;
@@ -40,8 +41,8 @@ export class MySubClassedDexie extends Dexie {
   constructor() {
     super("karaokeProjectDB");
 
-    this.version(5).stores({
-      projects: "++id, name, createdAt, updatedAt",
+    this.version(6).stores({
+      projects: "&id, name, createdAt, updatedAt", // Use '&id' for primary key UUID
     });
   }
 }
@@ -52,9 +53,10 @@ export const createProject = async (
   name: string,
   mode: MusicMode,
   initialData: ProjectData
-): Promise<number> => {
+): Promise<string> => {
   try {
     const newProject: Project = {
+      id: generateUUID(), // Generate UUID for the new project
       name,
       mode,
       data: initialData,
@@ -73,12 +75,12 @@ export const getAllProjects = async (): Promise<Project[]> => {
   return await db.projects.orderBy("updatedAt").reverse().toArray();
 };
 
-export const getProject = async (id: number): Promise<Project | undefined> => {
+export const getProject = async (id: string): Promise<Project | undefined> => {
   return await db.projects.get(id);
 };
 
 export const updateProject = async (
-  id: number,
+  id: string,
   data: ProjectData
 ): Promise<void> => {
   try {
@@ -92,7 +94,7 @@ export const updateProject = async (
   }
 };
 
-export const deleteProject = async (id: number): Promise<void> => {
+export const deleteProject = async (id: string): Promise<void> => {
   try {
     await db.projects.delete(id);
   } catch (error) {

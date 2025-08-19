@@ -1,19 +1,18 @@
-// src/components/navbar/index.tsx
-import React, { useState } from "react";
 import NavBarMemu from "./navbar-menu";
-import { IMenusType } from "./navbar";
 import ReadLyricsModal from "@/components/modals/read-lyrics";
 import BuildNcnModal from "../modals/build-ncn";
-import ProjectListModal from "../modals/project/project-list"; // <<< เพิ่ม
+import ProjectListModal from "../modals/project/project-list";
+import React, { useState } from "react";
+import { IMenusType } from "./navbar";
 
 interface HandleNavbarModalProps {}
 
 const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
   const [modal, setModal] = useState<IMenusType>();
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false); // <<< เพิ่ม state ควบคุม modal
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   const onSelectMenu = (value: IMenusType) => {
-    // <<< เพิ่ม logic เปิด modal project
+    console.log(value);
     if (value === "PROJECT_OPEN") {
       setIsProjectModalOpen(true);
     } else {
@@ -34,7 +33,6 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
         open={modal === "EXPORT_FILE"}
         onClose={onCloseModal}
       ></BuildNcnModal>
-      {/* <<< เพิ่ม: เรียกใช้ ProjectListModal ที่นี่ */}
       <ProjectListModal
         open={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}

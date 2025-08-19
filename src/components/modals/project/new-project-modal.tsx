@@ -7,29 +7,19 @@ import ButtonCommon from "@/components/common/button";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { DEFAULT_SONG_INFO } from "@/modules/midi-klyr-parser/lib/processor";
-import { createProject, getProject, ProjectData } from "@/lib/database/db"; // <<< Thêm ProjectData
+import { createProject, getProject, ProjectData } from "@/lib/database/db";
+import { useRouter } from "next/navigation"; // <<< เพิ่มเข้ามา
 
 interface NewProjectModalProps {
   open: boolean;
   onClose: () => void;
-  onProjectCreated: () => void;
 }
 
-const NewProjectModal: React.FC<NewProjectModalProps> = ({
-  open,
-  onClose,
-  onProjectCreated,
-}) => {
+const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const [projectName, setProjectName] = useState("");
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
   const { loadProject } = useKaraokeStore((state) => state.actions);
-
-  const modeOptions = [
-    { label: "MIDI (.mid)", value: "midi" },
-    { label: "MP3 (.mp3)", value: "mp3" },
-    { label: "MP4 (.mp4)", value: "mp4" },
-    { label: "YouTube", value: "youtube" },
-  ];
+  const router = useRouter(); // <<< เพิ่มเข้ามา
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
@@ -38,19 +28,17 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
     }
 
     try {
-      // <<< Sửa đổi: Cập nhật cấu trúc dữ liệu ban đầu để phù hợp với schema mới
       const initialData: ProjectData = {
         playerState: {
           midiInfo: null,
-          storedFile: null, // Thay đổi rawFile, audioSrc, videoSrc thành storedFile
-          youtubeId: null,
+          storedFile: null,
           duration: null,
+          youtubeId: null,
         },
         metadata: { ...DEFAULT_SONG_INFO, TITLE: projectName },
         lyricsData: [],
         chordsData: [],
         currentTime: 0,
-        selectedLineIndex: null,
         chordPanelCenterTick: 0,
         isChordPanelAutoScrolling: true,
       };
@@ -64,11 +52,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
       const newProject = await getProject(newProjectId);
       if (newProject) {
         loadProject(newProject);
+        router.push(`/project/${newProject.id}`); // <<< เปลี่ยนหน้าไปที่โปรเจกต์ใหม่
       }
 
       setProjectName("");
       setProjectMode("midi");
-      onProjectCreated();
+      onClose(); // <<< ปิด Modal หลังจากทำงานเสร็จ
     } catch (error) {
       alert("Không thể tạo dự án.");
     }
@@ -97,7 +86,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
         />
         <SelectCommon
           label="Chế độ dự án"
-          options={modeOptions}
+          options={[
+            { label: "MIDI (.mid)", value: "midi" },
+            { label: "MP3 (.mp3)", value: "mp3" },
+            { label: "MP4 (.mp4)", value: "mp4" },
+            { label: "YouTube", value: "youtube" },
+          ]}
           value={projectMode}
           onChange={(e) => setProjectMode(e.target.value as MusicMode)}
         />
