@@ -1,4 +1,3 @@
-// src/components/panel/chords-block/index.tsx
 import React, {
   useLayoutEffect,
   useRef,
@@ -19,21 +18,16 @@ import {
 import ChordItem from "./chords/item";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
+import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import useIsMobile from "@/hooks/useIsMobile";
 import ZoomControl from "./zoom";
 
-interface ChordsBlockProps {
-  onChordClick: (tick: number) => void;
-  onAddChord: (tick?: number) => void;
-  onEditChord: (chord: any) => void;
-  onDeleteChord: (tick: number) => void;
-}
+interface ChordsBlockProps {}
 
 const PIXELS_PER_UNIT_BASE_MIDI = 0.1;
 const PIXELS_PER_UNIT_BASE_TIME = 50;
 const CHORD_ITEM_HEIGHT_PX = 34;
 
-// --- Playhead Component ---
 const Playhead = ({
   onAddChord,
   isMobile,
@@ -63,20 +57,56 @@ const Playhead = ({
   );
 };
 
-const ChordsBlock: React.FC<ChordsBlockProps> = ({
-  onChordClick,
-  onAddChord,
-  onEditChord,
-  onDeleteChord,
-}) => {
+const ChordsBlock: React.FC<ChordsBlockProps> = ({}) => {
   const mode = useKaraokeStore((state) => state.mode);
   const playerState = useKaraokeStore((state) => state.playerState);
   const chordsData = useKaraokeStore((state) => state.chordsData);
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const actions = useKaraokeStore((state) => state.actions);
+  const playerControls = usePlayerSetupStore((state) => state.playerControls);
   const isMobile = useIsMobile();
 
-  const containerRef = useRef<HTMLDivElement | null>(null); // For getting stable size
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null); // For scrolling
+  const onChordClick = (tick: number) => {
+    if (playerControls) {
+      playerControls.seek(tick);
+      if (!playerControls.isPlaying()) {
+        playerControls.play();
+      }
+    }
+  };
+
+  const onAddChord = (lineIndex: number) => {
+    const wordsInLine = lyricsData.filter((w) => w.lineIndex === lineIndex);
+    const timedWordsInLine = wordsInLine.filter(
+      (w) => w.start !== null && w.end !== null
+    );
+    const { minLineTick, maxLineTick } =
+      timedWordsInLine.length > 0
+        ? {
+            minLineTick: Math.min(...timedWordsInLine.map((w) => w.start!)),
+            maxLineTick: Math.max(...timedWordsInLine.map((w) => w.end!)),
+          }
+        : { minLineTick: undefined, maxLineTick: undefined };
+    let suggestedTick = playerControls?.getCurrentTime() ?? 0;
+    if (minLineTick !== undefined && maxLineTick !== undefined) {
+      suggestedTick = Math.max(
+        minLineTick,
+        Math.min(maxLineTick, suggestedTick)
+      );
+    } else if (suggestedTick === 0) {
+      suggestedTick = 1;
+    }
+
+    actions.openChordModal(
+      undefined,
+      Math.round(suggestedTick),
+      minLineTick,
+      maxLineTick
+    );
+  };
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
@@ -210,7 +240,7 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
     }
     const finalTick = Math.max(0, tickToAdd);
     onAddChord(finalTick);
-  }, [onAddChord, pixelsPerUnit]);
+  }, [pixelsPerUnit]);
 
   const Ruler = useMemo(() => {
     if (totalDuration === 0) return null;
@@ -361,8 +391,8 @@ const ChordsBlock: React.FC<ChordsBlockProps> = ({
                       index={index}
                       pixelsPerTick={pixelsPerUnit}
                       onChordClick={onChordClick}
-                      onEditChord={onEditChord}
-                      onDeleteChord={onDeleteChord}
+                      onEditChord={actions.openChordModal}
+                      onDeleteChord={actions.deleteChord}
                       isMobile={isMobile}
                     />
                   ))}

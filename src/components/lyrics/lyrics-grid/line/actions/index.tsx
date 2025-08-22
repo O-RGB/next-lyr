@@ -1,21 +1,23 @@
 import ButtonCommon from "@/components/common/button";
 import PopConfirmCommon from "@/components/common/popconfrim";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
 import { BiPencil, BiTrash } from "react-icons/bi";
 
 interface LineActionProps {
-  editingLineIndex?: number;
-  onEditLine?: (lineIndex: number) => void;
-  onDeleteLine?: (lineIndex: number) => void;
   lineIndex: number;
 }
 
 const LineAction: React.FC<LineActionProps> = React.memo(
-  ({ editingLineIndex, onEditLine, onDeleteLine, lineIndex }) => {
+  ({ lineIndex }) => {
+    const actions = useKaraokeStore((state) => state.actions);
     return (
       <div className="flex flex-col lg:flex-row items-center">
         <ButtonCommon
-          onClick={() => onEditLine?.(lineIndex)}
+          onClick={() => {
+            actions.selectLine(lineIndex);
+            actions.openEditModal();
+          }}
           // disabled={editingLineIndex !== null}
           title="Start Timing Edit (Ctrl+Enter)"
           color="white"
@@ -36,17 +38,12 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             size: "sm",
             className: "z-20",
           }}
-          onConfirm={() => onDeleteLine?.(lineIndex)}
+          onConfirm={() => actions.deleteLine?.(lineIndex)}
         />
       </div>
     );
   },
-  (prev, next) =>
-    prev.editingLineIndex === next.editingLineIndex &&
-    prev.lineIndex === next.lineIndex &&
-    prev.onEditLine === next.onEditLine &&
-    prev.onDeleteLine === next.onDeleteLine
+  (prev, next) => prev.lineIndex === next.lineIndex
 );
 
-LineAction.displayName = "LineAction";
 export default LineAction;

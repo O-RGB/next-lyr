@@ -2,6 +2,8 @@ import React from "react";
 import { FaPlay, FaPause, FaStop, FaFolderOpen } from "react-icons/fa";
 import Upload from "@/components/common/data-input/upload";
 import ButtonCommon from "@/components/common/button";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import { TimerRange } from "./render-time";
 
 interface CommonPlayerStyleProps {
   fileName: string;
@@ -11,7 +13,6 @@ interface CommonPlayerStyleProps {
   onStop: () => void;
   onSeek: (value: number) => void;
   duration: number;
-  currentTime: number;
   accept?: string;
   upload?: boolean;
 }
@@ -24,7 +25,6 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   onStop,
   onSeek,
   duration,
-  currentTime,
   accept,
   upload = true,
 }) => {
@@ -43,7 +43,6 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
           }}
         />
       )}
-
       {/* ปุ่มควบคุม Player */}
       <div className="flex justify-center items-center gap-2">
         <button
@@ -65,16 +64,11 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
           <FaStop className="h-5 w-5 text-gray-700" />
         </button>
       </div>
-
-      <input
-        type="range"
-        min="0"
-        max={duration || 100}
-        value={currentTime}
-        onChange={(e) => onSeek(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 disabled:opacity-50"
-        disabled={!fileName}
-      />
+      <TimerRange
+        duration={duration || 100}
+        onSeek={onSeek}
+        filename={fileName}
+      ></TimerRange>
     </div>
   );
 };

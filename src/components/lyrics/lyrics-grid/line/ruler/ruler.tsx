@@ -24,7 +24,7 @@ function RulerComponent({
 }: RulerProps) {
   const formatTimeValue = (value: number | null) => {
     if (value === null) return "N/A";
-    return mode === "mp3" ? value.toFixed(2) : value;
+    return value.toFixed(2);
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {

@@ -1,19 +1,28 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { create } from "zustand";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
-export const useTimerWorker = () => {
-  const workerRef = useRef<Worker | null>(null);
-  const actions = useKaraokeStore((state) => state.actions);
-  const mode = useKaraokeStore((state) => state.mode);
-  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
-  const projectId = useKaraokeStore((state) => state.projectId);
-  const isPlaying = useKaraokeStore((state) => state.isPlaying);
+type TimerStore = {
+  worker: Worker | null;
+  startTimer: () => void;
+  stopTimer: () => void;
+  seekTimer: (timeInSeconds: number) => void;
+  resetTimer: () => void;
+  forceStopTimer: () => void;
+  initWorker: () => void;
+  terminateWorker: () => void;
+};
 
-  useEffect(() => {
+export const useTimerStore = create<TimerStore>((set, get) => ({
+  worker: null,
+
+  initWorker: () => {
+    const karaokeActions = useKaraokeStore.getState().actions;
+    const mode = useKaraokeStore.getState().mode;
+    const midiInfo = useKaraokeStore.getState().playerState.midiInfo;
+
     const worker = new Worker(
       new URL("/public/worker/timer-worker.ts", import.meta.url)
     );
-    workerRef.current = worker;
 
     worker.onmessage = (e: MessageEvent) => {
       if (e.data.type === "tick") {
@@ -26,60 +35,46 @@ export const useTimerWorker = () => {
           midiInfo.ppq > 0
         ) {
           const converted = ((timeValue * midiInfo.bpm) / 60) * midiInfo.ppq;
-
           timeValue = converted;
         }
 
-        actions.setCurrentTime(timeValue);
+        karaokeActions.setCurrentTime(timeValue);
       }
     };
 
-    return () => {
+    set({ worker });
+  },
+
+  terminateWorker: () => {
+    const worker = get().worker;
+    if (worker) {
       worker.postMessage({ command: "stop" });
       worker.terminate();
-    };
-  }, [actions, mode, midiInfo]);
-
-  useEffect(() => {
-    stopTimer();
-    resetTimer();
-  }, [projectId, mode]);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      stopTimer();
+      set({ worker: null });
     }
-  }, [isPlaying]);
+  },
 
-  const startTimer = useCallback(() => {
-    workerRef.current?.postMessage({ command: "start" });
-  }, []);
+  startTimer: () => {
+    get().worker?.postMessage({ command: "start" });
+  },
 
-  const stopTimer = useCallback(() => {
-    workerRef.current?.postMessage({ command: "stop" });
-  }, []);
+  stopTimer: () => {
+    get().worker?.postMessage({ command: "stop" });
+  },
 
-  const seekTimer = useCallback((timeInSeconds: number) => {
-    workerRef.current?.postMessage({ command: "seek", value: timeInSeconds });
-  }, []);
+  seekTimer: (timeInSeconds: number) => {
+    get().worker?.postMessage({ command: "seek", value: timeInSeconds });
+  },
 
-  const resetTimer = useCallback(() => {
-    workerRef.current?.postMessage({ command: "reset" });
-  }, []);
+  resetTimer: () => {
+    get().worker?.postMessage({ command: "reset" });
+  },
 
-  const forceStopTimer = useCallback(() => {
-    workerRef.current?.postMessage({ command: "stop" });
-    workerRef.current?.postMessage({ command: "reset" });
-  }, []);
-
-  return useMemo(
-    () => ({
-      startTimer,
-      stopTimer,
-      seekTimer,
-      resetTimer,
-      forceStopTimer,
-    }),
-    [startTimer, stopTimer, seekTimer, resetTimer, forceStopTimer]
-  );
-};
+  forceStopTimer: () => {
+    const worker = get().worker;
+    if (worker) {
+      worker.postMessage({ command: "stop" });
+      worker.postMessage({ command: "reset" });
+    }
+  },
+}));

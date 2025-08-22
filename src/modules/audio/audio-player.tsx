@@ -8,13 +8,12 @@ import {
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import { readMp3 } from "../mp3-klyr-parser/read";
 import CommonPlayerStyle from "@/components/common/player";
-import { TimerControls } from "@/components/ui/player-host";
+import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   src: string | null;
   file?: File | null;
   onReady?: () => void;
-  timerControls: TimerControls;
 };
 
 export type AudioPlayerRef = {
@@ -26,16 +25,15 @@ export type AudioPlayerRef = {
 };
 
 const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
-  ({ src, file, onReady, timerControls }, ref) => {
+  ({ src, file, onReady }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const { loadAudioFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
       (state) => state.actions
     );
+    const timerControls = useTimerStore();
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(0);
-
-    const currentTime = useKaraokeStore((state) => state.currentTime);
 
     useImperativeHandle(ref, () => {
       return {
@@ -101,6 +99,11 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
         audio.removeEventListener("durationchange", handleDurationChange);
       };
     }, [setGlobalIsPlaying, timerControls]);
+
+    useEffect(() => {
+      timerControls.initWorker();
+      return () => timerControls.terminateWorker();
+    }, [timerControls.initWorker, timerControls.terminateWorker]);
 
     useEffect(() => {
       if (src && audioRef.current) {
@@ -175,7 +178,6 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          currentTime={currentTime}
         />
       </>
     );

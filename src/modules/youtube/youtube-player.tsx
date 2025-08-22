@@ -13,12 +13,12 @@ import InputCommon from "@/components/common/data-input/input";
 import ButtonCommon from "@/components/common/button";
 import CommonPlayerStyle from "@/components/common/player";
 import { TimerControls } from "@/components/ui/player-host";
+import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   youtubeId: string | null;
   onUrlChange: (url: string) => void;
   onReady: (event: { target: any }) => void;
-  timerControls: TimerControls;
 };
 
 export type YouTubePlayerRef = {
@@ -32,14 +32,14 @@ export type YouTubePlayerRef = {
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
-  ({ youtubeId, onUrlChange, onReady, timerControls }, ref) => {
+  ({ youtubeId, onUrlChange, onReady }, ref) => {
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(-1);
 
     const { setIsPlaying } = useKaraokeStore((state) => state.actions);
-    const currentTime = useKaraokeStore((state) => state.currentTime);
+    const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("Load a YouTube URL");
     const [duration, setDuration] = useState(0);
@@ -49,7 +49,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       pause: () => playerRef.current?.pauseVideo(),
       seek: (time: number) => {
         playerRef.current?.seekTo(time, true);
-        timerControls.seekTimer(time); // <<< เพิ่มบรรทัดนี้
+        timerControls.seekTimer(time);
       },
       getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
       isPlaying: () => playerState === 1,
@@ -107,13 +107,18 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const handleStop = () => {
       playerRef.current?.seekTo(0, true);
       playerRef.current?.pauseVideo();
-      timerControls.seekTimer(0); // <<< เพิ่มเพื่อ Sync เวลาเมื่อกด Stop
+      timerControls.seekTimer(0);
     };
 
     const handleSeek = (value: number) => {
       playerRef.current?.seekTo(value, true);
       timerControls.seekTimer(value);
     };
+
+    useEffect(() => {
+      timerControls.initWorker();
+      return () => timerControls.terminateWorker();
+    }, [timerControls.initWorker, timerControls.terminateWorker]);
 
     return (
       <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
@@ -142,7 +147,6 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          currentTime={currentTime}
           accept=""
           upload={false}
         />

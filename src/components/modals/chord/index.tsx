@@ -1,4 +1,3 @@
-// update/components/modals/chord/index.tsx
 import { useState, useEffect, useRef } from "react";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
 import ModalCommon from "../../common/modal";
@@ -8,50 +7,55 @@ import InputNumberCommon from "@/components/common/data-input/input-number";
 import { FaSave } from "react-icons/fa";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 
 type Props = {
-  initialChord?: ChordEvent;
-  suggestedTick?: number;
-  onClose: () => void;
-  onSave: (chord: ChordEvent) => void;
-  onDelete?: (tick: number) => void;
   open?: boolean;
-  minTick?: number;
-  maxTick?: number;
 };
 
-export default function ChordEditModal({
-  initialChord,
-  suggestedTick,
-  onClose,
-  onSave,
-  onDelete,
-  open = false,
-  minTick,
-  maxTick,
-}: Props) {
+export default function ChordEditModal({ open = false }: Props) {
+  const selectedChord = useKaraokeStore((state) => state.selectedChord);
+  const actions = useKaraokeStore((state) => state.actions);
+  const suggestedTick =
+    useKaraokeStore((state) => state.suggestedChordTick) ?? 0;
+  const minTick = useKaraokeStore((state) => state.minChordTickRange) ?? 0;
+  const maxTick = useKaraokeStore((state) => state.maxChordTickRange) ?? 0;
+
   const [chordText, setChordText] = useState("");
   const [tickValue, setTickValue] = useState("0");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isEditing = initialChord !== undefined;
+  const isEditing = selectedChord !== undefined;
+
+  const onSave = (chord: ChordEvent) => {
+    if (selectedChord) {
+      actions.updateChord(selectedChord.tick, chord);
+    } else {
+      actions.addChord(chord);
+    }
+  };
+
+  const onDelete = (tick: number) => {
+    if (selectedChord) {
+      actions.deleteChord(tick);
+    }
+  };
 
   useEffect(() => {
-    // Update state when modal opens or initialChord/suggestedTick changes
     if (open) {
-      if (initialChord) {
-        setChordText(initialChord.chord);
-        setTickValue(initialChord.tick.toString());
+      if (selectedChord) {
+        setChordText(selectedChord.chord);
+        setTickValue(selectedChord.tick.toString());
       } else if (suggestedTick !== undefined) {
-        setChordText(""); // Clear chord text for new chord
+        setChordText("");
         setTickValue(suggestedTick.toString());
       } else {
         setChordText("");
-        setTickValue("0"); // Default for new chord if no suggestion
+        setTickValue("0");
       }
       inputRef.current?.focus();
     }
-  }, [open, initialChord, suggestedTick]); // Depend on open, initialChord, and suggestedTick
+  }, [open, selectedChord, suggestedTick]);
 
   const handleSave = () => {
     const tick = parseInt(tickValue, 10);
@@ -88,11 +92,10 @@ export default function ChordEditModal({
 
   const handleDelete = () => {
     if (
-      initialChord &&
-      onDelete &&
+      selectedChord &&
       confirm("Are you sure you want to delete this chord?")
     ) {
-      onDelete(initialChord.tick);
+      onDelete(selectedChord.tick);
     }
   };
 
@@ -106,20 +109,32 @@ export default function ChordEditModal({
   return (
     <ModalCommon
       title={isEditing ? "Edit Chord" : "Add New Chord"}
-      onClose={onClose}
+      onClose={actions.closeChordModal}
       open={open}
       footer={
         <div className="flex justify-between gap-3 pt-2">
-          {isEditing && onDelete && (
-            <ButtonCommon onClick={handleDelete} color="danger" icon={<MdDelete></MdDelete>}>
+          {isEditing && (
+            <ButtonCommon
+              onClick={handleDelete}
+              color="danger"
+              icon={<MdDelete></MdDelete>}
+            >
               Delete
             </ButtonCommon>
           )}
           <div className="flex gap-3 ml-auto">
-            <ButtonCommon onClick={onClose} color="gray"  icon={<IoArrowBackCircle />}>
+            <ButtonCommon
+              onClick={actions.closeChordModal}
+              color="gray"
+              icon={<IoArrowBackCircle />}
+            >
               Cancel
             </ButtonCommon>
-            <ButtonCommon onClick={handleSave} color="primary" icon={<FaSave></FaSave>}>
+            <ButtonCommon
+              onClick={handleSave}
+              color="primary"
+              icon={<FaSave></FaSave>}
+            >
               Save Changes
             </ButtonCommon>
           </div>

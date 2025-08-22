@@ -9,12 +9,12 @@ import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
 import CommonPlayerStyle from "@/components/common/player";
 import { TimerControls } from "@/components/ui/player-host";
+import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   src: string | null;
   file?: File | null;
   onReady?: () => void;
-  timerControls: TimerControls;
 };
 
 export type VideoPlayerRef = {
@@ -27,12 +27,12 @@ export type VideoPlayerRef = {
 };
 
 const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
-  ({ src, file, onReady, timerControls }, ref) => {
+  ({ src, file, onReady }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const { loadVideoFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
       (state) => state.actions
     );
-    const currentTime = useKaraokeStore((state) => state.currentTime);
+    const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("");
     const [isPlaying, setIsPlaying] = useState(false);
@@ -84,6 +84,11 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
         setFileName(file.name);
       }
     }, [file]);
+
+    useEffect(() => {
+      timerControls.initWorker();
+      return () => timerControls.terminateWorker();
+    }, [timerControls.initWorker, timerControls.terminateWorker]);
 
     useEffect(() => {
       if (src && videoRef.current) {
@@ -147,7 +152,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          currentTime={currentTime}
           accept="video/mp4"
         />
       </Card>

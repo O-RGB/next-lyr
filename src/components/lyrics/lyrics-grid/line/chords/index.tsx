@@ -1,53 +1,46 @@
-// update/components/lyrics/lyrics-grid/draggable-chord-tag.tsx
-import React from "react";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import Tags from "../../../../common/tags";
+import React, { useEffect } from "react";
+import DraggableChordTag from "./chord";
 import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 
-export interface DraggableChordTagProps {
-  chord: ChordEvent;
-  initialLeftPercentage: number;
-  onClick: () => void;
+interface ChordsListLineProps {
+  lineIndex: number;
+
+  chords: ChordEvent[];
+  rulerStartTime: number;
+  lineDuration: number;
+  onChordClick?: (chord: ChordEvent) => void;
 }
 
-const DraggableChordTag: React.FC<DraggableChordTagProps> = ({
-  chord,
-  initialLeftPercentage,
-  onClick,
+const ChordsListLine: React.FC<ChordsListLineProps> = ({
+  lineIndex,
+  chords,
+  lineDuration,
+  onChordClick,
+  rulerStartTime,
 }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `chord-${chord.tick}`,
-      data: { chord },
-    });
-
-  const style: React.CSSProperties = {
-    position: "absolute",
-    left: `${initialLeftPercentage}%`,
-    top: "-0.65rem",
-    transform: CSS.Translate.toString(transform),
-    zIndex: isDragging ? 50 : 10,
-    touchAction: "none",
-  };
+  useEffect(() => {}, [chords]);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      onClick={onClick}
-    >
-      <Tags
-        disabledTooltip={isDragging}
-        text={chord.chord}
-        className="cursor-grab"
-        tagsClassName={"text-[8px]"}
-        hoverText={`Tick: ${chord.tick}`}
-      />
+    <div className="absolute h-5 w-full -top-1">
+      {chords.map((chord, i) => {
+        const firstWordTick = rulerStartTime ?? 0;
+        const totalLineTick = lineDuration || 1;
+        const pos =
+          totalLineTick > 0
+            ? ((chord.tick - firstWordTick) / totalLineTick) * 100
+            : 0;
+        return (
+          <DraggableChordTag
+            key={`${chord.tick}-${i}`}
+            chord={chord}
+            initialLeftPercentage={pos}
+            onClick={() => onChordClick?.(chord)}
+          />
+        );
+      })}
     </div>
   );
 };
 
-export default DraggableChordTag;
+export default ChordsListLine;

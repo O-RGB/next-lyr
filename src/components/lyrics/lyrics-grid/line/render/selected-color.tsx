@@ -7,13 +7,16 @@ interface SelectedColorLineProps {
 
 const SelectedColorLine: React.FC<SelectedColorLineProps> = ({ lineIndex }) => {
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
-  return (
-    <div
-      className={`${
-        selectedLineIndex === lineIndex ? "bg-blue-50" : ""
-      } absolute w-full h-full top-0 left-0 z-1`}
-    ></div>
-  );
+
+  if (selectedLineIndex === lineIndex) {
+    return (
+      <div
+        className={`bg-blue-50 absolute w-full h-full top-0 left-0 z-1`}
+      ></div>
+    );
+  } else {
+    return null;
+  }
 };
 
 export default SelectedColorLine;

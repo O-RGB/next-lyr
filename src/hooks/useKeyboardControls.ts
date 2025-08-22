@@ -1,4 +1,3 @@
-// src/hooks/useKeyboardControls.ts
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
@@ -32,7 +31,10 @@ export const useKeyboardControls = (
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log("includes((e.target as HTMLElement).tagName)", ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName));
+      console.log(
+        "includes((e.target as HTMLElement).tagName)",
+        ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)
+      );
       console.log("player", player);
       if (
         ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
@@ -41,12 +43,9 @@ export const useKeyboardControls = (
       )
         return;
 
-      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-      // สร้างตัวแปรเช็คสถานะ "กำลังปาดเนื้อร้อง"
       console.log("isTimingActive", isTimingActive);
       console.log("editingLineIndex", editingLineIndex);
       const isStampingMode = isTimingActive || editingLineIndex !== null;
-      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
       if (e.ctrlKey && e.code === "KeyZ") {
         e.preventDefault();
@@ -63,8 +62,6 @@ export const useKeyboardControls = (
         ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
         : 0;
 
-      // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-      // ถ้าไม่ได้อยู่ในโหมดปาดเนื้อร้อง ให้ทำงานตามปกติ
       if (!isStampingMode) {
         if (e.code === "ArrowUp") {
           e.preventDefault();
@@ -103,18 +100,15 @@ export const useKeyboardControls = (
           return;
         }
       }
-      // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
       if (e.code === "Space") {
         console.log("Space");
         e.preventDefault();
-        // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-        // ถ้ากำลังปาดเนื้อร้องอยู่ ห้ามกด Spacebar เพื่อหยุดเพลง
+
         console.log("isStampingMode", isStampingMode);
         if (isStampingMode) {
           return;
         }
-        // ^^^^^^^^^^ สิ้นสุดจุดแก้ไข ^^^^^^^^^^
 
         if (isPlaying) {
           player.pause();
@@ -149,10 +143,7 @@ export const useKeyboardControls = (
         return;
       }
 
-      if (
-        isStampingMode && // vvvvvvvvvv จุดแก้ไข vvvvvvvvvv
-        e.code === "ArrowLeft"
-      ) {
+      if (isStampingMode && e.code === "ArrowLeft") {
         e.preventDefault();
         if (currentIndex <= 0) return;
 
@@ -209,7 +200,6 @@ export const useKeyboardControls = (
             player.pause();
             actions.stopTiming();
           } else if (isLineEnd) {
-            // ไม่ต้องทำอะไรพิเศษเมื่อจบ line, ปล่อยให้ stopTiming ทำงานเอง
           } else {
             actions.goToNextWord();
           }

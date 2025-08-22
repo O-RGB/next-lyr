@@ -1,7 +1,7 @@
 "use client";
 
 import NavBar from "@/components/navbar";
-import LyrEditerPanel from "@/components/ui";
+import LyrEditerPanel from "@/components/ui/panel";
 import { getProject } from "@/lib/database/db";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React, { useEffect, useState, useCallback } from "react";

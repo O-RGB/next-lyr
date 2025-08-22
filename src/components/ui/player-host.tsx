@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useRef,
   useEffect,
+  useState,
 } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import MidiPlayer, { MidiPlayerRef } from "@/modules/js-synth/player";
@@ -13,7 +14,7 @@ import VideoPlayer, { VideoPlayerRef } from "@/modules/video/video-player";
 import YoutubePlayer, {
   YouTubePlayerRef,
 } from "@/modules/youtube/youtube-player";
-import AllowSound from "@/allow-sound";
+import { usePlayerSetup } from "@/hooks/usePlayerSetup";
 
 export type TimerControls = {
   startTimer: () => void;
@@ -32,11 +33,10 @@ export type PlayerRef = {
 
 type PlayerHostProps = {
   onReady?: () => void;
-  timerControls: TimerControls;
 };
 
 const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
-  ({ onReady, timerControls }, ref) => {
+  ({ onReady }, ref) => {
     const mode = useKaraokeStore((state) => state.mode);
     const playerState = useKaraokeStore((state) => state.playerState);
     const actions = useKaraokeStore((state) => state.actions);
@@ -100,7 +100,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             onReady={() => {
               onReady?.();
             }}
-            timerControls={timerControls}
           />
         );
       case "mp3":
@@ -112,7 +111,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             onReady={() => {
               onReady?.();
             }}
-            timerControls={timerControls}
           />
         );
       case "mp4":
@@ -124,7 +122,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             onReady={() => {
               onReady?.();
             }}
-            timerControls={timerControls}
           />
         );
       case "youtube":
@@ -134,7 +131,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
             youtubeId={playerState.youtubeId}
             onUrlChange={handleYoutubeUrlChange}
             onReady={onPlayerReady}
-            timerControls={timerControls}
           />
         );
       default:

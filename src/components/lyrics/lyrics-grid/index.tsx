@@ -1,119 +1,37 @@
-import React, {
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
-import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragMoveEvent,
-} from "@dnd-kit/core";
+import React, { useMemo, useRef, useCallback } from "react";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
-import LineRow from "./line";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import AutoMoveToLine from "./line/render/auto-move";
+import LineRow from "./line";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 
-export interface LyricsGridProps {
-  lyricsData: LyricWordData[];
-  onWordClick: (index: number) => void;
-  onEditLine: (lineIndex: number) => void;
-  onDeleteLine: (lineIndex: number) => void;
-  onWordUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
-  onWordDelete: (index: number) => void;
-  onRulerClick: (
-    lineIndex: number,
-    tickPercentage: number,
-    lineDuration: number
-  ) => void;
-  onChordClick: (chord: ChordEvent) => void;
-  onAddChordClick: (lineIndex: number) => void;
-  mode: MusicMode | null;
-}
+export interface LyricsGridProps {}
 
-const LyricsGrid: React.FC<LyricsGridProps> = ({
-  lyricsData,
-  onEditLine,
-  onDeleteLine,
-  onWordClick,
-  onWordUpdate,
-  onWordDelete,
-  onRulerClick,
-  onChordClick,
-  onAddChordClick,
-  mode,
-}) => {
-  const chords = useKaraokeStore((state) => state.chordsData);
-  const actions = useKaraokeStore((state) => state.actions);
+const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
+  const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
+  const mode = useKaraokeStore((state) => state.mode);
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const chordsData = useKaraokeStore((state) => state.chordsData);
+
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const wordRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const groupedLines = useMemo(() => {
+    if (!lyricsData?.length) return [];
 
-  const currentIndex = useKaraokeStore((state) => state.currentIndex);
-  const playbackIndex = useKaraokeStore((state) => state.playbackIndex);
-  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
-  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
-
-  const [draggingChord, setDraggingChord] = useState<{
-    tick: number;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  useEffect(() => {
-    const isStamping = isTimingActive || editingLineIndex !== null;
-    const activeIndex = isStamping ? currentIndex : playbackIndex;
-
-    if (activeIndex === null) return;
-
-    const wordElement = wordRefs.current[activeIndex];
-    const lineContentElement = wordElement?.parentElement;
-
-    if (wordElement && lineContentElement) {
-      const lineRect = lineContentElement.getBoundingClientRect();
-      const wordRect = wordElement.getBoundingClientRect();
-
-      const isVisibleHorizontally =
-        wordRect.left >= lineRect.left && wordRect.right <= lineRect.right;
-
-      if (!isVisibleHorizontally) {
-        const scrollLeftTarget =
-          wordElement.offsetLeft +
-          wordElement.offsetWidth / 2 -
-          lineContentElement.offsetWidth / 2;
-
-        lineContentElement.scrollTo({
-          left: scrollLeftTarget,
-          behavior: "auto",
-        });
-      }
-    }
-  }, [currentIndex, playbackIndex, isTimingActive, editingLineIndex]);
-
-  const memoizedLines = useMemo(() => {
-    if (!lyricsData || lyricsData.length === 0) return [];
-
-    const groupedByLine: LyricWordData[][] = [];
-    lyricsData.forEach((word: LyricWordData) => {
-      if (!groupedByLine[word.lineIndex]) {
-        groupedByLine[word.lineIndex] = [];
-      }
-      groupedByLine[word.lineIndex].push(word);
+    const grouped: LyricWordData[][] = [];
+    lyricsData.forEach((word) => {
+      if (!grouped[word.lineIndex]) grouped[word.lineIndex] = [];
+      grouped[word.lineIndex].push(word);
     });
-    groupedByLine.forEach((line) => line.sort((a, b) => a.index - b.index));
 
-    return groupedByLine.map((line, lineIndex) => {
+    return grouped.map((line, lineIndex) => {
+      line.sort((a, b) => a.index - b.index);
+
       const rulerStartTime = line[0]?.start ?? null;
-      const nextLineStartTime =
-        groupedByLine[lineIndex + 1]?.[0]?.start ?? Infinity;
-
+      const nextLineStartTime = grouped[lineIndex + 1]?.[0]?.start ?? Infinity;
       const lineChords =
         rulerStartTime !== null
-          ? chords.filter(
+          ? chordsData.filter(
               (chord: ChordEvent) =>
                 chord.tick >= rulerStartTime && chord.tick < nextLineStartTime
             )
@@ -121,151 +39,31 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({
 
       return { line, lineIndex, lineChords };
     });
-  }, [lyricsData, chords]);
-
-  const handleEditLine = useCallback(
-    (lineIndex: number) => {
-      onEditLine(lineIndex);
-    },
-    [onEditLine]
-  );
-
-  const handleDeleteLine = useCallback(
-    (lineIndex: number) => {
-      onDeleteLine(lineIndex);
-    },
-    [onDeleteLine]
-  );
+  }, [lyricsData, chordsData]);
 
   const setLineRef = useCallback((el: HTMLDivElement | null, index: number) => {
     lineRefs.current[index] = el;
   }, []);
 
-  const setWordRef = useCallback((el: HTMLDivElement | null, index: number) => {
-    wordRefs.current[index] = el;
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
-
-  const handleDragMove = (event: DragMoveEvent) => {
-    const { active, over, delta } = event;
-    if (!over || !active.data.current) return;
-
-    const chord = active.data.current.chord as ChordEvent;
-    const targetLineId = over.id.toString();
-    if (!targetLineId.startsWith("line-")) return;
-
-    const targetLineIndex = parseInt(targetLineId.split("-")[1]);
-    const targetLineRef = lineRefs.current[targetLineIndex];
-    if (!targetLineRef) return;
-
-    const lineRect = targetLineRef.getBoundingClientRect();
-    const dropPositionX = active.rect.current.initial!.left + delta.x;
-    const relativeX = dropPositionX - lineRect.left;
-
-    const lineWords = memoizedLines[targetLineIndex].line;
-    const lineStartTime = lineWords[0]?.start;
-    const lineEndTime = lineWords[lineWords.length - 1]?.end;
-    if (lineStartTime === null || lineEndTime === null) return;
-
-    const lineDuration = lineEndTime - lineStartTime;
-    const percentage = Math.max(0, Math.min(1, relativeX / lineRect.width));
-    const previewTick = Math.round(lineStartTime + percentage * lineDuration);
-
-    setDraggingChord({
-      tick: previewTick,
-      x: dropPositionX,
-      y: lineRect.top - 20,
-    });
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setDraggingChord(null);
-    const { active, over, delta } = event;
-    if (!over || !active.data.current) return;
-
-    const originalChord = active.data.current.chord as ChordEvent;
-    const targetLineId = over.id.toString();
-    if (!targetLineId.startsWith("line-")) return;
-
-    const targetLineIndex = parseInt(targetLineId.split("-")[1]);
-    const targetLineRef = lineRefs.current[targetLineIndex];
-    if (!targetLineRef) return;
-
-    const lineRect = targetLineRef.getBoundingClientRect();
-    const dropPositionX = active.rect.current.initial!.left + delta.x;
-    const relativeX = dropPositionX - lineRect.left;
-
-    const lineWords = memoizedLines[targetLineIndex].line;
-    const lineStartTime = lineWords[0]?.start;
-    const lineEndTime = lineWords[lineWords.length - 1]?.end;
-    if (lineStartTime === null || lineEndTime === null) return;
-
-    const lineDuration = lineEndTime - lineStartTime;
-    const percentage = Math.max(0, Math.min(1, relativeX / lineRect.width));
-    const newTick = Math.round(lineStartTime + percentage * lineDuration);
-
-    actions.updateChord(originalChord.tick, {
-      ...originalChord,
-      tick: newTick,
-    });
-  };
-
   return (
     <>
       <AutoMoveToLine lineRefs={lineRefs} />
-      <DndContext
-        sensors={sensors}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="h-full bg-white border border-slate-300 overflow-auto">
-          <div className="flex flex-col divide-y ">
-            {memoizedLines.map(({ line, lineIndex, lineChords }) => (
-              <LineRow
-                key={lineIndex}
-                line={line}
-                lineIndex={lineIndex}
-                lineRef={(el) => setLineRef(el, lineIndex)}
-                setWordRef={setWordRef}
-                chords={lineChords}
-                onEditLine={handleEditLine}
-                onDeleteLine={handleDeleteLine}
-                onWordClick={onWordClick}
-                onWordUpdate={onWordUpdate}
-                onWordDelete={onWordDelete}
-                onRulerClick={onRulerClick}
-                onChordClick={onChordClick}
-                onAddChordClick={onAddChordClick}
-                mode={mode}
-              />
-            ))}
-          </div>
+      <div className="h-full bg-white border border-slate-300 overflow-auto">
+        <div className="flex flex-col divide-y">
+          {groupedLines.map(({ line, lineIndex, lineChords }) => (
+            <LineRow
+              lineRef={(el) => setLineRef(el, lineIndex)}
+              key={lineIndex}
+              line={line}
+              lineIndex={lineIndex}
+              chords={lineChords}
+              onWordClick={onWordClick}
+              onWordDelete={() => {}}
+              mode={mode}
+            />
+          ))}
         </div>
-      </DndContext>
-      {draggingChord && (
-        <div
-          style={{
-            position: "fixed",
-            top: draggingChord.y,
-            left: draggingChord.x,
-            backgroundColor: "rgba(0,0,0,0.75)",
-            color: "#fff",
-            padding: "2px 6px",
-            fontSize: "10px",
-            pointerEvents: "none",
-            transform: "translate(-50%, -100%)",
-            whiteSpace: "nowrap",
-            zIndex: 9999,
-          }}
-        >
-          Tick: {draggingChord.tick}
-        </div>
-      )}
+      </div>
     </>
   );
 };

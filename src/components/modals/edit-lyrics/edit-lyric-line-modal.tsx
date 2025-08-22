@@ -4,20 +4,19 @@ import { FaSave } from "react-icons/fa";
 import { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputCommon from "@/components/common/data-input/input";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 
 interface EditLyricLineModalProps {
   open?: boolean;
-  lyricsData: LyricWordData[];
-  handleEditLine: (lineIndex: number) => void;
 }
 
-export default function EditLyricLineModal({
-  open,
-  lyricsData,
-  handleEditLine,
-}: EditLyricLineModalProps) {
+export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const actions = useKaraokeStore((state) => state.actions);
+  const handleEditLine = usePlayerHandlersStore(
+    (state) => state.handleEditLine
+  );
 
   const [initialInputText, setInitialInputText] = useState<string>();
 

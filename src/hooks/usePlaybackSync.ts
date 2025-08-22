@@ -1,3 +1,4 @@
+// src/hooks/usePlaybackSync.ts
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 import { PlayerControls } from "./useKeyboardControls";
@@ -18,7 +19,7 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
 
     if (!playerControls.isPlaying() && currentTime > 0) {
       actions.setIsPlaying(false);
-            return;
+      return;
     }
 
     if (isTimingActive && correctionIndex === null) {

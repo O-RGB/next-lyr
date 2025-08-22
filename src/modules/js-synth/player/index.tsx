@@ -10,6 +10,7 @@ import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import CommonPlayerStyle from "@/components/common/player";
 import { TimerControls } from "@/components/ui/player-host";
+import { useTimerStore } from "@/hooks/useTimerWorker";
 
 export type MidiPlayerRef = {
   play: () => void;
@@ -22,17 +23,16 @@ export type MidiPlayerRef = {
 interface MidiPlayerProps {
   file?: File | null;
   onReady?: () => void;
-  timerControls: TimerControls;
 }
 
 const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
-  ({ file, onReady, timerControls }, ref) => {
+  ({ file, onReady }, ref) => {
     const [player, setPlayer] = useState<JsSynthPlayerEngine | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(0);
+    const timerControls = useTimerStore();
 
-    const currentTime = useKaraokeStore((state) => state.currentTime);
     const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
     const { loadMidiFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
       (state) => state.actions
@@ -136,6 +136,11 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     };
 
     useEffect(() => {
+      timerControls.initWorker();
+      return () => timerControls.terminateWorker();
+    }, [timerControls.initWorker, timerControls.terminateWorker]);
+
+    useEffect(() => {
       initialize();
     }, []);
 
@@ -166,7 +171,6 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         onStop={handleStop}
         onSeek={handleSeek}
         duration={duration}
-        currentTime={currentTime}
         accept=".mid,.midi"
       />
     );

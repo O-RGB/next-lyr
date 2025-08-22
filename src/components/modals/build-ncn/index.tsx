@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import ModalCommon from "../../common/modal";
 import { LyrBuilder } from "@/lib/karaoke/lyrics/generator";
-import curGenerator, {
-  TickLyricSegmentGenerator,
-} from "@/lib/karaoke/cur-generator";
+import { TickLyricSegmentGenerator } from "@/lib/karaoke/cur-generator";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import ButtonCommon from "@/components/common/button";
 import { MdOutlineFileDownload } from "react-icons/md";
