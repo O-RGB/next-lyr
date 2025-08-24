@@ -13,6 +13,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@types/pako": "^2.0.3",
+    "dexie": "^4.2.0",
     "grapheme-splitter": "^1.0.4",
     "iconv-lite": "^0.6.3",
     "js-synthesizer": "^1.11.0",
