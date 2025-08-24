@@ -5,17 +5,24 @@
 html {
   height: 100%;
   max-height: 100vh;
-  /* overflow: hidden; */
+  overflow: hidden;
 }
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  user-select: none;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: none;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
+  @apply min-h-dvh;
 }
 
 * {
   touch-action: manipulation;
 }
-
 
 @layer base {
   .font-outline {

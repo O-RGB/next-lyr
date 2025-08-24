@@ -5,7 +5,6 @@ import React, {
   useImperativeHandle,
   useRef,
   useEffect,
-  useState,
 } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import MidiPlayer, { MidiPlayerRef } from "@/modules/js-synth/player";
@@ -14,7 +13,6 @@ import VideoPlayer, { VideoPlayerRef } from "@/modules/video/video-player";
 import YoutubePlayer, {
   YouTubePlayerRef,
 } from "@/modules/youtube/youtube-player";
-import { usePlayerSetup } from "@/hooks/usePlayerSetup";
 
 export type TimerControls = {
   startTimer: () => void;

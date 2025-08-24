@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import PlayerSetupWapper from "./wapper";
 import PlayerHost, { PlayerRef } from "../../player-host";
+import AllowSound from "@/allow-sound";
 
 interface PlayerInitProps {}
 
@@ -13,12 +14,16 @@ const PlayerInit: React.FC<PlayerInitProps> = ({}) => {
         isPlayerReady={isPlayerReady}
         onPlayerCreated={setPlayerRef}
       ></PlayerSetupWapper>
-      <PlayerHost
-        ref={playerRef}
-        onReady={() => {
-          setIsPlayerReady(true);
-        }}
-      />
+      <AllowSound>
+        <div className="hidden lg:block">
+          <PlayerHost
+            ref={playerRef}
+            onReady={() => {
+              setIsPlayerReady(true);
+            }}
+          />
+        </div>
+      </AllowSound>
     </>
   );
 };

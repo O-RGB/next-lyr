@@ -142,7 +142,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
     }, [file, videoRef]);
 
     return (
-      <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
+      <Card className="bg-white/50 p-2 lg:p-4 rounded-lg w-full space-y-3">
         <video
           ref={videoRef}
           src={src || ""}

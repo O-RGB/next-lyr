@@ -7,7 +7,7 @@ type Props = {};
 
 export default function LyricsPanel({}: Props) {
   return (
-    <Card className="flex flex-col p-4 h-full bg-gray-50 space-y-2">
+    <Card className="flex flex-col p-2 lg:p-4 h-full bg-gray-50 space-y-2">
       <div className="flex justify-between">
         <div className="text-lg font-semibold mb-2 ">Lyric</div>
         <div>
