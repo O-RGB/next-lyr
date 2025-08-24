@@ -1,15 +1,15 @@
-import { loadWords } from "@/lib/wordcut";
 import React, { useEffect, useState } from "react";
+import ModalCommon from "../../common/modal";
+import ButtonCommon from "../../common/button";
+import Upload from "@/components/common/data-input/upload";
+import TextareaCommon from "@/components/common/data-input/textarea";
+import { loadWords } from "@/lib/wordcut";
 import { BiImport } from "react-icons/bi";
 import { BsStars } from "react-icons/bs";
 import { FaFile } from "react-icons/fa";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
-import ModalCommon from "../../common/modal";
-import ButtonCommon from "../../common/button";
-import Upload from "@/components/common/data-input/upload";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
-import TextareaCommon from "@/components/common/data-input/textarea";
 
 interface ReadLyricsModalProps {
   open?: boolean;
@@ -101,12 +101,12 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         open={openModal}
         onClose={handleCloseModal}
         footer={
-          <div className="flex gap-2 flex-col lg:flex-row items-center justify-end">
+          <div className="flex gap-2 flex-wrap lg:flex-row items-center justify-end">
             <ButtonCommon
               onClick={onClose}
               icon={<IoArrowBackCircle></IoArrowBackCircle>}
               color="gray"
-              className="w-full lg:w-auto"
+              className="text-nowrap"
             >
               Close
             </ButtonCommon>
@@ -115,12 +115,12 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               disabled={lyricsText.length <= 0}
               icon={<BsStars></BsStars>}
               color="success"
-              className="w-full lg:w-auto"
+              className="text-nowrap"
             >
               ตัดคำอัตโนมัติ
             </ButtonCommon>
             <Upload
-              className="w-full lg:w-auto"
+              className="text-nowrap"
               multiple={false}
               preview={false}
               onChange={(files) => {
@@ -130,7 +130,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               }}
               customNode={
                 <ButtonCommon
-                  className="w-full lg:w-autotext-nowrap"
+                  className="text-nowrap"
                   icon={<FaFile></FaFile>}
                   color="secondary"
                 >
@@ -139,7 +139,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               }
             ></Upload>
             <ButtonCommon
-              className="w-full lg:w-auto"
+              className="text-nowrap"
               onClick={handleOnAdd}
               icon={<BiImport></BiImport>}
             >
@@ -151,7 +151,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         <TextareaCommon
           value={lyricsText}
           onChange={onTextChange}
-          className="h-[300px] lg:h-[400px]"
+          className="!h-[300px] lg:!h-[400px] text-sm lg:text-lg"
         ></TextareaCommon>
       </ModalCommon>
     </>

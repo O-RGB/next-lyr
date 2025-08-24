@@ -59,13 +59,13 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         <MdClose className="text-gray-600 text-xl hover:text-gray-800 transition-colors" />
       }
       classNames={{
-        modal: "!w-[90vw] lg:!w-[800px]",
+        modal: "!w-[90vw] lg:!w-[800px] p-[18px] lg:p-[24px]",
         ...props.classNames,
       }}
       styles={{
         modal: {
           borderRadius: "8px",
-          padding: "24px",
+          // padding: "24px",
           backgroundColor: "white",
           boxShadow:
             "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",

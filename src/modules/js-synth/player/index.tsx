@@ -4,13 +4,12 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import CommonPlayerStyle from "@/components/common/player";
 import { JsSynthEngine } from "../lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "../lib/js-synth-player";
-import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import CommonPlayerStyle from "@/components/common/player";
-import { TimerControls } from "@/components/ui/player-host";
 import { useTimerStore } from "@/hooks/useTimerWorker";
+import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
 
 export type MidiPlayerRef = {
   play: () => void;
@@ -166,12 +165,12 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       <CommonPlayerStyle
         fileName={fileName}
         isPlaying={isPlaying}
-        onFileChange={handleFileChange}
+        // onFileChange={handleFileChange}
         onPlayPause={handlePlayPause}
         onStop={handleStop}
         onSeek={handleSeek}
         duration={duration}
-        accept=".mid,.midi"
+        // accept=".mid,.midi"
       />
     );
   }

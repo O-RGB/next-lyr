@@ -1,48 +1,28 @@
+// src/components/common/player/index.tsx
 import React from "react";
-import { FaPlay, FaPause, FaStop, FaFolderOpen } from "react-icons/fa";
-import Upload from "@/components/common/data-input/upload";
-import ButtonCommon from "@/components/common/button";
+import { FaPlay, FaPause, FaStop } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { TimerRange } from "./render-time";
 
 interface CommonPlayerStyleProps {
   fileName: string;
   isPlaying: boolean;
-  onFileChange: (file: File) => void;
   onPlayPause: () => void;
   onStop: () => void;
   onSeek: (value: number) => void;
   duration: number;
-  accept?: string;
-  upload?: boolean;
 }
 
 const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   fileName,
   isPlaying,
-  onFileChange,
   onPlayPause,
   onStop,
   onSeek,
   duration,
-  accept,
-  upload = true,
 }) => {
   return (
     <div className="bg-white/50 p-4 rounded-lg flex items-center justify-center gap-4 w-full">
-      {/* ส่วนอัปโหลดไฟล์ */}
-      {upload && (
-        <Upload
-          customNode={<ButtonCommon icon={<FaFolderOpen />}></ButtonCommon>}
-          accept={accept}
-          className="flex-none"
-          preview={false}
-          onChange={(files) => {
-            const [file] = files;
-            if (file) onFileChange(file);
-          }}
-        />
-      )}
       {/* ปุ่มควบคุม Player */}
       <div className="flex justify-center items-center gap-2">
         <button

@@ -147,12 +147,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
         <CommonPlayerStyle
           fileName={fileName}
           isPlaying={isPlaying}
-          onFileChange={handleFileChange}
+          // onFileChange={handleFileChange}
           onPlayPause={handlePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          accept="video/mp4"
+          // accept="video/mp4"
         />
       </Card>
     );

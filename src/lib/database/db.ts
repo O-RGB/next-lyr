@@ -1,7 +1,8 @@
 import Dexie, { Table } from "dexie";
-import { KaraokeState } from "@/stores/karaoke-store";
 import { MusicMode, IMidiInfo } from "@/types/common.type";
-import { generateUUID } from "@/lib/uuid"; // Import a function to generate UUIDs
+import { generateUUID } from "@/lib/uuid";
+import { KaraokeState } from "@/stores/karaoke-store/types";
+import { createStoredFileFromFile } from "@/stores/karaoke-store/utils";
 
 export interface StoredFile {
   buffer: ArrayBuffer;
@@ -21,13 +22,10 @@ export interface ProjectData {
   lyricsData: KaraokeState["lyricsData"];
   chordsData: KaraokeState["chordsData"];
   metadata: KaraokeState["metadata"];
-  currentTime: KaraokeState["currentTime"];
-  chordPanelCenterTick: KaraokeState["chordPanelCenterTick"];
-  isChordPanelAutoScrolling: KaraokeState["isChordPanelAutoScrolling"];
 }
 
 export interface Project {
-  id: string; // Changed from number to string for UUID
+  id: string;
   name: string;
   mode: MusicMode;
   data: ProjectData;
@@ -42,7 +40,7 @@ export class MySubClassedDexie extends Dexie {
     super("karaokeProjectDB");
 
     this.version(6).stores({
-      projects: "&id, name, createdAt, updatedAt", // Use '&id' for primary key UUID
+      projects: "&id, name, createdAt, updatedAt",
     });
   }
 }
@@ -52,11 +50,18 @@ const db = new MySubClassedDexie();
 export const createProject = async (
   name: string,
   mode: MusicMode,
-  initialData: ProjectData
+  initialData: ProjectData,
+  musicFile: File | null
 ): Promise<string> => {
   try {
+    if (musicFile) {
+      initialData.playerState.storedFile = await createStoredFileFromFile(
+        musicFile
+      );
+    }
+
     const newProject: Project = {
-      id: generateUUID(), // Generate UUID for the new project
+      id: generateUUID(),
       name,
       mode,
       data: initialData,

@@ -122,7 +122,7 @@ const Upload: React.FC<UploadProps> = ({
   const renderDropzone = () => (
     <div
       className={`
-        relative border-2 border-dashed rounded-lg p-6 transition-all duration-200
+        relative border-2 border-dashed rounded-lg p-6 transition-all duration-200 text-center
         ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300"}
         ${
           disabled
@@ -141,8 +141,10 @@ const Upload: React.FC<UploadProps> = ({
       onDrop={handleDrop}
       onClick={openFileDialog}
     >
-      {icon || <MdCloudUpload className="text-4xl text-blue-500" />}
-      <p className="text-gray-700 font-medium text-center">
+      <div className="flex items-center justify-center">
+        {icon || <MdCloudUpload className="text-4xl text-blue-500" />}
+      </div>
+      <p className="text-gray-700 font-medium ">
         Drag and drop files or click to browse
       </p>
       <p className="text-sm text-gray-500">

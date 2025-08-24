@@ -1,14 +1,21 @@
-// src/components/modals/project/new-project-modal.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ModalCommon from "@/components/common/modal";
-import InputCommon from "@/components/common/data-input/input";
 import SelectCommon from "@/components/common/data-input/select";
 import ButtonCommon from "@/components/common/button";
+import Upload from "@/components/common/data-input/upload";
+import MetadataForm from "@/components/metadata/metadata-form";
+import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { DEFAULT_SONG_INFO } from "@/modules/midi-klyr-parser/lib/processor";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
-import { useRouter } from "next/navigation"; // <<< เพิ่มเข้ามา
+import { useRouter } from "next/navigation";
+import { readMp3 } from "@/modules/mp3-klyr-parser/read";
+import { JsSynthEngine } from "@/modules/js-synth/lib/js-synth-engine";
+import {
+  DEFAULT_SONG_INFO,
+  SongInfo,
+} from "@/modules/midi-klyr-parser/lib/processor";
+import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -16,76 +23,179 @@ interface NewProjectModalProps {
 }
 
 const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
-  const [projectName, setProjectName] = useState("");
+  const router = useRouter();
+
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
-  const { loadProject } = useKaraokeStore((state) => state.actions);
-  const router = useRouter(); // <<< เพิ่มเข้ามา
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [metadata, setMetadataTemp] = useState<SongInfo>();
+
+  const loadProject = useKaraokeStore((state) => state.actions.loadProject);
+
+  const handleFileSelect = async (files: File[]) => {
+    const file = files[0];
+    if (!file) {
+      setMusicFile(null);
+      return;
+    }
+    setMusicFile(file);
+
+    try {
+      let readInfo: any = {};
+
+      if (projectMode === "midi") {
+        const parsedMidi = await loadMidiFile(file);
+        readInfo = parsedMidi.info;
+      } else if (projectMode === "mp3") {
+        const { parsedData: parsedMp3 } = await readMp3(file);
+        readInfo = {
+          ...parsedMp3.info,
+          TITLE: parsedMp3.title,
+          ARTIST: parsedMp3.artist,
+          ALBUM: parsedMp3.album,
+        };
+      }
+
+      console.log("readInfo", readInfo);
+      if (!readInfo.TITLE) {
+        readInfo.TITLE = file.name.replace(/\.[^/.]+$/, "");
+      }
+
+      setMetadataTemp(readInfo);
+    } catch (error) {
+      console.error("Error reading metadata from file:", error);
+    }
+  };
 
   const handleCreateProject = async () => {
-    if (!projectName.trim()) {
-      alert("Vui lòng nhập tên dự án.");
+    if (!metadata) {
+      alert("Metadata has not been initialized.");
+      return;
+    }
+
+    if (projectMode !== "youtube" && !musicFile) {
+      alert("Please select a music file.");
+      return;
+    }
+    if (projectMode === "youtube" && !youtubeUrl.trim()) {
+      alert("Please enter a YouTube URL.");
+      return;
+    }
+    if (!metadata.TITLE?.trim()) {
+      alert("Please enter a project name (song title).");
       return;
     }
 
     try {
-      const initialData: ProjectData = {
+      let initialData: ProjectData = {
         playerState: {
           midiInfo: null,
           storedFile: null,
           duration: null,
           youtubeId: null,
         },
-        metadata: { ...DEFAULT_SONG_INFO, TITLE: projectName },
+        metadata: metadata,
         lyricsData: [],
         chordsData: [],
-        currentTime: 0,
-        chordPanelCenterTick: 0,
-        isChordPanelAutoScrolling: true,
       };
 
+      if (musicFile) {
+        switch (projectMode) {
+          case "midi":
+            const parsedMidi = await loadMidiFile(musicFile);
+            const engine = new JsSynthEngine();
+            await engine.startup();
+            if (engine.player) {
+              const midiInfo = await engine.player.loadMidi(musicFile);
+              initialData.playerState.midiInfo = {
+                fileName: musicFile.name,
+                durationTicks: midiInfo.durationTicks,
+                ppq: midiInfo.ppq,
+                bpm: midiInfo.bpm,
+                raw: parsedMidi,
+              };
+              initialData.playerState.duration = midiInfo.durationTicks;
+            }
+            break;
+
+          case "mp3":
+            const { audioData } = await readMp3(musicFile);
+            const audioUrl = URL.createObjectURL(
+              new Blob([audioData], { type: "audio/mpeg" })
+            );
+            const tempAudio = document.createElement("audio");
+            tempAudio.src = audioUrl;
+
+            const duration = await new Promise<number>((resolve) => {
+              tempAudio.addEventListener("loadedmetadata", () => {
+                resolve(tempAudio.duration);
+                URL.revokeObjectURL(audioUrl);
+              });
+            });
+
+            initialData.playerState.duration = duration;
+            break;
+        }
+      } else if (projectMode === "youtube") {
+        initialData.playerState.youtubeId = youtubeUrl;
+      }
+
       const newProjectId = await createProject(
-        projectName,
+        metadata.TITLE,
         projectMode,
-        initialData
+        initialData,
+        musicFile
       );
 
       const newProject = await getProject(newProjectId);
       if (newProject) {
         loadProject(newProject);
-        router.push(`/project/${newProject.id}`); // <<< เปลี่ยนหน้าไปที่โปรเจกต์ใหม่
+        router.push(`/project/${newProject.id}`);
       }
-
-      setProjectName("");
-      setProjectMode("midi");
-      onClose(); // <<< ปิด Modal หลังจากทำงานเสร็จ
+      onClose();
     } catch (error) {
-      alert("Không thể tạo dự án.");
+      console.error("Failed to create project:", error);
+      alert("Could not create the project. Please try again.");
     }
   };
 
+  const getAcceptType = () => {
+    switch (projectMode) {
+      case "midi":
+        return ".mid,.midi";
+      case "mp3":
+        return "";
+      case "mp4":
+        return ".mp4";
+      default:
+        return "";
+    }
+  };
+
+  useEffect(() => {
+    setMetadataTemp(DEFAULT_SONG_INFO);
+  }, [open]);
+
   return (
     <ModalCommon
-      title="Tạo dự án mới"
+      title="Create New Project"
       open={open}
       onClose={onClose}
       footer={
         <div className="flex justify-end gap-2">
           <ButtonCommon color="gray" onClick={onClose}>
-            Hủy bỏ
+            Cancel
           </ButtonCommon>
-          <ButtonCommon onClick={handleCreateProject}>Tạo</ButtonCommon>
+          <ButtonCommon onClick={handleCreateProject}>
+            Create Project
+          </ButtonCommon>
         </div>
       }
+      classNames={{ modal: "!w-[90vw] lg:!w-[600px]" }}
     >
       <div className="flex flex-col gap-4">
-        <InputCommon
-          label="Tên dự án"
-          value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
-          placeholder="Nhập tên cho dự án của bạn"
-        />
         <SelectCommon
-          label="Chế độ dự án"
+          label="Project Mode"
           options={[
             { label: "MIDI (.mid)", value: "midi" },
             { label: "MP3 (.mp3)", value: "mp3" },
@@ -95,6 +205,31 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           value={projectMode}
           onChange={(e) => setProjectMode(e.target.value as MusicMode)}
         />
+
+        {projectMode !== "youtube" ? (
+          <Upload
+            accept={getAcceptType()}
+            preview={true}
+            onChange={handleFileSelect}
+          />
+        ) : (
+          <InputCommon
+            label="YouTube URL"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="Enter the YouTube video URL"
+          />
+        )}
+
+        <div className="mt-4 border-t pt-4">
+          <MetadataForm
+            adding
+            onFieldChange={(data) => {
+              setMetadataTemp({ ...DEFAULT_SONG_INFO, ...data });
+            }}
+            initMetadata={metadata}
+          />
+        </div>
       </div>
     </ModalCommon>
   );

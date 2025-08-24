@@ -142,13 +142,13 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
         <CommonPlayerStyle
           fileName={fileName}
           isPlaying={isPlaying}
-          onFileChange={() => {}}
+          // onFileChange={() => {}}
           onPlayPause={togglePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          accept=""
-          upload={false}
+          // accept=""
+          // upload={false}
         />
 
         <div className="flex gap-2">

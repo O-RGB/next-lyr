@@ -173,7 +173,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
         <CommonPlayerStyle
           fileName={fileName}
           isPlaying={isPlaying}
-          onFileChange={onUploadFile}
+          // onFileChange={onUploadFile}
           onPlayPause={handlePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}

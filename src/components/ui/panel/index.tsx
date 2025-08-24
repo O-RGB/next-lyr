@@ -1,6 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
-import LyricsPanel from "../../panel/lyrics-panel";
+import React, { useMemo } from "react";
 import ChordEditModal from "../../modals/chord";
 import MetadataForm from "../../metadata/metadata-form";
 import EditLyricLineModal from "../../modals/edit-lyrics/edit-lyric-line-modal";
@@ -8,14 +7,12 @@ import LyricsPlayer from "../../lyrics/karaoke-lyrics";
 import DonateModal from "../../modals/donate";
 import ModalCommon from "../../common/modal";
 import PlayerHost from "../player-host";
+import KeyboardRender from "../keybord-render";
+import PanelTools from "./panel-tools";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { FaMusic, FaListAlt } from "react-icons/fa";
 import { FloatingButtonGroup } from "../../common/floating-button";
-import { usePlayerSetup } from "@/hooks/usePlayerSetup";
-import KeyboardRender from "../keybord-render";
 import { useModalStore } from "@/hooks/useModalState";
-import { useTimerStore } from "@/hooks/useTimerWorker";
-import PanelTools from "./panel-tools";
 
 export const calculateSeekTime = (
   word: any,
@@ -57,11 +54,8 @@ const FLOATING_ACTIONS_CONFIG = [
 ];
 
 const LyrEditerPanel: React.FC = () => {
-  const lyricsProcessed = useKaraokeStore((state) => state.lyricsProcessed);
-
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
   const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
-
   const isMetadataOpen = useModalStore((state) => state.isMetadataOpen);
   const isPreviewOpen = useModalStore((state) => state.isPreviewOpen);
   const openMetadata = useModalStore((state) => state.openMetadata);
@@ -90,6 +84,7 @@ const LyrEditerPanel: React.FC = () => {
       <KeyboardRender />
       <main className="flex flex-col h-[calc(100vh-36px)]">
         <PanelTools></PanelTools>
+
         <div className="md:hidden">
           <FloatingButtonGroup actions={floatingActions} />
         </div>
@@ -113,20 +108,12 @@ const LyrEditerPanel: React.FC = () => {
         >
           <div className="flex flex-col gap-4">
             <div className="h-48 flex items-center justify-center">
-              {lyricsProcessed?.ranges.length ? (
-                <LyricsPlayer
-                  lyricsProcessed={lyricsProcessed}
-                  playerControls={<PlayerHost />}
-                />
-              ) : (
-                <p className="text-white">Lyrics Preview</p>
-              )}
+              <LyricsPlayer playerControls={<PlayerHost />} />
             </div>
           </div>
         </ModalCommon>
 
         <EditLyricLineModal open={isEditModalOpen} />
-
         <ChordEditModal open={isChordModalOpen} />
       </main>
     </>

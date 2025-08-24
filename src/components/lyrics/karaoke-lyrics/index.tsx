@@ -1,21 +1,19 @@
 import React, { ReactNode, useMemo } from "react";
-import { LyricsRangeArray } from "@/lib/karaoke/lyrics/lyrics-mapping";
-import { ISentence } from "@/lib/karaoke/lyrics/types";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { LyricsCharacterStyle } from "../lyrics-character";
 import LyricsList from "./line";
 
 interface LyricsPlayerProps {
-  lyricsProcessed: LyricsRangeArray<ISentence>;
   textStyle?: LyricsCharacterStyle;
   playerControls?: ReactNode | null;
 }
 
 const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
-  lyricsProcessed,
   textStyle,
   playerControls,
 }) => {
+  const lyricsProcessed = useKaraokeStore((state) => state.lyricsProcessed);
+
   const currentTime = useKaraokeStore((state) => state.currentTime);
   const chordsData = useKaraokeStore((state) => state.chordsData);
 

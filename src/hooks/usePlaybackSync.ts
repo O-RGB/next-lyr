@@ -1,4 +1,3 @@
-// src/hooks/usePlaybackSync.ts
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 import { PlayerControls } from "./useKeyboardControls";

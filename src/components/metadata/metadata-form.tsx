@@ -13,15 +13,24 @@ import {
   LANGUAGE,
   VOCAL_CHANNEL,
 } from "@/modules/midi-klyr-parser/lib/processor";
-import { useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
 
-type Props = {};
+type Props = {
+  adding?: boolean;
+  initMetadata?: SongInfo;
+  onFieldChange?: (metadata: Partial<SongInfo>) => void;
+};
 
-export default function MetadataForm({}: Props) {
-  const metadata = useKaraokeStore((state) => state.metadata);
-  const actions = useKaraokeStore((state) => state.actions);
+export default function MetadataForm({
+  adding = false,
+  onFieldChange,
+  initMetadata,
+}: Props) {
+  const metadata = useKaraokeStore((s) => s.metadata);
+  const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
+
   const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
   const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
 
@@ -52,18 +61,23 @@ export default function MetadataForm({}: Props) {
       LANGUAGE: currentValues.LANGUAGE as LANGUAGE,
       VOCAL_CHANNEL: currentValues.VOCAL_CHANNEL as VOCAL_CHANNEL,
     };
-    actions.setMetadata(typedValues);
+    setMetadata(typedValues);
+    onFieldChange?.(typedValues);
   };
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (metadata) {
       initName.reset(metadata);
     }
-  }, [metadata, initName]);
+
+    if (initMetadata) {
+      initName.reset(initMetadata);
+    }
+  }, [initMetadata, initName]);
 
   return (
     <div>
-      <Card className="bg-white/50 p-4 rounded-lg">
+      <Card className="bg-white/50 lg:p-4 rounded-lg">
         <Form
           form={initName}
           onFinish={() => {}}
@@ -77,7 +91,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Song Title :"
                 inputSize="sm"
               />
@@ -92,7 +106,7 @@ export default function MetadataForm({}: Props) {
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile}
+                  disabled={!midiInfo && !rawFile && adding === false}
                   options={keyOption}
                   label="Key :"
                   inputSize="sm"
@@ -107,7 +121,7 @@ export default function MetadataForm({}: Props) {
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile}
+                  disabled={!midiInfo && !rawFile && adding === false}
                   label="Tempo :"
                   inputSize="sm"
                 />
@@ -121,7 +135,7 @@ export default function MetadataForm({}: Props) {
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile}
+                  disabled={!midiInfo && !rawFile && adding === false}
                   options={artistTypeOption}
                   label="Gender :"
                   inputSize="sm"
@@ -137,7 +151,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Album :"
                 inputSize="sm"
               />
@@ -151,7 +165,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Artist :"
                 inputSize="sm"
               />
@@ -165,7 +179,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Composer :"
                 inputSize="sm"
               />
@@ -179,7 +193,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Rhythm/Genre :"
                 inputSize="sm"
               />
@@ -193,7 +207,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Creator :"
                 inputSize="sm"
               />
@@ -207,7 +221,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 label="Music Label :"
                 inputSize="sm"
               />
@@ -221,7 +235,7 @@ export default function MetadataForm({}: Props) {
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile}
+                disabled={!midiInfo && !rawFile && adding === false}
                 options={languageOption}
                 label="Language :"
                 inputSize="sm"
@@ -237,7 +251,7 @@ export default function MetadataForm({}: Props) {
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile}
+                  disabled={!midiInfo && !rawFile && adding === false}
                   label="Year :"
                   inputSize="sm"
                 />
@@ -255,7 +269,7 @@ export default function MetadataForm({}: Props) {
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile}
+                  disabled={!midiInfo && !rawFile && adding === false}
                   options={vocalChannelOption}
                   label="Vocal Channel :"
                   inputSize="sm"

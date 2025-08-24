@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect } from "react";
+import React, { forwardRef } from "react";
 
 export type ButtonSize = "sm" | "md" | "lg";
 export type ButtonVariant = "solid" | "outline" | "ghost";
@@ -28,13 +28,28 @@ export interface ButtonCommonProps
   childrenClassName?: string;
 }
 
+const SIZE_VALUES = {
+  regular: {
+    sm: "px-[13px] py-[7px] text-[13px]",
+    md: "px-[16px] py-[8px] text-[16px]",
+    lg: "px-[16px] py-[8px] text-[16px]",
+    auto: "px-[13px] py-[7px] text-[13px] sm:px-[16px] sm:py-[8px] sm:text-[16px] lg:px-[16px] lg:py-[8px] lg:text-[16px]",
+  },
+  circle: {
+    sm: "p-[7px]",
+    md: "p-[8px]",
+    lg: "p-[9px]",
+    auto: "p-[7px] sm:p-[8px] lg:p-[9px]",
+  },
+};
+
 const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
   (
     {
       children,
       color = "primary",
       variant = "solid",
-      size = "md",
+      size,
       isRounded = false,
       isFullWidth = false,
       circle = false,
@@ -49,6 +64,8 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
     },
     ref
   ) => {
+    if (props.hidden) return null;
+
     const finalVariant = outline ? "outline" : variant;
 
     const colorStyles: Record<ButtonColor, Record<ButtonVariant, string>> = {
@@ -103,35 +120,19 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
       },
     };
 
-    const sizeStyles = {
-      regular: {
-        sm: "px-3 py-1.5 text-sm",
-        md: "px-4 py-2 text-base",
-        lg: "px-6 py-3 text-lg",
-      },
-      circle: { sm: "p-1.5", md: "p-2", lg: "p-3" },
-    };
+    const appliedSize = size
+      ? SIZE_VALUES[circle ? "circle" : "regular"][size]
+      : SIZE_VALUES[circle ? "circle" : "regular"].auto;
 
-    const cn = (...classes: (string | boolean | undefined)[]) =>
-      classes.filter(Boolean).join(" ");
-
-    const buttonClasses = cn(
-      "font-medium transition-all duration-200 flex items-center justify-center gap-2",
-      "disabled:opacity-50 disabled:cursor-not-allowed",
-
-      colorStyles[color]?.[finalVariant] || colorStyles.primary.solid,
-
-      circle
-        ? `rounded-full ${sizeStyles.circle[size]}`
-        : cn(
-            isRounded ? "rounded-full" : "rounded-lg",
-            sizeStyles.regular[size]
-          ),
-
-      !circle && isFullWidth && "w-full",
-
-      className
-    );
+    const buttonClasses = `
+      font-medium transition-all duration-200 flex items-center justify-center gap-2
+      disabled:opacity-50 disabled:cursor-not-allowed
+      ${colorStyles[color]?.[finalVariant] || colorStyles.primary.solid}
+      ${circle ? "rounded-full" : isRounded ? "rounded-full" : "rounded-lg"}
+      ${!circle && isFullWidth ? "w-full" : ""}
+      ${appliedSize}
+      ${className}
+    `;
 
     const renderContent = () => (
       <>
@@ -163,7 +164,6 @@ const ButtonCommon = forwardRef<HTMLButtonElement, ButtonCommonProps>(
       </>
     );
 
-    if (props.hidden) return null;
     return (
       <button
         ref={ref}
