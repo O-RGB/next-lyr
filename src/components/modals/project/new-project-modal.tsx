@@ -5,7 +5,7 @@ import ButtonCommon from "@/components/common/button";
 import Upload from "@/components/common/data-input/upload";
 import MetadataForm from "@/components/metadata/metadata-form";
 import InputCommon from "@/components/common/data-input/input";
-import { MusicMode } from "@/types/common.type";
+import { LyricWordData, MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ import {
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
+import { mapEventsToWordData } from "@/lib/karaoke/lyrics/lyrics-convert";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -103,37 +104,29 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         switch (projectMode) {
           case "midi":
             const parsedMidi = await loadMidiFile(musicFile);
-            const engine = new JsSynthEngine();
-            await engine.startup();
-            if (engine.player) {
-              const midiInfo = await engine.player.loadMidi(musicFile);
-              initialData.playerState.midiInfo = {
-                fileName: musicFile.name,
-                durationTicks: midiInfo.durationTicks,
-                ppq: midiInfo.ppq,
-                bpm: midiInfo.bpm,
-                raw: parsedMidi,
-              };
-              initialData.playerState.duration = midiInfo.durationTicks;
-            }
+            // const engine = new JsSynthEngine();
+            // await engine.startup();
+            // if (engine.player) {
+            // const midiInfo = await engine.player.loadMidi(musicFile);
+            // initialData.playerState.midiInfo = {
+            //   fileName: musicFile.name,
+            //   durationTicks: midiInfo.durationTicks,
+            //   ppq: midiInfo.ppq,
+            //   bpm: midiInfo.bpm,
+            //   raw: parsedMidi,
+            // };
+            // initialData.playerState.duration = midiInfo.durationTicks;
+            // }
+            setMetadataTemp(parsedMidi.info);
+            initialData.metadata = parsedMidi.info;
+            // initialData.chordsData = parsedMidi.chords;
+            // initialData.lyricsData = mapEventsToWordData(parsedMidi.lyrics);
             break;
 
           case "mp3":
-            const { audioData } = await readMp3(musicFile);
-            const audioUrl = URL.createObjectURL(
-              new Blob([audioData], { type: "audio/mpeg" })
-            );
-            const tempAudio = document.createElement("audio");
-            tempAudio.src = audioUrl;
-
-            const duration = await new Promise<number>((resolve) => {
-              tempAudio.addEventListener("loadedmetadata", () => {
-                resolve(tempAudio.duration);
-                URL.revokeObjectURL(audioUrl);
-              });
-            });
-
-            initialData.playerState.duration = duration;
+            const { parsedData } = await readMp3(musicFile);
+            setMetadataTemp(parsedData.info);
+            initialData.metadata = parsedData.info;
             break;
         }
       } else if (projectMode === "youtube") {

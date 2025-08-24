@@ -119,10 +119,10 @@ export const createPlaybackActions: StateCreator<
       return { lineStartTime };
     },
 
-    stopTiming: () => {
+    stopTiming: async () => {
       set({ isTimingActive: false, editingLineIndex: null });
       get().actions.processLyricsForPlayer();
-      get().actions.saveCurrentProject();
+      await get().actions.saveCurrentProject();
     },
   },
 });

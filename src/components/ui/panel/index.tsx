@@ -1,6 +1,5 @@
 "use client";
 import React, { useMemo } from "react";
-import ChordEditModal from "../../modals/chord";
 import MetadataForm from "../../metadata/metadata-form";
 import EditLyricLineModal from "../../modals/edit-lyrics/edit-lyric-line-modal";
 import LyricsPlayer from "../../lyrics/karaoke-lyrics";
@@ -55,7 +54,6 @@ const FLOATING_ACTIONS_CONFIG = [
 
 const LyrEditerPanel: React.FC = () => {
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
-  const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
   const isMetadataOpen = useModalStore((state) => state.isMetadataOpen);
   const isPreviewOpen = useModalStore((state) => state.isPreviewOpen);
   const openMetadata = useModalStore((state) => state.openMetadata);
@@ -114,7 +112,6 @@ const LyrEditerPanel: React.FC = () => {
         </ModalCommon>
 
         <EditLyricLineModal open={isEditModalOpen} />
-        <ChordEditModal open={isChordModalOpen} />
       </main>
     </>
   );

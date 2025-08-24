@@ -52,7 +52,7 @@ export interface ChordPanelState {
 export interface ProjectActions {
   loadProject: (project: Project) => void;
   clearProject: () => void;
-  saveCurrentProject: () => void;
+  saveCurrentProject: () => Promise<void>;
 }
 
 export interface FileActions {
@@ -91,7 +91,7 @@ export interface PlaybackActions {
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
   goToNextWord: () => void;
   correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
-  stopTiming: () => void;
+  stopTiming: () => Promise<void>;
   setPlaybackIndex: (index: number | null) => void;
   setCurrentIndex: (index: number) => void;
   setCurrentTime: (time: number) => void;
@@ -100,11 +100,11 @@ export interface PlaybackActions {
 
 export interface ModalActions {
   selectLine: (lineIndex: number | null) => void;
-  startEditLine: (lineIndex: number) => {
+  startEditLine: (lineIndex: number) => Promise<{
     success: boolean;
     firstWordIndex: number;
     preRollTime: number;
-  };
+  }>;
   openEditModal: () => void;
   closeEditModal: () => void;
   openChordModal: (

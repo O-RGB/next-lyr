@@ -17,8 +17,6 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
 
   initWorker: () => {
     const karaokeActions = useKaraokeStore.getState().actions;
-    const mode = useKaraokeStore.getState().mode;
-    const midiInfo = useKaraokeStore.getState().playerState.midiInfo;
 
     const worker = new Worker(
       new URL("/public/worker/timer-worker.ts", import.meta.url)
@@ -27,6 +25,9 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     worker.onmessage = (e: MessageEvent) => {
       if (e.data.type === "tick") {
         let timeValue = e.data.time;
+
+        const mode = useKaraokeStore.getState().mode;
+        const midiInfo = useKaraokeStore.getState().playerState.midiInfo;
 
         if (
           mode === "midi" &&

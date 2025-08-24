@@ -159,6 +159,12 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       }
     };
 
+    useEffect(() => {
+      if (file && audioRef) {
+        onUploadFile(file);
+      }
+    }, [file, audioRef]);
+
     return (
       <>
         <audio

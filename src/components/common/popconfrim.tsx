@@ -15,7 +15,7 @@ type AlertType = "denger" | "error" | "warning" | "success" | "info";
 
 interface PopConfirmCommonProps extends Omit<ModalProps, "open" | "onClose"> {
   children?: React.ReactNode;
-  onConfirm?: () => void;
+  onConfirm?: (e: any) => void;
   onCancel?: () => void;
   type?: AlertType;
   title?: string;
@@ -64,8 +64,8 @@ const PopConfirmCommon: React.FC<PopConfirmCommonProps> = ({
   const handleOpen = () => setOpenAlert(true);
   const handleClose = () => setOpenAlert(false);
 
-  const handleConfirm = () => {
-    onConfirm?.();
+  const handleConfirm = (e: any) => {
+    onConfirm?.(e);
     handleClose();
   };
 

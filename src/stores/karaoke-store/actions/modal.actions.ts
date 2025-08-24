@@ -10,7 +10,7 @@ export const createModalActions: StateCreator<
   [],
   { actions: ModalActions }
 > = (set, get) => {
-  const saveToHistoryAndDB = () => {
+  const saveToHistoryAndDB = async () => {
     const state = get();
     const currentHistoryState: HistoryState = {
       lyricsData: state.lyricsData,
@@ -31,7 +31,7 @@ export const createModalActions: StateCreator<
       };
     });
 
-    get().actions.saveCurrentProject();
+    await get().actions.saveCurrentProject();
   };
 
   return {
@@ -39,8 +39,8 @@ export const createModalActions: StateCreator<
       selectLine: (lineIndex: number | null) =>
         set({ selectedLineIndex: lineIndex }),
 
-      startEditLine: (lineIndex: number) => {
-        saveToHistoryAndDB();
+      startEditLine: async (lineIndex: number) => {
+        await saveToHistoryAndDB();
         const { lyricsData } = get();
         const firstWordOfLine = lyricsData.find(
           (w) => w.lineIndex === lineIndex

@@ -26,7 +26,6 @@ const Chord: React.FC<ChordProps> = React.memo(
       opacity: isDragging ? 0.5 : 1,
     };
 
-    // Layout สำหรับ mobile (แนวตั้ง)
     if (isMobile) {
       return (
         <div
@@ -53,7 +52,9 @@ const Chord: React.FC<ChordProps> = React.memo(
                 onEdit();
               }}
               circle
-              className={`!p-1 !bg-transparent ${
+              variant="ghost"
+              color={isActive ? "white" : "secondary"}
+              className={`!p-1 !bg-transparent  ${
                 isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
               }`}
               title="Edit Chord"
@@ -61,7 +62,10 @@ const Chord: React.FC<ChordProps> = React.memo(
               <BiPencil className="w-3 h-3" />
             </ButtonCommon>
             <PopConfirmCommon
-              onConfirm={() => onDelete()}
+              onConfirm={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               title="Delete Chord?"
               content="Are you sure you want to delete this chord?"
               openbuttonProps={{
@@ -82,7 +86,6 @@ const Chord: React.FC<ChordProps> = React.memo(
       );
     }
 
-    // Layout แนวนอนสำหรับ desktop (เดิม)
     return (
       <div
         ref={setNodeRef}

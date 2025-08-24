@@ -9,17 +9,16 @@ import { IoArrowBackCircle } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
-type Props = {
-  open?: boolean;
-};
+type Props = {};
 
-export default function ChordEditModal({ open = false }: Props) {
+export default function ChordEditModal({}: Props) {
+  const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
   const selectedChord = useKaraokeStore((state) => state.selectedChord);
   const actions = useKaraokeStore((state) => state.actions);
   const suggestedTick =
     useKaraokeStore((state) => state.suggestedChordTick) ?? 0;
-  const minTick = useKaraokeStore((state) => state.minChordTickRange) ?? 0;
-  const maxTick = useKaraokeStore((state) => state.maxChordTickRange) ?? 0;
+  // const minTick = useKaraokeStore((state) => state.minChordTickRange) ?? 0;
+  // const maxTick = useKaraokeStore((state) => state.maxChordTickRange) ?? 0;
 
   const [chordText, setChordText] = useState("");
   const [tickValue, setTickValue] = useState("0");
@@ -42,7 +41,7 @@ export default function ChordEditModal({ open = false }: Props) {
   };
 
   useEffect(() => {
-    if (open) {
+    if (isChordModalOpen) {
       if (selectedChord) {
         setChordText(selectedChord.chord);
         setTickValue(selectedChord.tick.toString());
@@ -64,14 +63,14 @@ export default function ChordEditModal({ open = false }: Props) {
       return;
     }
 
-    if (minTick !== undefined && tick < minTick) {
-      alert(`Chord tick cannot be before the line's start time (${minTick}).`);
-      return;
-    }
-    if (maxTick !== undefined && tick > maxTick) {
-      alert(`Chord tick cannot be after the line's end time (${maxTick}).`);
-      return;
-    }
+    // if (minTick !== undefined && tick < minTick) {
+    //   alert(`Chord tick cannot be before the line's start time (${minTick}).`);
+    //   return;
+    // }
+    // if (maxTick !== undefined && tick > maxTick) {
+    //   alert(`Chord tick cannot be after the line's end time (${maxTick}).`);
+    //   return;
+    // }
 
     onSave({ chord: chordText.trim(), tick });
   };
@@ -80,12 +79,12 @@ export default function ChordEditModal({ open = false }: Props) {
     let num = tick ?? 0;
     if (isNaN(num)) return;
 
-    if (minTick !== undefined && num < minTick) {
-      num = minTick;
-    }
-    if (maxTick !== undefined && num > maxTick) {
-      num = maxTick;
-    }
+    // if (minTick !== undefined && num < minTick) {
+    //   num = minTick;
+    // }
+    // if (maxTick !== undefined && num > maxTick) {
+    //   num = maxTick;
+    // }
 
     setTickValue(num.toString());
   };
@@ -110,7 +109,7 @@ export default function ChordEditModal({ open = false }: Props) {
     <ModalCommon
       title={isEditing ? "Edit Chord" : "Add New Chord"}
       onClose={actions.closeChordModal}
-      open={open}
+      open={isChordModalOpen}
       footer={
         <div className="flex justify-between gap-3 pt-2">
           {isEditing && (
@@ -170,13 +169,13 @@ export default function ChordEditModal({ open = false }: Props) {
           <InputNumberCommon
             id="tick-value-input"
             value={tickValue}
-            min={minTick}
-            max={maxTick}
+            min={0}
+            // max={maxTick}
             onChange={handleTickChange}
             onKeyDown={handleKeyDown}
             placeholder="e.g., 0, 480, 960"
           />
-          {(minTick !== undefined || maxTick !== undefined) && (
+          {/* {(minTick !== undefined || maxTick !== undefined) && (
             <p className="text-xs text-slate-500 mt-1">
               {minTick !== undefined && maxTick !== undefined
                 ? `Range: ${minTick} - ${maxTick}`
@@ -184,7 +183,7 @@ export default function ChordEditModal({ open = false }: Props) {
                 ? `Min: ${minTick}`
                 : `Max: ${maxTick}`}
             </p>
-          )}
+          )} */}
         </div>
       </div>
     </ModalCommon>

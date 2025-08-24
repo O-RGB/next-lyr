@@ -12,7 +12,7 @@ export const createProjectActions: StateCreator<
   { actions: ProjectActions }
 > = (set, get) => ({
   actions: {
-    saveCurrentProject: async () => {
+    saveCurrentProject: async (): Promise<void> => {
       const projectId = get().projectId;
       const playerState = get().playerState;
       const lyricsData = get().lyricsData;
@@ -34,10 +34,10 @@ export const createProjectActions: StateCreator<
       };
 
       try {
-        console.log("saveCurrentProject");
         await updateProject(projectId, dataToSave);
       } catch (error) {
         console.error("Failed to save project:", error);
+        throw error;
       }
     },
 

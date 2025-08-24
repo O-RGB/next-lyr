@@ -120,6 +120,8 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       return () => timerControls.terminateWorker();
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
+    useEffect(() => {}, [youtubeId]);
+
     return (
       <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
         <div className="relative">

@@ -12,7 +12,7 @@ interface PlayerHandlersState {
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
   (set, get) => ({
-    handleStop: () => {
+    handleStop: async () => {
       const { playerControls } = usePlayerSetupStore.getState();
       if (!playerControls) {
         console.warn("[handleStop] Aborted: playerControls not available.");
@@ -22,12 +22,12 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       playerControls.pause();
       playerControls.seek(0);
       useKaraokeStore.getState().actions.setIsPlaying(false);
-      useKaraokeStore.getState().actions.stopTiming();
+      await useKaraokeStore.getState().actions.stopTiming();
       useKaraokeStore.getState().actions.setPlaybackIndex(null);
       useKaraokeStore.getState().actions.setCurrentIndex(0);
       useKaraokeStore.getState().actions.setCorrectionIndex(null);
     },
-    handleWordClick: (index) => {
+    handleWordClick: async (index) => {
       const { lyricsData, mode } = useKaraokeStore.getState();
       const { playerControls } = usePlayerSetupStore.getState();
       const word = lyricsData.find((w) => w.index === index);
@@ -44,7 +44,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
 
       if (seekTo !== null) {
         useKaraokeStore.getState().actions.setIsChordPanelAutoScrolling(true);
-        useKaraokeStore.getState().actions.stopTiming();
+        await useKaraokeStore.getState().actions.stopTiming();
         playerControls.seek(seekTo);
 
         if (!playerControls.isPlaying()) {
@@ -52,16 +52,15 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         }
       }
     },
-    handleEditLine: (lineIndex) => {
+    handleEditLine: async (lineIndex) => {
       const { playerControls } = usePlayerSetupStore.getState();
       if (!playerControls) {
         console.warn("[handleEditLine] Aborted: playerControls not available.");
         return;
       }
 
-      const { success, preRollTime } = useKaraokeStore
-        .getState()
-        .actions.startEditLine(lineIndex);
+      const actions = useKaraokeStore.getState().actions;
+      const { success, preRollTime } = await actions.startEditLine(lineIndex);
 
       if (success) {
         useKaraokeStore.getState().actions.setIsPlaying(true);

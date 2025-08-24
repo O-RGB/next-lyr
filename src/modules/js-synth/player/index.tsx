@@ -67,7 +67,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
           const midiInfo = await player.loadMidi(file);
           setDuration(midiInfo.durationTicks);
           setFileName(file.name);
-
+          
           loadMidiFile(
             {
               fileName: file.name,

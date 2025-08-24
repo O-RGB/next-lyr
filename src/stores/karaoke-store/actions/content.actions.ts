@@ -16,7 +16,7 @@ export const createContentActions: StateCreator<
   [],
   { actions: ContentActions }
 > = (set, get) => {
-  const saveToHistoryAndDB = () => {
+  const saveToHistory = () => {
     const state = get();
     const currentHistoryState = {
       lyricsData: state.lyricsData,
@@ -37,17 +37,16 @@ export const createContentActions: StateCreator<
         },
       };
     });
-
-    get().actions.saveCurrentProject();
   };
 
   return {
     actions: {
-      setMetadata: (metadata: Partial<SongInfo>) => {
-        saveToHistoryAndDB();
+      setMetadata: async (metadata: Partial<SongInfo>) => {
+        saveToHistory();
         set((state) => ({
           metadata: { ...DEFAULT_SONG_INFO, ...state.metadata, ...metadata },
         }));
+        await get().actions.saveCurrentProject();
       },
 
       processLyricsForPlayer: () => {
@@ -58,31 +57,34 @@ export const createContentActions: StateCreator<
           playerState.midiInfo
         );
         set({ lyricsProcessed: processed });
-        get().actions.saveCurrentProject();
       },
 
-      importLyrics: (rawText: string) => {
+      importLyrics: async (rawText: string) => {
         if (!rawText) return;
 
-        saveToHistoryAndDB();
+        saveToHistory();
         set({
           lyricsData: processRawLyrics(rawText),
           ...initialTimingState,
         });
+        get().actions.processLyricsForPlayer();
+
+        await get().actions.saveCurrentProject();
       },
 
-      addChord: (newChord: ChordEvent) => {
-        saveToHistoryAndDB();
+      addChord: async (newChord: ChordEvent) => {
+        saveToHistory();
         set((state) => ({
           chordsData: [...state.chordsData, newChord].sort(
             (a, b) => a.tick - b.tick
           ),
           ...initialModalState,
         }));
+        await get().actions.saveCurrentProject();
       },
 
-      updateChord: (oldTick: number, updatedChord: ChordEvent) => {
-        saveToHistoryAndDB();
+      updateChord: async (oldTick: number, updatedChord: ChordEvent) => {
+        saveToHistory();
         set((state) => ({
           chordsData: state.chordsData
             .map((chord) =>
@@ -91,20 +93,22 @@ export const createContentActions: StateCreator<
             .sort((a, b) => a.tick - b.tick),
           ...initialModalState,
         }));
+        await get().actions.saveCurrentProject();
       },
 
-      deleteChord: (tickToDelete: number) => {
-        saveToHistoryAndDB();
+      deleteChord: async (tickToDelete: number) => {
+        saveToHistory();
         set((state) => ({
           chordsData: state.chordsData.filter(
             (chord) => chord.tick !== tickToDelete
           ),
           ...initialModalState,
         }));
+        await get().actions.saveCurrentProject();
       },
 
-      updateWordTiming: (index: number, start: number, end: number) => {
-        saveToHistoryAndDB();
+      updateWordTiming: async (index: number, start: number, end: number) => {
+        saveToHistory();
         set((state) => ({
           lyricsData: state.lyricsData.map((word) =>
             word.index === index
@@ -113,10 +117,11 @@ export const createContentActions: StateCreator<
           ),
         }));
         get().actions.processLyricsForPlayer();
+        await get().actions.saveCurrentProject();
       },
 
-      deleteLine: (lineIndexToDelete: number) => {
-        saveToHistoryAndDB();
+      deleteLine: async (lineIndexToDelete: number) => {
+        saveToHistory();
         set((state) => {
           const remainingWords = state.lyricsData.filter(
             (word) => word.lineIndex !== lineIndexToDelete
@@ -147,10 +152,11 @@ export const createContentActions: StateCreator<
         });
 
         get().actions.processLyricsForPlayer();
+        await get().actions.saveCurrentProject();
       },
 
-      updateLine: (lineIndexToUpdate: number, newText: string) => {
-        saveToHistoryAndDB();
+      updateLine: async (lineIndexToUpdate: number, newText: string) => {
+        saveToHistory();
         const newWordsForLine = processRawLyrics(newText).map((word) => ({
           ...word,
           lineIndex: lineIndexToUpdate,
@@ -181,10 +187,14 @@ export const createContentActions: StateCreator<
         });
 
         get().actions.processLyricsForPlayer();
+        await get().actions.saveCurrentProject();
       },
 
-      updateWord: (index: number, newWordData: Partial<LyricWordData>) => {
-        saveToHistoryAndDB();
+      updateWord: async (
+        index: number,
+        newWordData: Partial<LyricWordData>
+      ) => {
+        saveToHistory();
         set((state) => ({
           lyricsData: state.lyricsData.map((word, i) =>
             i === index ? { ...word, ...newWordData } : word
@@ -192,6 +202,7 @@ export const createContentActions: StateCreator<
         }));
 
         get().actions.processLyricsForPlayer();
+        await get().actions.saveCurrentProject();
       },
     },
   };

@@ -1,10 +1,10 @@
-import React, { useMemo, useRef, useCallback } from "react";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
-import { LyricWordData, MusicMode } from "@/types/common.type";
+import { LyricWordData } from "@/types/common.type";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import React, { useMemo, useRef, useCallback } from "react";
 import AutoMoveToLine from "./line/render/auto-move";
 import LineRow from "./line";
-import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 
 export interface LyricsGridProps {}
 

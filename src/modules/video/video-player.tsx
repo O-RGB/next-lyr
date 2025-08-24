@@ -135,6 +135,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       }
     };
 
+    useEffect(() => {
+      if (file && videoRef) {
+        handleFileChange(file);
+      }
+    }, [file, videoRef]);
+
     return (
       <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
         <video
