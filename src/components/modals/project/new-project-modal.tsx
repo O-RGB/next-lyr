@@ -143,7 +143,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       const newProject = await getProject(newProjectId);
       if (newProject) {
         loadProject(newProject);
-        router.push(`/project/${newProject.id}`);
+        window.location.href = `/project/${newProject.id}`;
       }
       onClose();
     } catch (error) {

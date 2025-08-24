@@ -15,7 +15,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   const lyricsProcessed = useKaraokeStore((state) => state.lyricsProcessed);
 
   const currentTime = useKaraokeStore((state) => state.currentTime);
-  const chordsData = useKaraokeStore((state) => state.chordsData);
+  // const chordsData = useKaraokeStore((state) => state.chordsData);
 
   const active = useMemo(() => {
     if (!lyricsProcessed) return null;
@@ -48,14 +48,14 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
             tick={isTopActive ? currentTime : 0}
             sentence={topSentence}
             nextSentence={isTopActive ? next?.value : undefined}
-            chords={isTopActive ? chordsData : []}
+            // chords={isTopActive ? chordsData : []}
             textStyle={textStyle}
           />
           <LyricsList
             tick={isBottomActive ? currentTime : 0}
             sentence={bottomSentence}
             nextSentence={isBottomActive ? next?.value : undefined}
-            chords={isBottomActive ? chordsData : []}
+            // chords={isBottomActive ? chordsData : []}
             textStyle={textStyle}
           />
         </div>

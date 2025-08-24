@@ -61,14 +61,14 @@ const LineRow: React.FC<LineRowProps> = ({
               lineEndTime={rulerEndTime}
             />
           )}
-          {rulerStartTime && (
+          {/* {rulerStartTime && (
             <ChordsListLine
               lineIndex={lineIndex}
               chords={chords}
               lineDuration={lineDuration}
               rulerStartTime={rulerStartTime}
             />
-          )}
+          )} */}
         </div>
 
         <div className="flex w-full justify-between items-center">
