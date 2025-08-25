@@ -30,19 +30,21 @@ const MobileControls = () => {
       <div className="bg-gradient-to-r from-white via-gray-50 to-white px-4 py-2 rounded-xl shadow-lg border border-gray-300">
         <div className="flex items-center justify-center gap-4 w-full">
           {/* Play/Pause */}
-          <button
-            onClick={() => handleKeyDown("Space")}
-            className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 active:from-blue-200 active:to-blue-300 border border-blue-300 hover:border-blue-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-10 rounded-lg"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <div className="flex items-center justify-center">
-              {isPlaying ? (
-                <FaPause className="h-4 w-4 text-blue-70" />
-              ) : (
-                <FaPlay className="h-4 w-4 text-blue-70" />
-              )}
-            </div>
-          </button>
+          <div>
+            <button
+              onClick={() => handleKeyDown("Space")}
+              className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 active:from-blue-200 active:to-blue-300 border border-blue-300 hover:border-blue-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-10 rounded-lg"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <div className="flex items-center justify-center">
+                {isPlaying ? (
+                  <FaPause className="h-4 w-4 text-blue-70" />
+                ) : (
+                  <FaPlay className="h-4 w-4 text-blue-70" />
+                )}
+              </div>
+            </button>
+          </div>
 
           {/* Separator */}
           <div className="h-6 w-px bg-gray-300" />
@@ -66,20 +68,20 @@ const MobileControls = () => {
           </div>
 
           {/* Separator */}
-          <div className="h-6 w-px bg-slate-600" />
+          <div className="h-6 w-px bg-gray-300" />
 
           {/* Left/Right */}
-          <div className="flex gap-1">
+          <div className="flex gap-2 w-full">
             <button
               onClick={() => handleKeyDown("ArrowLeft")}
-              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-10 rounded-lg"
+              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-full rounded-lg"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <FaArrowLeft className="h-3 w-3 text-gray-700 mx-auto" />
             </button>
             <button
               onClick={() => handleKeyDown("ArrowRight")}
-              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-10 rounded-lg"
+              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-full rounded-lg"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <FaArrowRight className="h-3 w-3 text-gray-700 mx-auto" />
@@ -87,13 +89,15 @@ const MobileControls = () => {
           </div>
 
           {/* Status indicator */}
-          <div
-            className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-              isPlaying
-                ? "bg-green-500 shadow-md shadow-green-500/50"
-                : "bg-gray-400"
-            }`}
-          />
+          <div>
+            <div
+              className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                isPlaying
+                  ? "bg-green-500 shadow-md shadow-green-500/50"
+                  : "bg-gray-400"
+              }`}
+            />
+          </div>
         </div>
       </div>
     </div>
