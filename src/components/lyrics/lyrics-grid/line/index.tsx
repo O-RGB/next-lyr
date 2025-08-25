@@ -1,11 +1,12 @@
 import React from "react";
-import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
-import { LyricWordData, MusicMode } from "@/types/common.type";
 import Ruler from "./ruler/ruler";
 import WordTimingLines from "./ruler/ruler-line";
 import SelectedColorLine from "./render/selected-color";
 import LineAction from "./actions";
 import LyricsWords from "./words";
+import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
+import { LyricWordData, MusicMode } from "@/types/common.type";
+import { useKaraokeStore } from "@/stores/karaoke-store";
 
 export interface LineRowProps {
   line: LyricWordData[];
@@ -25,12 +26,12 @@ const LineRow: React.FC<LineRowProps> = ({
   lineRef,
   onWordClick,
 }) => {
+  const isSelected = useKaraokeStore(
+    (state) => state.selectedLineIndex === lineIndex
+  );
+
   const rulerStartTime = line[0]?.start ?? null;
   const rulerEndTime = line[line.length - 1]?.end ?? null;
-  // const lineDuration =
-  //   rulerEndTime !== null && rulerStartTime !== null
-  //     ? rulerEndTime - rulerStartTime
-  //     : 0;
 
   return (
     <div
@@ -38,7 +39,7 @@ const LineRow: React.FC<LineRowProps> = ({
       ref={lineRef}
       data-line-index={lineIndex}
     >
-      <SelectedColorLine lineIndex={lineIndex} />
+      <SelectedColorLine isSelected={isSelected} />
       <div className="relative w-4 -my-3 flex items-center justify-center bg-gray-100 z-20">
         <div className="px-2 text-[9px]">{lineIndex + 1}</div>
       </div>
@@ -60,24 +61,15 @@ const LineRow: React.FC<LineRowProps> = ({
               lineEndTime={rulerEndTime}
             />
           )}
-          {/* {rulerStartTime && (
-            <ChordsListLine
-              lineIndex={lineIndex}
-              chords={chords}
-              lineDuration={lineDuration}
-              rulerStartTime={rulerStartTime}
-            />
-          )} */}
         </div>
 
         <div className="flex w-full justify-between items-center">
-          {/* <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1"> */}
           <LyricsWords
             line={line}
             lineIndex={lineIndex}
             onWordClick={onWordClick}
+            isSelected={isSelected}
           ></LyricsWords>
-          {/* </div> */}
 
           <LineAction lineIndex={lineIndex} />
         </div>

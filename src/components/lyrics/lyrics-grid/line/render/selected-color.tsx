@@ -1,14 +1,13 @@
-import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
 
 interface SelectedColorLineProps {
-  lineIndex: number;
+  isSelected: boolean;
 }
 
-const SelectedColorLine: React.FC<SelectedColorLineProps> = ({ lineIndex }) => {
-  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
-
-  if (selectedLineIndex === lineIndex) {
+const SelectedColorLine: React.FC<SelectedColorLineProps> = ({
+  isSelected,
+}) => {
+  if (isSelected) {
     return (
       <div
         className={`bg-blue-50 absolute w-full h-full top-0 left-0 z-1`}

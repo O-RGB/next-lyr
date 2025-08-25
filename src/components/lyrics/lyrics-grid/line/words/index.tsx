@@ -1,3 +1,5 @@
+// src/components/lyrics/lyrics-grid/line/words/index.tsx
+
 import { LyricWordData } from "@/types/common.type";
 import Word from "./word";
 import React, { useRef } from "react";
@@ -6,12 +8,14 @@ interface LyricsWordsProps {
   line: LyricWordData[];
   lineIndex: number;
   onWordClick: (index: number) => void;
+  isSelected: boolean;
 }
 
 const LyricsWords: React.FC<LyricsWordsProps> = ({
   line,
   lineIndex,
   onWordClick,
+  isSelected,
 }) => {
   const wordRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +28,7 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
 
     if (activeWordElement) {
       activeWordElement.scrollIntoView({
-        behavior: "smooth",
+        behavior: "instant",
         inline: align,
         block: "center",
       });
@@ -47,15 +51,15 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
           lineIndex={lineIndex}
           wordData={word}
           onSelect={handleWordSelect}
-          onActiveLine={(is) => {
-            if (!is && containerRef.current) {
-              // เลื่อนกลับไปซ้ายสุด
-              containerRef.current.scrollTo({ left: 0, behavior: "smooth" });
+          onActiveLine={(is, line) => {
+            if (is === false && containerRef.current) {
+              containerRef.current.scrollTo({ left: 0, behavior: "instant" });
             }
           }}
           onClick={onWordClick}
           onUpdate={() => {}}
           onDelete={() => {}}
+          isCurrentLine={isSelected}
         />
       ))}
     </div>

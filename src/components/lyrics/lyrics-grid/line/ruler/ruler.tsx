@@ -1,4 +1,3 @@
-import { useKaraokeStore } from "@/stores/karaoke-store";
 import { MusicMode } from "@/types/common.type";
 import React, { useMemo } from "react";
 import CurrentRulerTick from "./current-ruler-tick";
@@ -41,7 +40,6 @@ function RulerComponent({
     }
   };
 
-  // สร้าง tick lines ด้วย useMemo
   const ticks = useMemo(
     () =>
       Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => i * step),

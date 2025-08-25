@@ -9,27 +9,27 @@ type WordProps = {
   onUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onDelete: (index: number) => void;
   onSelect?: (index: number) => void;
-  onActiveLine?: (bool: boolean) => void;
+  onActiveLine?: (bool: boolean, lineIndex: number) => void;
+  isCurrentLine: boolean;
 };
 
 const Word = forwardRef<HTMLDivElement, WordProps>(
-  ({ wordData, lineIndex, onClick, onSelect, onActiveLine }, ref) => {
+  (
+    { wordData, lineIndex, onClick, onSelect, onActiveLine, isCurrentLine },
+    ref
+  ) => {
     const baseClasses =
       "lyric-word group relative cursor-pointer rounded-md border px-2 lg:px-2.5 py-1 lg:py-1.5 pr-2 lg:pr-4 text-sm select-none text-nowrap bg-white border-slate-300 hover:bg-slate-200";
 
     const stateClasses = {
       playback: "!border-amber-400 !bg-amber-200/80",
-      active:
-        "outline  outline-blue-500 font-bold bg-blue-100 border-blue-400",
+      active: "outline  outline-blue-500 font-bold bg-blue-100 border-blue-400",
       pendingCorrection:
         "outline  outline-orange-500 font-bold bg-orange-100 border-orange-400",
       editing: "border-purple-400 bg-purple-50/80 hover:bg-purple-100",
       timed: "border-l-4 border-l-green-500 bg-green-50 hover:bg-green-100",
     };
 
-    const isCurrentLine = useKaraokeStore(
-      (state) => state.selectedLineIndex === lineIndex
-    );
     const isPlayback = useKaraokeStore(
       (state) => state.playbackIndex === wordData.index
     );
@@ -87,7 +87,7 @@ const Word = forwardRef<HTMLDivElement, WordProps>(
     }, [shouldSelect, onSelect, wordData.index]);
 
     useEffect(() => {
-      onActiveLine?.(isCurrentLine);
+      onActiveLine?.(isCurrentLine, lineIndex);
     }, [isCurrentLine]);
 
     const formatTime = (value: number | null) => {
