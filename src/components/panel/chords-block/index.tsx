@@ -155,12 +155,21 @@ const ChordsBlock: React.FC = () => {
   );
 
   const handleAddChordAtPlayhead = useCallback(() => {
-    const { isChordPanelAutoScrolling, chordPanelCenterTick, currentTime } =
-      useKaraokeStore.getState();
+    const {
+      isChordPanelAutoScrolling,
+      chordPanelCenterTick,
+      currentTime,
+      mode,
+    } = useKaraokeStore.getState();
+    const tickValue = isChordPanelAutoScrolling
+      ? currentTime
+      : chordPanelCenterTick;
+
     const finalTick = Math.max(
       0,
-      Math.round(isChordPanelAutoScrolling ? currentTime : chordPanelCenterTick)
+      mode === "midi" ? Math.round(tickValue) : tickValue
     );
+
     actions.openChordModal(undefined, finalTick);
   }, [actions]);
 

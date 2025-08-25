@@ -17,8 +17,6 @@ export default function ChordEditModal({}: Props) {
   const actions = useKaraokeStore((state) => state.actions);
   const suggestedTick =
     useKaraokeStore((state) => state.suggestedChordTick) ?? 0;
-  // const minTick = useKaraokeStore((state) => state.minChordTickRange) ?? 0;
-  // const maxTick = useKaraokeStore((state) => state.maxChordTickRange) ?? 0;
 
   const [chordText, setChordText] = useState("");
   const [tickValue, setTickValue] = useState("0");
@@ -57,20 +55,12 @@ export default function ChordEditModal({}: Props) {
   }, [open, selectedChord, suggestedTick]);
 
   const handleSave = () => {
-    const tick = parseInt(tickValue, 10);
+    const tick = parseFloat(tickValue);
+
     if (isNaN(tick) || !chordText.trim()) {
       alert("Please enter a valid chord text and tick value.");
       return;
     }
-
-    // if (minTick !== undefined && tick < minTick) {
-    //   alert(`Chord tick cannot be before the line's start time (${minTick}).`);
-    //   return;
-    // }
-    // if (maxTick !== undefined && tick > maxTick) {
-    //   alert(`Chord tick cannot be after the line's end time (${maxTick}).`);
-    //   return;
-    // }
 
     onSave({ chord: chordText.trim(), tick });
   };
@@ -78,14 +68,6 @@ export default function ChordEditModal({}: Props) {
   const handleTickChange = (tick: number | undefined) => {
     let num = tick ?? 0;
     if (isNaN(num)) return;
-
-    // if (minTick !== undefined && num < minTick) {
-    //   num = minTick;
-    // }
-    // if (maxTick !== undefined && num > maxTick) {
-    //   num = maxTick;
-    // }
-
     setTickValue(num.toString());
   };
 
@@ -170,7 +152,6 @@ export default function ChordEditModal({}: Props) {
             id="tick-value-input"
             value={tickValue}
             min={0}
-            // max={maxTick}
             onChange={handleTickChange}
             onKeyDown={handleKeyDown}
             placeholder="e.g., 0, 480, 960"
