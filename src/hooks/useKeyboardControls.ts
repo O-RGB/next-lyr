@@ -139,7 +139,8 @@ export const useKeyboardControls = (
             firstWordOfEditingLine &&
             currentIndex === firstWordOfEditingLine.index
           ) {
-            onEditLine(editingLineIndex);
+            // This condition might be too strict, but let's keep it for now
+            // It prevents going back further than the start of the line being edited
             return;
           }
         }
@@ -167,7 +168,7 @@ export const useKeyboardControls = (
             actions.goToNextWord();
           }
         } else {
-          // First press
+          // First press to start timing
           actions.startTiming(currentTime);
         }
       }

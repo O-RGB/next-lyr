@@ -21,6 +21,7 @@ export const createPlaybackActions: StateCreator<
         let newCurrentIndex = state.currentIndex;
         let newSelectedLineIndex = state.selectedLineIndex;
 
+        // If timing hasn't started, and not in a specific edit mode, start from the beginning.
         if (state.currentIndex === -1 && state.editingLineIndex === null) {
           newCurrentIndex = 0;
           newSelectedLineIndex = 0;
@@ -30,6 +31,7 @@ export const createPlaybackActions: StateCreator<
         const wordToStart = newData[newCurrentIndex];
 
         if (wordToStart) {
+          // Only set start time if it's null (first press) or if we are in a line-specific edit mode
           if (wordToStart.start === null || state.editingLineIndex !== null) {
             wordToStart.start = currentTime;
           }
@@ -44,6 +46,35 @@ export const createPlaybackActions: StateCreator<
         };
       });
       get().actions.saveCurrentProject();
+    },
+
+    startTimingFromLine: (lineIndex: number) => {
+      const { lyricsData } = get();
+      const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+
+      if (!firstWordOfLine) {
+        return { success: false, preRollTime: 0 };
+      }
+
+      const firstWordIndex = firstWordOfLine.index;
+      const preRollTime = getPreRollTime(lineIndex, lyricsData);
+
+      set((state) => ({
+        lyricsData: state.lyricsData.map((word) =>
+          word.lineIndex >= lineIndex
+            ? { ...word, start: null, end: null, length: 0 }
+            : word
+        ),
+        currentIndex: firstWordIndex,
+        selectedLineIndex: lineIndex,
+        editingLineIndex: null, // This is key: null for multi-line timing
+        isTimingActive: false, // Let the first arrow press trigger this
+        correctionIndex: null,
+        lyricsProcessed: undefined,
+      }));
+
+      get().actions.saveCurrentProject();
+      return { success: true, preRollTime };
     },
 
     recordTiming: (currentTime: number) => {
@@ -63,18 +94,21 @@ export const createPlaybackActions: StateCreator<
           const isCrossingLines =
             currentWord && nextWord.lineIndex !== currentWord.lineIndex;
 
+          // Only consider it the end of the line for timing purposes if in single-line edit mode
           if (isCrossingLines && state.editingLineIndex !== null) {
             isLineEnd = true;
           } else {
             nextWord.start = currentTime;
           }
         } else {
+          // This is the absolute end of all lyrics
           isLineEnd = true;
         }
 
         return { lyricsData: newData };
       });
 
+      // Stop timing only if it was a single-line edit session that just ended
       if (isLineEnd && get().editingLineIndex !== null) {
         get().actions.stopTiming();
       }
@@ -96,6 +130,7 @@ export const createPlaybackActions: StateCreator<
             correctionIndex: null,
           };
         }
+        // If it's the last word, stop the timing session
         return { isTimingActive: false, editingLineIndex: null };
       });
     },
@@ -112,6 +147,7 @@ export const createPlaybackActions: StateCreator<
         );
 
         const newData = [...state.lyricsData];
+        // Clear timing for the word that was wrong and the one being corrected
         if (newData[state.currentIndex]) {
           newData[state.currentIndex].start = null;
         }
@@ -124,7 +160,7 @@ export const createPlaybackActions: StateCreator<
           lyricsData: newData,
           currentIndex: newCurrentIndex,
           correctionIndex: newCurrentIndex,
-          isTimingActive: true,
+          isTimingActive: true, // Re-activate timing immediately for correction
         };
       });
 

@@ -14,14 +14,18 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
   onWordClick,
 }) => {
   const wordRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToActiveWord = (wordIndex: number) => {
+  const scrollToActiveWord = (
+    wordIndex: number,
+    align: ScrollLogicalPosition = "center"
+  ) => {
     const activeWordElement = wordRefs.current[wordIndex];
 
     if (activeWordElement) {
       activeWordElement.scrollIntoView({
-        behavior: "instant",
-        inline: "center",
+        behavior: "smooth",
+        inline: align,
         block: "center",
       });
     }
@@ -32,7 +36,10 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
   };
 
   return (
-    <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:hidden p-1">
+    <div
+      ref={containerRef}
+      className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:hidden p-1"
+    >
       {line.map((word) => (
         <Word
           ref={(el: any) => (wordRefs.current[word.index] = el)}
@@ -41,7 +48,10 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
           wordData={word}
           onSelect={handleWordSelect}
           onActiveLine={(is) => {
-            if (!is) handleWordSelect(0);
+            if (!is && containerRef.current) {
+              // เลื่อนกลับไปซ้ายสุด
+              containerRef.current.scrollTo({ left: 0, behavior: "smooth" });
+            }
           }}
           onClick={onWordClick}
           onUpdate={() => {}}

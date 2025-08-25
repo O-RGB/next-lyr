@@ -8,6 +8,7 @@ interface PlayerHandlersState {
   handleStop: () => void;
   handleWordClick: (index: number) => void;
   handleEditLine: (lineIndex: number) => void;
+  handleRetiming: (lineIndex: number) => void;
 }
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
@@ -66,6 +67,23 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         useKaraokeStore.getState().actions.setIsPlaying(true);
         playerControls.seek(preRollTime);
         playerControls.play();
+      }
+    },
+    handleRetiming: (lineIndex: number) => {
+      const { playerControls } = usePlayerSetupStore.getState();
+      if (!playerControls) {
+        console.warn("[handleRetiming] Aborted: playerControls not available.");
+        return;
+      }
+
+      const actions = useKaraokeStore.getState().actions;
+      const { success, preRollTime } = actions.startTimingFromLine(lineIndex);
+
+      if (success) {
+        playerControls.seek(preRollTime);
+        if (!playerControls.isPlaying()) {
+          playerControls.play();
+        }
       }
     },
   })

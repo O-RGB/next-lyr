@@ -6,15 +6,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragMoveEvent,
+  DragEndEvent,
 } from "@dnd-kit/core";
 import ChordItem from "./chords/item";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import useIsMobile from "@/hooks/useIsMobile";
+import { Ruler } from "./ruler";
 import ZoomControl from "./zoom";
 import ChordEditModal from "@/components/modals/chord";
-import { Ruler } from "./ruler";
 
 const PIXELS_PER_UNIT_MIDI = 0.1;
 const PIXELS_PER_UNIT_TIME = 50;
@@ -61,6 +63,10 @@ const ChordsBlock: React.FC = () => {
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
+  const [draggedChordPosition, setDraggedChordPosition] = useState<
+    number | null
+  >(null);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -114,6 +120,9 @@ const ChordsBlock: React.FC = () => {
       const newTick = scrollPos / pixelsPerUnit;
 
       actions.setChordPanelCenterTick(newTick);
+      if (userHasScrolled) {
+        actions.setPlayFromScrolledPosition(true);
+      }
       playerControls?.seek(newTick);
 
       scrollTimeoutRef.current = setTimeout(() => {
@@ -122,15 +131,20 @@ const ChordsBlock: React.FC = () => {
           actions.setIsChordPanelAutoScrolling(true);
           wasPlayingOnScrollStartRef.current = false;
         }
+        setUserHasScrolled(false); // Reset after scroll ends
       }, 250);
     },
-    [pixelsPerUnit, actions, isMobile, playerControls]
+    [pixelsPerUnit, actions, isMobile, playerControls, userHasScrolled]
   );
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
       const { isChordPanelAutoScrolling, isPlaying, currentTime } =
         useKaraokeStore.getState();
+
+      if (!isPlaying) {
+        setUserHasScrolled(true);
+      }
 
       if (isChordPanelAutoScrolling && isPlaying) {
         const isVerticalScroll = Math.abs(e.deltaY) > Math.abs(e.deltaX);
@@ -154,6 +168,9 @@ const ChordsBlock: React.FC = () => {
   const handleTouchStart = useCallback(() => {
     const { isChordPanelAutoScrolling, isPlaying, currentTime } =
       useKaraokeStore.getState();
+    if (!isPlaying) {
+      setUserHasScrolled(true);
+    }
     if (isChordPanelAutoScrolling && isPlaying) {
       wasPlayingOnScrollStartRef.current = true;
       playerControls?.pause();
@@ -173,8 +190,23 @@ const ChordsBlock: React.FC = () => {
     actions.openChordModal(undefined, finalTick);
   }, [actions]);
 
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent) => {
+      const originalTick = parseFloat(event.active.id.toString().split("-")[1]);
+      const deltaPos = isMobile ? event.delta.x : event.delta.y;
+      const newTick = originalTick + deltaPos / pixelsPerUnit;
+      const finalTick = Math.max(
+        0,
+        mode === "midi" ? Math.round(newTick) : newTick
+      );
+      setDraggedChordPosition(finalTick);
+    },
+    [pixelsPerUnit, mode, isMobile]
+  );
+
   const handleDragEnd = useCallback(
-    (event: any) => {
+    (event: DragEndEvent) => {
+      setDraggedChordPosition(null);
       const originalTick = parseFloat(event.active.id.toString().split("-")[1]);
       const chord = chordsData.find((c) => c.tick === originalTick);
       if (!chord) return;
@@ -225,7 +257,11 @@ const ChordsBlock: React.FC = () => {
 
         <Playhead onAddChord={handleAddChordAtPlayhead} isMobile={isMobile} />
 
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+        >
           <div
             ref={containerRef}
             className="h-full w-full bg-white border border-slate-300 rounded-lg relative"
@@ -285,6 +321,7 @@ const ChordsBlock: React.FC = () => {
                       pixelsPerUnit={pixelsPerUnit}
                       zoom={zoom}
                       isMobile={isMobile}
+                      draggedChordPosition={draggedChordPosition}
                     />
                   </div>
 

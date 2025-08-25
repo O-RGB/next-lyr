@@ -88,6 +88,12 @@ export interface ContentActions {
 export interface PlaybackActions {
   setIsPlaying: (playing: boolean) => void;
   startTiming: (currentTime: number) => void;
+  // START: Added new action type
+  startTimingFromLine: (lineIndex: number) => {
+    success: boolean;
+    preRollTime: number;
+  };
+  // END: Added new action type
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
   goToNextWord: () => void;
   correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };

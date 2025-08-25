@@ -1,8 +1,9 @@
 import ButtonCommon from "@/components/common/button";
 import PopConfirmCommon from "@/components/common/popconfrim";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
-import { BiPencil, BiTrash } from "react-icons/bi";
+import { BiPencil, BiTime, BiTrash } from "react-icons/bi";
 
 interface LineActionProps {
   lineIndex: number;
@@ -11,6 +12,9 @@ interface LineActionProps {
 const LineAction: React.FC<LineActionProps> = React.memo(
   ({ lineIndex }) => {
     const actions = useKaraokeStore((state) => state.actions);
+    const { handleRetiming } = usePlayerHandlersStore();
+    const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+
     return (
       <div className="flex flex-col lg:flex-row items-center border-l lg:border-0">
         <ButtonCommon
@@ -18,8 +22,8 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             actions.selectLine(lineIndex);
             actions.openEditModal();
           }}
-          // disabled={editingLineIndex !== null}
-          title="Start Timing Edit (Ctrl+Enter)"
+          disabled={editingLineIndex !== null}
+          title="Edit Lyrics (Enter)"
           color="white"
           circle
           variant="ghost"
@@ -28,8 +32,23 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           className="z-20"
         />
         <PopConfirmCommon
+          title="Re-time from this line?"
+          content="This will clear all timing data from this line onwards. Are you sure?"
           openbuttonProps={{
-            // disabled: editingLineIndex !== null,
+            disabled: editingLineIndex !== null,
+            title: "Re-time from here",
+            icon: <BiTime />,
+            circle: true,
+            color: "warning",
+            variant: "ghost",
+            size: "xs",
+            className: "z-20",
+          }}
+          onConfirm={() => handleRetiming(lineIndex)}
+        />
+        <PopConfirmCommon
+          openbuttonProps={{
+            disabled: editingLineIndex !== null,
             title: "Delete Line",
             icon: <BiTrash />,
             circle: true,
@@ -45,5 +64,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
   },
   (prev, next) => prev.lineIndex === next.lineIndex
 );
+
+LineAction.displayName = "LineAction";
 
 export default LineAction;
