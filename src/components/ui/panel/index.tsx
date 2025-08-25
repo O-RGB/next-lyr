@@ -83,9 +83,9 @@ const LyrEditerPanel: React.FC = () => {
       <main className="flex flex-col h-[calc(100vh-36px)]">
         <PanelTools></PanelTools>
 
-        <div className="md:hidden">
+        {/* <div className="md:hidden">
           <FloatingButtonGroup actions={floatingActions} />
-        </div>
+        </div> */}
 
         {/* Modals */}
         <ModalCommon

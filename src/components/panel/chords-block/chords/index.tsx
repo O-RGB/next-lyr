@@ -1,8 +1,7 @@
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { BiPencil, BiTrash } from "react-icons/bi";
-import PopConfirmCommon from "@/components/common/popconfrim";
+import { BiPencil, BiMenu } from "react-icons/bi";
 import ButtonCommon from "@/components/common/button";
 
 interface ChordProps {
@@ -31,12 +30,11 @@ const Chord: React.FC<ChordProps> = React.memo(
         <div
           ref={setNodeRef}
           style={style}
-          {...listeners}
           {...attributes}
           onClick={onClick}
           className={`
-            relative border rounded-md w-full text-center text-sm font-mono font-bold 
-            cursor-grab active:cursor-grabbing flex flex-col items-center py-2 px-1 min-h-[60px]
+            relative border rounded-md w-full text-center text-sm font-mono font-bold
+            flex flex-col items-center py-1 px-1 min-h-[60px]
             ${
               isActive
                 ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
@@ -44,8 +42,22 @@ const Chord: React.FC<ChordProps> = React.memo(
             }
           `}
         >
-          <span className="text-xs line-clamp-1 text-center mb-1">{title}</span>
-          <div className="flex flex-col items-center gap-1">
+          {/* Drag Handle (Icon สำหรับลาก) */}
+          <div
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <BiMenu
+              className={`w-3 h-3 ${isActive ? "text-white" : "text-gray-300"}`}
+            />
+          </div>
+
+          <span className="text-[10px] line-clamp-1 text-center my-1 flex-grow flex items-center">
+            {title}
+          </span>
+
+          <div className="flex flex-row items-center gap-1">
             <ButtonCommon
               onClick={(e) => {
                 e.stopPropagation();
@@ -57,30 +69,11 @@ const Chord: React.FC<ChordProps> = React.memo(
               className={`!p-1 !bg-transparent  ${
                 isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
               }`}
+              size="xs"
               title="Edit Chord"
             >
               <BiPencil className="w-3 h-3" />
             </ButtonCommon>
-            <PopConfirmCommon
-              onConfirm={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              title="Delete Chord?"
-              content="Are you sure you want to delete this chord?"
-              openbuttonProps={{
-                onClick: (e) => e.stopPropagation(),
-                circle: true,
-                className: `!p-1 ${
-                  isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
-                }`,
-                title: "Delete Chord",
-                icon: <BiTrash className="w-3 h-3" />,
-                color: isActive ? "white" : "secondary",
-                variant: "ghost",
-                size: "sm",
-              }}
-            />
           </div>
         </div>
       );
@@ -90,12 +83,11 @@ const Chord: React.FC<ChordProps> = React.memo(
       <div
         ref={setNodeRef}
         style={style}
-        {...listeners}
         {...attributes}
         onClick={onClick}
         className={`
-          relative border rounded-md w-full text-center text-sm font-mono font-bold 
-          cursor-grab active:cursor-grabbing flex justify-between items-center px-2
+          relative border rounded-md w-full text-center text-sm font-mono font-bold
+          flex justify-between items-center px-2 gap-1
           ${
             isActive
               ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
@@ -103,7 +95,19 @@ const Chord: React.FC<ChordProps> = React.memo(
           }
         `}
       >
-        <span className="text-xs line-clamp-1 w-12 text-start">{title}</span>
+        {/* Drag Handle */}
+        <div
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing touch-none p-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <BiMenu
+            className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-500"}`}
+          />
+        </div>
+
+        <span className="text-xs line-clamp-1 flex-grow">{title}</span>
+
         <div className="flex items-center gap-0.5">
           <ButtonCommon
             onClick={(e) => {
@@ -111,30 +115,13 @@ const Chord: React.FC<ChordProps> = React.memo(
               onEdit();
             }}
             circle
-            className={`!p-1 !bg-transparent ${
-              isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
-            }`}
+            className={`!p-1 !bg-transparent `}
             title="Edit Chord"
+            size="xs"
+            color={!isActive ? "white" : "secondary"}
           >
             <BiPencil className="w-3 h-3" />
           </ButtonCommon>
-          <PopConfirmCommon
-            onConfirm={() => onDelete()}
-            title="Delete Chord?"
-            content="Are you sure you want to delete this chord?"
-            openbuttonProps={{
-              onClick: (e) => e.stopPropagation(),
-              circle: true,
-              className: `!p-1 ${
-                isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
-              }`,
-              title: "Delete Chord",
-              icon: <BiTrash className="w-3 h-3" />,
-              color: isActive ? "white" : "secondary",
-              variant: "ghost",
-              size: "sm",
-            }}
-          />
         </div>
       </div>
     );

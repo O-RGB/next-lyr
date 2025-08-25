@@ -4,7 +4,6 @@ import { LyricWordData, MusicMode } from "@/types/common.type";
 import Ruler from "./ruler/ruler";
 import WordTimingLines from "./ruler/ruler-line";
 import SelectedColorLine from "./render/selected-color";
-import ChordsListLine from "./chords";
 import LineAction from "./actions";
 import LyricsWords from "./words";
 
@@ -35,7 +34,7 @@ const LineRow: React.FC<LineRowProps> = ({
 
   return (
     <div
-      className="relative flex h-auto gap-3 py-3"
+      className="relative flex h-auto gap-3 py-1 lg:py-3"
       ref={lineRef}
       data-line-index={lineIndex}
     >
@@ -72,13 +71,13 @@ const LineRow: React.FC<LineRowProps> = ({
         </div>
 
         <div className="flex w-full justify-between items-center">
-          <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1">
+          {/* <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1"> */}
             <LyricsWords
               line={line}
               lineIndex={lineIndex}
               onWordClick={onWordClick}
             ></LyricsWords>
-          </div>
+          {/* </div> */}
 
           <LineAction lineIndex={lineIndex} />
         </div>

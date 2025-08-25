@@ -12,7 +12,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
   ({ lineIndex }) => {
     const actions = useKaraokeStore((state) => state.actions);
     return (
-      <div className="flex flex-col lg:flex-row items-center">
+      <div className="flex flex-col lg:flex-row items-center border-l lg:border-0">
         <ButtonCommon
           onClick={() => {
             actions.selectLine(lineIndex);
@@ -23,7 +23,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           color="white"
           circle
           variant="ghost"
-          size="sm"
+          size="xs"
           icon={<BiPencil className="text-slate-600" />}
           className="z-20"
         />
@@ -35,7 +35,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             circle: true,
             color: "danger",
             variant: "ghost",
-            size: "sm",
+            size: "xs",
             className: "z-20",
           }}
           onConfirm={() => actions.deleteLine?.(lineIndex)}

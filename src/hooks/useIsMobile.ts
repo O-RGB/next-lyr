@@ -1,7 +1,7 @@
 // src/hooks/useIsMobile.ts
 import { useState, useEffect } from "react";
 
-const useIsMobile = (breakpoint = 768): boolean => {
+const useIsMobile = (breakpoint = 1024): boolean => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {

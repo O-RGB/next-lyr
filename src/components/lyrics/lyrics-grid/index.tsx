@@ -48,7 +48,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
   return (
     <>
       <AutoMoveToLine lineRefs={lineRefs} />
-      <div className="h-full bg-white border border-slate-300 overflow-auto">
+      <div className="h-full bg-white border border-slate-300 overflow-auto [&::-webkit-scrollbar]:hidden">
         <div className="flex flex-col divide-y">
           {groupedLines.map(({ line, lineIndex, lineChords }) => (
             <LineRow

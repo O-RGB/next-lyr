@@ -83,7 +83,7 @@ export default function MetadataForm({
           onFinish={() => {}}
           className="flex flex-col gap-0.5"
         >
-          <Form.Item<SongInfo> required name="TITLE" className="w-full">
+          <Form.Item<SongInfo> required name="TITLE" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -98,7 +98,7 @@ export default function MetadataForm({
             )}
           </Form.Item>
           <div className="flex gap-2">
-            <Form.Item<SongInfo> required name="KEY" className="w-full">
+            <Form.Item<SongInfo> required name="KEY" className="w-full h-full">
               {(field) => (
                 <SelectCommon
                   {...field}
@@ -113,7 +113,7 @@ export default function MetadataForm({
                 />
               )}
             </Form.Item>
-            <Form.Item<SongInfo> required name="TEMPO" className="w-full">
+            <Form.Item<SongInfo> required name="TEMPO" className="w-full h-full">
               {(field) => (
                 <InputNumberCommon
                   {...field}
@@ -127,7 +127,7 @@ export default function MetadataForm({
                 />
               )}
             </Form.Item>
-            <Form.Item<SongInfo> required name="ARTIST_TYPE" className="w-full">
+            <Form.Item<SongInfo> required name="ARTIST_TYPE" className="w-full h-full">
               {(field) => (
                 <SelectCommon
                   {...field}
@@ -143,7 +143,7 @@ export default function MetadataForm({
               )}
             </Form.Item>
           </div>
-          <Form.Item<SongInfo> required name="ALBUM" className="w-full">
+          <Form.Item<SongInfo> required name="ALBUM" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -157,7 +157,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="ARTIST" className="w-full">
+          <Form.Item<SongInfo> required name="ARTIST" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -171,7 +171,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="AUTHOR" className="w-full">
+          <Form.Item<SongInfo> required name="AUTHOR" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -185,7 +185,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="GENRE" className="w-full">
+          <Form.Item<SongInfo> required name="GENRE" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -199,7 +199,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="CREATOR" className="w-full">
+          <Form.Item<SongInfo> required name="CREATOR" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -213,7 +213,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="COMPANY" className="w-full">
+          <Form.Item<SongInfo> required name="COMPANY" className="w-full h-full">
             {(field) => (
               <InputCommon
                 {...field}
@@ -227,7 +227,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="LANGUAGE" className="w-full">
+          <Form.Item<SongInfo> required name="LANGUAGE" className="w-full h-full">
             {(field) => (
               <SelectCommon
                 {...field}
@@ -243,7 +243,7 @@ export default function MetadataForm({
             )}
           </Form.Item>
           <div className="flex gap-2">
-            <Form.Item<SongInfo> required name="YEAR" className="w-full">
+            <Form.Item<SongInfo> required name="YEAR" className="w-full h-full">
               {(field) => (
                 <InputNumberCommon
                   {...field}
@@ -260,7 +260,7 @@ export default function MetadataForm({
             <Form.Item<SongInfo>
               required
               name="VOCAL_CHANNEL"
-              className="w-full"
+              className="w-full h-full"
             >
               {(field) => (
                 <SelectCommon

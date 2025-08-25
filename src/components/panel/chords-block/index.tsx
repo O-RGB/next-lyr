@@ -35,15 +35,15 @@ const Playhead = ({
       <div className={lineStyle}>
         <button
           onClick={onAddChord}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     text-purple-500 hover:text-purple-700 bg-white rounded-full 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                     text-purple-500 hover:text-purple-700 bg-white rounded-full
                      transition-colors pointer-events-auto"
           title="Add new chord at current time"
         >
           <BsPlusCircleFill />
         </button>
         <div
-          className="absolute top-1/2 left-1/2 w-3 h-3 border-2 border-purple-500 
+          className="absolute top-1/2 left-1/2 w-3 h-3 border-2 border-purple-500
                         bg-white rounded-full z-10 -translate-x-1/2 -translate-y-1/2"
         />
       </div>
@@ -64,6 +64,8 @@ const ChordsBlock: React.FC = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wasPlayingOnScrollStartRef = useRef(false);
 
   useEffect(() => {
     const bpm = playerState.midiInfo?.bpm ?? 0;
@@ -102,24 +104,64 @@ const ChordsBlock: React.FC = () => {
     (e: React.UIEvent<HTMLDivElement>) => {
       if (useKaraokeStore.getState().isChordPanelAutoScrolling) return;
 
-      actions.setPlayFromScrolledPosition(true);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
       const scrollPos = isMobile
         ? e.currentTarget.scrollLeft
         : e.currentTarget.scrollTop;
-      actions.setChordPanelCenterTick(scrollPos / pixelsPerUnit);
+      const newTick = scrollPos / pixelsPerUnit;
+
+      actions.setChordPanelCenterTick(newTick);
+      playerControls?.seek(newTick);
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (wasPlayingOnScrollStartRef.current) {
+          playerControls?.play();
+          actions.setIsChordPanelAutoScrolling(true);
+          wasPlayingOnScrollStartRef.current = false;
+        }
+      }, 250);
     },
-    [pixelsPerUnit, actions, isMobile]
+    [pixelsPerUnit, actions, isMobile, playerControls]
   );
 
-  const handleWheel = useCallback(() => {
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      const { isChordPanelAutoScrolling, isPlaying, currentTime } =
+        useKaraokeStore.getState();
+
+      if (isChordPanelAutoScrolling && isPlaying) {
+        const isVerticalScroll = Math.abs(e.deltaY) > Math.abs(e.deltaX);
+        const isHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+
+        if (
+          (!isMobile && isVerticalScroll) ||
+          (isMobile && isHorizontalScroll)
+        ) {
+          wasPlayingOnScrollStartRef.current = true;
+          playerControls?.pause();
+          actions.setIsChordPanelAutoScrolling(false);
+          actions.setChordPanelCenterTick(currentTime);
+          actions.setPlayFromScrolledPosition(true);
+        }
+      }
+    },
+    [actions, isMobile, playerControls]
+  );
+
+  const handleTouchStart = useCallback(() => {
     const { isChordPanelAutoScrolling, isPlaying, currentTime } =
       useKaraokeStore.getState();
     if (isChordPanelAutoScrolling && isPlaying) {
+      wasPlayingOnScrollStartRef.current = true;
+      playerControls?.pause();
       actions.setIsChordPanelAutoScrolling(false);
       actions.setChordPanelCenterTick(currentTime);
       actions.setPlayFromScrolledPosition(true);
     }
-  }, [actions]);
+  }, [actions, playerControls]);
 
   const handleAddChordAtPlayhead = useCallback(() => {
     const { isChordPanelAutoScrolling, chordPanelCenterTick, currentTime } =
@@ -158,8 +200,12 @@ const ChordsBlock: React.FC = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  const scrollContainerClasses = isMobile
+    ? "absolute inset-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    : "absolute inset-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
   return (
-    <div className="h-full flex flex-row md:flex-col gap-2 overflow-hidden">
+    <div className="h-full flex flex-row lg:flex-col gap-2 overflow-hidden">
       <ChordEditModal />
       <ZoomControl isMobile={isMobile} zoom={zoom} setZoom={setZoom} />
 
@@ -188,9 +234,10 @@ const ChordsBlock: React.FC = () => {
           >
             <div
               ref={scrollContainerRef}
-              className="absolute inset-0 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className={scrollContainerClasses}
               onScroll={handleScroll}
               onWheel={handleWheel}
+              onTouchStart={handleTouchStart}
             >
               <div
                 style={

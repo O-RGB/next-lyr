@@ -15,11 +15,11 @@ export default function LyricsPanel({}: Props) {
         </div>
       </div>
 
-      <div className="flex flex-col-reverse md:flex-row w-full gap-2 h-full overflow-hidden">
-        <div className="flex-grow min-h-0 md:min-w-0">
+      <div className="flex flex-col-reverse lg:flex-row w-full gap-2 h-full overflow-hidden">
+        <div className="flex-grow min-h-0 lg:min-w-0">
           <LyricsGrid />
         </div>
-        <div className="h-[100px] md:h-full md:w-[150px] flex-shrink-0">
+        <div className="h-[100px] lg:h-full lg:w-[150px] flex-shrink-0">
           <ChordsBlock />
         </div>
       </div>

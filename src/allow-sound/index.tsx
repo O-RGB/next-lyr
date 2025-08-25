@@ -57,20 +57,19 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
         children
       ) : (
         <div
-          data-rotation="45"
-          className={`flex h-screen w-screen items-center justify-center bg-gradient-to-r from-violet-500 to-purple-500 transition-opacity duration-1000 ${
+          className={`flex h-screen w-screen items-center justify-center bg-gray-100 transition-opacity duration-1000 ${
             fadeIn ? "opacity-0" : "opacity-100"
           }`}
         >
           <div className="text-center">
             {pressed ? (
               <div className="flex flex-col items-center justify-center gap-4">
-                <div className="text-4xl font-bold text-white tracking-wider animate-pulse">
-                  Next Lyrics Editer
+                <div className="text-4xl font-bold text-gray-700 tracking-wider">
+                  Next Lyrics Editor
                 </div>
-                <div className="flex items-center gap-2 text-white font-medium text-lg">
+                <div className="flex items-center gap-2 text-gray-600 font-medium text-lg">
                   <svg
-                    className="animate-spin h-5 w-5 text-white"
+                    className="animate-spin h-5 w-5 text-gray-600"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -94,13 +93,15 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center space-y-6">
-                <div className="text-4xl font-bold text-white mb-4 tracking-wider">
+                <div className="text-3xl font-bold text-gray-700 mb-4 tracking-wider">
                   Next Lyrics Editor
                 </div>
-                <div className="relative w-fit group">
-                  <div className="absolute -inset-0.5 bg-white opacity-30 rounded-lg blur-sm group-hover:opacity-100 transition duration-300"></div>
+                <div className="relative flex items-center justify-center">
+                  <span className="absolute flex h-16 w-16">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  </span>
                   <button
-                    className="relative w-fit p-4 px-8 flex items-center justify-center rounded-lg bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30 font-medium text-lg hover:bg-opacity-30 transition-all duration-300 transform hover:scale-105"
+                    className="relative w-fit p-4 px-8 flex items-center justify-center rounded-full bg-white border border-gray-300 shadow-md font-medium text-lg text-gray-700 hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                     onClick={handleClick}
                   >
                     Allow Sound
@@ -124,6 +125,19 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
         autoPlay={false}
         ref={audioLoopRef}
       />
+      {/* CSS Keyframes for Ping Animation */}
+      <style jsx global>{`
+        @keyframes ping {
+          75%,
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        .animate-ping {
+          animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+      `}</style>
     </>
   );
 };

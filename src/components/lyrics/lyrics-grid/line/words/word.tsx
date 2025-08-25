@@ -9,10 +9,11 @@ type WordProps = {
   onUpdate: (index: number, newWordData: Partial<LyricWordData>) => void;
   onDelete: (index: number) => void;
   onSelect?: (index: number) => void;
+  onActiveLine?: (bool: boolean) => void;
 };
 
 const Word = forwardRef<HTMLDivElement, WordProps>(
-  ({ wordData, lineIndex, onClick, onSelect }, ref) => {
+  ({ wordData, lineIndex, onClick, onSelect, onActiveLine }, ref) => {
     const baseClasses =
       "lyric-word group relative cursor-pointer rounded-md border px-2.5 py-1.5 pr-4 text-sm select-none text-nowrap bg-white border-slate-300 hover:bg-slate-200";
 
@@ -84,6 +85,10 @@ const Word = forwardRef<HTMLDivElement, WordProps>(
         onSelect(wordData.index);
       }
     }, [shouldSelect, onSelect, wordData.index]);
+
+    useEffect(() => {
+      onActiveLine?.(isCurrentLine);
+    }, [isCurrentLine]);
 
     const formatTime = (value: number | null) => {
       if (value === null) return "N/A";

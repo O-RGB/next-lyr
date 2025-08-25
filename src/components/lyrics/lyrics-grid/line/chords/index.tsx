@@ -1,46 +1,174 @@
-import React, { useEffect } from "react";
-import DraggableChordTag from "./chord";
-import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
-import { useKaraokeStore } from "@/stores/karaoke-store";
+import React from "react";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import { BiPencil, BiTrash, BiMenu } from "react-icons/bi";
+import PopConfirmCommon from "@/components/common/popconfrim";
+import ButtonCommon from "@/components/common/button";
 
-interface ChordsListLineProps {
-  lineIndex: number;
-
-  chords: ChordEvent[];
-  rulerStartTime: number;
-  lineDuration: number;
-  onChordClick?: (chord: ChordEvent) => void;
+interface ChordProps {
+  id: string;
+  title: string;
+  isActive: boolean;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isMobile?: boolean;
 }
 
-const ChordsListLine: React.FC<ChordsListLineProps> = ({
-  lineIndex,
-  chords,
-  lineDuration,
-  onChordClick,
-  rulerStartTime,
-}) => {
-  useEffect(() => {}, [chords]);
+const Chord: React.FC<ChordProps> = React.memo(
+  ({ id, title, isActive, onClick, onEdit, onDelete, isMobile = false }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({ id });
 
-  return (
-    <div className="absolute h-5 w-full -top-1">
-      {chords.map((chord, i) => {
-        const firstWordTick = rulerStartTime ?? 0;
-        const totalLineTick = lineDuration || 1;
-        const pos =
-          totalLineTick > 0
-            ? ((chord.tick - firstWordTick) / totalLineTick) * 100
-            : 0;
-        return (
-          <DraggableChordTag
-            key={`${chord.tick}-${i}`}
-            chord={chord}
-            initialLeftPercentage={pos}
-            onClick={() => onChordClick?.(chord)}
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      zIndex: isDragging ? 50 : 10,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    if (isMobile) {
+      return (
+        <div
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          onClick={onClick}
+          className={`
+            relative border rounded-md w-full text-center text-sm font-mono font-bold 
+            flex flex-col items-center py-1 px-1 min-h-[60px]
+            ${
+              isActive
+                ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
+                : "text-purple-700 bg-white border-purple-200 hover:bg-purple-50 shadow-sm"
+            }
+          `}
+        >
+          {/* Drag Handle (Icon สำหรับลาก) */}
+          <div
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <BiMenu
+              className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`}
+            />
+          </div>
+
+          <span className="text-xs line-clamp-1 text-center my-1 flex-grow flex items-center">
+            {title}
+          </span>
+
+          <div className="flex flex-row items-center gap-1">
+            <ButtonCommon
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              circle
+              variant="ghost"
+              color={isActive ? "white" : "secondary"}
+              className={`!p-1 !bg-transparent  ${
+                isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
+              }`}
+              title="Edit Chord"
+            >
+              <BiPencil className="w-3 h-3" />
+            </ButtonCommon>
+            <PopConfirmCommon
+              onConfirm={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete Chord?"
+              content="Are you sure you want to delete this chord?"
+              openbuttonProps={{
+                onClick: (e) => e.stopPropagation(),
+                circle: true,
+                className: `!p-1 ${
+                  isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
+                }`,
+                title: "Delete Chord",
+                icon: <BiTrash className="w-3 h-3" />,
+                color: isActive ? "white" : "secondary",
+                variant: "ghost",
+                size: "sm",
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        onClick={onClick}
+        className={`
+          relative border rounded-md w-full text-center text-sm font-mono font-bold 
+          flex justify-between items-center px-2 gap-1
+          ${
+            isActive
+              ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
+              : "text-purple-700 bg-white border-purple-200 hover:bg-purple-50 shadow-sm"
+          }
+        `}
+      >
+        {/* Drag Handle */}
+        <div
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing touch-none p-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <BiMenu
+            className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-500"}`}
           />
-        );
-      })}
-    </div>
-  );
-};
+        </div>
 
-export default ChordsListLine;
+        <span className="text-xs line-clamp-1 flex-grow">{title}</span>
+
+        <div className="flex items-center gap-0.5">
+          <ButtonCommon
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            circle
+            className={`!p-1 !bg-transparent ${
+              isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
+            }`}
+            title="Edit Chord"
+          >
+            <BiPencil className="w-3 h-3" />
+          </ButtonCommon>
+          <PopConfirmCommon
+            onConfirm={() => onDelete()}
+            title="Delete Chord?"
+            content="Are you sure you want to delete this chord?"
+            openbuttonProps={{
+              onClick: (e) => e.stopPropagation(),
+              circle: true,
+              className: `!p-1 ${
+                isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
+              }`,
+              title: "Delete Chord",
+              icon: <BiTrash className="w-3 h-3" />,
+              color: isActive ? "white" : "secondary",
+              variant: "ghost",
+              size: "sm",
+            }}
+          />
+        </div>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.id === next.id &&
+    prev.title === next.title &&
+    prev.isActive === next.isActive &&
+    prev.isMobile === next.isMobile
+);
+
+Chord.displayName = "Chord";
+export default Chord;

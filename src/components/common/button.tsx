@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react";
 
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonSize = "xs"| "sm" | "md" | "lg";
 export type ButtonVariant = "solid" | "outline" | "ghost";
 export type ButtonColor =
   | "primary"
@@ -30,12 +30,14 @@ export interface ButtonCommonProps
 
 const SIZE_VALUES = {
   regular: {
+    xs: "px-[12px] py-[6px] text-[12px]",
     sm: "px-[13px] py-[7px] text-[13px]",
     md: "px-[16px] py-[8px] text-[16px]",
     lg: "px-[16px] py-[8px] text-[16px]",
     auto: "px-[13px] py-[7px] text-[13px] sm:px-[16px] sm:py-[8px] sm:text-[16px] lg:px-[16px] lg:py-[8px] lg:text-[16px]",
   },
   circle: {
+    xs: "p-[6px]",
     sm: "p-[7px]",
     md: "p-[8px]",
     lg: "p-[9px]",

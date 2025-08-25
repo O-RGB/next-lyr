@@ -135,7 +135,7 @@ function FormItem<T extends FieldValues>({
   }
 
   return (
-    <div className={`relative flex flex-col z-[50] ${className}`}>
+    <div className={`relative flex flex-col ${className}`}>
       {label && (
         <label
           htmlFor={name as string}
@@ -184,9 +184,7 @@ function FormItem<T extends FieldValues>({
               } as any)
             : inputElement;
 
-          return (
-            <div className="relative line-clamp-1">{styledInputElement}</div>
-          );
+          return <div className="relative">{styledInputElement}</div>;
         }}
       />
 
