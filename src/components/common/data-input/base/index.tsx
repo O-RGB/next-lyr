@@ -76,13 +76,14 @@ export const useInputFocus = () => {
   return { isFocused, handleFocus, handleBlur };
 };
 
-export const getInputSizeClass = (inputSize: "sm" | "md" | "lg") => {
+const getInputSizeClass = (inputSize: "sm" | "md" | "lg") => {
   return {
-    sm: "text-[10px] px-2.5 py-1.5 h-7",
-    md: "text-base px-4 py-3 h-[42px]",
-    lg: "text-lg px-5 py-3.5 h-[48px]",
+    sm: "text-[10px] px-2.5 py-1.5", // เอา h-7 ออก
+    md: "text-base px-4 py-3", // เอา h-[42px] ออก
+    lg: "text-lg px-5 py-3.5", // เอา h-[48px] ออก
   }[inputSize];
 };
+
 
 export const getInputBaseClass = (
   isFocused: boolean,

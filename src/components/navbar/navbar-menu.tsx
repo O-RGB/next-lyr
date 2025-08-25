@@ -1,14 +1,13 @@
-// src/components/navbar/navbar-menu.tsx
-import React, { useState, useEffect } from "react";
 import Dropdown from "../common/dropdown/dropdown";
-import { BiFile, BiUndo, BiRedo, BiMenu, BiFolderOpen } from "react-icons/bi";
+import ButtonCommon from "@/components/common/button";
+import Link from "next/link";
+import Drawer, { MenuItem } from "../common/drawer";
+import React, { useState, useEffect } from "react";
+import { BiUndo, BiRedo, BiMenu, BiFolderOpen } from "react-icons/bi";
 import { MdOutlineLyrics } from "react-icons/md";
 import { IMenusType } from "./navbar.d";
-import ButtonCommon from "@/components/common/button";
-import { FaCode, FaFileUpload } from "react-icons/fa"; // <<< เพิ่ม
-import Link from "next/link";
+import { FaCode, FaFileUpload } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import Drawer, { MenuItem } from "../common/drawer";
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;
@@ -17,7 +16,6 @@ interface NavBarMenuProps {
 const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   const { undo, redo } = useKaraokeStore((state) => state.actions);
   const { past, future } = useKaraokeStore((state) => state.history);
-  const mode = useKaraokeStore((state) => state.mode);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -35,14 +33,14 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
 
   const menuConfig: MenuItem[] = [
     {
-      label: "เปิดโปรเจกต์", // <<< เปลี่ยน
+      label: "เปิด",
       icon: <BiFolderOpen />,
-      onClick: () => handleMenuClick("PROJECT_OPEN"), // <<< เปลี่ยน
+      onClick: () => handleMenuClick("PROJECT_OPEN"),
     },
     {
-      label: "ส่งออก", // <<< เปลี่ยน
-      icon: <FaFileUpload />, // <<< เปลี่ยน
-      onClick: () => handleMenuClick("EXPORT_FILE"), // <<< เปลี่ยน
+      label: "บันทึก",
+      icon: <FaFileUpload />,
+      onClick: () => handleMenuClick("EXPORT_FILE"),
     },
     {
       label: "เนื้อเพลง",
@@ -60,14 +58,14 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
       title: "ย้อนกลับ (Ctrl+Z)",
     },
     {
-      label: "ทำซ้ำ",
+      label: "ก่อนหน้า",
       icon: <BiRedo />,
       onClick: () => {
         redo();
         setIsDrawerOpen(false);
       },
       disabled: future.length === 0,
-      title: "ทำซ้ำ (Ctrl+Y)",
+      title: "ก่อนหน้า (Ctrl+Y)",
     },
   ];
 
@@ -88,6 +86,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
                   variant="ghost"
                   className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
                   icon={item.icon}
+                  size="sm"
                 >
                   {item.label}
                 </ButtonCommon>
@@ -102,6 +101,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
                 onClick={item.onClick}
                 disabled={item.disabled}
                 title={item.title}
+                size="sm"
               >
                 {item.label}
               </ButtonCommon>

@@ -94,10 +94,14 @@ export default function ProjectPage() {
 
   return (
     <div className="relative h-screen">
-      <div className="top-0 w-full bg-gradient-to-r from-violet-500 to-purple-500 z-50">
-        <NavBar />
+      <div className="fixed top-0 left-0 z-50 w-full">
+        <div className="top-0 w-full bg-gradient-to-r from-violet-500 to-purple-500 z-50">
+          <NavBar />
+        </div>
       </div>
-      <LyrEditerPanel />
+      <div className="relative top-[36px]">
+        <LyrEditerPanel />
+      </div>
     </div>
   );
 }

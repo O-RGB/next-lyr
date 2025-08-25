@@ -32,7 +32,7 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
   };
 
   return (
-    <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:hidden lg:p-1">
+    <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:hidden p-1">
       {line.map((word) => (
         <Word
           ref={(el: any) => (wordRefs.current[word.index] = el)}

@@ -31,11 +31,6 @@ export const useKeyboardControls = (
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log(
-        "includes((e.target as HTMLElement).tagName)",
-        ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)
-      );
-      console.log("player", player);
       if (
         ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
         isEditModalOpen ||
@@ -43,8 +38,6 @@ export const useKeyboardControls = (
       )
         return;
 
-      console.log("isTimingActive", isTimingActive);
-      console.log("editingLineIndex", editingLineIndex);
       const isStampingMode = isTimingActive || editingLineIndex !== null;
 
       if (e.ctrlKey && e.code === "KeyZ") {
@@ -102,19 +95,11 @@ export const useKeyboardControls = (
       }
 
       if (e.code === "Space") {
-        console.log("Space");
         e.preventDefault();
-
-        console.log("isStampingMode", isStampingMode);
-        if (isStampingMode) {
-          return;
-        }
+        if (isStampingMode) return;
 
         if (isPlaying) {
           player.pause();
-          actions.setIsPlaying(false);
-          actions.setIsChordPanelAutoScrolling(false);
-          actions.setChordPanelCenterTick(player.getCurrentTime());
         } else {
           let seekTime: number;
 
@@ -138,14 +123,13 @@ export const useKeyboardControls = (
           actions.setCurrentTime(seekTime);
           player.seek(seekTime);
           player.play();
-          actions.setIsPlaying(true);
         }
         return;
       }
 
       if (isStampingMode && e.code === "ArrowLeft") {
         e.preventDefault();
-        if (currentIndex <= 0) return;
+        if (currentIndex <= -1) return;
 
         if (editingLineIndex !== null) {
           const firstWordOfEditingLine = lyricsData.find(
@@ -169,40 +153,22 @@ export const useKeyboardControls = (
 
       if (player.isPlaying() && e.code === "ArrowRight") {
         e.preventDefault();
-
         const currentTime = player.getCurrentTime();
-        const currentWord = lyricsData[currentIndex];
 
-        const isStartingFromScratch =
-          !isTimingActive &&
-          editingLineIndex === null &&
-          currentWord &&
-          currentWord.start === null;
-
-        const isStartingEditedLine =
-          !isTimingActive && editingLineIndex !== null;
-
-        if (isTimingActive || isStartingFromScratch || isStartingEditedLine) {
-          if (isStartingFromScratch) {
-            actions.startTiming(currentTime);
-            return;
-          }
-
-          if (isStartingEditedLine) {
-            actions.startTiming(currentTime);
-            return;
-          }
-
+        if (isTimingActive) {
+          // Subsequent presses
           const { isLineEnd } = actions.recordTiming(currentTime);
 
           if (currentIndex + 1 >= lyricsData.length) {
             alert("All timing complete!");
             player.pause();
             actions.stopTiming();
-          } else if (isLineEnd) {
-          } else {
+          } else if (!isLineEnd) {
             actions.goToNextWord();
           }
+        } else {
+          // First press
+          actions.startTiming(currentTime);
         }
       }
     };

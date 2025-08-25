@@ -188,7 +188,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         }}
       >
         {rawFile && lyricsData.length > 0 ? (
-          <div className="grid grid-cols-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
               <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>
               {mode === "midi" && (

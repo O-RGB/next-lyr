@@ -18,18 +18,29 @@ export const createPlaybackActions: StateCreator<
 
     startTiming: (currentTime: number) => {
       set((state) => {
-        if (
-          state.lyricsData[state.currentIndex]?.start !== null &&
-          state.editingLineIndex === null
-        ) {
-          return {};
+        let newCurrentIndex = state.currentIndex;
+        let newSelectedLineIndex = state.selectedLineIndex;
+
+        if (state.currentIndex === -1 && state.editingLineIndex === null) {
+          newCurrentIndex = 0;
+          newSelectedLineIndex = 0;
         }
+
+        const newData = [...state.lyricsData];
+        const wordToStart = newData[newCurrentIndex];
+
+        if (wordToStart) {
+          if (wordToStart.start === null || state.editingLineIndex !== null) {
+            wordToStart.start = currentTime;
+          }
+        }
+
         return {
+          lyricsData: newData,
+          currentIndex: newCurrentIndex,
+          selectedLineIndex: newSelectedLineIndex,
           isTimingActive: true,
           correctionIndex: null,
-          lyricsData: state.lyricsData.map((word, i) =>
-            i === state.currentIndex ? { ...word, start: currentTime } : word
-          ),
         };
       });
       get().actions.saveCurrentProject();
@@ -49,14 +60,16 @@ export const createPlaybackActions: StateCreator<
 
         const nextWord = newData[state.currentIndex + 1];
         if (nextWord) {
-          nextWord.start = currentTime;
-          if (
-            currentWord &&
-            nextWord.lineIndex !== currentWord.lineIndex &&
-            state.editingLineIndex !== null
-          ) {
+          const isCrossingLines =
+            currentWord && nextWord.lineIndex !== currentWord.lineIndex;
+
+          if (isCrossingLines && state.editingLineIndex !== null) {
             isLineEnd = true;
+          } else {
+            nextWord.start = currentTime;
           }
+        } else {
+          isLineEnd = true;
         }
 
         return { lyricsData: newData };

@@ -14,16 +14,15 @@ const PlayerInit: React.FC<PlayerInitProps> = ({}) => {
         isPlayerReady={isPlayerReady}
         onPlayerCreated={setPlayerRef}
       ></PlayerSetupWapper>
-      <AllowSound>
-        <div className="hidden lg:block">
-          <PlayerHost
-            ref={playerRef}
-            onReady={() => {
-              setIsPlayerReady(true);
-            }}
-          />
-        </div>
-      </AllowSound>
+
+      <div className="hidden lg:block">
+        <PlayerHost
+          ref={playerRef}
+          onReady={() => {
+            setIsPlayerReady(true);
+          }}
+        />
+      </div>
     </>
   );
 };

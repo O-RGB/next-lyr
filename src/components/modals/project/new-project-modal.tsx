@@ -174,17 +174,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       title="Create New Project"
       open={open}
       onClose={onClose}
-      footer={
-        <div className="flex justify-end gap-2">
-          <ButtonCommon color="gray" onClick={onClose}>
-            Cancel
-          </ButtonCommon>
-          <ButtonCommon onClick={handleCreateProject}>
-            Create Project
-          </ButtonCommon>
-        </div>
-      }
-      classNames={{ modal: "!w-[90vw] lg:!w-[600px]" }}
+      okButtonProps={{
+        onClick: handleCreateProject,
+      }}
+      cancelButtonProps={{
+        onClick: onClose,
+      }}
     >
       <div className="flex flex-col gap-4">
         <SelectCommon
@@ -214,8 +209,10 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           />
         )}
 
-        <div className="mt-4 border-t pt-4">
+        <div className="">
           <MetadataForm
+            className="flex flex-col gap-4"
+            inputSize={"md"}
             adding
             onFieldChange={(data) => {
               setMetadataTemp({ ...DEFAULT_SONG_INFO, ...data });

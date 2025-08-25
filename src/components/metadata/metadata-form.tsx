@@ -21,12 +21,16 @@ type Props = {
   adding?: boolean;
   initMetadata?: SongInfo;
   onFieldChange?: (metadata: Partial<SongInfo>) => void;
+  inputSize?: "sm" | "md" | "lg" | undefined;
+  className?: string;
 };
 
 export default function MetadataForm({
   adding = false,
   onFieldChange,
   initMetadata,
+  inputSize = "sm",
+  className = "flex flex-col gap-0.5 lg:p-4",
 }: Props) {
   const metadata = useKaraokeStore((s) => s.metadata);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
@@ -77,12 +81,8 @@ export default function MetadataForm({
 
   return (
     <div>
-      <Card className="bg-white/50 lg:p-4 rounded-lg">
-        <Form
-          form={initName}
-          onFinish={() => {}}
-          className="flex flex-col gap-0.5"
-        >
+      <Card className="bg-white/50 rounded-lg">
+        <Form form={initName} onFinish={() => {}} className={className}>
           <Form.Item<SongInfo> required name="TITLE" className="w-full h-full">
             {(field) => (
               <InputCommon
@@ -93,7 +93,7 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Song Title :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
@@ -109,11 +109,15 @@ export default function MetadataForm({
                   disabled={!midiInfo && !rawFile && adding === false}
                   options={keyOption}
                   label="Key :"
-                  inputSize="sm"
+                  inputSize={inputSize}
                 />
               )}
             </Form.Item>
-            <Form.Item<SongInfo> required name="TEMPO" className="w-full h-full">
+            <Form.Item<SongInfo>
+              required
+              name="TEMPO"
+              className="w-full h-full"
+            >
               {(field) => (
                 <InputNumberCommon
                   {...field}
@@ -123,11 +127,15 @@ export default function MetadataForm({
                   }}
                   disabled={!midiInfo && !rawFile && adding === false}
                   label="Tempo :"
-                  inputSize="sm"
+                  inputSize={inputSize}
                 />
               )}
             </Form.Item>
-            <Form.Item<SongInfo> required name="ARTIST_TYPE" className="w-full h-full">
+            <Form.Item<SongInfo>
+              required
+              name="ARTIST_TYPE"
+              className="w-full h-full"
+            >
               {(field) => (
                 <SelectCommon
                   {...field}
@@ -138,7 +146,7 @@ export default function MetadataForm({
                   disabled={!midiInfo && !rawFile && adding === false}
                   options={artistTypeOption}
                   label="Gender :"
-                  inputSize="sm"
+                  inputSize={inputSize}
                 />
               )}
             </Form.Item>
@@ -153,7 +161,7 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Album :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
@@ -167,7 +175,7 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Artist :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
@@ -181,7 +189,7 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Composer :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
@@ -195,11 +203,15 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Rhythm/Genre :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="CREATOR" className="w-full h-full">
+          <Form.Item<SongInfo>
+            required
+            name="CREATOR"
+            className="w-full h-full"
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -209,11 +221,15 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Creator :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="COMPANY" className="w-full h-full">
+          <Form.Item<SongInfo>
+            required
+            name="COMPANY"
+            className="w-full h-full"
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -223,11 +239,15 @@ export default function MetadataForm({
                 }}
                 disabled={!midiInfo && !rawFile && adding === false}
                 label="Music Label :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="LANGUAGE" className="w-full h-full">
+          <Form.Item<SongInfo>
+            required
+            name="LANGUAGE"
+            className="w-full h-full"
+          >
             {(field) => (
               <SelectCommon
                 {...field}
@@ -238,7 +258,7 @@ export default function MetadataForm({
                 disabled={!midiInfo && !rawFile && adding === false}
                 options={languageOption}
                 label="Language :"
-                inputSize="sm"
+                inputSize={inputSize}
               />
             )}
           </Form.Item>
@@ -253,7 +273,7 @@ export default function MetadataForm({
                   }}
                   disabled={!midiInfo && !rawFile && adding === false}
                   label="Year :"
-                  inputSize="sm"
+                  inputSize={inputSize}
                 />
               )}
             </Form.Item>
@@ -272,7 +292,7 @@ export default function MetadataForm({
                   disabled={!midiInfo && !rawFile && adding === false}
                   options={vocalChannelOption}
                   label="Vocal Channel :"
-                  inputSize="sm"
+                  inputSize={inputSize}
                 />
               )}
             </Form.Item>

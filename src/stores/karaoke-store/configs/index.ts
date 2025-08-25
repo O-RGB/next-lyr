@@ -22,7 +22,7 @@ export const initialPlayerState: PlayerState = {
 };
 
 export const initialTimingState: TimingState = {
-  currentIndex: 0,
+  currentIndex: -1,
   isTimingActive: false,
   editingLineIndex: null,
   playbackIndex: null,

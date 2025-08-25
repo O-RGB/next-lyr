@@ -13,23 +13,19 @@ import {
   FaPlay,
   FaPause,
 } from "react-icons/fa";
+import AllowSound from "@/allow-sound";
 
-const MobileControls = () => {
+export const MobileControls = () => {
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
   const handleKeyDown = (key: string) => {
     const event = new KeyboardEvent("keydown", { code: key, bubbles: true });
     window.dispatchEvent(event);
   };
 
-  // ใช้ position: fixed เพื่อยึด component ไว้ด้านล่างสุดของ viewport
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-50 p-2 lg:hidden bg-white/80 backdrop-blur-sm border-t border-gray-200"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 8px) + 8px)" }}
-    >
-      <div className="bg-gradient-to-r from-white via-gray-50 to-white px-4 py-2 rounded-xl shadow-lg border border-gray-300">
+    <div className="relative lg:hidden bg-white/80">
+      <div className="px-4 py-2 ">
         <div className="flex items-center justify-center gap-4 w-full">
-          {/* Play/Pause */}
           <div>
             <button
               onClick={() => handleKeyDown("Space")}
@@ -46,10 +42,8 @@ const MobileControls = () => {
             </button>
           </div>
 
-          {/* Separator */}
           <div className="h-6 w-px bg-gray-300" />
 
-          {/* Up/Down */}
           <div className="flex gap-1">
             <button
               onClick={() => handleKeyDown("ArrowUp")}
@@ -67,10 +61,8 @@ const MobileControls = () => {
             </button>
           </div>
 
-          {/* Separator */}
           <div className="h-6 w-px bg-gray-300" />
 
-          {/* Left/Right */}
           <div className="flex gap-2 w-full">
             <button
               onClick={() => handleKeyDown("ArrowLeft")}
@@ -88,7 +80,6 @@ const MobileControls = () => {
             </button>
           </div>
 
-          {/* Status indicator */}
           <div>
             <div
               className={`h-2 w-2 rounded-full transition-colors duration-300 ${
@@ -109,7 +100,6 @@ interface PanelToolsProps {}
 const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   const mode = useKaraokeStore((state) => state.mode);
   const projectId = useKaraokeStore((state) => state.projectId);
-  const isMobile = useIsMobile();
 
   if (!projectId) {
     return (
@@ -144,25 +134,24 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   }
 
   return (
-    // เพิ่ม pb-[90px] (padding-bottom) สำหรับเวอร์ชันมือถือ เพื่อเว้นที่ให้ MobileControls ที่เป็น fixed
-    <div className="flex flex-col lg:flex-row flex-grow w-full h-full overflow-hidden">
-      <div className="relative flex-grow flex flex-col overflow-hidden h-full order-2 lg:order-1">
-        <div className="h-full lg:h-[70%] overflow-auto">
-          <LyricsPanel />
-        </div>
-        <div className="hidden lg:flex h-[30%] bg-gray-400 items-center justify-center">
-          <LyricsPlayer />
-        </div>
-      </div>
+    <div className="flex flex-col lg:flex-row w-full h-full relative">
+      <AllowSound>
+        <div className="relative lg:flex-grow flex flex-col h-full order-2 lg:order-1">
+          <div className="h-full lg:h-[70%] ">
+            <LyricsPanel />
+          </div>
 
-      <div className="lg:w-[25%] p-0 lg:p-4 lg:bg-slate-200/50 lg:border-l lg:border-slate-300 lg:h-full lg:overflow-auto order-1 lg:order-2 flex-shrink-0">
-        <PlayerInit />
-        <div className="hidden lg:block">
-          <MetadataForm />
+          <div className="hidden lg:flex h-[30%] bg-gray-400 items-center justify-center">
+            <LyricsPlayer />
+          </div>
         </div>
-      </div>
-      {/* MobileControls จะถูก render แยกและใช้ fixed position */}
-      {isMobile && <MobileControls />}
+        <div className="lg:w-[25%] p-0 lg:p-4 lg:bg-slate-200/50 lg:border-l lg:border-slate-300 lg:h-full lg:overflow-auto order-1 lg:order-2 flex-shrink-0">
+          <PlayerInit />
+          <div className="hidden lg:block">
+            <MetadataForm />
+          </div>
+        </div>
+      </AllowSound>
     </div>
   );
 };

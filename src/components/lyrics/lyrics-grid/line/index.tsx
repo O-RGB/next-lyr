@@ -27,10 +27,10 @@ const LineRow: React.FC<LineRowProps> = ({
 }) => {
   const rulerStartTime = line[0]?.start ?? null;
   const rulerEndTime = line[line.length - 1]?.end ?? null;
-  const lineDuration =
-    rulerEndTime !== null && rulerStartTime !== null
-      ? rulerEndTime - rulerStartTime
-      : 0;
+  // const lineDuration =
+  //   rulerEndTime !== null && rulerStartTime !== null
+  //     ? rulerEndTime - rulerStartTime
+  //     : 0;
 
   return (
     <div
@@ -72,11 +72,11 @@ const LineRow: React.FC<LineRowProps> = ({
 
         <div className="flex w-full justify-between items-center">
           {/* <div className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-slate-100 p-1"> */}
-            <LyricsWords
-              line={line}
-              lineIndex={lineIndex}
-              onWordClick={onWordClick}
-            ></LyricsWords>
+          <LyricsWords
+            line={line}
+            lineIndex={lineIndex}
+            onWordClick={onWordClick}
+          ></LyricsWords>
           {/* </div> */}
 
           <LineAction lineIndex={lineIndex} />

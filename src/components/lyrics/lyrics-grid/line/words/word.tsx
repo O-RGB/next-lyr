@@ -20,9 +20,9 @@ const Word = forwardRef<HTMLDivElement, WordProps>(
     const stateClasses = {
       playback: "!border-amber-400 !bg-amber-200/80",
       active:
-        "ring-2 ring-blue-500 scale-105 font-bold bg-blue-100 border-blue-400",
+        "outline  outline-blue-500 font-bold bg-blue-100 border-blue-400",
       pendingCorrection:
-        "ring-2 ring-orange-500 font-bold bg-orange-100 border-orange-400",
+        "outline  outline-orange-500 font-bold bg-orange-100 border-orange-400",
       editing: "border-purple-400 bg-purple-50/80 hover:bg-purple-100",
       timed: "border-l-4 border-l-green-500 bg-green-50 hover:bg-green-100",
     };

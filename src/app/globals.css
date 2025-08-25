@@ -5,22 +5,22 @@
 html,
 body {
   height: 100%;
-  max-height: 100vh;
-  min-height: 100dvh; /* ใช้ Dynamic Viewport Height */
-  overflow: hidden; /* ป้องกันการเลื่อนหน้าจอหลัก */
+  min-height: 100dvh;
   width: 100vw;
-  overscroll-behavior: none; /* ป้องกันการ pull-to-refresh */
+  /* overflow: hidden; */
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
 }
 
 body {
   font-family: Arial, Helvetica, sans-serif;
-  user-select: none;
-  /* overscroll-behavior: none; <-- ย้ายไปไว้ข้างบนแล้ว */
   -webkit-text-size-adjust: none;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Standard syntax */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
   @apply min-h-dvh;
 }
 

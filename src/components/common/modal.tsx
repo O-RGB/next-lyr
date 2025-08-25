@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, ModalProps } from "react-responsive-modal";
 import { MdClose } from "react-icons/md";
-import "react-responsive-modal/styles.css";
 import ButtonCommon, { ButtonCommonProps } from "./button";
 import { IoArrowBackCircle } from "react-icons/io5";
+import "react-responsive-modal/styles.css";
 
 export interface ModalCommonProps extends ModalProps {
   children?: React.ReactNode;
@@ -14,6 +14,7 @@ export interface ModalCommonProps extends ModalProps {
   footer?: React.ReactNode | null;
   destroyOnClose?: boolean;
   animationCloseDuration?: number;
+  maxHeight?: string;
 }
 
 const ModalCommon: React.FC<ModalCommonProps> = ({
@@ -26,23 +27,26 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   cancelButtonProps,
   footer,
   destroyOnClose = true,
-  animationCloseDuration = 200,
+  animationCloseDuration = 300,
+  maxHeight = "85vh",
   ...props
 }) => {
   const modalContentRef = useRef<HTMLDivElement | null>(null);
-
-  const [isVisible, setIsVisible] = useState(open);
-  const [shouldRender, setShouldRender] = useState(open);
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
     if (open) {
       setShouldRender(true);
-
-      setTimeout(() => setIsVisible(true), 10);
+      setIsVisible(true);
     } else {
       setIsVisible(false);
       if (destroyOnClose) {
-        setTimeout(() => setShouldRender(false), animationCloseDuration);
+        const timer = setTimeout(
+          () => setShouldRender(false),
+          animationCloseDuration
+        );
+        return () => clearTimeout(timer);
       }
     }
   }, [open, destroyOnClose, animationCloseDuration]);
@@ -55,66 +59,128 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       open={isVisible}
       onClose={onClose}
       center
+      blockScroll
       closeIcon={
-        <MdClose className="text-gray-600 text-xl hover:text-gray-800 transition-colors" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
+          <MdClose className="text-gray-600 text-lg hover:text-gray-800" />
+        </div>
       }
       classNames={{
-        modal: "!w-[90vw] lg:!w-[800px] p-[18px] lg:p-[24px]",
+        modal: `!w-[95vw] sm:!w-[90vw] lg:!w-[800px] xl:!w-[900px] !p-0 ${
+          modalClassName || ""
+        }`,
         ...props.classNames,
       }}
       styles={{
+        modalContainer: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px",
+          minHeight: "100vh",
+        },
         modal: {
-          borderRadius: "8px",
-          // padding: "24px",
+          maxHeight: maxHeight,
+          borderRadius: "12px",
           backgroundColor: "white",
           boxShadow:
-            "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-          transition: `opacity ${animationCloseDuration}ms ease`,
+            "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)",
+          transition: `all ${animationCloseDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+          transform: isVisible ? "scale(1)" : "scale(0.95)",
           opacity: isVisible ? 1 : 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          margin: 0,
+          position: "relative",
           ...props.styles?.modal,
         },
         overlay: {
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(4px)",
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(8px)",
+          transition: `all ${animationCloseDuration}ms ease`,
+          opacity: isVisible ? 1 : 0,
         },
         closeButton: {
           top: "16px",
           right: "16px",
           background: "transparent",
+          position: "absolute",
+          zIndex: 10,
+          border: "none",
+          padding: "0",
         },
       }}
       animationDuration={animationCloseDuration}
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col h-full min-h-0">
         {title && (
-          <div className="flex items-center border-b border-gray-200 pb-4">
-            <div className="text-xl font-semibold text-gray-800">{title}</div>
+          <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
+            <h2 className="text-xl font-semibold text-gray-800 pr-8">
+              {title}
+            </h2>
           </div>
         )}
+
         <div
           ref={modalContentRef}
-          className="max-h-[80vh] overflow-y-auto pr-2 pt-2"
+          className={`flex-1 overflow-y-auto p-4`}
+          style={{
+            scrollBehavior: "smooth",
+
+            scrollbarWidth: "thin",
+            scrollbarColor: "#CBD5E0 #F7FAFC",
+          }}
         >
           {children}
         </div>
-        {footer ? (
-          footer
-        ) : (
-          <div className="flex items-center justify-end gap-2">
-            <ButtonCommon
-              color="gray"
-              icon={<IoArrowBackCircle />}
-              onClick={onClose}
-              {...cancelButtonProps}
-            >
-              {cancelButtonProps?.children ?? "Cancel"}
-            </ButtonCommon>
-            <ButtonCommon color={"primary"} {...okButtonProps}>
-              {okButtonProps?.children ?? "Ok"}
-            </ButtonCommon>
-          </div>
-        )}
+
+        <div className="flex-shrink-0 p-4 border-t">
+          {footer !== null && (
+            <>
+              {footer ? (
+                footer
+              ) : (
+                <div className="flex items-center justify-end gap-3">
+                  {cancelButtonProps !== null && (
+                    <ButtonCommon
+                      size="sm"
+                      color="gray"
+                      icon={<IoArrowBackCircle />}
+                      onClick={onClose}
+                      {...cancelButtonProps}
+                    >
+                      {cancelButtonProps?.children ?? "Cancel"}
+                    </ButtonCommon>
+                  )}
+                  {okButtonProps !== null && (
+                    <ButtonCommon color="primary" size="sm" {...okButtonProps}>
+                      {okButtonProps?.children ?? "OK"}
+                    </ButtonCommon>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      <style jsx>{`
+        .overflow-y-auto::-webkit-scrollbar {
+          width: 6px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 3px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 3px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      `}</style>
     </Modal>
   );
 };

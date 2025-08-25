@@ -80,14 +80,9 @@ const LyrEditerPanel: React.FC = () => {
     <>
       <DonateModal />
       <KeyboardRender />
-      <main className="flex flex-col h-[calc(100vh-36px)]">
+      <main className="flex flex-col h-[calc(100dvh-36px)]">
         <PanelTools></PanelTools>
 
-        {/* <div className="md:hidden">
-          <FloatingButtonGroup actions={floatingActions} />
-        </div> */}
-
-        {/* Modals */}
         <ModalCommon
           open={isMetadataOpen}
           onClose={closeMetadata}

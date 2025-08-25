@@ -57,7 +57,7 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
         children
       ) : (
         <div
-          className={`flex h-screen w-screen items-center justify-center bg-gray-100 transition-opacity duration-1000 ${
+          className={`flex h-screen w-full items-center justify-center bg-gray-100 transition-opacity duration-1000 ${
             fadeIn ? "opacity-0" : "opacity-100"
           }`}
         >
