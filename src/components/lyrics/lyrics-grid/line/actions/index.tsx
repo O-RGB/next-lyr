@@ -16,7 +16,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
 
     return (
-      <div className="flex flex-col lg:flex-row items-center border-l lg:border-0">
+      <div className="flex  flex-row items-center border-l lg:border-0">
         <ButtonCommon
           onClick={() => {
             actions.selectLine(lineIndex);

@@ -15,7 +15,7 @@ type WordProps = {
 const Word = forwardRef<HTMLDivElement, WordProps>(
   ({ wordData, lineIndex, onClick, onSelect, onActiveLine }, ref) => {
     const baseClasses =
-      "lyric-word group relative cursor-pointer rounded-md border px-2.5 py-1.5 pr-4 text-sm select-none text-nowrap bg-white border-slate-300 hover:bg-slate-200";
+      "lyric-word group relative cursor-pointer rounded-md border px-2 lg:px-2.5 py-1 lg:py-1.5 pr-2 lg:pr-4 text-sm select-none text-nowrap bg-white border-slate-300 hover:bg-slate-200";
 
     const stateClasses = {
       playback: "!border-amber-400 !bg-amber-200/80",

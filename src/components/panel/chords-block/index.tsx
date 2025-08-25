@@ -66,12 +66,11 @@ const ChordsBlock: React.FC = () => {
   const [draggedChordPosition, setDraggedChordPosition] = useState<
     number | null
   >(null);
-  const [userHasScrolled, setUserHasScrolled] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const wasPlayingOnScrollStartRef = useRef(false);
+  const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const bpm = playerState.midiInfo?.bpm ?? 0;
@@ -108,11 +107,8 @@ const ChordsBlock: React.FC = () => {
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
+      // ถ้าการเลื่อนเกิดจาก auto-scroll ของระบบ ให้ข้ามไปเลย
       if (useKaraokeStore.getState().isChordPanelAutoScrolling) return;
-
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
 
       const scrollPos = isMobile
         ? e.currentTarget.scrollLeft
@@ -120,65 +116,43 @@ const ChordsBlock: React.FC = () => {
       const newTick = scrollPos / pixelsPerUnit;
 
       actions.setChordPanelCenterTick(newTick);
-      if (userHasScrolled) {
-        actions.setPlayFromScrolledPosition(true);
-      }
-      playerControls?.seek(newTick);
+      actions.setPlayFromScrolledPosition(true);
 
+      if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+      seekTimeoutRef.current = setTimeout(() => {
+        playerControls?.seek(newTick);
+      }, 150); // 150ms delay
+
+      // ตั้งค่า Timeout ใหม่ เพื่อคืนค่า auto-scroll เมื่อผู้ใช้หยุดเลื่อน
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
-        if (wasPlayingOnScrollStartRef.current) {
-          playerControls?.play();
+        if (useKaraokeStore.getState().isPlaying) {
           actions.setIsChordPanelAutoScrolling(true);
-          wasPlayingOnScrollStartRef.current = false;
         }
-        setUserHasScrolled(false); // Reset after scroll ends
-      }, 250);
+      }, 250); // หลังจากหยุดเลื่อน 250ms
     },
-    [pixelsPerUnit, actions, isMobile, playerControls, userHasScrolled]
+    [pixelsPerUnit, actions, isMobile, playerControls]
   );
+
+  // ฟังก์ชันนี้จะถูกเรียกเมื่อผู้ใช้เริ่มเลื่อน (ด้วย mouse wheel หรือ touch)
+  // หน้าที่เดียวของมันคือ "หยุดการเลื่อนอัตโนมัติ"
+  const interruptAutoScroll = useCallback(() => {
+    if (useKaraokeStore.getState().isChordPanelAutoScrolling) {
+      actions.setIsChordPanelAutoScrolling(false);
+    }
+  }, [actions]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
-      const { isChordPanelAutoScrolling, isPlaying, currentTime } =
-        useKaraokeStore.getState();
+      const isVerticalScroll = Math.abs(e.deltaY) > Math.abs(e.deltaX);
+      const isHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
 
-      if (!isPlaying) {
-        setUserHasScrolled(true);
-      }
-
-      if (isChordPanelAutoScrolling && isPlaying) {
-        const isVerticalScroll = Math.abs(e.deltaY) > Math.abs(e.deltaX);
-        const isHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-
-        if (
-          (!isMobile && isVerticalScroll) ||
-          (isMobile && isHorizontalScroll)
-        ) {
-          wasPlayingOnScrollStartRef.current = true;
-          playerControls?.pause();
-          actions.setIsChordPanelAutoScrolling(false);
-          actions.setChordPanelCenterTick(currentTime);
-          actions.setPlayFromScrolledPosition(true);
-        }
+      if ((!isMobile && isVerticalScroll) || (isMobile && isHorizontalScroll)) {
+        interruptAutoScroll();
       }
     },
-    [actions, isMobile, playerControls]
+    [isMobile, interruptAutoScroll]
   );
-
-  const handleTouchStart = useCallback(() => {
-    const { isChordPanelAutoScrolling, isPlaying, currentTime } =
-      useKaraokeStore.getState();
-    if (!isPlaying) {
-      setUserHasScrolled(true);
-    }
-    if (isChordPanelAutoScrolling && isPlaying) {
-      wasPlayingOnScrollStartRef.current = true;
-      playerControls?.pause();
-      actions.setIsChordPanelAutoScrolling(false);
-      actions.setChordPanelCenterTick(currentTime);
-      actions.setPlayFromScrolledPosition(true);
-    }
-  }, [actions, playerControls]);
 
   const handleAddChordAtPlayhead = useCallback(() => {
     const { isChordPanelAutoScrolling, chordPanelCenterTick, currentTime } =
@@ -224,6 +198,7 @@ const ChordsBlock: React.FC = () => {
   );
 
   const handleChordClick = (tick: number) => {
+    actions.setIsChordPanelAutoScrolling(true);
     playerControls?.seek(tick);
     if (!playerControls?.isPlaying()) playerControls?.play();
   };
@@ -273,7 +248,7 @@ const ChordsBlock: React.FC = () => {
               className={scrollContainerClasses}
               onScroll={handleScroll}
               onWheel={handleWheel}
-              onTouchStart={handleTouchStart}
+              onTouchStart={interruptAutoScroll}
             >
               <div
                 style={
