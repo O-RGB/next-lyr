@@ -1,4 +1,7 @@
-import { convertCursorToTick, processRawLyrics } from "../../../lib/karaoke/utils";
+import {
+  convertCursorToTick,
+  processRawLyrics,
+} from "../../../lib/karaoke/utils";
 import { ISentence } from "../../../lib/karaoke/lyrics/types";
 import { LyricsRangeArray } from "../../../lib/karaoke/lyrics/lyrics-mapping";
 import {
@@ -7,10 +10,7 @@ import {
 } from "../../../lib/karaoke/cur-generator";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
-import {
-  DEFAULT_PRE_ROLL_OFFSET,
-  DEFAULT_CHORD_DURATION,
-} from "../configs";
+import { DEFAULT_PRE_ROLL_OFFSET, DEFAULT_CHORD_DURATION } from "../configs";
 
 export const createStoredFileFromFile = async (
   file: File
@@ -33,6 +33,7 @@ export const createObjectURLFromStoredFile = (
   return { file, url };
 };
 
+// This function now expects a flat array
 export const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
@@ -84,6 +85,7 @@ export const processLyricsForPlayer = (
   return arrayRange;
 };
 
+// This function now expects a flat array
 export const getPreRollTime = (
   lineIndex: number,
   lyricsData: LyricWordData[]
@@ -117,7 +119,7 @@ export const convertParsedDataForImport = (
   data: any,
   isMidi: boolean,
   songPpq: number = 480
-) => {
+): { finalWords: LyricWordData[][]; convertedChords: any[] } => {
   if (!data.lyrics || data.lyrics.length === 0) {
     return {
       finalWords: [],
@@ -131,7 +133,7 @@ export const convertParsedDataForImport = (
     };
   }
 
-  const finalWords: LyricWordData[] = [];
+  const finalWordsNested: LyricWordData[][] = [];
   let globalWordIndex = 0;
 
   const flatLyrics = data.lyrics
@@ -139,6 +141,7 @@ export const convertParsedDataForImport = (
     .sort((a: any, b: any) => a.tick - b.tick);
 
   data.lyrics.forEach((line: any[], lineIndex: number) => {
+    const lineWords: LyricWordData[] = [];
     line.forEach((wordEvent: any) => {
       const convertedTick = isMidi
         ? convertCursorToTick(wordEvent.tick, songPpq)
@@ -160,7 +163,7 @@ export const convertParsedDataForImport = (
           : convertedTick + DEFAULT_CHORD_DURATION;
       }
 
-      finalWords.push({
+      lineWords.push({
         name: wordEvent.text,
         start: convertedTick,
         end: endTime,
@@ -169,6 +172,7 @@ export const convertParsedDataForImport = (
         lineIndex: lineIndex,
       });
     });
+    finalWordsNested.push(lineWords);
   });
 
   const convertedChords =
@@ -179,5 +183,5 @@ export const convertParsedDataForImport = (
       }))
       .sort((a: any, b: any) => a.tick - b.tick) || [];
 
-  return { finalWords, convertedChords };
+  return { finalWords: finalWordsNested, convertedChords };
 };

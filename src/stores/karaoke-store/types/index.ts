@@ -146,7 +146,7 @@ export interface KaraokeState {
   projectId: string | null;
   mode: MusicMode | null;
   playerState: PlayerState;
-  lyricsData: LyricWordData[];
+  lyricsData: LyricWordData[][];
   metadata: SongInfo | null;
   chordsData: ChordEvent[];
   isPlaying: boolean;

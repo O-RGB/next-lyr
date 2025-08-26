@@ -37,8 +37,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const handleSaveMp3 = async () => {
     if (!metadata || !rawFile) return;
     try {
+      const flatLyrics = lyricsData.flat();
       let newLyricsData: LyricEvent[][] = [];
-      lyricsData.forEach((word: LyricWordData) => {
+      flatLyrics.forEach((word: LyricWordData) => {
         if (!newLyricsData[word.lineIndex]) {
           newLyricsData[word.lineIndex] = [];
         }
@@ -88,13 +89,14 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const handleSaveMidi = () => {
     if (!metadata || !midiInfo) return;
     try {
+      const flatLyrics = lyricsData.flat();
       const generator = new TickLyricSegmentGenerator(
         midiInfo.bpm,
         midiInfo.ppq
       );
 
       let newLyricsData: LyricEvent[][] =
-        generator.convertLyricsWordToCursor(lyricsData);
+        generator.convertLyricsWordToCursor(flatLyrics);
 
       const newSongInfo: SongInfo = metadata;
       const newChordsData: ChordEvent[] = chordsData;
@@ -125,7 +127,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildLyr = () => {
-    const timedWords = lyricsData.filter(
+    const flatLyrics = lyricsData.flat();
+    const timedWords = flatLyrics.filter(
       (w) => w.start !== null && w.end !== null
     );
 
@@ -150,15 +153,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const buildCur = () => {
     if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
-    const lyrs: string[][] = [];
-    const lyrInline: string[] = [];
-    lyricsData.forEach((data) => {
-      if (!lyrs[data.lineIndex]) lyrs[data.lineIndex] = [];
-      lyrs[data.lineIndex].push(data.name);
-
-      if (!lyrInline[data.lineIndex]) lyrInline.push("");
-      lyrInline[data.lineIndex] = lyrInline[data.lineIndex] + data.name;
-    });
+    const lyrInline: string[] = lyricsData.map((line) =>
+      line.map((word) => word.name).join("")
+    );
 
     const lyr = new LyrBuilder({
       name: metadata.TITLE,

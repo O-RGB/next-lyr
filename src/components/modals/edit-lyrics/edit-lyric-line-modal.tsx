@@ -24,14 +24,15 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const lineWord = lyricsData
-      .filter((w) => w.lineIndex === selectedLineIndex)
-      .map((w) => w.name)
-      .join("|");
-    setInitialInputText(lineWord);
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, [open]);
+    if (open && selectedLineIndex !== null && lyricsData[selectedLineIndex]) {
+      const lineWord = lyricsData[selectedLineIndex]
+        .map((w) => w.name)
+        .join("|");
+      setInitialInputText(lineWord);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [open, selectedLineIndex, lyricsData]);
 
   const handleSave = () => {
     if (!inputText) return;

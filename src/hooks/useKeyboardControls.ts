@@ -39,6 +39,7 @@ export const useKeyboardControls = (
         return;
 
       const isStampingMode = isTimingActive || editingLineIndex !== null;
+      const flatLyrics = lyricsData.flat();
 
       if (e.ctrlKey && e.code === "KeyZ") {
         e.preventDefault();
@@ -51,9 +52,7 @@ export const useKeyboardControls = (
         return;
       }
 
-      const totalLines = lyricsData.length
-        ? Math.max(...lyricsData.map((w) => w.lineIndex)) + 1
-        : 0;
+      const totalLines = lyricsData.length;
 
       if (!isStampingMode) {
         if (e.code === "ArrowUp") {
@@ -101,28 +100,20 @@ export const useKeyboardControls = (
         if (isPlaying) {
           player.pause();
         } else {
-          // --- START: โค้ดที่แก้ไข ---
-          let seekTime = chordPanelCenterTick; // ค่าเริ่มต้นคือตำแหน่ง playhead
+          let seekTime = chordPanelCenterTick;
 
-          // ถ้ามีการเลือกบรรทัดไว้ ให้เล่นจากต้นบรรทัดนั้น
-          if (selectedLineIndex !== null) {
-            const firstWordOfLine = lyricsData.find(
-              (w) => w.lineIndex === selectedLineIndex
-            );
+          if (selectedLineIndex !== null && lyricsData[selectedLineIndex]) {
+            const firstWordOfLine = lyricsData[selectedLineIndex][0];
 
-            // ถ้าคำแรกของบรรทัดมีเวลา start อยู่แล้ว ให้ใช้เวลานั้น
             if (firstWordOfLine && firstWordOfLine.start !== null) {
               seekTime = firstWordOfLine.start;
             }
-            // (Optional) หากต้องการให้เล่นจาก 0 หากบรรทัดนั้นยังไม่มีเวลา
-            // else { seekTime = 0; }
           }
 
           actions.setIsChordPanelAutoScrolling(true);
           actions.setCurrentTime(seekTime);
           player.seek(seekTime);
           player.play();
-          // --- END: โค้ดที่แก้ไข ---
         }
         return;
       }
@@ -132,7 +123,7 @@ export const useKeyboardControls = (
         if (currentIndex <= -1) return;
 
         if (editingLineIndex !== null) {
-          const firstWordOfEditingLine = lyricsData.find(
+          const firstWordOfEditingLine = flatLyrics.find(
             (w) => w.lineIndex === editingLineIndex
           );
           if (
@@ -154,7 +145,7 @@ export const useKeyboardControls = (
         e.preventDefault();
         const currentTime = player.getCurrentTime();
 
-        const currentWord = currentIndex > -1 ? lyricsData[currentIndex] : null;
+        const currentWord = currentIndex > -1 ? flatLyrics[currentIndex] : null;
         const canPerformTimingAction =
           isStampingMode ||
           (editingLineIndex === null &&
@@ -164,7 +155,7 @@ export const useKeyboardControls = (
         if (canPerformTimingAction) {
           if (isTimingActive) {
             const { isLineEnd } = actions.recordTiming(currentTime);
-            if (currentIndex + 1 >= lyricsData.length) {
+            if (currentIndex + 1 >= flatLyrics.length) {
               alert("All timing complete!");
               player.pause();
               actions.stopTiming();

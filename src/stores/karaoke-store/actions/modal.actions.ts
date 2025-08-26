@@ -42,24 +42,38 @@ export const createModalActions: StateCreator<
       startEditLine: async (lineIndex: number) => {
         await saveToHistoryAndDB();
         const { lyricsData } = get();
-        const firstWordOfLine = lyricsData.find(
+
+        // --- START: โค้ดที่แก้ไข ---
+        const flatLyrics = lyricsData.flat();
+        const firstWordOfLine = flatLyrics.find(
           (w) => w.lineIndex === lineIndex
         );
+        // --- END: โค้ดที่แก้ไข ---
 
         if (!firstWordOfLine) {
           return { success: false, firstWordIndex: 0, preRollTime: 0 };
         }
 
         const firstWordIndex = firstWordOfLine.index;
-        const preRollTime = getPreRollTime(lineIndex, lyricsData);
+
+        // --- START: โค้ดที่แก้ไข ---
+        const preRollTime = getPreRollTime(lineIndex, flatLyrics);
+        // --- END: โค้ดที่แก้ไข ---
 
         set((state) => ({
           selectedLineIndex: lineIndex,
-          lyricsData: state.lyricsData.map((word) =>
-            word.lineIndex === lineIndex
-              ? { ...word, start: null, end: null, length: 0 }
-              : word
+          // --- START: โค้ดที่แก้ไข ---
+          lyricsData: state.lyricsData.map((line, idx) =>
+            idx === lineIndex
+              ? line.map((word) => ({
+                  ...word,
+                  start: null,
+                  end: null,
+                  length: 0,
+                }))
+              : line
           ),
+          // --- END: โค้ดที่แก้ไข ---
           currentIndex: firstWordIndex,
           editingLineIndex: lineIndex,
           isTimingActive: false,

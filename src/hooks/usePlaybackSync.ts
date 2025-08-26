@@ -26,7 +26,9 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
       return;
     }
 
-    const newPlaybackIndex = lyricsData.findIndex(
+    const flatLyricsData = lyricsData.flat();
+
+    const newPlaybackIndex = flatLyricsData.findIndex(
       (word) =>
         word.start !== null &&
         word.end !== null &&
@@ -37,7 +39,7 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     actions.setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
 
     if (newPlaybackIndex > -1) {
-      const word = lyricsData[newPlaybackIndex];
+      const word = flatLyricsData[newPlaybackIndex];
       if (
         word &&
         selectedLineIndex !== word.lineIndex &&

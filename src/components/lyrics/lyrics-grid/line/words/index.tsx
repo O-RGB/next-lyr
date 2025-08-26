@@ -1,5 +1,3 @@
-// src/components/lyrics/lyrics-grid/line/words/index.tsx
-
 import { LyricWordData } from "@/types/common.type";
 import Word from "./word";
 import React, { useRef } from "react";
@@ -51,7 +49,7 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
           lineIndex={lineIndex}
           wordData={word}
           onSelect={handleWordSelect}
-          onActiveLine={(is, line) => {
+          onActiveLine={(is) => {
             if (is === false && containerRef.current) {
               containerRef.current.scrollTo({ left: 0, behavior: "instant" });
             }

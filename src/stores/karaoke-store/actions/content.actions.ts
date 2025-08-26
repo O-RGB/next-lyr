@@ -52,7 +52,7 @@ export const createContentActions: StateCreator<
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();
         const processed = processLyricsForPlayer(
-          lyricsData,
+          lyricsData.flat(), // Flatten before processing
           mode,
           playerState.midiInfo
         );
@@ -63,8 +63,18 @@ export const createContentActions: StateCreator<
         if (!rawText) return;
 
         saveToHistory();
+        const flatLyrics = processRawLyrics(rawText);
+
+        const groupedLyrics: LyricWordData[][] = [];
+        flatLyrics.forEach((word) => {
+          if (!groupedLyrics[word.lineIndex]) {
+            groupedLyrics[word.lineIndex] = [];
+          }
+          groupedLyrics[word.lineIndex].push(word);
+        });
+
         set({
-          lyricsData: processRawLyrics(rawText),
+          lyricsData: groupedLyrics,
           ...initialTimingState,
         });
         get().actions.processLyricsForPlayer();
@@ -110,10 +120,12 @@ export const createContentActions: StateCreator<
       updateWordTiming: async (index: number, start: number, end: number) => {
         saveToHistory();
         set((state) => ({
-          lyricsData: state.lyricsData.map((word) =>
-            word.index === index
-              ? { ...word, start, end, length: end - start }
-              : word
+          lyricsData: state.lyricsData.map((line) =>
+            line.map((word) =>
+              word.index === index
+                ? { ...word, start, end, length: end - start }
+                : word
+            )
           ),
         }));
         get().actions.processLyricsForPlayer();
@@ -123,32 +135,18 @@ export const createContentActions: StateCreator<
       deleteLine: async (lineIndexToDelete: number) => {
         saveToHistory();
         set((state) => {
-          const remainingWords = state.lyricsData.filter(
-            (word) => word.lineIndex !== lineIndexToDelete
-          );
-          const newLyricsData: LyricWordData[] = [];
+          const newLyricsData = state.lyricsData
+            .filter((_, index) => index !== lineIndexToDelete)
+            .map((line, newLineIndex) =>
+              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
+            );
+
           let globalWordIndex = 0;
-          const lineMap = new Map<number, number>();
-          let newLineIndexCounter = 0;
+          const finalLyricsData = newLyricsData.map((line) =>
+            line.map((word) => ({ ...word, index: globalWordIndex++ }))
+          );
 
-          remainingWords.forEach((word) => {
-            let newLineIndex;
-            if (lineMap.has(word.lineIndex)) {
-              newLineIndex = lineMap.get(word.lineIndex)!;
-            } else {
-              newLineIndex = newLineIndexCounter;
-              lineMap.set(word.lineIndex, newLineIndex);
-              newLineIndexCounter++;
-            }
-
-            newLyricsData.push({
-              ...word,
-              lineIndex: newLineIndex,
-              index: globalWordIndex++,
-            });
-          });
-
-          return { lyricsData: newLyricsData, selectedLineIndex: null };
+          return { lyricsData: finalLyricsData, selectedLineIndex: null };
         });
 
         get().actions.processLyricsForPlayer();
@@ -163,25 +161,19 @@ export const createContentActions: StateCreator<
         }));
 
         set((state) => {
-          const otherLinesWords = state.lyricsData.filter(
-            (word) => word.lineIndex !== lineIndexToUpdate
-          );
-          const updatedLyrics = [...otherLinesWords, ...newWordsForLine];
+          const newLyricsData = [...state.lyricsData];
+          newLyricsData[lineIndexToUpdate] = newWordsForLine;
 
-          updatedLyrics.sort((a, b) => {
-            if (a.lineIndex !== b.lineIndex) {
-              return a.lineIndex - b.lineIndex;
-            }
-            const aTime = a.start !== null ? a.start : a.index;
-            const bTime = b.start !== null ? b.start : b.index;
-            return aTime - bTime;
-          });
+          let globalWordIndex = 0;
+          const finalLyricsData = newLyricsData.map((line) =>
+            line.map((word) => ({
+              ...word,
+              index: globalWordIndex++,
+            }))
+          );
 
           return {
-            lyricsData: updatedLyrics.map((word, index) => ({
-              ...word,
-              index,
-            })),
+            lyricsData: finalLyricsData,
             isEditModalOpen: false,
           };
         });
@@ -196,8 +188,10 @@ export const createContentActions: StateCreator<
       ) => {
         saveToHistory();
         set((state) => ({
-          lyricsData: state.lyricsData.map((word, i) =>
-            i === index ? { ...word, ...newWordData } : word
+          lyricsData: state.lyricsData.map((line) =>
+            line.map((word) =>
+              word.index === index ? { ...word, ...newWordData } : word
+            )
           ),
         }));
 

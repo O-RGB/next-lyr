@@ -20,25 +20,28 @@ export const createPlaybackActions: StateCreator<
       set((state) => {
         let newCurrentIndex = state.currentIndex;
         let newSelectedLineIndex = state.selectedLineIndex;
+        const flatLyrics = state.lyricsData.flat();
 
-        // If timing hasn't started, and not in a specific edit mode, start from the beginning.
         if (state.currentIndex === -1 && state.editingLineIndex === null) {
           newCurrentIndex = 0;
           newSelectedLineIndex = 0;
         }
 
-        const newData = [...state.lyricsData];
-        const wordToStart = newData[newCurrentIndex];
+        const wordToStart = flatLyrics[newCurrentIndex];
+        const newLyricsData = [...state.lyricsData];
 
         if (wordToStart) {
-          // Only set start time if it's null (first press) or if we are in a line-specific edit mode
           if (wordToStart.start === null || state.editingLineIndex !== null) {
-            wordToStart.start = currentTime;
+            newLyricsData[wordToStart.lineIndex] = newLyricsData[
+              wordToStart.lineIndex
+            ].map((w) =>
+              w.index === newCurrentIndex ? { ...w, start: currentTime } : w
+            );
           }
         }
 
         return {
-          lyricsData: newData,
+          lyricsData: newLyricsData,
           currentIndex: newCurrentIndex,
           selectedLineIndex: newSelectedLineIndex,
           isTimingActive: true,
@@ -49,26 +52,31 @@ export const createPlaybackActions: StateCreator<
     },
 
     startTimingFromLine: (lineIndex: number) => {
-      const { lyricsData } = get();
-      const firstWordOfLine = lyricsData.find((w) => w.lineIndex === lineIndex);
+      const flatLyrics = get().lyricsData.flat();
+      const firstWordOfLine = flatLyrics.find((w) => w.lineIndex === lineIndex);
 
       if (!firstWordOfLine) {
         return { success: false, preRollTime: 0 };
       }
 
       const firstWordIndex = firstWordOfLine.index;
-      const preRollTime = getPreRollTime(lineIndex, lyricsData);
+      const preRollTime = getPreRollTime(lineIndex, flatLyrics);
 
       set((state) => ({
-        lyricsData: state.lyricsData.map((word) =>
-          word.lineIndex >= lineIndex
-            ? { ...word, start: null, end: null, length: 0 }
-            : word
+        lyricsData: state.lyricsData.map((line, idx) =>
+          idx >= lineIndex
+            ? line.map((word) => ({
+                ...word,
+                start: null,
+                end: null,
+                length: 0,
+              }))
+            : line
         ),
         currentIndex: firstWordIndex,
         selectedLineIndex: lineIndex,
-        editingLineIndex: null, // This is key: null for multi-line timing
-        isTimingActive: false, // Let the first arrow press trigger this
+        editingLineIndex: null,
+        isTimingActive: false,
         correctionIndex: null,
         lyricsProcessed: undefined,
       }));
@@ -80,35 +88,47 @@ export const createPlaybackActions: StateCreator<
     recordTiming: (currentTime: number) => {
       let isLineEnd = false;
       set((state) => {
-        const newData = [...state.lyricsData];
-        const currentWord = newData[state.currentIndex];
+        const flatLyrics = state.lyricsData.flat();
+        const newLyricsData = [...state.lyricsData];
+        const currentWord = flatLyrics[state.currentIndex];
 
         if (currentWord) {
-          currentWord.end = currentTime;
-          currentWord.length =
-            currentWord.end - (currentWord.start ?? currentTime);
+          newLyricsData[currentWord.lineIndex] = newLyricsData[
+            currentWord.lineIndex
+          ].map((w) =>
+            w.index === state.currentIndex
+              ? {
+                  ...w,
+                  end: currentTime,
+                  length: currentTime - (w.start ?? currentTime),
+                }
+              : w
+          );
         }
 
-        const nextWord = newData[state.currentIndex + 1];
+        const nextWord = flatLyrics[state.currentIndex + 1];
         if (nextWord) {
           const isCrossingLines =
             currentWord && nextWord.lineIndex !== currentWord.lineIndex;
 
-          // Only consider it the end of the line for timing purposes if in single-line edit mode
           if (isCrossingLines && state.editingLineIndex !== null) {
             isLineEnd = true;
           } else {
-            nextWord.start = currentTime;
+            newLyricsData[nextWord.lineIndex] = newLyricsData[
+              nextWord.lineIndex
+            ].map((w) =>
+              w.index === state.currentIndex + 1
+                ? { ...w, start: currentTime }
+                : w
+            );
           }
         } else {
-          // This is the absolute end of all lyrics
           isLineEnd = true;
         }
 
-        return { lyricsData: newData };
+        return { lyricsData: newLyricsData };
       });
 
-      // Stop timing only if it was a single-line edit session that just ended
       if (isLineEnd && get().editingLineIndex !== null) {
         get().actions.stopTiming();
       }
@@ -119,9 +139,10 @@ export const createPlaybackActions: StateCreator<
 
     goToNextWord: () => {
       set((state) => {
-        if (state.currentIndex + 1 < state.lyricsData.length) {
+        const flatLyrics = state.lyricsData.flat();
+        if (state.currentIndex + 1 < flatLyrics.length) {
           const nextIndex = state.currentIndex + 1;
-          const nextWord = state.lyricsData[nextIndex];
+          const nextWord = flatLyrics[nextIndex];
           return {
             currentIndex: nextIndex,
             selectedLineIndex: nextWord
@@ -130,7 +151,7 @@ export const createPlaybackActions: StateCreator<
             correctionIndex: null,
           };
         }
-        // If it's the last word, stop the timing session
+
         return { isTimingActive: false, editingLineIndex: null };
       });
     },
@@ -138,29 +159,35 @@ export const createPlaybackActions: StateCreator<
     correctTimingStep: (newCurrentIndex: number) => {
       let lineStartTime = 0;
       set((state) => {
-        const wordToCorrect = state.lyricsData[newCurrentIndex];
+        const flatLyrics = state.lyricsData.flat();
+        const wordToCorrect = flatLyrics[newCurrentIndex];
         if (!wordToCorrect) return {};
 
-        lineStartTime = getPreRollTime(
-          wordToCorrect.lineIndex,
-          state.lyricsData
-        );
+        lineStartTime = getPreRollTime(wordToCorrect.lineIndex, flatLyrics);
 
-        const newData = [...state.lyricsData];
-        // Clear timing for the word that was wrong and the one being corrected
-        if (newData[state.currentIndex]) {
-          newData[state.currentIndex].start = null;
+        const newLyricsData = [...state.lyricsData];
+
+        const currentWord = flatLyrics[state.currentIndex];
+        if (currentWord) {
+          newLyricsData[currentWord.lineIndex] = newLyricsData[
+            currentWord.lineIndex
+          ].map((w) =>
+            w.index === state.currentIndex ? { ...w, start: null } : w
+          );
         }
-        if (newData[newCurrentIndex]) {
-          newData[newCurrentIndex].end = null;
-          newData[newCurrentIndex].length = 0;
+        if (wordToCorrect) {
+          newLyricsData[wordToCorrect.lineIndex] = newLyricsData[
+            wordToCorrect.lineIndex
+          ].map((w) =>
+            w.index === newCurrentIndex ? { ...w, end: null, length: 0 } : w
+          );
         }
 
         return {
-          lyricsData: newData,
+          lyricsData: newLyricsData,
           currentIndex: newCurrentIndex,
           correctionIndex: newCurrentIndex,
-          isTimingActive: true, // Re-activate timing immediately for correction
+          isTimingActive: true,
         };
       });
 

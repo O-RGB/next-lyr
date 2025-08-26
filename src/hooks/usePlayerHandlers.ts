@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { calculateSeekTime } from "@/components/ui/panel";
 import { PlayerControls } from "./useKeyboardControls";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { usePlayerSetupStore } from "./usePlayerSetup"; // ต้อง import เข้ามา
+import { usePlayerSetupStore } from "./usePlayerSetup";
 
 interface PlayerHandlersState {
   handleStop: () => void;
@@ -31,7 +31,11 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
     handleWordClick: async (index) => {
       const { lyricsData, mode } = useKaraokeStore.getState();
       const { playerControls } = usePlayerSetupStore.getState();
-      const word = lyricsData.find((w) => w.index === index);
+
+      // --- START: โค้ดที่แก้ไข ---
+      const flatLyrics = lyricsData.flat();
+      const word = flatLyrics.find((w) => w.index === index);
+      // --- END: โค้ดที่แก้ไข ---
 
       if (!word || !playerControls) {
         console.warn(
@@ -41,7 +45,9 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         return;
       }
 
-      const seekTo = calculateSeekTime(word, lyricsData, mode, index);
+      // --- START: โค้ดที่แก้ไข ---
+      const seekTo = calculateSeekTime(word, flatLyrics, mode, index);
+      // --- END: โค้ดที่แก้ไข ---
 
       if (seekTo !== null) {
         useKaraokeStore.getState().actions.setIsChordPanelAutoScrolling(true);

@@ -4,14 +4,12 @@ import WordTimingLines from "./ruler/ruler-line";
 import SelectedColorLine from "./render/selected-color";
 import LineAction from "./actions";
 import LyricsWords from "./words";
-import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
 export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
-  chords: ChordEvent[];
   mode: MusicMode | null;
   lineRef: (el: HTMLDivElement | null) => void;
   onWordClick: (index: number) => void;
@@ -21,7 +19,6 @@ export interface LineRowProps {
 const LineRow: React.FC<LineRowProps> = ({
   line,
   lineIndex,
-  chords,
   mode,
   lineRef,
   onWordClick,
