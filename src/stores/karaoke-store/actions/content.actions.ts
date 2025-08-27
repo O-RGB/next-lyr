@@ -9,6 +9,7 @@ import { LyricWordData } from "@/types/common.type";
 import { processLyricsForPlayer } from "../utils";
 import { KaraokeState, ContentActions } from "../types";
 import { initialTimingState, initialModalState } from "../configs";
+import { groupLyricsByLine } from "@/lib/karaoke/lyrics/lyrics-convert";
 
 export const createContentActions: StateCreator<
   KaraokeState,
@@ -65,13 +66,7 @@ export const createContentActions: StateCreator<
         saveToHistory();
         const flatLyrics = processRawLyrics(rawText);
 
-        const groupedLyrics: LyricWordData[][] = [];
-        flatLyrics.forEach((word) => {
-          if (!groupedLyrics[word.lineIndex]) {
-            groupedLyrics[word.lineIndex] = [];
-          }
-          groupedLyrics[word.lineIndex].push(word);
-        });
+        const groupedLyrics = groupLyricsByLine(flatLyrics);
 
         set({
           lyricsData: groupedLyrics,

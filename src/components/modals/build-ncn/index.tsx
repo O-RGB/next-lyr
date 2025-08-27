@@ -12,8 +12,8 @@ import {
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
-import { LyricWordData } from "@/types/common.type";
 import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
+import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/lyrics-convert";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -38,18 +38,10 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!metadata || !rawFile) return;
     try {
       const flatLyrics = lyricsData.flat();
-      let newLyricsData: LyricEvent[][] = [];
-      flatLyrics.forEach((word: LyricWordData) => {
-        if (!newLyricsData[word.lineIndex]) {
-          newLyricsData[word.lineIndex] = [];
-        }
-        newLyricsData[word.lineIndex].push({
-          text: word.name,
-          tick: Math.floor(((word.start ?? 0) + 0.6) * 1000),
-        });
-      });
-      newLyricsData = newLyricsData.map((line) =>
-        line.sort((a, b) => a.tick - b.tick)
+
+      const newLyricsData = groupWordDataToEvents(
+        flatLyrics,
+        (tick) => (tick + 0.6) * 1000
       );
 
       let newChordsData = chordsData.map((x) => ({

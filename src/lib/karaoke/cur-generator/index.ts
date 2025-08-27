@@ -1,6 +1,6 @@
 import { LyricEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
-import { mapWordDataToEvents } from "../lyrics/lyrics-convert";
+import { groupWordDataToEvents } from "../lyrics/lyrics-convert";
 
 interface LyricSegmentGenerator {
   generateSegment(words: LyricWordData[]): number[];
@@ -17,24 +17,6 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
     this.ticksPerBeat = ppq;
   }
 
-  // public wordDataToEvent = (value: LyricWordData[]) => {
-  //   let newLyricsData: LyricEvent[][] = [];
-  //   value.forEach((word: LyricWordData) => {
-  //     if (!newLyricsData[word.lineIndex]) {
-  //       newLyricsData[word.lineIndex] = [];
-  //     }
-  //     newLyricsData[word.lineIndex].push({
-  //       text: word.name,
-  //       tick: this.tickToCursor(word.start ?? 0),
-  //     });
-  //   });
-  //   newLyricsData = newLyricsData.map((line) =>
-  //     line.sort((a, b) => a.tick - b.tick)
-  //   );
-
-  //   return newLyricsData;
-  // };
-
   public convertLyricsWordToCursor = (
     value: LyricWordData[]
   ): LyricEvent[][] => {
@@ -43,7 +25,7 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
       return [];
     }
 
-    let newLyricsData: LyricEvent[][] = mapWordDataToEvents(
+    let newLyricsData: LyricEvent[][] = groupWordDataToEvents(
       value,
       this.tickToCursor
     );

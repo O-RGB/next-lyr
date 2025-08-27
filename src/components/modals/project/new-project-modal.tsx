@@ -16,7 +16,6 @@ import {
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
-import { mapEventsToWordData } from "@/lib/karaoke/lyrics/lyrics-convert";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -24,8 +23,6 @@ interface NewProjectModalProps {
 }
 
 const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
-  const router = useRouter();
-
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");

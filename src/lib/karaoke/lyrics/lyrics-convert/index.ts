@@ -1,27 +1,41 @@
 import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
 import { LyricWordData } from "@/types/common.type";
 
-export const mapWordDataToEvents = (
-  value: LyricWordData[],
-  tickToCursor?: (tick: number) => number
-): LyricEvent[][] => {
-  const convert = (tick: number) => (tickToCursor ? tickToCursor(tick) : tick);
-
-  let newLyricsData: LyricEvent[][] = [];
-  value.forEach((word: LyricWordData) => {
-    if (!newLyricsData[word.lineIndex]) {
-      newLyricsData[word.lineIndex] = [];
+/**
+ * Groups a flat array of LyricWordData into a nested array based on lineIndex.
+ * @param words The flat array of LyricWordData.
+ * @returns A nested array of LyricWordData, where each inner array represents a line.
+ */
+export function groupLyricsByLine(words: LyricWordData[]): LyricWordData[][] {
+  const groupedLyrics: LyricWordData[][] = [];
+  for (const word of words) {
+    if (!groupedLyrics[word.lineIndex]) {
+      groupedLyrics[word.lineIndex] = [];
     }
-    newLyricsData[word.lineIndex].push({
+    groupedLyrics[word.lineIndex].push(word);
+  }
+  return groupedLyrics;
+}
+export function groupWordDataToEvents(
+  words: LyricWordData[],
+  tickConverter?: (tick: number) => number
+): LyricEvent[][] {
+  const groupedEvents: LyricEvent[][] = [];
+  for (const word of words) {
+    if (!groupedEvents[word.lineIndex]) {
+      groupedEvents[word.lineIndex] = [];
+    }
+    const tick = tickConverter
+      ? tickConverter(word.start ?? 0)
+      : word.start ?? 0;
+    groupedEvents[word.lineIndex].push({
       text: word.name,
-      tick: convert ? convert(word.start ?? 0) : word.start ?? 0,
+      tick: Math.floor(tick),
     });
-  });
-  newLyricsData = newLyricsData.map((line) =>
-    line.sort((a, b) => a.tick - b.tick)
-  );
-  return newLyricsData;
-};
+  }
+
+  return groupedEvents.map((line) => line.sort((a, b) => a.tick - b.tick));
+}
 
 export const mapEventsToWordData = (
   lines: LyricEvent[][],
