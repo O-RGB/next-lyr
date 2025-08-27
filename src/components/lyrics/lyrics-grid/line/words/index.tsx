@@ -1,7 +1,6 @@
 import { LyricWordData } from "@/types/common.type";
 import Word from "./word";
 import React, { useRef } from "react";
-import { TiimingBuffer } from "@/stores/karaoke-store/types";
 
 interface LyricsWordsProps {
   line: LyricWordData[];
@@ -40,7 +39,7 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
   return (
     <div
       ref={containerRef}
-      className="flex-1 min-w-0 flex flex-nowrap gap-2 overflow-x-auto lg:pb-2 w-full [&::-webkit-scrollbar]:hidden p-1"
+      className="flex-1 min-w-0 flex flex-nowrap gap-1 lg:gap-2 overflow-x-auto w-full [&::-webkit-scrollbar]:hidden p-1"
     >
       {line.map((word) => (
         <Word

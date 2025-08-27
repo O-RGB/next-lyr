@@ -1,9 +1,15 @@
 import ButtonCommon from "@/components/common/button";
+import ContextMenuCommon, {
+  IContextMenuGroup,
+} from "@/components/common/data-input/menu";
 import PopConfirmCommon from "@/components/common/popconfrim";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
-import { BiPencil, BiTime, BiTrash } from "react-icons/bi";
+import { BiMenu, BiPencil, BiTime, BiTrash } from "react-icons/bi";
+import { CiMenuKebab } from "react-icons/ci";
+import { FaEdit } from "react-icons/fa";
+import { FiLogOut, FiPlus, FiTrash2 } from "react-icons/fi";
 
 interface LineActionProps {
   lineIndex: number;
@@ -12,12 +18,55 @@ interface LineActionProps {
 const LineAction: React.FC<LineActionProps> = React.memo(
   ({ lineIndex }) => {
     const actions = useKaraokeStore((state) => state.actions);
-    const { handleRetiming } = usePlayerHandlersStore();
+    const handleRetiming = usePlayerHandlersStore().handleRetiming;
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
 
+    const menuItems: IContextMenuGroup<string>[] = [
+      {
+        name: "การทำงาน",
+        contextMenus: [
+          {
+            type: "edit",
+            text: "แก้ไข",
+            icon: <BiPencil />,
+            onClick: () => {
+              actions.selectLine(lineIndex);
+              actions.openEditModal();
+            },
+          },
+          {
+            type: "Re Time",
+            text: "ปาดเนื้อใหม่",
+            icon: <BiTime />,
+            onClick: () => handleRetiming(lineIndex),
+          },
+          {
+            type: "delete",
+            text: "ลบ",
+            icon: <BiTrash />,
+            onClick: () => actions.deleteLine?.(lineIndex),
+          },
+        ],
+      },
+    ];
     return (
-      <div className="flex  flex-row items-center border-l lg:border-0">
-        <ButtonCommon
+      <div className="flex flex-row items-center border-l lg:border-0">
+        <ContextMenuCommon
+          menuButton={
+            <ButtonCommon
+              disabled={editingLineIndex !== null}
+              title="Edit Lyrics (Enter)"
+              color="white"
+              circle
+              variant="ghost"
+              size="xs"
+              icon={<CiMenuKebab className="text-slate-400" />}
+              className="z-20"
+            ></ButtonCommon>
+          }
+          items={menuItems}
+        />
+        {/* <ButtonCommon
           onClick={() => {
             actions.selectLine(lineIndex);
             actions.openEditModal();
@@ -58,7 +107,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             className: "z-20",
           }}
           onConfirm={() => actions.deleteLine?.(lineIndex)}
-        />
+        /> */}
       </div>
     );
   },

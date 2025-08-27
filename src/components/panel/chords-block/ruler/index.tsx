@@ -1,12 +1,18 @@
 import React from "react";
 
-const formatTickLabel = (value: number, mode: string): string => {
-  if (value >= 1000) {
-    const k = value / 1000;
-    return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+// ปรับปรุงฟังก์ชัน format ตัวเลขให้ยืดหยุ่นมากขึ้น
+const formatTickLabel = (value: number, zoom: number): string => {
+  if (zoom < 0.5) {
+    if (value >= 1000) {
+      return `${Math.round(value / 1000)}k`;
+    }
   }
-
-  return value < 10 ? value.toFixed(1) : value.toString();
+  if (zoom < 1) {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`.replace(".0", "");
+    }
+  }
+  return value.toString();
 };
 
 interface RulerProps {
@@ -16,27 +22,33 @@ interface RulerProps {
   pixelsPerUnit: number;
   zoom: number;
   isMobile: boolean;
-  draggedChordPosition: number | null;
 }
 
 export const Ruler: React.FC<RulerProps> = React.memo(
   ({ totalDuration, mode, ppq, pixelsPerUnit, zoom, isMobile }) => {
     if (totalDuration === 0) return null;
 
-    const intervals =
-      mode === "midi"
-        ? {
-            major: ppq,
-            minor: ppq / 4,
-          }
-        : zoom > 2.5
-        ? { major: 1, minor: 0.2 }
-        : zoom > 0.75
-        ? { major: 5, minor: 1 }
-        : { major: 10, minor: 2 };
+    // Logic การกำหนดระยะห่างของเส้นตามระดับการซูม
+    const getIntervals = () => {
+      if (mode === "midi") {
+        if (zoom > 2) return { major: ppq / 2, minor: ppq / 4 };
+        if (zoom > 0.5) return { major: ppq, minor: ppq / 2 };
+        if (zoom > 0.2) return { major: ppq * 2, minor: ppq };
+        return { major: ppq * 4, minor: ppq * 2 };
+      } else {
+        if (zoom > 5) return { major: 1, minor: 0.5 };
+        if (zoom > 2.5) return { major: 2, minor: 1 };
+        if (zoom > 0.75) return { major: 5, minor: 1 };
+        if (zoom > 0.4) return { major: 10, minor: 5 };
+        return { major: 30, minor: 10 };
+      }
+    };
 
+    const intervals = getIntervals();
     const ticks = [];
+
     for (let i = 0; i <= totalDuration; i += intervals.minor) {
+      // ใช้ค่าเผื่อเล็กน้อยในการเช็คตัวเลขทศนิยม
       const isMajor = i % intervals.major < 1e-9;
       const position = i * pixelsPerUnit;
 
@@ -67,7 +79,7 @@ export const Ruler: React.FC<RulerProps> = React.memo(
                   : "absolute left-5 text-[7px] text-gray-400 -translate-y-1/2"
               }
             >
-              {formatTickLabel(i, mode)}
+              {formatTickLabel(i, zoom)}
               {mode !== "midi" && "s"}
             </span>
           )}

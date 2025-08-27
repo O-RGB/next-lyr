@@ -26,15 +26,15 @@ const LineRow: React.FC<LineRowProps> = ({
 
   return (
     <div
-      className="relative flex h-auto gap-3 py-1 lg:py-3"
+      className="relative flex h-full w-full gap-2 lg:gap-3  "
       ref={lineRef}
       data-line-index={lineIndex}
     >
       <SelectedColorLine isSelected={isSelected} />
-      <div className="relative w-4 -my-3 flex items-center justify-center bg-gray-100 z-20">
+      <div className="relative w-4 h-full flex items-center justify-center bg-gray-100 z-20">
         <div className="px-2 text-[9px]">{lineIndex + 1}</div>
       </div>
-      <div className="relative flex flex-col gap-1 lg:gap-2 flex-1 min-w-0">
+      <div className="relative flex flex-col items-center justify-center gap-1 lg:gap-2 flex-1 min-w-0">
         {/* <div className="relative w-[85%] h-4 hidden lg:block">
           {rulerStartTime && rulerEndTime && (
             <Ruler

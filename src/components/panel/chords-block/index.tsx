@@ -1,26 +1,25 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { BsPlusCircleFill } from "react-icons/bs";
 import {
   DndContext,
   PointerSensor,
   useSensor,
   useSensors,
-  DragMoveEvent,
   DragEndEvent,
 } from "@dnd-kit/core";
 import ChordItem from "./chords/item";
+import useIsMobile from "@/hooks/useIsMobile";
+import ZoomControl from "./zoom";
+import ChordEditModal from "@/components/modals/chord";
 import { AutoScroller } from "./scrolling";
 import { ManualScroller } from "./scrolling/manual-scroller";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
-import useIsMobile from "@/hooks/useIsMobile";
 import { Ruler } from "./ruler";
-import ZoomControl from "./zoom";
-import ChordEditModal from "@/components/modals/chord";
+import { FaCirclePlus } from "react-icons/fa6";
 
 const PIXELS_PER_UNIT_MIDI = 0.1;
 const PIXELS_PER_UNIT_TIME = 50;
-const OVERSCAN_COUNT = 5; // จำนวน item ที่จะ render เผื่อไว้นอกจอ
+const OVERSCAN_COUNT = 5;
 
 const Playhead = ({
   onAddChord,
@@ -43,18 +42,13 @@ const Playhead = ({
                      transition-colors pointer-events-auto"
           title="Add new chord at current time"
         >
-          <BsPlusCircleFill />
+          <FaCirclePlus className="text-purple-500" />
         </button>
-        <div
-          className="absolute top-1/2 left-1/2 w-3 h-3 border-2 border-purple-500
-                        bg-white rounded-full z-10 -translate-x-1/2 -translate-y-1/2"
-        />
       </div>
     </div>
   );
 };
 
-// --- Helper function for finding index (Binary Search) ---
 const findChordIndex = (chords: any[], tick: number): number => {
   let low = 0;
   let high = chords.length - 1;
@@ -76,14 +70,12 @@ const ChordsBlock: React.FC = () => {
   const actions = useKaraokeStore((state) => state.actions);
   const playerControls = usePlayerSetupStore((state) => state.playerControls);
   const isMobile = useIsMobile();
+  const isPlaying = useKaraokeStore((state) => state.isPlaying);
+  const currentTime = useKaraokeStore((state) => state.currentTime);
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
-  const [draggedChordPosition, setDraggedChordPosition] = useState<
-    number | null
-  >(null);
 
-  // --- State for Virtualization ---
   const [visibleIndices, setVisibleIndices] = useState({ start: 0, end: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,7 +91,6 @@ const ChordsBlock: React.FC = () => {
   const totalDuration = playerState.duration ?? 0;
   const trackSize = totalDuration * pixelsPerUnit;
 
-  // --- Logic to calculate visible items ---
   const updateVisibleItems = useCallback(() => {
     if (!scrollContainerRef.current || chordsData.length === 0) return;
 
@@ -123,8 +114,14 @@ const ChordsBlock: React.FC = () => {
   }, [isMobile, playheadPosition, pixelsPerUnit, chordsData]);
 
   useEffect(() => {
+    if (!isPlaying) {
+      actions.setChordPanelCenterTick(currentTime);
+    }
+  }, [isPlaying, currentTime, actions]);
+
+  useEffect(() => {
     updateVisibleItems();
-  }, [updateVisibleItems, containerSize]); // Recalculate on size change
+  }, [updateVisibleItems, containerSize]);
 
   useEffect(() => {
     const bpm = playerState.midiInfo?.bpm ?? 0;
@@ -153,7 +150,6 @@ const ChordsBlock: React.FC = () => {
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      // Update visible items on scroll
       updateVisibleItems();
 
       if (useKaraokeStore.getState().isChordPanelAutoScrolling) return;
@@ -218,23 +214,8 @@ const ChordsBlock: React.FC = () => {
     actions.openChordModal(undefined, finalTick);
   }, [actions]);
 
-  const handleDragMove = useCallback(
-    (event: DragMoveEvent) => {
-      const originalTick = parseFloat(event.active.id.toString().split("-")[1]);
-      const deltaPos = isMobile ? event.delta.x : event.delta.y;
-      const newTick = originalTick + deltaPos / pixelsPerUnit;
-      const finalTick = Math.max(
-        0,
-        mode === "midi" ? Math.round(newTick) : newTick
-      );
-      setDraggedChordPosition(finalTick);
-    },
-    [pixelsPerUnit, mode, isMobile]
-  );
-
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      setDraggedChordPosition(null);
       const originalTick = parseFloat(event.active.id.toString().split("-")[1]);
       const chord = chordsData.find((c) => c.tick === originalTick);
       if (!chord) return;
@@ -265,7 +246,6 @@ const ChordsBlock: React.FC = () => {
     ? "absolute inset-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     : "absolute inset-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
-  // --- Slice the chordsData array to only render visible items ---
   const visibleChords = chordsData.slice(
     visibleIndices.start,
     visibleIndices.end
@@ -292,11 +272,7 @@ const ChordsBlock: React.FC = () => {
 
         <Playhead onAddChord={handleAddChordAtPlayhead} isMobile={isMobile} />
 
-        <DndContext
-          sensors={sensors}
-          onDragMove={handleDragMove}
-          onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div
             ref={containerRef}
             className="h-full w-full bg-white border border-slate-300 rounded-lg relative"
@@ -356,11 +332,9 @@ const ChordsBlock: React.FC = () => {
                       pixelsPerUnit={pixelsPerUnit}
                       zoom={zoom}
                       isMobile={isMobile}
-                      draggedChordPosition={draggedChordPosition}
                     />
                   </div>
 
-                  {/* --- Render only visible chords --- */}
                   {visibleChords.map((chord, index) => (
                     <ChordItem
                       key={`${chord.tick}-${visibleIndices.start + index}`}

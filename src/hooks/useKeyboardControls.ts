@@ -30,7 +30,6 @@ export const useKeyboardControls = (
   );
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
-  // ดึง rowVirtualizer มาจาก store
   const rowVirtualizer = usePlayerSetupStore((state) => state.rowVirtualizer);
 
   useEffect(() => {
@@ -69,7 +68,7 @@ export const useKeyboardControls = (
               : Math.max(0, selectedLineIndex - 1);
 
           actions.selectLine(newIndex);
-          // สั่งให้ scroll ไปยัง index ใหม่
+
           if (newIndex !== null && rowVirtualizer) {
             rowVirtualizer.scrollToIndex(newIndex, {
               align: "center",
@@ -89,7 +88,7 @@ export const useKeyboardControls = (
               : Math.min(totalLines - 1, selectedLineIndex + 1);
 
           actions.selectLine(newIndex);
-          // สั่งให้ scroll ไปยัง index ใหม่
+
           if (newIndex !== null && rowVirtualizer) {
             rowVirtualizer.scrollToIndex(newIndex, {
               align: "center",
@@ -120,13 +119,18 @@ export const useKeyboardControls = (
         if (isPlaying) {
           player.pause();
         } else {
-          let seekTime = chordPanelCenterTick;
+          let seekTime;
 
-          if (selectedLineIndex !== null && lyricsData[selectedLineIndex]) {
-            const firstWordOfLine = lyricsData[selectedLineIndex][0];
-
-            if (firstWordOfLine && firstWordOfLine.start !== null) {
-              seekTime = firstWordOfLine.start;
+          if (playFromScrolledPosition) {
+            seekTime = chordPanelCenterTick;
+            actions.setPlayFromScrolledPosition(false);
+          } else {
+            seekTime = chordPanelCenterTick;
+            if (selectedLineIndex !== null && lyricsData[selectedLineIndex]) {
+              const firstWordOfLine = lyricsData[selectedLineIndex][0];
+              if (firstWordOfLine && firstWordOfLine.start !== null) {
+                seekTime = firstWordOfLine.start;
+              }
             }
           }
 
@@ -137,7 +141,6 @@ export const useKeyboardControls = (
         }
         return;
       }
-
       if (isStampingMode && e.code === "ArrowLeft") {
         e.preventDefault();
         if (currentIndex <= -1) return;
@@ -205,6 +208,6 @@ export const useKeyboardControls = (
     playFromScrolledPosition,
     chordPanelCenterTick,
     isPlaying,
-    rowVirtualizer, // เพิ่ม dependency
+    rowVirtualizer,
   ]);
 };

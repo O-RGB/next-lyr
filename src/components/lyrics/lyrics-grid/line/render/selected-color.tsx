@@ -10,7 +10,7 @@ const SelectedColorLine: React.FC<SelectedColorLineProps> = ({
   if (isSelected) {
     return (
       <div
-        className={`bg-blue-50 absolute w-full h-full top-0 left-0 z-1`}
+        className={`bg-fuchsia-100 absolute w-full h-full top-0 left-0 z-1`}
       ></div>
     );
   } else {
