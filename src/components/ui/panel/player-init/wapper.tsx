@@ -31,7 +31,7 @@ const PlayerSetupWapper: React.FC<PlayerSetupWapperProps> = ({
     }
   }, [playerSetup.playerRef]);
 
-  return <></>;
+  return null;
 };
 
 export default PlayerSetupWapper;

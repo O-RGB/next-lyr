@@ -4,7 +4,6 @@ import LyricsPanel from "@/components/panel/lyrics-panel";
 import React from "react";
 import PlayerInit from "./player-init";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import useIsMobile from "@/hooks/useIsMobile";
 import {
   FaArrowUp,
   FaArrowDown,

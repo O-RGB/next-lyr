@@ -80,6 +80,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           minHeight: "100vh",
         },
         modal: {
+          WebkitOverflowScrolling: "touch",
           maxHeight: maxHeight,
           borderRadius: "12px",
           backgroundColor: "white",

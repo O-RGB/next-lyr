@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
+import { usePlayerSetupStore } from "./usePlayerSetup";
 
 export type PlayerControls = {
   play: () => void;
@@ -29,6 +30,9 @@ export const useKeyboardControls = (
   );
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
+  // ดึง rowVirtualizer มาจาก store
+  const rowVirtualizer = usePlayerSetupStore((state) => state.rowVirtualizer);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -57,25 +61,41 @@ export const useKeyboardControls = (
       if (!isStampingMode) {
         if (e.code === "ArrowUp") {
           e.preventDefault();
-          actions.selectLine(
+          const newIndex =
             selectedLineIndex === null
               ? totalLines > 0
                 ? 0
                 : null
-              : Math.max(0, selectedLineIndex - 1)
-          );
+              : Math.max(0, selectedLineIndex - 1);
+
+          actions.selectLine(newIndex);
+          // สั่งให้ scroll ไปยัง index ใหม่
+          if (newIndex !== null && rowVirtualizer) {
+            rowVirtualizer.scrollToIndex(newIndex, {
+              align: "center",
+              behavior: "smooth",
+            });
+          }
           actions.setPlayFromScrolledPosition(false);
           return;
         }
         if (e.code === "ArrowDown") {
           e.preventDefault();
-          actions.selectLine(
+          const newIndex =
             selectedLineIndex === null
               ? totalLines > 0
                 ? 0
                 : null
-              : Math.min(totalLines - 1, selectedLineIndex + 1)
-          );
+              : Math.min(totalLines - 1, selectedLineIndex + 1);
+
+          actions.selectLine(newIndex);
+          // สั่งให้ scroll ไปยัง index ใหม่
+          if (newIndex !== null && rowVirtualizer) {
+            rowVirtualizer.scrollToIndex(newIndex, {
+              align: "center",
+              behavior: "smooth",
+            });
+          }
           actions.setPlayFromScrolledPosition(false);
           return;
         }
@@ -185,5 +205,6 @@ export const useKeyboardControls = (
     playFromScrolledPosition,
     chordPanelCenterTick,
     isPlaying,
+    rowVirtualizer, // เพิ่ม dependency
   ]);
 };

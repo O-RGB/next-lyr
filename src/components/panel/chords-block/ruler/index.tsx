@@ -19,43 +19,8 @@ interface RulerProps {
   draggedChordPosition: number | null;
 }
 
-const DragIndicator: React.FC<{
-  position: number;
-  isMobile: boolean;
-}> = ({ position, isMobile }) => {
-  if (position === null) return null;
-
-  const style: React.CSSProperties = isMobile
-    ? {
-        left: `${position}px`,
-        top: 0,
-        height: "100%",
-        width: "2px",
-        borderWidth: 1,
-        borderLeft: "20px solid rgba(255, 0, 0)",
-      }
-    : {
-        top: `${position}px`,
-        left: 0,
-        width: "100%",
-        height: "2px",
-        borderWidth: 1,
-        borderTop: "20px solid rgba(255, 0, 0)",
-      };
-
-  return <div className="absolute z-50 pointer-events-none" style={style} />;
-};
-
 export const Ruler: React.FC<RulerProps> = React.memo(
-  ({
-    totalDuration,
-    mode,
-    ppq,
-    pixelsPerUnit,
-    zoom,
-    isMobile,
-    draggedChordPosition,
-  }) => {
+  ({ totalDuration, mode, ppq, pixelsPerUnit, zoom, isMobile }) => {
     if (totalDuration === 0) return null;
 
     const intervals =
@@ -110,17 +75,7 @@ export const Ruler: React.FC<RulerProps> = React.memo(
       );
     }
 
-    return (
-      <>
-        {ticks}
-        {/* {draggedChordPosition !== null && (
-          <DragIndicator
-            position={draggedChordPosition * pixelsPerUnit}
-            isMobile={isMobile}
-          />
-        )} */}
-      </>
-    );
+    return <>{ticks}</>;
   }
 );
 

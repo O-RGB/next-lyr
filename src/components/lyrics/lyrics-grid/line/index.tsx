@@ -1,6 +1,4 @@
 import React from "react";
-import Ruler from "./ruler/ruler";
-import WordTimingLines from "./ruler/ruler-line";
 import SelectedColorLine from "./render/selected-color";
 import LineAction from "./actions";
 import LyricsWords from "./words";
@@ -10,24 +8,21 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 export interface LineRowProps {
   line: LyricWordData[];
   lineIndex: number;
-  mode: MusicMode | null;
-  lineRef: (el: HTMLDivElement | null) => void;
+  lineRef?: (el: HTMLDivElement | null) => void;
   onWordClick: (index: number) => void;
-  onWordDelete: (index: number) => void;
 }
 
 const LineRow: React.FC<LineRowProps> = ({
   line,
   lineIndex,
-  mode,
   lineRef,
   onWordClick,
 }) => {
   const isSelected = useKaraokeStore(
     (state) => state.selectedLineIndex === lineIndex
   );
-  const rulerStartTime = line[0]?.start ?? null;
-  const rulerEndTime = line[line.length - 1]?.end ?? null;
+  // const rulerStartTime = line[0]?.start ?? null;
+  // const rulerEndTime = line[line.length - 1]?.end ?? null;
 
   return (
     <div

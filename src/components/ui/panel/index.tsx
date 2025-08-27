@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React from "react";
 import MetadataForm from "../../metadata/metadata-form";
 import EditLyricLineModal from "../../modals/edit-lyrics/edit-lyric-line-modal";
 import LyricsPlayer from "../../lyrics/karaoke-lyrics";
@@ -9,8 +9,6 @@ import PlayerHost from "../player-host";
 import KeyboardRender from "../keybord-render";
 import PanelTools from "./panel-tools";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
-import { FaMusic, FaListAlt } from "react-icons/fa";
-import { FloatingButtonGroup } from "../../common/floating-button";
 import { useModalStore } from "@/hooks/useModalState";
 
 export const calculateSeekTime = (
@@ -37,44 +35,12 @@ export const calculateSeekTime = (
   return result;
 };
 
-const FLOATING_ACTIONS_CONFIG = [
-  {
-    icon: <FaMusic size={24} />,
-    label: "Lyrics Preview",
-    className: "bg-purple-600",
-    action: "preview" as const,
-  },
-  {
-    icon: <FaListAlt size={24} />,
-    label: "Metadata",
-    className: "bg-indigo-600",
-    action: "metadata" as const,
-  },
-];
-
 const LyrEditerPanel: React.FC = () => {
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
   const isMetadataOpen = useModalStore((state) => state.isMetadataOpen);
   const isPreviewOpen = useModalStore((state) => state.isPreviewOpen);
-  const openMetadata = useModalStore((state) => state.openMetadata);
   const closeMetadata = useModalStore((state) => state.closeMetadata);
-  const openPreview = useModalStore((state) => state.openPreview);
   const closePreview = useModalStore((state) => state.closePreview);
-
-  const floatingActions = useMemo(() => {
-    return FLOATING_ACTIONS_CONFIG.map((config) => ({
-      icon: config.icon,
-      onClick: () => {
-        if (config.action === "preview") {
-          openPreview();
-        } else {
-          openMetadata();
-        }
-      },
-      label: config.label,
-      className: config.className,
-    }));
-  }, [openPreview, openMetadata]);
 
   return (
     <>

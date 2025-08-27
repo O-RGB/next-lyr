@@ -20,6 +20,7 @@ import ChordEditModal from "@/components/modals/chord";
 
 const PIXELS_PER_UNIT_MIDI = 0.1;
 const PIXELS_PER_UNIT_TIME = 50;
+const OVERSCAN_COUNT = 5; // จำนวน item ที่จะ render เผื่อไว้นอกจอ
 
 const Playhead = ({
   onAddChord,
@@ -53,6 +54,21 @@ const Playhead = ({
   );
 };
 
+// --- Helper function for finding index (Binary Search) ---
+const findChordIndex = (chords: any[], tick: number): number => {
+  let low = 0;
+  let high = chords.length - 1;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (chords[mid].tick < tick) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return low;
+};
+
 const ChordsBlock: React.FC = () => {
   const mode = useKaraokeStore((state) => state.mode);
   const playerState = useKaraokeStore((state) => state.playerState);
@@ -67,10 +83,48 @@ const ChordsBlock: React.FC = () => {
     number | null
   >(null);
 
+  // --- State for Virtualization ---
+  const [visibleIndices, setVisibleIndices] = useState({ start: 0, end: 0 });
+
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const pixelsPerUnit =
+    (mode === "midi" ? PIXELS_PER_UNIT_MIDI : PIXELS_PER_UNIT_TIME) * zoom;
+  const playheadPosition = isMobile
+    ? containerSize.width / 2
+    : containerSize.height / 2;
+  const totalDuration = playerState.duration ?? 0;
+  const trackSize = totalDuration * pixelsPerUnit;
+
+  // --- Logic to calculate visible items ---
+  const updateVisibleItems = useCallback(() => {
+    if (!scrollContainerRef.current || chordsData.length === 0) return;
+
+    const scrollEl = scrollContainerRef.current;
+    const scrollPos = isMobile ? scrollEl.scrollLeft : scrollEl.scrollTop;
+    const viewportSize = isMobile
+      ? scrollEl.clientWidth
+      : scrollEl.clientHeight;
+
+    const visibleStartTick = (scrollPos - playheadPosition) / pixelsPerUnit;
+    const visibleEndTick =
+      (scrollPos + viewportSize - playheadPosition) / pixelsPerUnit;
+
+    const startIndex = findChordIndex(chordsData, visibleStartTick);
+    const endIndex = findChordIndex(chordsData, visibleEndTick);
+
+    setVisibleIndices({
+      start: Math.max(0, startIndex - OVERSCAN_COUNT),
+      end: Math.min(chordsData.length, endIndex + OVERSCAN_COUNT),
+    });
+  }, [isMobile, playheadPosition, pixelsPerUnit, chordsData]);
+
+  useEffect(() => {
+    updateVisibleItems();
+  }, [updateVisibleItems, containerSize]); // Recalculate on size change
 
   useEffect(() => {
     const bpm = playerState.midiInfo?.bpm ?? 0;
@@ -97,17 +151,11 @@ const ChordsBlock: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const pixelsPerUnit =
-    (mode === "midi" ? PIXELS_PER_UNIT_MIDI : PIXELS_PER_UNIT_TIME) * zoom;
-  const playheadPosition = isMobile
-    ? containerSize.width / 2
-    : containerSize.height / 2;
-  const totalDuration = playerState.duration ?? 0;
-  const trackSize = totalDuration * pixelsPerUnit;
-
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      // ถ้าการเลื่อนเกิดจาก auto-scroll ของระบบ ให้ข้ามไปเลย
+      // Update visible items on scroll
+      updateVisibleItems();
+
       if (useKaraokeStore.getState().isChordPanelAutoScrolling) return;
 
       const scrollPos = isMobile
@@ -121,21 +169,18 @@ const ChordsBlock: React.FC = () => {
       if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
       seekTimeoutRef.current = setTimeout(() => {
         playerControls?.seek(newTick);
-      }, 150); // 150ms delay
+      }, 150);
 
-      // ตั้งค่า Timeout ใหม่ เพื่อคืนค่า auto-scroll เมื่อผู้ใช้หยุดเลื่อน
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
         if (useKaraokeStore.getState().isPlaying) {
           actions.setIsChordPanelAutoScrolling(true);
         }
-      }, 250); // หลังจากหยุดเลื่อน 250ms
+      }, 250);
     },
-    [pixelsPerUnit, actions, isMobile, playerControls]
+    [pixelsPerUnit, actions, isMobile, playerControls, updateVisibleItems]
   );
 
-  // ฟังก์ชันนี้จะถูกเรียกเมื่อผู้ใช้เริ่มเลื่อน (ด้วย mouse wheel หรือ touch)
-  // หน้าที่เดียวของมันคือ "หยุดการเลื่อนอัตโนมัติ"
   const interruptAutoScroll = useCallback(() => {
     if (useKaraokeStore.getState().isChordPanelAutoScrolling) {
       actions.setIsChordPanelAutoScrolling(false);
@@ -219,6 +264,12 @@ const ChordsBlock: React.FC = () => {
   const scrollContainerClasses = isMobile
     ? "absolute inset-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     : "absolute inset-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+  // --- Slice the chordsData array to only render visible items ---
+  const visibleChords = chordsData.slice(
+    visibleIndices.start,
+    visibleIndices.end
+  );
 
   return (
     <div className="h-full flex flex-row lg:flex-col gap-2 overflow-hidden">
@@ -309,11 +360,12 @@ const ChordsBlock: React.FC = () => {
                     />
                   </div>
 
-                  {chordsData.map((chord, index) => (
+                  {/* --- Render only visible chords --- */}
+                  {visibleChords.map((chord, index) => (
                     <ChordItem
-                      key={`${chord.tick}-${index}`}
+                      key={`${chord.tick}-${visibleIndices.start + index}`}
                       chord={chord}
-                      index={index}
+                      index={visibleIndices.start + index}
                       pixelsPerTick={pixelsPerUnit}
                       onChordClick={handleChordClick}
                       onEditChord={actions.openChordModal}
