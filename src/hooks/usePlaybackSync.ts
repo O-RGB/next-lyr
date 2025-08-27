@@ -21,10 +21,12 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
       return;
     }
 
-    if (isTimingActive && correctionIndex === null) {
-      actions.setPlaybackIndex(null);
-      return;
-    }
+    // --- REMOVED BLOCK ---
+    // The following block was removed to allow playback highlighting during timing.
+    // if (isTimingActive && correctionIndex === null) {
+    //   actions.setPlaybackIndex(null);
+    //   return;
+    // }
 
     const flatLyricsData = lyricsData.flat();
 

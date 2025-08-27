@@ -30,13 +30,15 @@ export const createPlaybackActions: StateCreator<
         const wordToStart = flatLyrics[newCurrentIndex];
         if (!wordToStart) return {};
 
-        const newTimingBuffer: TimingBufferData = {
-          lineIndex: wordToStart.lineIndex, // 🔽 กำหนด lineIndex ที่กำลังแก้ไข
+        // If starting a new timing session, create a new buffer
+        // Otherwise, reuse the existing buffer for the ReTime session
+        const timingBuffer = state.timingBuffer || {
+          lineIndex: wordToStart.lineIndex,
           buffer: new Map(),
         };
 
         if (wordToStart.start === null || state.editingLineIndex !== null) {
-          newTimingBuffer.buffer.set(wordToStart.index, {
+          timingBuffer.buffer.set(wordToStart.index, {
             start: currentTime,
             end: null,
           });
@@ -47,7 +49,7 @@ export const createPlaybackActions: StateCreator<
           selectedLineIndex: newSelectedLineIndex,
           isTimingActive: true,
           correctionIndex: null,
-          timingBuffer: newTimingBuffer, // 🔽 อัปเดต timingBuffer ด้วยโครงสร้างใหม่
+          timingBuffer,
         };
       });
     },
@@ -80,7 +82,7 @@ export const createPlaybackActions: StateCreator<
         isTimingActive: false,
         correctionIndex: null,
         lyricsProcessed: undefined,
-        timingBuffer: null, // เริ่มต้นด้วย null
+        timingBuffer: null,
       }));
 
       return { success: true, preRollTime };
@@ -169,25 +171,27 @@ export const createPlaybackActions: StateCreator<
         lineStartTime = getPreRollTime(wordToCorrect.lineIndex, flatLyrics);
         const newBuffer = new Map(state.timingBuffer.buffer);
 
-        const currentWord = flatLyrics[state.currentIndex];
-        if (currentWord) {
-          const data = newBuffer.get(currentWord.index);
+        const wordAfter = flatLyrics[newCurrentIndex + 1];
+        if (wordAfter) {
+          const data = newBuffer.get(wordAfter.index);
           if (data) {
             data.start = null;
-            newBuffer.set(currentWord.index, data);
+            newBuffer.set(wordAfter.index, data);
           }
         }
-        if (wordToCorrect) {
-          const data = newBuffer.get(wordToCorrect.index);
-          if (data) {
-            data.end = null;
-            newBuffer.set(wordToCorrect.index, data);
-          }
+
+        const dataToCorrect = newBuffer.get(wordToCorrect.index);
+        if (dataToCorrect) {
+          dataToCorrect.end = null;
+          newBuffer.set(wordToCorrect.index, dataToCorrect);
         }
 
         return {
           currentIndex: newCurrentIndex,
           correctionIndex: newCurrentIndex,
+          // --- ADDED ---
+          // Ensure the line is selected for the UI to update correctly
+          selectedLineIndex: wordToCorrect.lineIndex,
           isTimingActive: true,
           timingBuffer: { ...state.timingBuffer, buffer: newBuffer },
         };
@@ -211,18 +215,17 @@ export const createPlaybackActions: StateCreator<
 
         const { buffer } = timingBufferData;
 
+        // --- REVISED LOGIC ---
+        // This logic correctly merges the buffer across multiple lines
         const newLyricsData = prevState.lyricsData.map((line) =>
           line.map((word) => {
             if (buffer.has(word.index)) {
               const bufferedData = buffer.get(word.index)!;
               const start = bufferedData.start ?? word.start;
               const end = bufferedData.end ?? word.end;
-              return {
-                ...word,
-                start: start,
-                end: end,
-                length: end !== null && start !== null ? end - start : 0,
-              };
+              const length =
+                end !== null && start !== null ? Math.max(0, end - start) : 0;
+              return { ...word, start, end, length };
             }
             return word;
           })

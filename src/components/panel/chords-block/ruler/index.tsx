@@ -36,11 +36,24 @@ export const Ruler: React.FC<RulerProps> = React.memo(
         if (zoom > 0.2) return { major: ppq * 2, minor: ppq };
         return { major: ppq * 4, minor: ppq * 2 };
       } else {
+        // สำหรับ Time mode - เพิ่ม logic สำหรับเพลงยาว ๆ
         if (zoom > 5) return { major: 1, minor: 0.5 };
         if (zoom > 2.5) return { major: 2, minor: 1 };
         if (zoom > 0.75) return { major: 5, minor: 1 };
-        if (zoom > 0.4) return { major: 10, minor: 5 };
-        return { major: 30, minor: 10 };
+        if (zoom > 0.6) return { major: 10, minor: 5 };
+        if (zoom > 0.3) return { major: 20, minor: 10 };
+
+        // เพิ่มระดับสำหรับเพลงยาว
+        if (zoom > 0.2) return { major: 30, minor: 10 };
+        if (zoom > 0.1) return { major: 60, minor: 30 }; // 1 นาที
+        if (zoom > 0.05) return { major: 120, minor: 60 }; // 2 นาที
+        if (zoom > 0.025) return { major: 300, minor: 120 }; // 5 นาที
+        if (zoom > 0.015) return { major: 600, minor: 300 }; // 10 นาที
+        if (zoom > 0.008) return { major: 900, minor: 300 }; // 15 นาที
+        if (zoom > 0.004) return { major: 1800, minor: 600 }; // 30 นาที
+
+        // สำหรับเพลงยาวมากที่สุด
+        return { major: 3600, minor: 1800 }; // 1 ชั่วโมง
       }
     };
 

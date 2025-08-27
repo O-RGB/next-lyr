@@ -1,3 +1,5 @@
+// src/components/lyrics/lyrics-grid/line/words/word.tsx
+
 import React, { forwardRef, useEffect, useMemo } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { LyricWordData } from "@/types/common.type";
@@ -35,15 +37,33 @@ const useActiveState = (wordData: LyricWordData, isCurrentLine: boolean) => {
 
 const useEditingState = (wordData: LyricWordData, isCurrentLine: boolean) => {
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
-  const isTimingActive = useKaraokeStore((state) =>
-    isCurrentLine ? state.isTimingActive : false
-  );
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex); // Get selectedLineIndex
 
   return useMemo(() => {
-    if (!isCurrentLine) return false;
+    // This is for single-line editing mode
+    if (editingLineIndex === wordData.lineIndex && !isTimingActive) {
+      return true;
+    }
 
-    return editingLineIndex === wordData.lineIndex && !isTimingActive;
-  }, [isCurrentLine, editingLineIndex, wordData.lineIndex, isTimingActive]);
+    // This is for the multi-line re-timing mode.
+    // A word is in the "editing" state for re-timing if:
+    // 1. We are NOT in single-line edit mode (editingLineIndex is null)
+    // 2. We are NOT actively stamping timings yet (isTimingActive is false)
+    // 3. The word has no start time (it has been cleared for re-timing)
+    // 4. Its line index is the selected line or any line after it.
+    if (
+      editingLineIndex === null &&
+      !isTimingActive &&
+      wordData.start === null &&
+      selectedLineIndex !== null &&
+      wordData.lineIndex >= selectedLineIndex
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [editingLineIndex, wordData, isTimingActive, selectedLineIndex]);
 };
 
 const usePendingCorrectionState = (
@@ -70,8 +90,14 @@ const useTimedState = (wordData: LyricWordData, isCurrentLine: boolean) => {
       return wordData.start !== null;
     }
 
-    return wordData.start !== null || !!lineBuffer;
-  }, [wordData.start, lineBuffer, isCurrentLine]);
+    const hasOriginalTime = wordData.start !== null;
+    const isInBufferAndTimed =
+      !!lineBuffer &&
+      lineBuffer.has(wordData.index) &&
+      lineBuffer.get(wordData.index)?.end !== null;
+
+    return hasOriginalTime || isInBufferAndTimed;
+  }, [wordData.start, wordData.index, lineBuffer, isCurrentLine]);
 };
 
 const BaseWord = forwardRef<
