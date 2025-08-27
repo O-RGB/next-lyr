@@ -1,6 +1,7 @@
 import { LyricWordData } from "@/types/common.type";
 import Word from "./word";
 import React, { useRef } from "react";
+import { TiimingBuffer } from "@/stores/karaoke-store/types";
 
 interface LyricsWordsProps {
   line: LyricWordData[];
@@ -23,7 +24,6 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
     align: ScrollLogicalPosition = "center"
   ) => {
     const activeWordElement = wordRefs.current[wordIndex];
-
     if (activeWordElement) {
       activeWordElement.scrollIntoView({
         behavior: "instant",
@@ -50,13 +50,11 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
           wordData={word}
           onSelect={handleWordSelect}
           onActiveLine={(is) => {
-            if (is === false && containerRef.current) {
+            if (!is && containerRef.current) {
               containerRef.current.scrollTo({ left: 0, behavior: "instant" });
             }
           }}
           onClick={onWordClick}
-          onUpdate={() => {}}
-          onDelete={() => {}}
           isCurrentLine={isSelected}
         />
       ))}

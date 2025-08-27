@@ -23,6 +23,17 @@ export interface PlayerState {
   duration: number | null;
 }
 
+// 🔽 สร้าง Interface ใหม่สำหรับโครงสร้าง timingBuffer
+
+export interface TiimingBuffer {
+  start: number | null;
+  end: number | null;
+}
+export interface TimingBufferData {
+  lineIndex: number;
+  buffer: Map<number, TiimingBuffer>;
+}
+
 export interface TimingState {
   currentIndex: number;
   isTimingActive: boolean;
@@ -31,6 +42,8 @@ export interface TimingState {
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
+  // 🔽 เปลี่ยน Type ของ timingBuffer
+  timingBuffer: TimingBufferData | null;
 }
 
 export interface ModalState {
@@ -88,12 +101,10 @@ export interface ContentActions {
 export interface PlaybackActions {
   setIsPlaying: (playing: boolean) => void;
   startTiming: (currentTime: number) => void;
-  // START: Added new action type
   startTimingFromLine: (lineIndex: number) => {
     success: boolean;
     preRollTime: number;
   };
-  // END: Added new action type
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
   goToNextWord: () => void;
   correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
@@ -151,6 +162,7 @@ export interface KaraokeState {
   chordsData: ChordEvent[];
   isPlaying: boolean;
 
+  // TimingState
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
@@ -158,7 +170,9 @@ export interface KaraokeState {
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
+  timingBuffer: TimingBufferData | null;
 
+  // ModalState
   isEditModalOpen: boolean;
   lyricsProcessed?: LyricsRangeArray<ISentence>;
   isChordModalOpen: boolean;
@@ -167,6 +181,7 @@ export interface KaraokeState {
   minChordTickRange: number | null;
   maxChordTickRange: number | null;
 
+  // ChordPanelState
   isChordPanelAutoScrolling: boolean;
   chordPanelCenterTick: number;
   isChordPanelHovered: boolean;

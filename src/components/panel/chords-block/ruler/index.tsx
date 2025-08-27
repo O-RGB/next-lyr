@@ -113,12 +113,12 @@ export const Ruler: React.FC<RulerProps> = React.memo(
     return (
       <>
         {ticks}
-        {draggedChordPosition !== null && (
+        {/* {draggedChordPosition !== null && (
           <DragIndicator
             position={draggedChordPosition * pixelsPerUnit}
             isMobile={isMobile}
           />
-        )}
+        )} */}
       </>
     );
   }

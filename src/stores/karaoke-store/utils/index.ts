@@ -33,7 +33,6 @@ export const createObjectURLFromStoredFile = (
   return { file, url };
 };
 
-// This function now expects a flat array
 export const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
@@ -85,7 +84,6 @@ export const processLyricsForPlayer = (
   return arrayRange;
 };
 
-// This function now expects a flat array
 export const getPreRollTime = (
   lineIndex: number,
   lyricsData: LyricWordData[]
@@ -119,7 +117,7 @@ export const convertParsedDataForImport = (
   data: any,
   isMidi: boolean,
   songPpq: number = 480
-): { finalWords: LyricWordData[][]; convertedChords: any[] } => {
+) => {
   if (!data.lyrics || data.lyrics.length === 0) {
     return {
       finalWords: [],
@@ -133,7 +131,7 @@ export const convertParsedDataForImport = (
     };
   }
 
-  const finalWordsNested: LyricWordData[][] = [];
+  const finalWords: LyricWordData[] = [];
   let globalWordIndex = 0;
 
   const flatLyrics = data.lyrics
@@ -141,7 +139,6 @@ export const convertParsedDataForImport = (
     .sort((a: any, b: any) => a.tick - b.tick);
 
   data.lyrics.forEach((line: any[], lineIndex: number) => {
-    const lineWords: LyricWordData[] = [];
     line.forEach((wordEvent: any) => {
       const convertedTick = isMidi
         ? convertCursorToTick(wordEvent.tick, songPpq)
@@ -163,7 +160,7 @@ export const convertParsedDataForImport = (
           : convertedTick + DEFAULT_CHORD_DURATION;
       }
 
-      lineWords.push({
+      finalWords.push({
         name: wordEvent.text,
         start: convertedTick,
         end: endTime,
@@ -172,7 +169,6 @@ export const convertParsedDataForImport = (
         lineIndex: lineIndex,
       });
     });
-    finalWordsNested.push(lineWords);
   });
 
   const convertedChords =
@@ -183,5 +179,5 @@ export const convertParsedDataForImport = (
       }))
       .sort((a: any, b: any) => a.tick - b.tick) || [];
 
-  return { finalWords: finalWordsNested, convertedChords };
+  return { finalWords, convertedChords };
 };

@@ -43,12 +43,10 @@ export const createModalActions: StateCreator<
         await saveToHistoryAndDB();
         const { lyricsData } = get();
 
-        // --- START: โค้ดที่แก้ไข ---
         const flatLyrics = lyricsData.flat();
         const firstWordOfLine = flatLyrics.find(
           (w) => w.lineIndex === lineIndex
         );
-        // --- END: โค้ดที่แก้ไข ---
 
         if (!firstWordOfLine) {
           return { success: false, firstWordIndex: 0, preRollTime: 0 };
@@ -56,13 +54,10 @@ export const createModalActions: StateCreator<
 
         const firstWordIndex = firstWordOfLine.index;
 
-        // --- START: โค้ดที่แก้ไข ---
         const preRollTime = getPreRollTime(lineIndex, flatLyrics);
-        // --- END: โค้ดที่แก้ไข ---
 
         set((state) => ({
           selectedLineIndex: lineIndex,
-          // --- START: โค้ดที่แก้ไข ---
           lyricsData: state.lyricsData.map((line, idx) =>
             idx === lineIndex
               ? line.map((word) => ({
@@ -73,7 +68,6 @@ export const createModalActions: StateCreator<
                 }))
               : line
           ),
-          // --- END: โค้ดที่แก้ไข ---
           currentIndex: firstWordIndex,
           editingLineIndex: lineIndex,
           isTimingActive: false,

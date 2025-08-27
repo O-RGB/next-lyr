@@ -26,7 +26,6 @@ const LineRow: React.FC<LineRowProps> = ({
   const isSelected = useKaraokeStore(
     (state) => state.selectedLineIndex === lineIndex
   );
-
   const rulerStartTime = line[0]?.start ?? null;
   const rulerEndTime = line[line.length - 1]?.end ?? null;
 
@@ -41,7 +40,7 @@ const LineRow: React.FC<LineRowProps> = ({
         <div className="px-2 text-[9px]">{lineIndex + 1}</div>
       </div>
       <div className="relative flex flex-col gap-1 lg:gap-2 flex-1 min-w-0">
-        <div className="relative w-[85%] h-4 hidden lg:block">
+        {/* <div className="relative w-[85%] h-4 hidden lg:block">
           {rulerStartTime && rulerEndTime && (
             <Ruler
               lineIndex={lineIndex}
@@ -56,9 +55,10 @@ const LineRow: React.FC<LineRowProps> = ({
               line={line}
               lineStartTime={rulerStartTime}
               lineEndTime={rulerEndTime}
+              isSelected={isSelected}
             />
           )}
-        </div>
+        </div> */}
 
         <div className="flex w-full justify-between items-center">
           <LyricsWords
@@ -66,7 +66,7 @@ const LineRow: React.FC<LineRowProps> = ({
             lineIndex={lineIndex}
             onWordClick={onWordClick}
             isSelected={isSelected}
-          ></LyricsWords>
+          />
 
           <LineAction lineIndex={lineIndex} />
         </div>

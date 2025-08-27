@@ -18,8 +18,8 @@ const AutoMoveToLine: React.FC<AutoMoveToLineProps> = ({ lineRefs }) => {
     const isStamping = isTimingActive || editingLineIndex !== null;
 
     if (isStamping) {
-      const flatLyrics = lyricsData.flat(); // <--- **แก้ไขจุดนี้** แปลงเป็น Array แบนก่อน
-      const currentWord = flatLyrics[currentIndex]; // <--- เข้าถึง word จาก Array ที่แปลงแล้ว
+      const flatLyrics = lyricsData.flat();
+      const currentWord = flatLyrics[currentIndex];
       if (currentWord) {
         lineToScroll = currentWord.lineIndex;
       }

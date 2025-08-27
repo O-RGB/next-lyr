@@ -29,6 +29,7 @@ export const initialTimingState: TimingState = {
   correctionIndex: null,
   selectedLineIndex: null,
   currentTime: 0,
+  timingBuffer: null,
 };
 
 export const initialModalState: ModalState = {

@@ -7,6 +7,7 @@ interface RulerLineWordProps {
   position: { left: number; width: number };
   lineIndex: number;
   lineColor?: string;
+  isSelected?: boolean;
 }
 
 const RulerLineWord: React.FC<RulerLineWordProps> = ({
@@ -14,6 +15,7 @@ const RulerLineWord: React.FC<RulerLineWordProps> = ({
   position,
   lineIndex,
   lineColor = "bg-green-500",
+  isSelected,
 }) => {
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
@@ -52,7 +54,8 @@ const RulerLineWord: React.FC<RulerLineWordProps> = ({
       currentIndex === word.index &&
       (isTimingActive || correctionIndex !== null);
     const isPendingCorrection = correctionIndex === word.index;
-    const isEditing = editingLineIndex === word.lineIndex && !isTimingActive;
+    const isEditing =
+      editingLineIndex === word.lineIndex && !isTimingActive && isSelected;
 
     if (isPendingCorrection) return "bg-orange-500";
     if (isActive) return "bg-blue-500";

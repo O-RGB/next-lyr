@@ -7,6 +7,7 @@ type WordTimingLinesProps = {
   lineEndTime: number;
   line: LyricWordData[];
   lineIndex: number;
+  isSelected: boolean;
 };
 
 function WordTimingLines({
@@ -14,6 +15,7 @@ function WordTimingLines({
   lineEndTime,
   line,
   lineIndex,
+  isSelected,
 }: WordTimingLinesProps) {
   const totalLineDuration = lineEndTime - lineStartTime;
   if (totalLineDuration <= 0) return null;
@@ -41,6 +43,7 @@ function WordTimingLines({
               word={word}
               position={position}
               lineIndex={lineIndex}
+              isSelected={isSelected}
             />
           );
       })}

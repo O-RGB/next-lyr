@@ -32,10 +32,8 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       const { lyricsData, mode } = useKaraokeStore.getState();
       const { playerControls } = usePlayerSetupStore.getState();
 
-      // --- START: โค้ดที่แก้ไข ---
       const flatLyrics = lyricsData.flat();
       const word = flatLyrics.find((w) => w.index === index);
-      // --- END: โค้ดที่แก้ไข ---
 
       if (!word || !playerControls) {
         console.warn(
@@ -45,9 +43,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         return;
       }
 
-      // --- START: โค้ดที่แก้ไข ---
       const seekTo = calculateSeekTime(word, flatLyrics, mode, index);
-      // --- END: โค้ดที่แก้ไข ---
 
       if (seekTo !== null) {
         useKaraokeStore.getState().actions.setIsChordPanelAutoScrolling(true);

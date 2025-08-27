@@ -66,8 +66,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           chords: newChordsData,
           info: metadata,
           lyrics: newLyricsData,
-
-          // miscTags: DEFAULT_MISC,
         },
         await rawFile.arrayBuffer()
       );

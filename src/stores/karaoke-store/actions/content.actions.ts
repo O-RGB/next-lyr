@@ -52,7 +52,7 @@ export const createContentActions: StateCreator<
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();
         const processed = processLyricsForPlayer(
-          lyricsData.flat(), // Flatten before processing
+          lyricsData.flat(),
           mode,
           playerState.midiInfo
         );
