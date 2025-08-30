@@ -79,7 +79,7 @@ export const useInputFocus = () => {
 const getInputSizeClass = (inputSize: "sm" | "md" | "lg") => {
   return {
     sm: "text-[10px] px-2.5 py-1",
-    md: "text-sm px-3 py-1.5",
+    md: "text-[16px] px-3 py-1.5",
     lg: "text-lg px-4 py-3",
   }[inputSize];
 };

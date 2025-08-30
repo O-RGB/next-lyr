@@ -30,6 +30,13 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
 
+  const getYouTubeId = (url: string): string | null => {
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
   const handleFileSelect = async (files: File[]) => {
     const file = files[0];
     if (!file) {
@@ -142,7 +149,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             break;
         }
       } else if (projectMode === "youtube") {
-        initialData.playerState.youtubeId = youtubeUrl;
+        const videoId = getYouTubeId(youtubeUrl);
+        if (!videoId) {
+          alert("Invalid YouTube URL.");
+          return;
+        }
+        initialData.playerState.youtubeId = videoId;
       }
 
       const newProjectId = await createProject(

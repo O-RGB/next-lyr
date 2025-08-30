@@ -12,16 +12,13 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     selectedLineIndex,
     editingLineIndex,
     isPlaying,
-    timingBuffer, // 👈 ดึง timingBuffer มาใช้งาน
+    timingBuffer,
   } = useKaraokeStore();
 
   useEffect(() => {
-    // --- ✨ Logic ที่แก้ไข ---
-    // เอา isTimingActive ออกเพื่อให้ Playback Index อัปเดตเสมอ
     if (!playerControls || !isPlaying) {
       return;
     }
-    // --- จบส่วนที่แก้ไข ---
 
     const flatLyricsData = lyricsData.flat();
 
@@ -54,7 +51,7 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     currentTime,
     playerControls,
     lyricsData,
-    isTimingActive, // ยังคงต้องมีใน dependency array
+    isTimingActive,
     correctionIndex,
     selectedLineIndex,
     editingLineIndex,

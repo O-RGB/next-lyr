@@ -163,6 +163,7 @@ export const useKeyboardControls = (
         const currentTime = player.getCurrentTime();
 
         const currentWord = currentIndex > -1 ? flatLyrics[currentIndex] : null;
+
         const canPerformTimingAction =
           isStampingMode ||
           (editingLineIndex === null &&
@@ -172,6 +173,7 @@ export const useKeyboardControls = (
         if (canPerformTimingAction) {
           if (isTimingActive) {
             const { isLineEnd } = actions.recordTiming(currentTime);
+
             if (currentIndex + 1 >= flatLyrics.length) {
               alert("All timing complete!");
               player.pause();

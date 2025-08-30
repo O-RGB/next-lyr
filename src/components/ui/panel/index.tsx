@@ -37,10 +37,10 @@ export const calculateSeekTime = (
 
 const LyrEditerPanel: React.FC = () => {
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
-  const isMetadataOpen = useModalStore((state) => state.isMetadataOpen);
-  const isPreviewOpen = useModalStore((state) => state.isPreviewOpen);
-  const closeMetadata = useModalStore((state) => state.closeMetadata);
-  const closePreview = useModalStore((state) => state.closePreview);
+  // const isMetadataOpen = useModalStore((state) => state.isMetadataOpen);
+  // const isPreviewOpen = useModalStore((state) => state.isPreviewOpen);
+  // const closeMetadata = useModalStore((state) => state.closeMetadata);
+  // const closePreview = useModalStore((state) => state.closePreview);
 
   return (
     <>
@@ -48,7 +48,7 @@ const LyrEditerPanel: React.FC = () => {
       <KeyboardRender />
       <main className="flex flex-col h-[calc(100dvh-36px)]">
         <PanelTools></PanelTools>
-
+        {/* 
         <ModalCommon
           open={isMetadataOpen}
           onClose={closeMetadata}
@@ -70,7 +70,7 @@ const LyrEditerPanel: React.FC = () => {
               <LyricsPlayer playerControls={<PlayerHost />} />
             </div>
           </div>
-        </ModalCommon>
+        </ModalCommon> */}
 
         <EditLyricLineModal open={isEditModalOpen} />
       </main>

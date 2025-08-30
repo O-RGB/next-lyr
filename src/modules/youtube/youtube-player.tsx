@@ -9,15 +9,11 @@ import YouTube from "react-youtube";
 import type { YouTubePlayer } from "react-youtube";
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
-import InputCommon from "@/components/common/data-input/input";
-import ButtonCommon from "@/components/common/button";
 import CommonPlayerStyle from "@/components/common/player";
-import { TimerControls } from "@/components/ui/player-host";
 import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   youtubeId: string | null;
-  onUrlChange: (url: string) => void;
   onReady: (event: { target: any }) => void;
 };
 
@@ -32,13 +28,13 @@ export type YouTubePlayerRef = {
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
-  ({ youtubeId, onUrlChange, onReady }, ref) => {
+  ({ youtubeId, onReady }, ref) => {
     const playerRef = useRef<YouTubePlayer | null>(null);
-    const [url, setUrl] = useState("");
     const [isReady, setIsReady] = useState(false);
-    const [playerState, setPlayerState] = useState(-1);
+    const [playerState, setPlayerState] = useState(false);
 
-    const { setIsPlaying } = useKaraokeStore((state) => state.actions);
+    const actions = useKaraokeStore((state) => state.actions);
+
     const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("Load a YouTube URL");
@@ -52,7 +48,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
         timerControls.seekTimer(time);
       },
       getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
-      isPlaying: () => playerState === 1,
+      isPlaying: () => playerRef.current.getPlayerState() === 1,
       isReady: isReady,
       destroy: () => {
         playerRef.current?.destroy();
@@ -61,6 +57,8 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
 
     const handleReady = (event: { target: YouTubePlayer }) => {
       playerRef.current = event.target;
+      const videoData = event.target.getVideoData();
+      setFileName(videoData.title);
       setDuration(event.target.getDuration());
       setIsReady(true);
       onReady(event);
@@ -68,9 +66,10 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     };
 
     const handleStateChange = (e: { data: number }) => {
-      setPlayerState(e.data);
       const isCurrentlyPlaying = e.data === 1;
-      setIsPlaying(isCurrentlyPlaying);
+
+      setPlayerState(isCurrentlyPlaying);
+      actions.setIsPlaying(isCurrentlyPlaying);
 
       if (isCurrentlyPlaying) {
         timerControls.seekTimer(playerRef.current?.getCurrentTime() ?? 0);
@@ -94,10 +93,8 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       },
     };
 
-    const isPlaying = playerState === 1;
-
     const togglePlayPause = () => {
-      if (isPlaying) {
+      if (playerState) {
         playerRef.current?.pauseVideo();
       } else {
         playerRef.current?.playVideo();
@@ -120,8 +117,6 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       return () => timerControls.terminateWorker();
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
-    useEffect(() => {}, [youtubeId]);
-
     return (
       <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
         <div className="relative">
@@ -143,29 +138,12 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
 
         <CommonPlayerStyle
           fileName={fileName}
-          isPlaying={isPlaying}
-          // onFileChange={() => {}}
+          isPlaying={playerState}
           onPlayPause={togglePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          // accept=""
-          // upload={false}
         />
-
-        <div className="flex gap-2">
-          <InputCommon
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter YouTube URL"
-          />
-          <ButtonCommon
-            onClick={() => onUrlChange(url)}
-            className="p-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-          >
-            Load
-          </ButtonCommon>
-        </div>
       </Card>
     );
   }

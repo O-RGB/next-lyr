@@ -61,24 +61,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
       return refs[mode!] as any;
     });
 
-    const handleYoutubeUrlChange = (url: string) => {
-      const getYouTubeId = (url: string): string | null => {
-        const regExp =
-          /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        return match && match[2].length === 11 ? match[2] : null;
-      };
-      const videoId = getYouTubeId(url);
-      if (videoId) {
-        useKaraokeStore.setState({
-          playerState: { ...playerState, youtubeId: videoId },
-        });
-      } else {
-        console.warn("[PlayerHost] Invalid YouTube URL:", url);
-        alert("Invalid YouTube URL.");
-      }
-    };
-
     const onPlayerReady = (event: { target: any }) => {
       const duration = event.target.getDuration();
       const videoData = event.target.getVideoData();
@@ -127,7 +109,6 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
           <YoutubePlayer
             ref={youtubeRef}
             youtubeId={playerState.youtubeId}
-            onUrlChange={handleYoutubeUrlChange}
             onReady={onPlayerReady}
           />
         );
