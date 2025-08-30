@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MP3 ID3 + Lyrics Editor & Builder (Fixed)</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-id3-writer@4.4.0/dist/browser-id3-writer.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .file-input { margin-bottom: 20px; padding: 10px; border: 2px dashed #ccc; border-radius: 8px; text-align: center; }
+    textarea { width: 100%; height: 400px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #6c757d; cursor: not-allowed; }
+    .download-link { display: inline-block; background: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin: 5px; }
+    .download-link:hover { background: #1e7e34; }
+    .error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    .success { color: #155724; background: #d4edda; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    .warning { color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    .info { background: #e7f3ff; padding: 15px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #007bff; }
+  </style>
+</head>
+<body>
+  <h1>MP3 Lyrics Editor & Builder (Fixed Version)</h1>
+  
+  <div class="info">
+    <strong>การปรับปรุง:</strong>
+    <ul>
+      <li>ใช้ไลบรารี browser-id3-writer เวอร์ชันใหม่กว่า (4.4.0)</li>
+      <li>ปรับปรุงการจัดการ ArrayBuffer ให้ถูกต้อง</li>
+      <li>เพิ่มการตรวจสอบความถูกต้องของไฟล์</li>
+      <li>เพิ่มการ backup ข้อมูลเดิม</li>
+      <li>Build button จะ parse JSON อัตโนมัติ - ไม่ต้องกด Re-parse แล้ว!</li>
+      <li><strong>Decode/Encode ชื่อเพลง ศิลปิน อัลบั้ม ด้วย TIS-620</strong></li>
+      <li><strong>ซ่อน lyricsXML ใน JSON (แสดงเฉพาะข้อมูลที่จำเป็น)</strong></li>
+    </ul>
+  </div>
+  
+  <div class="container">
+    <h2>1. Load MP3 File</h2>
+    <div class="file-input">
+      <input type="file" id="mp3file" accept="audio/mp3" />
+      <p>Select an MP3 file with embedded lyrics to edit</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>2. Edit Parsed Data</h2>
+    <textarea id="jsonEditor" placeholder="Parsed data will appear here after loading an MP3 file..."></textarea>
+    <div>
+      <button id="parseBtn" disabled>Re-parse from JSON</button>
+      <button id="buildBtn" disabled>Build Modified MP3 (Auto-parse JSON)</button>
+      <button id="validateBtn" disabled>Validate JSON</button>
+    </div>
+    <div id="messages"></div>
+  </div>
+
+  <div class="container" id="downloadSection" style="display: none;">
+    <h2>3. Download Result</h2>
+    <div id="downloadLinks"></div>
+    <div class="warning">
+      <strong>หมายเหตุ:</strong> ไฟล์ที่ดาวน์โหลดควรสามารถเปิดได้ปกติ หากยังมีปัญหา ให้ลองใช้โปรแกรมเล่น MP3 อื่น
+    </div>
+  </div>
+
+  <script>
+    let originalMP3Buffer = null;
+    let parsedData = null;
+    let originalFileName = "";
+
+    function showMessage(text, type = 'success') {
+      const messages = document.getElementById("messages");
+      messages.innerHTML = `<div class="${type}">${text}</div>`;
+      setTimeout(() => messages.innerHTML = "", 8000);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      try {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+      } catch (error) {
+        throw new Error("Invalid base64 data: " + error.message);
+      }
+    }
+
+    function arrayBufferToBase64(buffer) {
+      try {
+        let u8arr = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < u8arr.length; i += chunkSize) {
+          binary += String.fromCharCode(...u8arr.subarray(i, i + chunkSize));
+        }
+        return btoa(binary);
+      } catch (error) {
+        throw new Error("Failed to convert to base64: " + error.message);
+      }
+    }
+
+    function stringToTIS620(str) {
+      const bytes = [];
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        if (char <= 127) {
+          bytes.push(char);
+        } else if (char >= 0x0e01 && char <= 0x0e5b) {
+          bytes.push(char - 0x0e01 + 0xa1);
+        } else {
+          bytes.push(0x3f); // แทนที่ด้วย '?'
+        }
+      }
+      return new Uint8Array(bytes);
+    }
+
+    function TIS620ToString(bytes) {
+      let str = "";
+      for (let i = 0; i < bytes.length; i++) {
+        const byte = bytes[i];
+        if (byte <= 127) {
+          str += String.fromCharCode(byte);
+        } else if (byte >= 0xa1 && byte <= 0xfb) {
+          str += String.fromCharCode(byte - 0xa1 + 0x0e01);
+        } else {
+          str += "?";
+        }
+      }
+      return str;
+    }
+
+    function decodeTIS620Text(text) {
+      if (!text) return "";
+      try {
+        // ลองแปลงจาก TIS-620 encoded text
+        const bytes = [];
+        for (let i = 0; i < text.length; i++) {
+          const char = text.charCodeAt(i);
+          if (char >= 0xa1 && char <= 0xfb) {
+            bytes.push(char);
+          } else if (char <= 127) {
+            bytes.push(char);
+          } else {
+            bytes.push(0x3f); // ?
+          }
+        }
+        return TIS620ToString(new Uint8Array(bytes));
+      } catch (err) {
+        return text; // ถ้า decode ไม่ได้ ใช้ตัวเดิม
+      }
+    }
+
+    function encodeTIS620Text(text) {
+      if (!text) return "";
+      try {
+        const tis620Bytes = stringToTIS620(text);
+        let result = "";
+        for (let i = 0; i < tis620Bytes.length; i++) {
+          result += String.fromCharCode(tis620Bytes[i]);
+        }
+        return result;
+      } catch (err) {
+        return text; // ถ้า encode ไม่ได้ ใช้ตัวเดิม
+      }
+    }
+    function decodeLyricsBase64(encoded) {
+      const clean = encoded.replace(/^LyrHdr\d*/, "");
+      const compressed = base64ToArrayBuffer(clean);
+      const decompressed = window.pako.inflate(compressed);
+      return TIS620ToString(decompressed);
+    }
+
+    function encodeLyricsBase64(xmlText, header = "LyrHdr1") {
+      const xmlBytes = stringToTIS620(xmlText);
+      const compressed = window.pako.deflate(xmlBytes, { level: 9 });
+      return header + arrayBufferToBase64(compressed);
+    }
+
+    function parseKLyrXML(xmlString) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+      
+      // ตรวจสอบ parsing error
+      const parserError = xmlDoc.querySelector("parsererror");
+      if (parserError) {
+        throw new Error("XML parsing error: " + parserError.textContent);
+      }
+      
+      const info = {};
+      const infoNode = xmlDoc.querySelector("INFO");
+      if (infoNode) {
+        for (const child of Array.from(infoNode.children)) {
+          info[child.tagName] = child.textContent || "";
+        }
+      }
+
+      const lyrics = [];
+      const lyricNodes = xmlDoc.querySelectorAll("LYRIC LINE");
+      lyricNodes.forEach((lineNode) => {
+        const words = [];
+        lineNode.querySelectorAll("WORD").forEach((wordNode) => {
+          const timeNode = wordNode.querySelector("TIME");
+          const textNode = wordNode.querySelector("TEXT");
+          const vocalNode = wordNode.querySelector("VOCAL");
+          if (timeNode && textNode) {
+            words.push({
+              tick: parseInt(timeNode.textContent || "0", 10),
+              text: textNode.textContent || "",
+              vocal: vocalNode ? vocalNode.textContent || "" : ""
+            });
+          }
+        });
+        if (words.length > 0) lyrics.push(words);
+      });
+
+      return { info, lyrics };
+    }
+
+    function buildKLyrXML(infoData, lyricsData) {
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n<SONG_LYRIC>\r\n';
+      
+      if (infoData && Object.keys(infoData).length > 0) {
+        xml += "  <INFO>\r\n";
+        for (const [key, value] of Object.entries(infoData)) {
+          // Escape XML special characters
+          const escapedValue = String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+          xml += `    <${key}>${escapedValue}</${key}>\r\n`;
+        }
+        xml += "  </INFO>\r\n";
+      }
+      
+      if (lyricsData && lyricsData.length > 0) {
+        xml += "  <LYRIC>\r\n";
+        lyricsData.forEach((line) => {
+          if (line.length > 0) {
+            xml += "    <LINE>\r\n";
+            xml += `      <TIME>${line[0].tick}</TIME>\r\n`;
+            line.forEach((word) => {
+              const escapedText = String(word.text || "")
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+              const escapedVocal = String(word.vocal || "")
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+              
+              xml += "      <WORD>\r\n";
+              xml += `        <TIME>${word.tick}</TIME>\r\n`;
+              xml += `        <TEXT>${escapedText}</TEXT>\r\n`;
+              xml += `        <VOCAL>${escapedVocal}</VOCAL>\r\n`;
+              xml += "      </WORD>\r\n";
+            });
+            xml += "    </LINE>\r\n";
+          }
+        });
+        xml += "  </LYRIC>\r\n";
+      }
+      xml += "</SONG_LYRIC>\r\n";
+      return xml;
+    }
+
+    function validateParsedData(data) {
+      if (!data || typeof data !== 'object') {
+        throw new Error("ข้อมูลต้องเป็น object");
+      }
+      
+      if (data.lyrics && !Array.isArray(data.lyrics)) {
+        throw new Error("lyrics ต้องเป็น array");
+      }
+      
+      if (data.info && typeof data.info !== 'object') {
+        throw new Error("info ต้องเป็น object");
+      }
+      
+      return true;
+    }
+
+    document.getElementById("mp3file").addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      originalFileName = file.name;
+      showMessage("กำลังโหลดไฟล์...", 'info');
+
+      file.arrayBuffer().then(buffer => {
+        // สร้างสำเนาของ buffer เพื่อความปลอดภัย
+        originalMP3Buffer = buffer.slice();
+        
+        window.jsmediatags.read(file, {
+          onSuccess: function(tag) {
+            try {
+              const tags = tag.tags;
+              const result = {
+                title: decodeTIS620Text(tags.title || ""),
+                artist: decodeTIS620Text(tags.artist || ""),
+                album: decodeTIS620Text(tags.album || ""),
+                info: {},
+                lyrics: []
+              };
+
+              console.log("Decoded title:", result.title);
+              console.log("Decoded artist:", result.artist);
+              console.log("Decoded album:", result.album);
+
+              let lyricsRawData = null;
+              if (tags.TEXT && tags.TEXT.data) {
+                lyricsRawData = tags.TEXT.data;
+              } else if (tags.TXXX && Array.isArray(tags.TXXX)) {
+                const textField = tags.TXXX.find(field => field.description === 'TEXT');
+                if (textField) lyricsRawData = textField.data;
+              }
+
+              if (lyricsRawData) {
+                try {
+                  console.log("Attempting to decode lyrics...");
+                  const lyricsXML = decodeLyricsBase64(lyricsRawData);
+                  console.log("Decoded XML length:", lyricsXML.length);
+                  console.log("XML preview:", lyricsXML.substring(0, 200));
+                  
+                  const klyrData = parseKLyrXML(lyricsXML);
+                  result.info = klyrData.info;
+                  result.lyrics = klyrData.lyrics;
+                  
+                  console.log("Parsed lyrics lines:", result.lyrics.length);
+                  console.log("Parsed info keys:", Object.keys(result.info));
+                  
+                  showMessage(`MP3 โหลดสำเร็จ! พบเนื้อเพลง ${result.lyrics.length} บรรทัด`);
+                } catch (err) {
+                  console.error("Decode error:", err);
+                  showMessage("ไม่สามารถแปลงเนื้อเพลงได้: " + err.message, 'warning');
+                }
+              } else {
+                console.log("No lyrics data found in any frame");
+                showMessage("ไม่พบเนื้อเพลงในไฟล์ MP3", 'warning');
+              }
+
+              parsedData = result;
+              document.getElementById("jsonEditor").value = JSON.stringify(result, null, 2);
+              document.getElementById("parseBtn").disabled = false;
+              document.getElementById("buildBtn").disabled = false;
+              document.getElementById("validateBtn").disabled = false;
+              
+            } catch (error) {
+              showMessage("เกิดข้อผิดพลาดในการประมวลผล: " + error.message, 'error');
+            }
+          },
+          onError: function(error) {
+            showMessage("ไม่สามารถอ่านไฟล์ MP3 ได้: " + error.info, 'error');
+          }
+        });
+      }).catch(error => {
+        showMessage("ไม่สามารถโหลดไฟล์ได้: " + error.message, 'error');
+      });
+    });
+
+    document.getElementById("validateBtn").addEventListener("click", function() {
+      try {
+        const data = JSON.parse(document.getElementById("jsonEditor").value);
+        validateParsedData(data);
+        showMessage("JSON ถูกต้อง!");
+      } catch (err) {
+        showMessage("JSON ไม่ถูกต้อง: " + err.message, 'error');
+      }
+    });
+
+    document.getElementById("parseBtn").addEventListener("click", function() {
+      try {
+        const data = JSON.parse(document.getElementById("jsonEditor").value);
+        validateParsedData(data);
+        parsedData = data;
+        
+        console.log("=== PARSED DATA DEBUG ===");
+        console.log("Title:", data.title);
+        console.log("Artist:", data.artist);
+        console.log("Album:", data.album);
+        console.log("Info keys:", Object.keys(data.info || {}));
+        console.log("Lyrics lines:", (data.lyrics || []).length);
+        if (data.lyrics && data.lyrics.length > 0) {
+          console.log("First line words:", data.lyrics[0].length);
+          console.log("First word:", data.lyrics[0][0]);
+        }
+        
+        showMessage("แปลง JSON สำเร็จ! ตรวจสอบ Console สำหรับรายละเอียด");
+      } catch (err) {
+        showMessage("JSON ไม่ถูกต้อง: " + err.message, 'error');
+      }
+    });
+
+    document.getElementById("buildBtn").addEventListener("click", async function() {
+      if (!originalMP3Buffer) {
+        showMessage("กรุณาโหลดไฟล์ MP3 ก่อน", 'error');
+        return;
+      }
+
+      try {
+        showMessage("กำลัง build ไฟล์ใหม่...", 'info');
+        
+        // อ่านข้อมูลจาก JSON editor ก่อนทุกครั้ง
+        console.log("=== AUTO PARSING JSON BEFORE BUILD ===");
+        try {
+          const currentData = JSON.parse(document.getElementById("jsonEditor").value);
+          validateParsedData(currentData);
+          parsedData = currentData;
+          console.log("JSON parsed successfully before build");
+          console.log("Updated parsedData - Info keys:", Object.keys(parsedData.info || {}));
+          console.log("Updated parsedData - Lyrics lines:", (parsedData.lyrics || []).length);
+        } catch (parseErr) {
+          showMessage("JSON ในช่อง Editor ไม่ถูกต้อง: " + parseErr.message, 'error');
+          return;
+        }
+        
+        // Validate ข้อมูลก่อน build
+        if (!parsedData.lyrics || parsedData.lyrics.length === 0) {
+          showMessage("ไม่มีข้อมูลเนื้อเพลงที่จะ build", 'warning');
+        }
+        
+        // สร้าง XML ใหม่
+        console.log("=== BUILD PROCESS DEBUG ===");
+        console.log("Input data - Info:", parsedData.info);
+        console.log("Input data - Lyrics lines:", parsedData.lyrics.length);
+        
+        const newXML = buildKLyrXML(parsedData.info, parsedData.lyrics);
+        console.log("Built XML length:", newXML.length);
+        console.log("Built XML preview:", newXML.substring(0, 500));
+        
+        // ทดสอบการ parse XML กลับ
+        try {
+          const testParsed = parseKLyrXML(newXML);
+          console.log("Test parse - Info keys:", Object.keys(testParsed.info));
+          console.log("Test parse - Lyrics lines:", testParsed.lyrics.length);
+          if (testParsed.lyrics.length > 0 && testParsed.lyrics[0].length > 0) {
+            console.log("Test parse - First word:", testParsed.lyrics[0][0]);
+          }
+        } catch (testErr) {
+          console.error("XML parsing test failed:", testErr);
+          showMessage("XML ที่สร้างขึ้นมีปัญหา: " + testErr.message, 'error');
+          return;
+        }
+        
+        const encodedLyrics = encodeLyricsBase64(newXML);
+        console.log("Final encoded length:", encodedLyrics.length);
+        console.log("Encoded starts with:", encodedLyrics.substring(0, 50));
+        
+        // ทดสอบการ decode กลับ
+        try {
+          const testDecoded = decodeLyricsBase64(encodedLyrics);
+          console.log("Test decode success, length:", testDecoded.length);
+          console.log("Decoded matches original:", testDecoded === newXML);
+        } catch (decodeErr) {
+          console.error("Decode test failed:", decodeErr);
+          showMessage("การ encode มีปัญหา: " + decodeErr.message, 'error');
+          return;
+        }
+
+        // สร้าง ArrayBuffer ใหม่จาก originalMP3Buffer
+        const audioData = new Uint8Array(originalMP3Buffer);
+        
+        // ใช้ ID3Writer
+        const writer = new ID3Writer(audioData);
+        
+        // ตั้งค่า version และ encoding
+        writer.padding = 4096; // เพิ่ม padding เพื่อความปลอดภัย
+        
+        // กำหนด tags ต่างๆ (encode กลับเป็น TIS-620)
+        if (parsedData.title) {
+          const encodedTitle = encodeTIS620Text(parsedData.title);
+          writer.setFrame('TIT2', encodedTitle);
+          console.log("Set title:", parsedData.title, "->", encodedTitle);
+        }
+        if (parsedData.artist) {
+          const encodedArtist = encodeTIS620Text(parsedData.artist);
+          writer.setFrame('TPE1', [encodedArtist]);
+          console.log("Set artist:", parsedData.artist, "->", encodedArtist);
+        }
+        if (parsedData.album) {
+          const encodedAlbum = encodeTIS620Text(parsedData.album);
+          writer.setFrame('TALB', encodedAlbum);
+          console.log("Set album:", parsedData.album, "->", encodedAlbum);
+        }
+        
+        // เพิ่ม lyrics ในหลายรูปแบบเพื่อให้แน่ใจ
+        console.log("=== ID3 WRITING DEBUG ===");
+        console.log("Encoded lyrics length:", encodedLyrics.length);
+        console.log("Encoded lyrics preview:", encodedLyrics.substring(0, 100));
+        
+        // เพิ่มใน TXXX frame หลายแบบ
+        writer.setFrame('TXXX', { 
+          description: 'TEXT', 
+          value: encodedLyrics 
+        });
+        console.log("Added TXXX frame with description 'TEXT'");
+        
+        writer.setFrame('TXXX', { 
+          description: '', 
+          value: encodedLyrics 
+        });
+        console.log("Added TXXX frame with empty description");
+        
+        // ลองเพิ่ม TXXX อีกแบบ
+        writer.setFrame('TXXX', { 
+          description: 'LYRICS', 
+          value: encodedLyrics 
+        });
+        console.log("Added TXXX frame with description 'LYRICS'");
+        
+        // เพิ่มใน TEXT frame ถ้าเป็นไปได้
+        try {
+          writer.setFrame('TEXT', encodedLyrics);
+          console.log("Added TEXT frame successfully");
+        } catch (e) {
+          console.log("Cannot set TEXT frame:", e.message);
+        }
+        
+        console.log("Adding tag to buffer...");
+        writer.addTag();
+        console.log("Tag added successfully");
+
+        const taggedBuffer = writer.arrayBuffer;
+        console.log("=== FINAL BUFFER DEBUG ===");
+        console.log("Original buffer size:", originalMP3Buffer.byteLength);
+        console.log("Tagged buffer size:", taggedBuffer.byteLength);
+        console.log("Size difference:", taggedBuffer.byteLength - originalMP3Buffer.byteLength);
+        
+        const blob = new Blob([taggedBuffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        
+        const fileName = originalFileName.replace(/\.mp3$/i, '_modified.mp3');
+        
+        document.getElementById("downloadLinks").innerHTML = `
+          <a href="${url}" download="${fileName}" class="download-link">
+            📥 ดาวน์โหลด ${fileName}
+          </a>
+          <p><small>ขนาดไฟล์: ${(blob.size / 1024 / 1024).toFixed(2)} MB</small></p>
+          <p><small>เพิ่มขึ้น: ${((taggedBuffer.byteLength - originalMP3Buffer.byteLength) / 1024).toFixed(1)} KB</small></p>
+        `;
+        document.getElementById("downloadSection").style.display = "block";
+        showMessage("สร้างไฟล์ MP3 ใหม่สำเร็จ! ตרวจสอบ Console สำหรับรายละเอียดการ debug");
+        
+      } catch (err) {
+        console.error("Build error:", err);
+        showMessage("เกิดข้อผิดพลาดในการสร้างไฟล์: " + err.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MP3 ID3 + Lyrics Editor & Builder (Native)</title>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+      textarea {
+        width: 100%;
+        height: 300px;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MP3 Lyrics Editor & Builder (Native ID3)</h1>
+
+    <div class="container">
+      <h2>1. Load MP3 File</h2>
+      <div class="file-input">
+        <input type="file" id="mp3file" accept="audio/mp3" />
+        <p>Select an MP3 file with embedded lyrics to edit</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <h2>2. Edit Parsed Data</h2>
+      <textarea
+        id="jsonEditor"
+        placeholder="Parsed data will appear here after loading an MP3 file..."
+      ></textarea>
+      <div>
+        <button id="parseBtn" disabled>Re-parse from JSON</button>
+        <button id="buildBtn" disabled>
+          Build Modified MP3 (Auto-parse JSON)
+        </button>
+        <button id="validateBtn" disabled>Validate JSON</button>
+      </div>
+      <div id="messages"></div>
+    </div>
+
+    <div class="container" id="downloadSection" style="display: none">
+      <h2>3. Download Result</h2>
+      <div id="downloadLinks"></div>
+      <div class="warning">
+        <strong>หมายเหตุ:</strong> ไฟล์ที่ดาวน์โหลดควรสามารถเปิดได้ปกติ
+        หากยังมีปัญหา ให้ลองใช้โปรแกรมเล่น MP3 อื่น
+      </div>
+    </div>
+
+    <script>
+      let originalAudioData = null;
+      let parsedData = null;
+      let originalFileName = "";
+
+      function showMessage(text, type = "success") {
+        const messages = document.getElementById("messages");
+        messages.innerHTML = `<div class="${type}">${text}</div>`;
+        setTimeout(() => (messages.innerHTML = ""), 8000);
+      }
+
+      function base64ToArrayBuffer(base64) {
+        try {
+          const binaryString = atob(base64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return bytes.buffer;
+        } catch (error) {
+          throw new Error("Invalid base64 data: " + error.message);
+        }
+      }
+
+      function arrayBufferToBase64(buffer) {
+        try {
+          let u8arr =
+            buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+          let binary = "";
+          const chunkSize = 0x8000;
+          for (let i = 0; i < u8arr.length; i += chunkSize) {
+            binary += String.fromCharCode(...u8arr.subarray(i, i + chunkSize));
+          }
+          return btoa(binary);
+        } catch (error) {
+          throw new Error("Failed to convert to base64: " + error.message);
+        }
+      }
+
+      function stringToTIS620(str) {
+        const bytes = [];
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          if (char <= 127) {
+            bytes.push(char);
+          } else if (char >= 0x0e01 && char <= 0x0e5b) {
+            bytes.push(char - 0x0e01 + 0xa1);
+          } else {
+            bytes.push(0x3f);
+          }
+        }
+        return new Uint8Array(bytes);
+      }
+
+      function TIS620ToString(bytes) {
+        let str = "";
+        for (let i = 0; i < bytes.length; i++) {
+          const byte = bytes[i];
+          if (byte <= 127) {
+            str += String.fromCharCode(byte);
+          } else if (byte >= 0xa1 && byte <= 0xfb) {
+            str += String.fromCharCode(byte - 0xa1 + 0x0e01);
+          } else {
+            str += "?";
+          }
+        }
+        return str;
+      }
+
+      function decodeTIS620Text(text) {
+        if (!text) return "";
+        try {
+          let hasThaiEncoded = false;
+          for (let i = 0; i < text.length; i++) {
+            const char = text.charCodeAt(i);
+            if (char >= 0xa1 && char <= 0xfb) {
+              hasThaiEncoded = true;
+              break;
+            }
+          }
+
+          if (hasThaiEncoded) {
+            const bytes = [];
+            for (let i = 0; i < text.length; i++) {
+              const char = text.charCodeAt(i);
+              bytes.push(char);
+            }
+            return TIS620ToString(new Uint8Array(bytes));
+          } else {
+            return text;
+          }
+        } catch (err) {
+          return text;
+        }
+      }
+
+      function encodeTIS620Text(text) {
+        if (!text) return "";
+        try {
+          let hasThaiChars = false;
+          for (let i = 0; i < text.length; i++) {
+            const char = text.charCodeAt(i);
+            if (char >= 0x0e01 && char <= 0x0e5b) {
+              hasThaiChars = true;
+              break;
+            }
+          }
+
+          if (hasThaiChars) {
+            const tis620Bytes = stringToTIS620(text);
+            let result = "";
+            for (let i = 0; i < tis620Bytes.length; i++) {
+              result += String.fromCharCode(tis620Bytes[i]);
+            }
+            return result;
+          } else {
+            return text;
+          }
+        } catch (err) {
+          return text;
+        }
+      }
+
+      function decodeLyricsBase64(encoded) {
+        const clean = encoded.replace(/^LyrHdr\d*/, "");
+        const compressed = base64ToArrayBuffer(clean);
+        const decompressed = window.pako.inflate(compressed);
+        return TIS620ToString(decompressed);
+      }
+
+      function encodeLyricsBase64(xmlText, header = "LyrHdr1") {
+        const xmlBytes = stringToTIS620(xmlText);
+        const compressed = window.pako.deflate(xmlBytes, { level: 9 });
+        return header + arrayBufferToBase64(compressed);
+      }
+
+      function parseKLyrXML(xmlString) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+        const parserError = xmlDoc.querySelector("parsererror");
+        if (parserError) {
+          throw new Error("XML parsing error: " + parserError.textContent);
+        }
+
+        const info = {};
+        const infoNode = xmlDoc.querySelector("INFO");
+        if (infoNode) {
+          for (const child of Array.from(infoNode.children)) {
+            info[child.tagName] = child.textContent || "";
+          }
+        }
+
+        const lyrics = [];
+        const lyricNodes = xmlDoc.querySelectorAll("LYRIC LINE");
+        lyricNodes.forEach((lineNode) => {
+          const words = [];
+          lineNode.querySelectorAll("WORD").forEach((wordNode) => {
+            const timeNode = wordNode.querySelector("TIME");
+            const textNode = wordNode.querySelector("TEXT");
+            const vocalNode = wordNode.querySelector("VOCAL");
+            if (timeNode && textNode) {
+              words.push({
+                tick: parseInt(timeNode.textContent || "0", 10),
+                text: textNode.textContent || "",
+                vocal: vocalNode ? vocalNode.textContent || "" : "",
+              });
+            }
+          });
+          if (words.length > 0) lyrics.push(words);
+        });
+
+        return { info, lyrics };
+      }
+
+      function buildKLyrXML(infoData, lyricsData) {
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n<SONG_LYRIC>\r\n';
+
+        if (infoData && Object.keys(infoData).length > 0) {
+          xml += "  <INFO>\r\n";
+          for (const [key, value] of Object.entries(infoData)) {
+            const escapedValue = String(value)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#39;");
+            xml += `    <${key}>${escapedValue}</${key}>\r\n`;
+          }
+          xml += "  </INFO>\r\n";
+        }
+
+        if (lyricsData && lyricsData.length > 0) {
+          xml += "  <LYRIC>\r\n";
+          lyricsData.forEach((line) => {
+            if (line.length > 0) {
+              xml += "    <LINE>\r\n";
+              xml += `      <TIME>${line[0].tick}</TIME>\r\n`;
+              line.forEach((word) => {
+                const escapedText = String(word.text || "")
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#39;");
+                const escapedVocal = String(word.vocal || "")
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#39;");
+
+                xml += "      <WORD>\r\n";
+                xml += `        <TIME>${word.tick}</TIME>\r\n`;
+                xml += `        <TEXT>${escapedText}</TEXT>\r\n`;
+                xml += `        <VOCAL>${escapedVocal}</VOCAL>\r\n`;
+                xml += "      </WORD>\r\n";
+              });
+              xml += "    </LINE>\r\n";
+            }
+          });
+          xml += "  </LYRIC>\r\n";
+        }
+        xml += "</SONG_LYRIC>\r\n";
+        return xml;
+      }
+
+      function validateParsedData(data) {
+        if (!data || typeof data !== "object") {
+          throw new Error("ข้อมูลต้องเป็น object");
+        }
+
+        if (data.lyrics && !Array.isArray(data.lyrics)) {
+          throw new Error("lyrics ต้องเป็น array");
+        }
+
+        if (data.info && typeof data.info !== "object") {
+          throw new Error("info ต้องเป็น object");
+        }
+
+        return true;
+      }
+
+      async function readID3(file) {
+        const buffer = await file.arrayBuffer();
+        const view = new DataView(buffer);
+
+        let tags = {};
+        let id3Size = 0;
+
+        if (
+          String.fromCharCode(
+            view.getUint8(0),
+            view.getUint8(1),
+            view.getUint8(2)
+          ) === "ID3"
+        ) {
+          id3Size =
+            ((view.getUint8(6) & 0x7f) << 21) |
+            ((view.getUint8(7) & 0x7f) << 14) |
+            ((view.getUint8(8) & 0x7f) << 7) |
+            (view.getUint8(9) & 0x7f);
+
+          let offset = 10;
+          while (offset < id3Size + 10) {
+            if (offset + 10 > buffer.byteLength) break;
+
+            const frameID = String.fromCharCode(
+              view.getUint8(offset),
+              view.getUint8(offset + 1),
+              view.getUint8(offset + 2),
+              view.getUint8(offset + 3)
+            );
+
+            const frameSize =
+              (view.getUint8(offset + 4) << 24) |
+              (view.getUint8(offset + 5) << 16) |
+              (view.getUint8(offset + 6) << 8) |
+              view.getUint8(offset + 7);
+
+            if (frameSize <= 0 || !/^[A-Z0-9]{4}$/.test(frameID)) break;
+            if (offset + 10 + frameSize > buffer.byteLength) break;
+
+            if (frameID === "TXXX") {
+              const encoding = view.getUint8(offset + 10);
+              let textStart = offset + 11;
+              let description = "";
+              let value = "";
+
+              let nullPos = textStart;
+              while (
+                nullPos < offset + 10 + frameSize &&
+                view.getUint8(nullPos) !== 0
+              ) {
+                nullPos++;
+              }
+
+              for (let i = textStart; i < nullPos; i++) {
+                description += String.fromCharCode(view.getUint8(i));
+              }
+
+              if (nullPos + 1 < offset + 10 + frameSize) {
+                for (let i = nullPos + 1; i < offset + 10 + frameSize; i++) {
+                  const char = view.getUint8(i);
+                  if (char === 0) break;
+                  value += String.fromCharCode(char);
+                }
+              }
+
+              tags[`TXXX_${description}`] = value.trim();
+            } else {
+              const value = readText(view, offset + 10, frameSize);
+              tags[frameID] = value;
+            }
+
+            offset += 10 + frameSize;
+          }
+
+          originalAudioData = buffer.slice(10 + id3Size);
+        } else {
+          originalAudioData = buffer;
+        }
+
+        return tags;
+      }
+
+      function readText(view, start, size) {
+        let text = "";
+
+        for (let i = start + 1; i < start + size; i++) {
+          const char = view.getUint8(i);
+          if (char === 0) break;
+          text += String.fromCharCode(char);
+        }
+        return text.trim() || "";
+      }
+
+      function buildID3v2(tags) {
+        let frames = [];
+
+        for (const [frameID, value] of Object.entries(tags)) {
+          if (!value) continue;
+
+          if (frameID.startsWith("TXXX_")) {
+            const description = frameID.substring(5);
+            // For TXXX, the current encoding logic (TextEncoder) for description and value is fine
+            // since these are typically stored as null-terminated UTF-8 or Latin-1 in TXXX,
+            // and your decodeLyricsBase64/encodeLyricsBase64 handles the TIS-620 for the actual lyrics XML.
+            const descBytes = new TextEncoder().encode(description);
+            const valueBytes = new TextEncoder().encode(value);
+
+            const frameData = new Uint8Array(
+              1 + descBytes.length + 1 + valueBytes.length
+            );
+            frameData[0] = 0; // Encoding byte (0 for ISO-8859-1 / Latin-1, which is often used for TXXX, or UTF-8 if BOM is present)
+            frameData.set(descBytes, 1);
+            frameData[1 + descBytes.length] = 0; // Null terminator for description
+            frameData.set(valueBytes, 1 + descBytes.length + 1);
+
+            const frameHeader = new Uint8Array(10);
+            frameHeader[0] = "T".charCodeAt(0);
+            frameHeader[1] = "X".charCodeAt(0);
+            frameHeader[2] = "X".charCodeAt(0);
+            frameHeader[3] = "X".charCodeAt(0);
+            frameHeader[4] = (frameData.length >> 24) & 0xff;
+            frameHeader[5] = (frameData.length >> 16) & 0xff;
+            frameHeader[6] = (frameData.length >> 8) & 0xff;
+            frameHeader[7] = frameData.length & 0xff;
+            frameHeader[8] = 0;
+            frameHeader[9] = 0;
+
+            frames.push(frameHeader, frameData);
+          } else if (frameID.length === 4) {
+            let encodedValueBytes;
+            let encodingByte = 0x00; // Default to ISO-8859-1
+
+            // Apply TIS-620 encoding for standard text frames (TIT2, TPE1, TALB, etc.)
+            // The requirement here is that these fields should be TIS-620 if they contain Thai characters.
+            // The current readText function assumes ISO-8859-1 for these.
+            // If we're writing Thai, we need to ensure the encoding is TIS-620 and the encoding byte reflects that (which it won't be in ID3v2.3 for TIS-620 explicitly).
+            // However, the original readText and readID3 imply a basic byte-to-char conversion.
+            // The simplest fix is to use encodeTIS620Text for these fields to get the correct byte sequence
+            // and then prepend the appropriate encoding byte if the frame type supports it.
+            // For ID3v2.3, 0x00 is ISO-8859-1 (Latin-1) and 0x01 is UCS-2 (UTF-16BE with BOM for LE, or just UTF-16BE).
+            // Since TIS-620 is a single-byte encoding like ISO-8859-1, we'll treat it similarly.
+            // The `stringToTIS620` already returns `Uint8Array` of the correct bytes.
+
+            if (frameID.startsWith("T")) {
+              // For standard text frames (TIT2, TPE1, TALB, etc.)
+              encodedValueBytes = stringToTIS620(value); // Use TIS-620 encoding
+              encodingByte = 0x00; // Indicate ISO-8859-1 or a similar single-byte encoding
+              // Note: ID3v2.3 does not have a specific encoding byte for TIS-620.
+              // If players expect TIS-620 when encoding byte is 0x00 and they detect Thai characters,
+              // this approach should work. Otherwise, a more complex approach involving UTF-16 might be needed.
+              // For simplicity and based on your decode function, we assume TIS-620 bytes can be put into Latin-1 frame.
+            } else {
+              // For other frame types (e.g., USLT, COMM, etc., if you add them later)
+              // You might need different encoding logic based on their specification.
+              encodedValueBytes = new TextEncoder().encode(value);
+              encodingByte = 0x00; // Default to ISO-8859-1
+            }
+
+            const frameData = new Uint8Array(1 + encodedValueBytes.length);
+            frameData[0] = encodingByte;
+            frameData.set(encodedValueBytes, 1);
+
+            const frameSize = frameData.length;
+            const frameHeader = new Uint8Array(10);
+            frameHeader[0] = frameID.charCodeAt(0);
+            frameHeader[1] = frameID.charCodeAt(1);
+            frameHeader[2] = frameID.charCodeAt(2);
+            frameHeader[3] = frameID.charCodeAt(3);
+            frameHeader[4] = (frameSize >> 24) & 0xff;
+            frameHeader[5] = (frameSize >> 16) & 0xff;
+            frameHeader[6] = (frameSize >> 8) & 0xff;
+            frameHeader[7] = frameSize & 0xff;
+            frameHeader[8] = 0; // Flags
+            frameHeader[9] = 0; // Flags
+            frames.push(frameHeader, frameData);
+          }
+        }
+
+        const framesBuffer = concat(frames);
+
+        const header = new Uint8Array(10);
+        header[0] = "I".charCodeAt(0);
+        header[1] = "D".charCodeAt(0);
+        header[2] = "3".charCodeAt(0);
+        header[3] = 3; // Major version 3
+        header[4] = 0; // Revision 0
+        header[5] = 0; // Flags
+        const size = framesBuffer.length;
+        header[6] = (size >> 21) & 0x7f;
+        header[7] = (size >> 14) & 0x7f;
+        header[8] = (size >> 7) & 0x7f;
+        header[9] = size & 0x7f;
+
+        return concat([header, framesBuffer]);
+      }
+      function concat(arrays) {
+        let total = arrays.reduce((sum, arr) => sum + arr.length, 0);
+        let result = new Uint8Array(total);
+        let offset = 0;
+        for (let arr of arrays) {
+          result.set(arr, offset);
+          offset += arr.length;
+        }
+        return result;
+      }
+
+      document
+        .getElementById("mp3file")
+        .addEventListener("change", async function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          originalFileName = file.name;
+          showMessage("กำลังโหลดไฟล์...", "info");
+
+          try {
+            const tags = await readID3(file);
+
+            const result = {
+              title: decodeTIS620Text(tags.TIT2 || ""),
+              artist: decodeTIS620Text(tags.TPE1 || ""),
+              album: decodeTIS620Text(tags.TALB || ""),
+              info: {},
+              lyrics: [],
+            };
+
+            let lyricsRawData = null;
+            for (const [key, value] of Object.entries(tags)) {
+              if (
+                key === "TXXX_TEXT" ||
+                key === "TXXX_" ||
+                key === "TXXX_LYRICS" ||
+                key === "TEXT"
+              ) {
+                lyricsRawData = value;
+
+                break;
+              }
+            }
+
+            if (lyricsRawData) {
+              try {
+                const lyricsXML = decodeLyricsBase64(lyricsRawData);
+
+                const klyrData = parseKLyrXML(lyricsXML);
+                result.info = klyrData.info;
+                result.lyrics = klyrData.lyrics;
+
+                showMessage(
+                  `MP3 โหลดสำเร็จ! พบเนื้อเพลง ${result.lyrics.length} บรรทัด`
+                );
+              } catch (err) {
+                console.error("Decode error:", err);
+                showMessage(
+                  "ไม่สามารถแปลงเนื้อเพลงได้: " + err.message,
+                  "warning"
+                );
+              }
+            } else {
+              showMessage("ไม่พบเนื้อเพลงในไฟล์ MP3", "warning");
+            }
+
+            parsedData = result;
+            document.getElementById("jsonEditor").value = JSON.stringify(
+              result,
+              null,
+              2
+            );
+            document.getElementById("parseBtn").disabled = false;
+            document.getElementById("buildBtn").disabled = false;
+            document.getElementById("validateBtn").disabled = false;
+          } catch (error) {
+            console.error("Error:", error);
+            showMessage(
+              "เกิดข้อผิดพลาดในการประมวลผล: " + error.message,
+              "error"
+            );
+          }
+        });
+
+      document
+        .getElementById("validateBtn")
+        .addEventListener("click", function () {
+          try {
+            const data = JSON.parse(
+              document.getElementById("jsonEditor").value
+            );
+            validateParsedData(data);
+            showMessage("JSON ถูกต้อง!");
+          } catch (err) {
+            showMessage("JSON ไม่ถูกต้อง: " + err.message, "error");
+          }
+        });
+
+      document
+        .getElementById("parseBtn")
+        .addEventListener("click", function () {
+          try {
+            const data = JSON.parse(
+              document.getElementById("jsonEditor").value
+            );
+            validateParsedData(data);
+            parsedData = data;
+
+            if (data.lyrics && data.lyrics.length > 0) {
+            }
+
+            showMessage("แปลง JSON สำเร็จ! ตรวจสอบ Console สำหรับรายละเอียด");
+          } catch (err) {
+            showMessage("JSON ไม่ถูกต้อง: " + err.message, "error");
+          }
+        });
+
+      document
+        .getElementById("buildBtn")
+        .addEventListener("click", async function () {
+          if (!originalAudioData) {
+            showMessage("กรุณาโหลดไฟล์ MP3 ก่อน", "error");
+            return;
+          }
+
+          try {
+            showMessage("กำลัง build ไฟล์ใหม่...", "info");
+
+            try {
+              const currentData = JSON.parse(
+                document.getElementById("jsonEditor").value
+              );
+              validateParsedData(currentData);
+              parsedData = currentData;
+            } catch (parseErr) {
+              showMessage(
+                "JSON ในช่อง Editor ไม่ถูกต้อง: " + parseErr.message,
+                "error"
+              );
+              return;
+            }
+
+            if (!parsedData.lyrics || parsedData.lyrics.length === 0) {
+              showMessage("ไม่มีข้อมูลเนื้อเพลงที่จะ build", "warning");
+            }
+
+            const newXML = buildKLyrXML(parsedData.info, parsedData.lyrics);
+
+            try {
+              const testParsed = parseKLyrXML(newXML);
+
+              if (
+                testParsed.lyrics.length > 0 &&
+                testParsed.lyrics[0].length > 0
+              ) {
+              }
+            } catch (testErr) {
+              console.error("XML parsing test failed:", testErr);
+              showMessage(
+                "XML ที่สร้างขึ้นมีปัญหา: " + testErr.message,
+                "error"
+              );
+              return;
+            }
+
+            const encodedLyrics = encodeLyricsBase64(newXML);
+
+            try {
+              const testDecoded = decodeLyricsBase64(encodedLyrics);
+            } catch (decodeErr) {
+              console.error("Decode test failed:", decodeErr);
+              showMessage("การ encode มีปัญหา: " + decodeErr.message, "error");
+              return;
+            }
+
+            const newTags = {};
+
+            if (parsedData.title) {
+              newTags.TIT2 = parsedData.title;
+            }
+            if (parsedData.artist) {
+              newTags.TPE1 = parsedData.artist;
+            }
+            if (parsedData.album) {
+              newTags.TALB = parsedData.album;
+            }
+
+            newTags["TXXX_TEXT"] = encodedLyrics;
+            newTags["TXXX_"] = encodedLyrics;
+            newTags["TXXX_LYRICS"] = encodedLyrics;
+
+            const id3Buffer = buildID3v2(newTags);
+
+            const finalBuffer = concat([
+              id3Buffer,
+              new Uint8Array(originalAudioData),
+            ]);
+
+            const blob = new Blob([finalBuffer], { type: "audio/mpeg" });
+            const url = URL.createObjectURL(blob);
+
+            const fileName = originalFileName.replace(
+              /\.mp3$/i,
+              "_modified.mp3"
+            );
+
+            document.getElementById("downloadLinks").innerHTML = `
+          <a href="${url}" download="${fileName}" class="download-link">
+            📥 ดาวน์โหลด ${fileName}
+          </a>
+          <p><small>ขนาดไฟล์: ${(blob.size / 1024 / 1024).toFixed(
+            2
+          )} MB</small></p>
+          <p><small>เพิ่มขึ้น: ${(
+            (finalBuffer.length - originalAudioData.byteLength) /
+            1024
+          ).toFixed(1)} KB</small></p>
+        `;
+            document.getElementById("downloadSection").style.display = "block";
+            showMessage(
+              "สร้างไฟล์ MP3 ใหม่สำเร็จ! ตรวจสอบ Console สำหรับรายละเอียดการ debug"
+            );
+          } catch (err) {
+            console.error("Build error:", err);
+            showMessage(
+              "เกิดข้อผิดพลาดในการสร้างไฟล์: " + err.message,
+              "error"
+            );
+          }
+        });
+    </script>
+  </body>
+</html>

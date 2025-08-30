@@ -14,6 +14,7 @@ import {
 import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
 import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/lyrics-convert";
+import { DEFAULT_PRE_ROLL_OFFSET } from "@/stores/karaoke-store/configs";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -41,12 +42,12 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       const newLyricsData = groupWordDataToEvents(
         flatLyrics,
-        (tick) => (tick + 0.6) * 1000
+        (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET) * 1000
       );
 
       let newChordsData = chordsData.map((x) => ({
         ...x,
-        tick: Math.floor((x.tick + 0.6) * 1000),
+        tick: Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET) * 1000),
       }));
 
       metadata.TIME_FORMAT = "TIME_MS";

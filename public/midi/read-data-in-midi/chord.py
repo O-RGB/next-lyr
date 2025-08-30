@@ -1,6 +1,6 @@
 from mido import MidiFile
 
-midi_path = "/Users/digixtwo/Documents/Project/next-lyr/public/midi/MHY27.mid"
+midi_path = "/Users/digixtwo/Documents/Project/next-lyr/public/midi/read-data-in-midi/MHY27.mid"
 
 midi = MidiFile(midi_path)
 chords = []

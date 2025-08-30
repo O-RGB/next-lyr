@@ -5,7 +5,8 @@ import json
 import xml.etree.ElementTree as ET
 import mido
 
-MIDI_FILE_PATH = "/Users/digixtwo/Documents/Project/next-lyr/public/midi/MHY27.mid"
+MIDI_FILE_PATH_K_VER = "/Users/digixtwo/Documents/Project/next-lyr/public/midi/read-data-in-midi/update/Sa077.mid"
+MIDI_FILE_PATH_L_VER = "/Users/digixtwo/Documents/Project/next-lyr/public/midi/read-data-in-midi/update/Sa077.mid"
 THAI_ENCODING = "tis-620"
 
 INFO_FIELDS = [
@@ -41,7 +42,7 @@ def find_and_parse_lyrics(file_path):
         print(f"❌ ไม่พบไฟล์ '{file_path}' กรุณาตรวจสอบว่าไฟล์อยู่ในตำแหน่งที่ถูกต้อง")
         return None
 
-    pattern = b"\xFF\x01.*?KLyrHdr1(.*?)\x00"
+    pattern = b"\xFF\x01.*?LyrHdr1(.*?)\x00"
     match = re.search(pattern, midi_data, re.DOTALL)
 
     if not match:
@@ -93,11 +94,14 @@ def find_and_parse_lyrics(file_path):
         print(f"💥 ถอดรหัสผิดพลาด: {e}")
         return None
 
-
 def extract_chords(midi_path):
-    mid = mido.MidiFile(midi_path)
-    chords = []
+    try:
+        mid = mido.MidiFile(midi_path, clip=True)  # clip=True ป้องกัน ValueError
+    except (EOFError, ValueError) as e:
+        print(f"⚠️ อ่านคอร์ดจากไฟล์ล้มเหลว: {e}")
+        return []  # ไม่มีคอร์ดหรือไฟล์เสีย
 
+    chords = []
     for track in mid.tracks:
         current_tick = 0
         for msg in track:
@@ -108,15 +112,18 @@ def extract_chords(midi_path):
                     c.upper() in "ABCDEFG#bmajmin7susdimaug0123456789 /" for c in text
                 ):
                     chords.append({"chord": text, "tick": current_tick})
+    if not chords:
+        print("ℹ️ ไม่พบคอร์ดในไฟล์นี้")
     return chords
 
 
 if __name__ == "__main__":
-    data = find_and_parse_lyrics(MIDI_FILE_PATH)
+    print("Start K Version...")
+    data = find_and_parse_lyrics(MIDI_FILE_PATH_K_VER)
     if data is None:
         data = {"info": {}, "lyrics": []}
 
-    chords = extract_chords(MIDI_FILE_PATH)
+    chords = extract_chords(MIDI_FILE_PATH_K_VER)
 
     output = {
         "info": data.get("info", {}),
@@ -124,4 +131,5 @@ if __name__ == "__main__":
         "chords": chords,
     }
 
-    print(output)
+    print(output["lyrics"][:200])
+ 
