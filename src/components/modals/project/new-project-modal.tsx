@@ -181,7 +181,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       case "midi":
         return ".mid,.midi";
       case "mp3":
-        return ".mp3";
+        return "";
       case "mp4":
         return ".mp4";
       default:
