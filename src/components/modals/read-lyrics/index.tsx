@@ -102,6 +102,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         footer={
           <div className="flex gap-2 flex-wrap lg:flex-row items-center justify-end">
             <ButtonCommon
+              size="sm"
               onClick={onClose}
               icon={<IoArrowBackCircle></IoArrowBackCircle>}
               color="gray"
@@ -110,6 +111,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               Close
             </ButtonCommon>
             <ButtonCommon
+              size="sm"
               onClick={autoCut}
               disabled={lyricsText.length <= 0}
               icon={<BsStars></BsStars>}
@@ -129,6 +131,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               }}
               customNode={
                 <ButtonCommon
+                  size="sm"
                   className="text-nowrap"
                   icon={<FaFile></FaFile>}
                   color="secondary"
@@ -138,6 +141,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               }
             ></Upload>
             <ButtonCommon
+              size="sm"
               className="text-nowrap"
               onClick={handleOnAdd}
               icon={<BiImport></BiImport>}
@@ -150,7 +154,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         <TextareaCommon
           value={lyricsText}
           onChange={onTextChange}
-          className="!h-[300px] lg:!h-[400px] text-sm lg:text-lg"
+          className="!h-[300px] lg:!h-[400px]"
         ></TextareaCommon>
       </ModalCommon>
     </>

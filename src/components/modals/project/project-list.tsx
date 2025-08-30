@@ -1,7 +1,7 @@
 import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
-import { BiPlus, BiTrash } from "react-icons/bi";
+import { BiPlus, BiTrash, BiMusic } from "react-icons/bi";
 import { FaMusic } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { deleteProject, getAllProjects, Project } from "@/lib/database/db";
@@ -51,60 +51,85 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
         title="My Projects"
         open={open}
         onClose={onClose}
-        footer={
-          <div className="flex justify-end">
-            <ButtonCommon
-              icon={<BiPlus />}
-              onClick={() => setIsNewProjectModalOpen(true)}
-            >
-              New Project
-            </ButtonCommon>
-          </div>
-        }
+        cancelButtonProps={{ hidden: true }}
+        okButtonProps={{
+          icon: <BiPlus />,
+          onClick: () => setIsNewProjectModalOpen(true),
+          children: "New Project",
+        }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-2">
+        <div>
           {projects.length > 0 ? (
-            projects.map((project) => (
-              <div
-                key={project.id}
-                className="group relative bg-gray-100 hover:bg-gray-200 rounded-lg transition-all transform hover:-translate-y-1 shadow-md hover:shadow-xl overflow-hidden"
-              >
+            <div className="divide-y divide-gray-100">
+              {projects.map((project) => (
                 <div
-                  className="flex flex-col items-center justify-center h-48 p-4 text-center cursor-pointer"
+                  key={project.id}
+                  className="group flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() => handleSelectProject(project)}
                 >
-                  <FaMusic className="text-4xl text-purple-500 mb-3" />
-                  <p className="font-semibold text-gray-800 break-words w-full">
-                    {project.name}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {project.mode?.toUpperCase()}
-                  </p>
-                </div>
-                <div className="absolute bottom-2 left-2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Updated: {new Date(project.updatedAt).toLocaleDateString()}
-                </div>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ButtonCommon
-                    variant="ghost"
-                    color="danger"
-                    size="sm"
-                    circle
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteProject(project.id!);
-                    }}
-                    icon={<BiTrash />}
-                  />
-                </div>
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    {/* Project Icon */}
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <FaMusic className="text-purple-600 text-lg" />
+                      </div>
+                    </div>
 
-                {/* <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" /> */}
-              </div>
-            ))
+                    {/* Project Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                          {project.name}
+                        </h3>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 uppercase">
+                          {project.mode}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Updated:{" "}
+                        {new Date(project.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex-shrink-0 ml-4">
+                    <div className="">
+                      <ButtonCommon
+                        variant="ghost"
+                        color="danger"
+                        size="sm"
+                        circle
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProject(project.id!);
+                        }}
+                        icon={<BiTrash />}
+                        className="hover:bg-red-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="col-span-full text-center text-gray-500 p-8">
-              <p>No projects found.</p>
-              <p>Click "New Project" to get started.</p>
+            <div className="text-center py-12 px-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BiMusic className="text-gray-400 text-2xl" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No projects yet
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Create your first karaoke project to get started
+              </p>
+              <ButtonCommon
+                icon={<BiPlus />}
+                onClick={() => setIsNewProjectModalOpen(true)}
+                className="mx-auto"
+              >
+                Create Project
+              </ButtonCommon>
             </div>
           )}
         </div>

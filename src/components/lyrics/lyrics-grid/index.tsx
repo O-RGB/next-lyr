@@ -44,7 +44,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
   return (
     <div
       ref={parentRef}
-      className="h-full bg-white border border-slate-300 overflow-auto [&::-webkit-scrollbar]:hidden"
+      className="h-full rounded-md bg-white border border-slate-300 overflow-auto [&::-webkit-scrollbar]:hidden"
     >
       <div
         style={{

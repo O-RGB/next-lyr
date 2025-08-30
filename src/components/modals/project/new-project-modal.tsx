@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react";
 import ModalCommon from "@/components/common/modal";
 import SelectCommon from "@/components/common/data-input/select";
-import ButtonCommon from "@/components/common/button";
 import Upload from "@/components/common/data-input/upload";
 import MetadataForm from "@/components/metadata/metadata-form";
 import InputCommon from "@/components/common/data-input/input";
-import { LyricWordData, MusicMode } from "@/types/common.type";
+import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
-import { useRouter } from "next/navigation";
 import { readMp3 } from "@/modules/mp3-klyr-parser/read";
 import { JsSynthEngine } from "@/modules/js-synth/lib/js-synth-engine";
 import {
@@ -16,6 +14,8 @@ import {
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
+import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
+import { groupLyricsByLine } from "@/lib/karaoke/lyrics/lyrics-convert";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -101,29 +101,44 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         switch (projectMode) {
           case "midi":
             const parsedMidi = await loadMidiFile(musicFile);
-            // const engine = new JsSynthEngine();
-            // await engine.startup();
-            // if (engine.player) {
-            // const midiInfo = await engine.player.loadMidi(musicFile);
-            // initialData.playerState.midiInfo = {
-            //   fileName: musicFile.name,
-            //   durationTicks: midiInfo.durationTicks,
-            //   ppq: midiInfo.ppq,
-            //   bpm: midiInfo.bpm,
-            //   raw: parsedMidi,
-            // };
-            // initialData.playerState.duration = midiInfo.durationTicks;
-            // }
+            const engine = new JsSynthEngine();
+            await engine.startup();
+            if (engine.player) {
+              const midiInfo = await engine.player.loadMidi(musicFile);
+              initialData.playerState.midiInfo = {
+                fileName: musicFile.name,
+                durationTicks: midiInfo.durationTicks,
+                ppq: midiInfo.ppq,
+                bpm: midiInfo.bpm,
+                raw: parsedMidi,
+              };
+              initialData.playerState.duration = midiInfo.durationTicks;
+            }
             setMetadataTemp(parsedMidi.info);
             initialData.metadata = parsedMidi.info;
-            // initialData.chordsData = parsedMidi.chords;
-            // initialData.lyricsData = mapEventsToWordData(parsedMidi.lyrics);
+            const { finalWords: midiWords, convertedChords: midiChords } =
+              convertParsedDataForImport(
+                parsedMidi,
+                true,
+                parsedMidi.midiData.ticksPerBeat
+              );
+            initialData.lyricsData = groupLyricsByLine(midiWords);
+            initialData.chordsData = midiChords;
             break;
 
           case "mp3":
             const { parsedData } = await readMp3(musicFile);
-            setMetadataTemp(parsedData.info);
-            initialData.metadata = parsedData.info;
+            initialData.metadata = {
+              ...DEFAULT_SONG_INFO,
+              ...parsedData.info,
+              TITLE: parsedData.title || metadata.TITLE,
+              ARTIST: parsedData.artist,
+              ALBUM: parsedData.album,
+            };
+            const { finalWords: mp3Words, convertedChords: mp3Chords } =
+              convertParsedDataForImport(parsedData, false);
+            initialData.lyricsData = groupLyricsByLine(mp3Words);
+            initialData.chordsData = mp3Chords;
             break;
         }
       } else if (projectMode === "youtube") {
@@ -154,7 +169,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       case "midi":
         return ".mid,.midi";
       case "mp3":
-        return "";
+        return ".mp3";
       case "mp4":
         return ".mp4";
       default:

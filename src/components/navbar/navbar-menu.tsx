@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import { BiUndo, BiRedo, BiMenu, BiFolderOpen } from "react-icons/bi";
 import { MdOutlineLyrics } from "react-icons/md";
 import { IMenusType } from "./navbar.d";
-import { FaCode, FaFileUpload } from "react-icons/fa";
+import { FaCode, FaFileUpload, FaSave } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
 interface NavBarMenuProps {
@@ -39,7 +39,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
     },
     {
       label: "บันทึก",
-      icon: <FaFileUpload />,
+      icon: <FaSave />,
       onClick: () => handleMenuClick("EXPORT_FILE"),
     },
     {
@@ -129,7 +129,7 @@ const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
           <ButtonCommon
             onClick={() => setIsDrawerOpen(true)}
             variant="ghost"
-            className="text-white"
+            className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
             size="sm"
           >
             <BiMenu size={24} />

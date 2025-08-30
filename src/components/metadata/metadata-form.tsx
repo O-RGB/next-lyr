@@ -30,7 +30,7 @@ export default function MetadataForm({
   onFieldChange,
   initMetadata,
   inputSize = "sm",
-  className = "flex flex-col gap-0.5 lg:p-4",
+  className = "flex flex-col gap-2 lg:p-4",
 }: Props) {
   const metadata = useKaraokeStore((s) => s.metadata);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);

@@ -1,10 +1,8 @@
-// src/components/navbar/drawer.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BiX, BiChevronDown, BiChevronUp } from "react-icons/bi";
 import ButtonCommon from "@/components/common/button";
 import Link from "next/link";
 
-// Type สำหรับโครงสร้างเมนู
 export interface MenuItem {
   label: React.ReactNode;
   icon?: React.ReactNode;
@@ -21,7 +19,6 @@ interface DrawerProps {
   menuItems: MenuItem[];
 }
 
-// Component ย่อยสำหรับจัดการ Submenu
 const SubMenu: React.FC<{ item: MenuItem }> = ({ item }) => {
   const [isSubMenuOpen, setSubMenuOpen] = useState(false);
 
@@ -60,7 +57,38 @@ const SubMenu: React.FC<{ item: MenuItem }> = ({ item }) => {
 };
 
 const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, menuItems }) => {
-  if (!isOpen) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      setIsClosing(false);
+      setIsOpening(true);
+      // ให้ opening animation เริ่มหลังจาก component mount
+      const timer = setTimeout(() => {
+        setIsOpening(false);
+      }, 50); // เล็กน้อยเพื่อให้ transition ทำงาน
+      return () => clearTimeout(timer);
+    } else if (isVisible) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setIsClosing(false);
+      }, 300); // Same duration as animation
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isVisible]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Same duration as animation
+  };
+
+  if (!isVisible) {
     return null;
   }
 
@@ -68,19 +96,33 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, menuItems }) => {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-        onClick={onClose}
+        className={`fixed inset-0 bg-black z-40 md:hidden transition-opacity duration-300 ${
+          isClosing
+            ? "bg-opacity-0"
+            : isOpening
+            ? "bg-opacity-0"
+            : "bg-opacity-50"
+        }`}
+        onClick={handleClose}
       ></div>
 
       {/* Drawer Content */}
-      <div className="fixed top-0 left-0 h-full w-64 bg-gray-800 z-50 p-4 flex flex-col text-white animate-slide-in">
+      <div
+        className={`fixed top-0 right-0 h-full w-64 bg-gray-800 z-50 p-4 flex flex-col text-white transition-transform duration-300 ease-out ${
+          isClosing
+            ? "transform translate-x-full"
+            : isOpening
+            ? "transform translate-x-full"
+            : "transform translate-x-0"
+        }`}
+      >
         <div className="flex justify-between items-center mb-4">
           <span className="font-bold">Menu</span>
           <ButtonCommon
-            onClick={onClose}
             variant="ghost"
+            className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
+            onClick={handleClose}
             size="sm"
-            className="text-white"
           >
             <BiX size={24} />
           </ButtonCommon>
@@ -90,7 +132,7 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, menuItems }) => {
             item.children ? (
               <SubMenu key={index} item={item} />
             ) : item.href ? (
-              <Link key={index} href={item.href} onClick={onClose}>
+              <Link key={index} href={item.href} onClick={handleClose}>
                 <ButtonCommon
                   variant="ghost"
                   className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20 w-full"
@@ -118,20 +160,8 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, menuItems }) => {
         </div>
       </div>
 
-      {/* Add CSS animation for drawer */}
-      <style jsx global>{`
-        @keyframes slide-in {
-          from {
-            transform: translateX(-100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-      `}</style>
+      {/* Remove custom CSS animation - now using Tailwind transitions */}
+      <style jsx global>{``}</style>
     </>
   );
 };

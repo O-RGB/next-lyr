@@ -65,6 +65,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
       title="Edit Lyric Line"
       onClose={() => {
         setInputText(initialInputText);
+        handleClose();
       }}
       open={(open ?? false) && selectedLineIndex !== null}
       cancelButtonProps={{

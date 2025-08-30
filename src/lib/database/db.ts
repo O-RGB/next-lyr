@@ -77,7 +77,7 @@ export const createProject = async (
 };
 
 export const getAllProjects = async (): Promise<Project[]> => {
-  return await db.projects.orderBy("updatedAt").reverse().toArray();
+  return await db.projects.orderBy("createdAt").reverse().toArray();
 };
 
 export const getProject = async (id: string): Promise<Project | undefined> => {

@@ -31,7 +31,7 @@ const PlaybackHighlight: React.FC<Pick<HighlightProps, "wordIndex">> = ({
   if (!isPlayback) return null;
 
   return (
-    <div className="absolute inset-0 bg-yellow-200 pointer-events-none z-10" />
+    <div className="absolute inset-0 rounded-md bg-yellow-200 pointer-events-none z-10" />
   );
 };
 
@@ -56,7 +56,7 @@ const TimedHighlight: React.FC<{ wordData: LyricWordData }> = ({
   if (!isTimed) return null;
 
   return (
-    <div className="absolute inset-0 border-l-4 border-l-green-500 pointer-events-none z-30" />
+    <div className="absolute rounded-md inset-0 border-l-4 border-l-green-500 pointer-events-none z-30" />
   );
 };
 
@@ -72,7 +72,7 @@ const ActiveTimingHighlight: React.FC<Pick<HighlightProps, "wordIndex">> = ({
   if (!isActive) return null;
 
   return (
-    <div className="absolute inset-0 outline outline-2 outline-blue-500 bg-blue-100/60 pointer-events-none z-20" />
+    <div className="absolute rounded-md inset-0 outline outline-2 outline-blue-500 bg-blue-100/60 pointer-events-none z-20" />
   );
 };
 
@@ -86,7 +86,7 @@ const PendingCorrectionHighlight: React.FC<
   if (!isPendingCorrection) return null;
 
   return (
-    <div className="absolute inset-0 outline outline-2 outline-orange-500 bg-orange-100/70 pointer-events-none z-20" />
+    <div className="absolute rounded-md inset-0 outline outline-2 outline-orange-500 bg-orange-100/70 pointer-events-none z-20" />
   );
 };
 
@@ -103,7 +103,7 @@ const EditingHighlight: React.FC<Pick<HighlightProps, "lineIndex">> = ({
 
   if (!isEditing) return null;
   return (
-    <div className="absolute inset-0 bg-purple-50/80 pointer-events-none z-5" />
+    <div className="absolute rounded-md inset-0 bg-purple-50/80 pointer-events-none z-5" />
   );
 };
 

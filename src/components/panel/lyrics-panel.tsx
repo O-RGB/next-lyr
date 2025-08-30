@@ -6,9 +6,7 @@ import useIsMobile from "@/hooks/useIsMobile";
 import { MobileControls } from "../ui/panel/panel-tools";
 import LyricsPlayer from "../lyrics/karaoke-lyrics";
 import { useState } from "react";
-import ButtonCommon from "../common/button";
-import { MdOutlineLyrics, MdOutlineStickyNote2 } from "react-icons/md";
-import { FaNotEqual } from "react-icons/fa";
+import MobileActionButton from "./actions";
 
 type Props = {};
 
@@ -28,40 +26,29 @@ export default function LyricsPanel({}: Props) {
 
       {isMobile ? (
         <div className="flex flex-col gap-2 w-full h-full overflow-hidden">
+          {preview && (
+            <div className=" bg-gray-200 rounded-md">
+              <div className="flex items-center justify-center w-full h-full p-2 min-h-28">
+                <LyricsPlayer
+                  textStyle={{
+                    fontSize: 20,
+                  }}
+                />
+              </div>
+            </div>
+          )}
           <div className="h-[100px] flex-shrink-0">
             <ChordsBlock />
           </div>
           <div className="flex-grow min-h-0 overflow-auto ">
             <LyricsGrid />
           </div>
-          {preview && (
-            <div className="bg-violet-500 rounded-md">
-              <LyricsPlayer
-                textStyle={{
-                  fontSize: 20,
-                }}
-              />
-            </div>
-          )}
 
-          <div className="flex justify-end gap-1.5 -mb-1.5">
-            <ButtonCommon
-              onClick={() => {
-                setPreview((v) => !v);
-              }}
-              color={preview ? "warning" : "white"}
-              size="xs"
-              icon={<MdOutlineLyrics></MdOutlineLyrics>}
-            >
-              Preview
-            </ButtonCommon>
-            <ButtonCommon
-              color="white"
-              size="xs"
-              icon={<MdOutlineStickyNote2></MdOutlineStickyNote2>}
-            >
-              Metadata
-            </ButtonCommon>
+          <div className="flex justify-end gap-1.5">
+            <MobileActionButton
+              preview={preview}
+              setPreview={setPreview}
+            ></MobileActionButton>
           </div>
 
           <div className="flex-shrink-0">

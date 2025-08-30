@@ -25,7 +25,7 @@ export const BaseInputWrapper: React.FC<BaseInputWrapperProps> = ({
 }) => {
   const labelSizeClass = {
     sm: "text-[9px]",
-    md: "text-sm",
+    md: "text-xs",
     lg: "text-base",
   }[inputSize];
 
@@ -78,12 +78,11 @@ export const useInputFocus = () => {
 
 const getInputSizeClass = (inputSize: "sm" | "md" | "lg") => {
   return {
-    sm: "text-[10px] px-2.5 py-1.5", // เอา h-7 ออก
-    md: "text-base px-4 py-3", // เอา h-[42px] ออก
-    lg: "text-lg px-5 py-3.5", // เอา h-[48px] ออก
+    sm: "text-[10px] px-2.5 py-1",
+    md: "text-sm px-3 py-1.5",
+    lg: "text-lg px-4 py-3",
   }[inputSize];
 };
-
 
 export const getInputBaseClass = (
   isFocused: boolean,

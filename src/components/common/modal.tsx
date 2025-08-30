@@ -28,7 +28,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   footer,
   destroyOnClose = true,
   animationCloseDuration = 300,
-  maxHeight = "90dvh", // Use dvh for better mobile viewport handling
+  maxHeight = "90dvh", // เปลี่ยนเป็น vh เพื่อความเข้ากันได้กับ iOS
   ...props
 }) => {
   const modalContentRef = useRef<HTMLDivElement | null>(null);
@@ -51,6 +51,25 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
     }
   }, [open, destroyOnClose, animationCloseDuration]);
 
+  // iOS Safari fix: prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      // เก็บ scroll position เดิม
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+
+      return () => {
+        // คืนค่า scroll position
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [open]);
+
   if (!shouldRender) return null;
 
   return (
@@ -59,7 +78,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       open={isVisible}
       onClose={onClose}
       center
-      blockScroll
+      blockScroll={false} // ปิด blockScroll ของ library เพราะเราจัดการเอง
       closeIcon={
         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
           <MdClose className="text-gray-600 text-lg hover:text-gray-800" />
@@ -74,10 +93,13 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       styles={{
         modalContainer: {
           display: "flex",
-          alignItems: "center", // Keep it centered
+          alignItems: "center",
           justifyContent: "center",
-          padding: "2dvh 6px", // Use dvh and add some vertical padding
-          minHeight: "100dvh", // Use dynamic viewport height
+          padding: "2vh 6px",
+          minHeight: "90vh",
+          // iOS Safari specific fixes
+          WebkitOverflowScrolling: "auto",
+          // overflowScrolling: "auto",
         },
         modal: {
           WebkitOverflowScrolling: "touch",
@@ -94,6 +116,8 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           flexDirection: "column",
           margin: 0,
           position: "relative",
+          // iOS Safari specific
+          WebkitTransform: isVisible ? "scale(1)" : "scale(0.95)",
           ...props.styles?.modal,
         },
         overlay: {
@@ -101,6 +125,8 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           backdropFilter: "blur(8px)",
           transition: `all ${animationCloseDuration}ms ease`,
           opacity: isVisible ? 1 : 0,
+          // iOS Safari fix
+          WebkitBackdropFilter: "blur(8px)",
         },
         closeButton: {
           top: "16px",
@@ -125,48 +151,62 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
 
         <div
           ref={modalContentRef}
-          className={`flex-1 overflow-y-auto p-4`}
+          className="flex-1 overflow-y-auto p-4"
           style={{
             scrollBehavior: "smooth",
             overscrollBehavior: "contain",
             scrollbarWidth: "thin",
             scrollbarColor: "#CBD5E0 #F7FAFC",
+            // iOS Safari specific fixes
+            WebkitOverflowScrolling: "touch",
+            transform: "translateZ(0)", // Force hardware acceleration
+            willChange: "scroll-position", // Optimize for scroll
+            // ป้องกันการ bounce ของ iOS
+            overflowX: "hidden",
+          }}
+          // iOS Safari touch event handlers
+          onTouchStart={(e) => {
+            // Allow native scrolling
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            // Allow native scrolling
+            e.stopPropagation();
           }}
         >
           {children}
         </div>
 
-        <div className="flex-shrink-0 p-4 border-t">
-          {footer !== null && (
-            <>
-              {footer ? (
-                footer
-              ) : (
-                <div className="flex items-center justify-end gap-3">
-                  {cancelButtonProps !== null && (
-                    <ButtonCommon
-                      size="sm"
-                      color="gray"
-                      icon={<IoArrowBackCircle />}
-                      onClick={onClose}
-                      {...cancelButtonProps}
-                    >
-                      {cancelButtonProps?.children ?? "Cancel"}
-                    </ButtonCommon>
-                  )}
-                  {okButtonProps !== null && (
-                    <ButtonCommon color="primary" size="sm" {...okButtonProps}>
-                      {okButtonProps?.children ?? "OK"}
-                    </ButtonCommon>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        {footer !== null && (
+          <div className="flex-shrink-0 p-4 border-t bg-white">
+            {footer ? (
+              footer
+            ) : (
+              <div className="flex items-center justify-end gap-3">
+                {cancelButtonProps !== null && (
+                  <ButtonCommon
+                    size="sm"
+                    color="gray"
+                    icon={<IoArrowBackCircle />}
+                    onClick={onClose}
+                    {...cancelButtonProps}
+                  >
+                    {cancelButtonProps?.children ?? "Cancel"}
+                  </ButtonCommon>
+                )}
+                {okButtonProps !== null && (
+                  <ButtonCommon color="primary" size="sm" {...okButtonProps}>
+                    {okButtonProps?.children ?? "OK"}
+                  </ButtonCommon>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <style jsx>{`
+        /* Desktop scrollbar styles */
         .overflow-y-auto::-webkit-scrollbar {
           width: 6px;
         }
@@ -180,6 +220,18 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         }
         .overflow-y-auto::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
+        }
+
+        /* iOS Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+          /* iOS only styles */
+          .overflow-y-auto {
+            -webkit-overflow-scrolling: touch !important;
+            overflow-scrolling: touch !important;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            will-change: scroll-position;
+          }
         }
       `}</style>
     </Modal>
