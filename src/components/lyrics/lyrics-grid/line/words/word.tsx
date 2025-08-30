@@ -110,25 +110,25 @@ const EditingHighlight: React.FC<Pick<HighlightProps, "lineIndex">> = ({
 const Word = React.memo(({ wordData, onClick }: WordProps) => {
   const wordRef = useRef<HTMLDivElement | null>(null);
 
-  // const isActiveForScroll = useKaraokeStore((state) => {
-  //   let activeIndex: number;
-  //   if (state.isTimingActive || state.editingLineIndex !== null) {
-  //     activeIndex = state.currentIndex;
-  //   } else {
-  //     activeIndex = state.playbackIndex ?? -1;
-  //   }
-  //   return activeIndex === wordData.index;
-  // });
+  const isActiveForScroll = useKaraokeStore((state) => {
+    let activeIndex: number;
+    if (state.isTimingActive || state.editingLineIndex !== null) {
+      activeIndex = state.currentIndex;
+    } else {
+      activeIndex = state.playbackIndex ?? -1;
+    }
+    return activeIndex === wordData.index;
+  });
 
-  // useEffect(() => {
-  //   if (isActiveForScroll && wordRef.current) {
-  //     wordRef.current.scrollIntoView({
-  //       behavior: "smooth",
-  //       inline: "center",
-  //       block: "nearest",
-  //     });
-  //   }
-  // }, [isActiveForScroll]);
+  useEffect(() => {
+    if (isActiveForScroll && wordRef.current) {
+      wordRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [isActiveForScroll]);
 
   const baseClasses = `
     group relative cursor-pointer
