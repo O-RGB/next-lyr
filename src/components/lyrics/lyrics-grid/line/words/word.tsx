@@ -134,8 +134,8 @@ const Word = React.memo(({ wordData, onClick }: WordProps) => {
     group relative cursor-pointer
     border px-2.5 py-1.5
     text-sm select-none text-nowrap
-    font-medium shadow-sm bg-white
-    border-slate-300 hover:bg-slate-100
+    font-medium shadow-sm bg-white rounded-md
+    border-slate-200 hover:bg-slate-100
   `;
 
   return (

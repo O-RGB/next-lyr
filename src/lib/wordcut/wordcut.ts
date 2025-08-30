@@ -55,18 +55,15 @@ export class ThaiWordDict {
       );
     }
 
-    // Clean input text
     text = this.cleanText(text);
     const result: string[] = [];
-    let buffer = ""; // Use buffer instead of unmatched_text for better control
+    let buffer = "";
     let i = 0;
-    let count = 0;
     const textLength = text.length;
 
     while (i < textLength) {
-      // Handle spaces - output buffer and skip
       if (/\s/.test(text[i])) {
-        if (buffer && buffer.trim()) {
+        if (buffer) {
           result.push(buffer);
           buffer = "";
         }
@@ -74,63 +71,51 @@ export class ThaiWordDict {
         continue;
       }
 
-      let matched = false;
-
-      // Only try to match if we have enough characters left
+      let longestMatch = "";
       if (i + 1 < textLength) {
         const currentPrefix = text.slice(i, i + 2);
-
         if (currentPrefix in this.prefixDict) {
-          // Calculate maximum possible word length at this position
           const maxPossibleLength = Math.min(
             textLength - i,
             this.maxWordLength
           );
-
-          // Try matching words from longest to shortest
-          for (let length = maxPossibleLength; length > 1; length--) {
-            count++;
+          for (let length = 2; length <= maxPossibleLength; length++) {
             if (length in this.prefixDict[currentPrefix]) {
               const candidate = text.slice(i, i + length);
               if (this.prefixDict[currentPrefix][length].has(candidate)) {
-                // Output buffer before adding new word
-                if (buffer && buffer.trim()) {
-                  result.push(buffer);
-                  buffer = "";
-                }
-                result.push(candidate);
-                i += length - 1;
-                matched = true;
-                break;
+                longestMatch = candidate;
               }
             }
           }
         }
       }
 
-      if (!matched) {
+      if (longestMatch) {
+        if (buffer) {
+          result.push(buffer);
+          buffer = "";
+        }
+        result.push(longestMatch);
+        i += longestMatch.length;
+      } else {
         const currentChar = text[i];
-        // Only handle actual combining characters
-        if (this.combiningChars.has(currentChar) && result.length > 0) {
-          // Add combining character to previous word if exists
-          result[result.length - 1] = result[result.length - 1] + currentChar;
+        if (
+          this.combiningChars.has(currentChar) &&
+          result.length > 0 &&
+          !buffer
+        ) {
+          result[result.length - 1] += currentChar;
         } else {
-          // Add character to buffer
           buffer += currentChar;
         }
+        i++;
       }
-
-      i++;
     }
 
-    // Add remaining buffer if not empty
-    if (buffer && buffer.trim()) {
+    if (buffer) {
       result.push(buffer);
     }
 
-    // Final cleanup: remove any empty strings
-    const finalResult = result.filter((word) => word.trim());
-
-    return finalResult;
+    return result.filter((word) => word.trim());
   }
 }

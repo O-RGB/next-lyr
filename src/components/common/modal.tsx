@@ -28,7 +28,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   footer,
   destroyOnClose = true,
   animationCloseDuration = 300,
-  maxHeight = "85vh",
+  maxHeight = "90dvh", // Use dvh for better mobile viewport handling
   ...props
 }) => {
   const modalContentRef = useRef<HTMLDivElement | null>(null);
@@ -74,10 +74,10 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       styles={{
         modalContainer: {
           display: "flex",
-          alignItems: "center",
+          alignItems: "center", // Keep it centered
           justifyContent: "center",
-          padding: "6px",
-          minHeight: "100vh",
+          padding: "2dvh 6px", // Use dvh and add some vertical padding
+          minHeight: "100dvh", // Use dynamic viewport height
         },
         modal: {
           WebkitOverflowScrolling: "touch",
@@ -128,7 +128,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           className={`flex-1 overflow-y-auto p-4`}
           style={{
             scrollBehavior: "smooth",
-
+            overscrollBehavior: "contain",
             scrollbarWidth: "thin",
             scrollbarColor: "#CBD5E0 #F7FAFC",
           }}

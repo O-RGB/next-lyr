@@ -4,11 +4,18 @@ import ChordsBlock from "./chords-block";
 import Card from "../common/card";
 import useIsMobile from "@/hooks/useIsMobile";
 import { MobileControls } from "../ui/panel/panel-tools";
+import LyricsPlayer from "../lyrics/karaoke-lyrics";
+import { useState } from "react";
+import ButtonCommon from "../common/button";
+import { MdOutlineLyrics, MdOutlineStickyNote2 } from "react-icons/md";
+import { FaNotEqual } from "react-icons/fa";
 
 type Props = {};
 
 export default function LyricsPanel({}: Props) {
   const isMobile = useIsMobile();
+
+  const [preview, setPreview] = useState<boolean>(false);
 
   return (
     <Card className="flex flex-col p-2 lg:p-4 h-full bg-gray-50 gap-2">
@@ -24,9 +31,39 @@ export default function LyricsPanel({}: Props) {
           <div className="h-[100px] flex-shrink-0">
             <ChordsBlock />
           </div>
-          <div className="flex-grow min-h-0 overflow-auto">
+          <div className="flex-grow min-h-0 overflow-auto ">
             <LyricsGrid />
           </div>
+          {preview && (
+            <div className="bg-violet-500 rounded-md">
+              <LyricsPlayer
+                textStyle={{
+                  fontSize: 20,
+                }}
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-1.5 -mb-1.5">
+            <ButtonCommon
+              onClick={() => {
+                setPreview((v) => !v);
+              }}
+              color={preview ? "warning" : "white"}
+              size="xs"
+              icon={<MdOutlineLyrics></MdOutlineLyrics>}
+            >
+              Preview
+            </ButtonCommon>
+            <ButtonCommon
+              color="white"
+              size="xs"
+              icon={<MdOutlineStickyNote2></MdOutlineStickyNote2>}
+            >
+              Metadata
+            </ButtonCommon>
+          </div>
+
           <div className="flex-shrink-0">
             <MobileControls />
           </div>

@@ -10,6 +10,7 @@ import { BiMenu, BiPencil, BiTime, BiTrash } from "react-icons/bi";
 import { CiMenuKebab } from "react-icons/ci";
 import { FaEdit } from "react-icons/fa";
 import { FiLogOut, FiPlus, FiTrash2 } from "react-icons/fi";
+import { GoKebabHorizontal } from "react-icons/go";
 
 interface LineActionProps {
   lineIndex: number;
@@ -38,13 +39,27 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             type: "Re Time",
             text: "ปาดเนื้อใหม่",
             icon: <BiTime />,
-            onClick: () => handleRetiming(lineIndex),
+            onClick: () => {
+              if (
+                confirm(
+                  "ปาดเนื้อใหม่ตั้งแต่บรรทัดที่ " +
+                    (lineIndex + 1) +
+                    " เป็นต้นไป?"
+                )
+              ) {
+                handleRetiming(lineIndex);
+              }
+            },
           },
           {
             type: "delete",
             text: "ลบ",
             icon: <BiTrash />,
-            onClick: () => actions.deleteLine?.(lineIndex),
+            onClick: () => {
+              if (confirm("ลบบรรทัดที่ " + (lineIndex + 1) + " ออกไป?")) {
+                actions.deleteLine?.(lineIndex);
+              }
+            },
           },
         ],
       },
@@ -60,7 +75,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
               circle
               variant="ghost"
               size="xs"
-              icon={<CiMenuKebab className="text-slate-400" />}
+              icon={<GoKebabHorizontal className="text-slate-400 rotate-90" />}
               className="z-20"
             ></ButtonCommon>
           }

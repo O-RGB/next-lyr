@@ -39,8 +39,8 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         .replace(/\s+/g, " ")
         .trim();
 
-      const thaiParts = segmenter.segmentText(preProcessedLine);
-      const allWords = thaiParts
+      const segmentedParts = segmenter.segmentText(preProcessedLine);
+      const allWords = segmentedParts
         .flatMap((part) => part.split(/\s+/))
         .filter(Boolean);
 
@@ -48,18 +48,17 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
 
       let result = allWords[0];
       for (let i = 1; i < allWords.length; i++) {
-        const currentWord = allWords[i];
         const prevWord = allWords[i - 1];
+        const currentWord = allWords[i];
 
-        const isCurrentEnglish = /^[a-zA-Z'’]/.test(currentWord);
         const isPrevEnglish = /^[a-zA-Z'’]/.test(prevWord);
+        const isCurrentEnglish = /^[a-zA-Z'’]/.test(currentWord);
 
-        if (isCurrentEnglish || isPrevEnglish) {
-          result += " | ";
+        if (isPrevEnglish || isCurrentEnglish) {
+          result += " | " + currentWord;
         } else {
-          result += "|";
+          result += "|" + currentWord;
         }
-        result += currentWord;
       }
       return result;
     });

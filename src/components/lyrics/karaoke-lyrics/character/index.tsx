@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
+import { LyricsCharacterStyle } from "../../lyrics-character";
 
-interface LyricsCharacterProps {
+interface LyricsCharacterProps extends LyricsCharacterStyle {
   clip: number;
   text: string;
 }
 
-const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text }) => {
+const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text, ...props }) => {
   const clipStyle = {
     transition: clip === 0 ? "" : "clip-path 0.2s ease-out",
     clipPath: `inset(-100% -100% -100% ${clip}%)`,
@@ -25,7 +26,7 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text }) => {
   return (
     <div
       style={{
-        fontSize: 35,
+        fontSize: props.fontSize ? props.fontSize : 35,
         position: "relative",
         left: 0,
         top: 0,

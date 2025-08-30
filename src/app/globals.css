@@ -53,3 +53,10 @@ body {
   backdrop-filter: blur(10px);
   z-index: 999;
 }
+
+input:focus,
+textarea:focus,
+select:focus {
+  -webkit-text-size-adjust: 100%; /* ป้องกันการปรับขนาดตัวอักษรใน WebKit */
+  touch-action: manipulation; /* ป้องกันการซูมเมื่อสัมผัสในบางกรณี */
+}
