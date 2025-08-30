@@ -1,6 +1,6 @@
 import { StateCreator } from "zustand";
 import { getPreRollTime } from "../utils";
-import { KaraokeState, PlaybackActions, TimingBufferData } from "../types";
+import { KaraokeState, PlaybackActions } from "../types";
 
 export const createPlaybackActions: StateCreator<
   KaraokeState,
@@ -10,7 +10,9 @@ export const createPlaybackActions: StateCreator<
 > = (set, get) => ({
   actions: {
     setIsPlaying: (playing: boolean) => set({ isPlaying: playing }),
-    setCurrentTime: (time: number) => set({ currentTime: time }),
+    setCurrentTime: (time: number) => {
+      set({ currentTime: time });
+    },
     setPlaybackIndex: (index: number | null) => set({ playbackIndex: index }),
     setCurrentIndex: (index: number) => set({ currentIndex: index }),
     setCorrectionIndex: (index: number | null) =>
@@ -30,8 +32,6 @@ export const createPlaybackActions: StateCreator<
         const wordToStart = flatLyrics[newCurrentIndex];
         if (!wordToStart) return {};
 
-        // If starting a new timing session, create a new buffer
-        // Otherwise, reuse the existing buffer for the ReTime session
         const timingBuffer = state.timingBuffer || {
           lineIndex: wordToStart.lineIndex,
           buffer: new Map(),
@@ -50,6 +50,7 @@ export const createPlaybackActions: StateCreator<
           isTimingActive: true,
           correctionIndex: null,
           timingBuffer,
+          timingDirection: "forward",
         };
       });
     },
@@ -89,51 +90,55 @@ export const createPlaybackActions: StateCreator<
     },
 
     recordTiming: (currentTime: number) => {
+      const state = get();
+      const { timingBuffer, lyricsData, currentIndex, editingLineIndex } =
+        state;
+
+      if (!timingBuffer) {
+        return { isLineEnd: false };
+      }
+
+      const flatLyrics = lyricsData.flat();
+      const newBuffer = new Map(timingBuffer.buffer);
       let isLineEnd = false;
-      set((state) => {
-        if (!state.timingBuffer) return {};
 
-        const newBuffer = new Map(state.timingBuffer.buffer);
-        const flatLyrics = state.lyricsData.flat();
-
-        const currentWord = flatLyrics[state.currentIndex];
-        if (currentWord) {
-          const currentWordData = newBuffer.get(currentWord.index) || {
-            start: currentWord.start,
-            end: null,
-          };
-          currentWordData.end = currentTime;
-          newBuffer.set(currentWord.index, currentWordData);
-        }
-
-        const nextWord = flatLyrics[state.currentIndex + 1];
-        if (nextWord) {
-          const isCrossingLines =
-            currentWord && nextWord.lineIndex !== currentWord.lineIndex;
-
-          if (isCrossingLines && state.editingLineIndex !== null) {
-            isLineEnd = true;
-          } else {
-            const nextWordData = newBuffer.get(nextWord.index) || {
-              start: null,
-              end: null,
-            };
-            nextWordData.start = currentTime;
-            newBuffer.set(nextWord.index, nextWordData);
-          }
-        } else {
-          isLineEnd = true;
-        }
-
-        return {
-          timingBuffer: {
-            ...state.timingBuffer,
-            buffer: newBuffer,
-          },
+      const currentWord = flatLyrics[currentIndex];
+      if (currentWord) {
+        const currentWordData = newBuffer.get(currentWord.index) || {
+          start: currentWord.start,
+          end: null,
         };
+        currentWordData.end = currentTime;
+        newBuffer.set(currentWord.index, currentWordData);
+      }
+
+      const nextWord = flatLyrics[currentIndex + 1];
+      if (!nextWord) {
+        isLineEnd = true;
+      } else if (
+        editingLineIndex !== null &&
+        nextWord.lineIndex !== editingLineIndex
+      ) {
+        isLineEnd = true;
+      }
+
+      if (!isLineEnd && nextWord) {
+        const nextWordData = newBuffer.get(nextWord.index) || {
+          start: null,
+          end: null,
+        };
+        nextWordData.start = currentTime;
+        newBuffer.set(nextWord.index, nextWordData);
+      }
+
+      set({
+        timingBuffer: {
+          ...timingBuffer,
+          buffer: newBuffer,
+        },
       });
 
-      if (isLineEnd && get().editingLineIndex !== null) {
+      if (isLineEnd && editingLineIndex !== null) {
         get().actions.stopTiming();
       }
 
@@ -152,6 +157,7 @@ export const createPlaybackActions: StateCreator<
               ? nextWord.lineIndex
               : state.selectedLineIndex,
             correctionIndex: null,
+            timingDirection: "forward",
           };
         }
 
@@ -161,15 +167,43 @@ export const createPlaybackActions: StateCreator<
 
     correctTimingStep: (newCurrentIndex: number) => {
       let lineStartTime = 0;
-      set((state) => {
-        if (!state.timingBuffer) return {};
+      const state = get();
+      if (!state.timingBuffer) return { lineStartTime: 0 };
 
-        const flatLyrics = state.lyricsData.flat();
-        const wordToCorrect = flatLyrics[newCurrentIndex];
-        if (!wordToCorrect) return {};
+      const flatLyrics = state.lyricsData.flat();
+      const wordToCorrect = flatLyrics[newCurrentIndex];
+      if (!wordToCorrect) return { lineStartTime: 0 };
 
-        lineStartTime = getPreRollTime(wordToCorrect.lineIndex, flatLyrics);
-        const newBuffer = new Map(state.timingBuffer.buffer);
+      const targetLineIndex = wordToCorrect.lineIndex;
+
+      if (targetLineIndex > 0) {
+        const preRollLineIndex = targetLineIndex - 1;
+        const firstWordOfPreRollLine = flatLyrics.find(
+          (w) => w.lineIndex === preRollLineIndex
+        );
+
+        if (firstWordOfPreRollLine) {
+          const preRollTimeFromBuffer = state.timingBuffer.buffer.get(
+            firstWordOfPreRollLine.index
+          )?.start;
+
+          if (
+            preRollTimeFromBuffer !== null &&
+            preRollTimeFromBuffer !== undefined
+          ) {
+            lineStartTime = preRollTimeFromBuffer;
+          } else {
+            lineStartTime = getPreRollTime(targetLineIndex, flatLyrics);
+          }
+        } else {
+          lineStartTime = getPreRollTime(targetLineIndex, flatLyrics);
+        }
+      } else {
+        lineStartTime = 0;
+      }
+
+      set(() => {
+        const newBuffer = new Map(state.timingBuffer!.buffer);
 
         const wordAfter = flatLyrics[newCurrentIndex + 1];
         if (wordAfter) {
@@ -189,14 +223,12 @@ export const createPlaybackActions: StateCreator<
         return {
           currentIndex: newCurrentIndex,
           correctionIndex: newCurrentIndex,
-          // --- ADDED ---
-          // Ensure the line is selected for the UI to update correctly
           selectedLineIndex: wordToCorrect.lineIndex,
           isTimingActive: true,
-          timingBuffer: { ...state.timingBuffer, buffer: newBuffer },
+          timingBuffer: { ...state.timingBuffer!, buffer: newBuffer },
+          timingDirection: "backward",
         };
       });
-
       return { lineStartTime };
     },
 
@@ -210,13 +242,12 @@ export const createPlaybackActions: StateCreator<
             isTimingActive: false,
             editingLineIndex: null,
             timingBuffer: null,
+            timingDirection: null,
           };
         }
 
         const { buffer } = timingBufferData;
 
-        // --- REVISED LOGIC ---
-        // This logic correctly merges the buffer across multiple lines
         const newLyricsData = prevState.lyricsData.map((line) =>
           line.map((word) => {
             if (buffer.has(word.index)) {
@@ -236,6 +267,7 @@ export const createPlaybackActions: StateCreator<
           isTimingActive: false,
           editingLineIndex: null,
           timingBuffer: null,
+          timingDirection: null,
         };
       });
 

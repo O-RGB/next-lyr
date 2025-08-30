@@ -23,8 +23,6 @@ export interface PlayerState {
   duration: number | null;
 }
 
-// 🔽 สร้าง Interface ใหม่สำหรับโครงสร้าง timingBuffer
-
 export interface TiimingBuffer {
   start: number | null;
   end: number | null;
@@ -42,7 +40,6 @@ export interface TimingState {
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
-  // 🔽 เปลี่ยน Type ของ timingBuffer
   timingBuffer: TimingBufferData | null;
 }
 
@@ -171,6 +168,7 @@ export interface KaraokeState {
   selectedLineIndex: number | null;
   currentTime: number;
   timingBuffer: TimingBufferData | null;
+  timingDirection: "forward" | "backward" | null;
 
   // ModalState
   isEditModalOpen: boolean;

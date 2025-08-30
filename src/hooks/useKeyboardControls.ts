@@ -22,6 +22,7 @@ export const useKeyboardControls = (
   const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+  const timingBuffer = useKaraokeStore((state) => state.timingBuffer);
   const playFromScrolledPosition = useKaraokeStore(
     (state) => state.playFromScrolledPosition
   );
@@ -67,14 +68,7 @@ export const useKeyboardControls = (
                 : null
               : Math.max(0, selectedLineIndex - 1);
 
-          actions.selectLine(newIndex);
-
-          if (newIndex !== null && rowVirtualizer) {
-            rowVirtualizer.scrollToIndex(newIndex, {
-              align: "center",
-              behavior: "smooth",
-            });
-          }
+          if (newIndex !== null) actions.selectLine(newIndex);
           actions.setPlayFromScrolledPosition(false);
           return;
         }
@@ -87,14 +81,7 @@ export const useKeyboardControls = (
                 : null
               : Math.min(totalLines - 1, selectedLineIndex + 1);
 
-          actions.selectLine(newIndex);
-
-          if (newIndex !== null && rowVirtualizer) {
-            rowVirtualizer.scrollToIndex(newIndex, {
-              align: "center",
-              behavior: "smooth",
-            });
-          }
+          if (newIndex !== null) actions.selectLine(newIndex);
           actions.setPlayFromScrolledPosition(false);
           return;
         }
@@ -155,6 +142,13 @@ export const useKeyboardControls = (
           ) {
             return;
           }
+        } else if (isTimingActive && timingBuffer) {
+          const firstWordOfSession = flatLyrics.find(
+            (w) => w.lineIndex === timingBuffer.lineIndex
+          );
+          if (firstWordOfSession && currentIndex <= firstWordOfSession.index) {
+            return;
+          }
         }
 
         const prevIndex = currentIndex - 1;
@@ -198,7 +192,7 @@ export const useKeyboardControls = (
     actions,
     isEditModalOpen,
     player,
-    selectedLineIndex,
+    selectedLineIndex, // ✨ เพิ่ม dependency นี้
     lyricsData,
     isTimingActive,
     correctionIndex,
@@ -209,5 +203,6 @@ export const useKeyboardControls = (
     chordPanelCenterTick,
     isPlaying,
     rowVirtualizer,
+    timingBuffer,
   ]);
 };

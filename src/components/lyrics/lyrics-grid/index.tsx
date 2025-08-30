@@ -10,6 +10,7 @@ export interface LyricsGridProps {}
 const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const groupedLines = useKaraokeStore((state) => state.lyricsData);
+  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const setRowVirtualizer = usePlayerSetupStore(
     (state) => state.setRowVirtualizer
   );
@@ -19,19 +20,26 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
   const rowVirtualizer = useVirtualizer({
     count: groupedLines.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 50, // ประมาณความสูงของแต่ละแถว (ปรับค่าได้)
-    overscan: 5, // จำนวน item ที่จะ render เผื่อไว้ (บน-ล่าง)
+    estimateSize: () => 50,
+    overscan: 5,
   });
 
   useEffect(() => {
-    if (rowVirtualizer) {
-      setRowVirtualizer(rowVirtualizer);
-    }
-    // Cleanup function เพื่อเคลียร์ค่าเมื่อ component unmount
+    setRowVirtualizer(rowVirtualizer);
     return () => {
       setRowVirtualizer(null);
     };
   }, [rowVirtualizer, setRowVirtualizer]);
+
+  // ✨ ย้าย Logic การเลื่อนมาไว้ที่นี่
+  useEffect(() => {
+    if (selectedLineIndex !== null && rowVirtualizer) {
+      rowVirtualizer.scrollToIndex(selectedLineIndex, {
+        align: "center",
+        behavior: "smooth",
+      });
+    }
+  }, [selectedLineIndex, rowVirtualizer]);
 
   return (
     <div
@@ -49,7 +57,6 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
           const line = groupedLines[virtualItem.index];
           const lineIndex = virtualItem.index;
 
-          // ตรวจสอบให้แน่ใจว่า line มีค่าก่อนที่จะ render
           if (!line) {
             return null;
           }

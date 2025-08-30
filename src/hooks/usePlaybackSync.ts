@@ -3,40 +3,40 @@ import { useKaraokeStore } from "../stores/karaoke-store";
 import { PlayerControls } from "./useKeyboardControls";
 
 export const usePlaybackSync = (playerControls: PlayerControls | null) => {
-  const currentTime = useKaraokeStore((state) => state.currentTime);
-  const lyricsData = useKaraokeStore((state) => state.lyricsData);
-  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
-  const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
-  const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
-  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
   const actions = useKaraokeStore((state) => state.actions);
-  const isPlaying = useKaraokeStore((state) => state.isPlaying);
+  const {
+    currentTime,
+    lyricsData,
+    isTimingActive,
+    correctionIndex,
+    selectedLineIndex,
+    editingLineIndex,
+    isPlaying,
+    timingBuffer, // 👈 ดึง timingBuffer มาใช้งาน
+  } = useKaraokeStore();
 
   useEffect(() => {
-    if (!playerControls) return;
-    if (!isPlaying) return;
-
-    if (!playerControls.isPlaying() && currentTime > 0) {
-      actions.setIsPlaying(false);
+    // --- ✨ Logic ที่แก้ไข ---
+    // เอา isTimingActive ออกเพื่อให้ Playback Index อัปเดตเสมอ
+    if (!playerControls || !isPlaying) {
       return;
     }
-
-    // --- REMOVED BLOCK ---
-    // The following block was removed to allow playback highlighting during timing.
-    // if (isTimingActive && correctionIndex === null) {
-    //   actions.setPlaybackIndex(null);
-    //   return;
-    // }
+    // --- จบส่วนที่แก้ไข ---
 
     const flatLyricsData = lyricsData.flat();
 
-    const newPlaybackIndex = flatLyricsData.findIndex(
-      (word) =>
-        word.start !== null &&
-        word.end !== null &&
-        currentTime >= word.start &&
-        currentTime < word.end
-    );
+    const newPlaybackIndex = flatLyricsData.findIndex((word) => {
+      const bufferEntry = timingBuffer?.buffer.get(word.index);
+      const start = bufferEntry?.start ?? word.start;
+      const end = bufferEntry?.end ?? word.end;
+
+      return (
+        start !== null &&
+        end !== null &&
+        currentTime >= start &&
+        currentTime < end
+      );
+    });
 
     actions.setPlaybackIndex(newPlaybackIndex > -1 ? newPlaybackIndex : null);
 
@@ -54,11 +54,12 @@ export const usePlaybackSync = (playerControls: PlayerControls | null) => {
     currentTime,
     playerControls,
     lyricsData,
-    isTimingActive,
+    isTimingActive, // ยังคงต้องมีใน dependency array
     correctionIndex,
     selectedLineIndex,
     editingLineIndex,
     actions,
     isPlaying,
+    timingBuffer,
   ]);
 };

@@ -1,40 +1,16 @@
 import { LyricWordData } from "@/types/common.type";
 import Word from "./word";
 import React, { useRef } from "react";
+import LineScroller from "./LineScroller";
 
 interface LyricsWordsProps {
   line: LyricWordData[];
-  lineIndex: number;
   onWordClick: (index: number) => void;
-  isSelected: boolean;
 }
 
-const LyricsWords: React.FC<LyricsWordsProps> = ({
-  line,
-  lineIndex,
-  onWordClick,
-  isSelected,
-}) => {
-  const wordRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+const LyricsWords: React.FC<LyricsWordsProps> = ({ line, onWordClick }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const scrollToActiveWord = (
-    wordIndex: number,
-    align: ScrollLogicalPosition = "center"
-  ) => {
-    const activeWordElement = wordRefs.current[wordIndex];
-    if (activeWordElement) {
-      activeWordElement.scrollIntoView({
-        behavior: "instant",
-        inline: align,
-        block: "center",
-      });
-    }
-  };
-
-  const handleWordSelect = (index: number) => {
-    scrollToActiveWord(index);
-  };
+  const lineIndex = line[0]?.lineIndex ?? null;
 
   return (
     <div
@@ -42,21 +18,11 @@ const LyricsWords: React.FC<LyricsWordsProps> = ({
       className="flex-1 min-w-0 flex flex-nowrap gap-1 lg:gap-2 overflow-x-auto w-full [&::-webkit-scrollbar]:hidden p-1"
     >
       {line.map((word) => (
-        <Word
-          ref={(el: any) => (wordRefs.current[word.index] = el)}
-          key={word.index}
-          lineIndex={lineIndex}
-          wordData={word}
-          onSelect={handleWordSelect}
-          onActiveLine={(is) => {
-            if (!is && containerRef.current) {
-              containerRef.current.scrollTo({ left: 0, behavior: "instant" });
-            }
-          }}
-          onClick={onWordClick}
-          isCurrentLine={isSelected}
-        />
+        <Word key={word.index} wordData={word} onClick={onWordClick} />
       ))}
+      {lineIndex !== null && (
+        <LineScroller containerRef={containerRef} lineIndex={lineIndex} />
+      )}
     </div>
   );
 };

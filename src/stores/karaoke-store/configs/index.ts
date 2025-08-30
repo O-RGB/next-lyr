@@ -58,6 +58,7 @@ export const initialState: Omit<KaraokeState, "actions"> = {
   projectId: null,
   mode: null,
   playerState: initialPlayerState,
+  timingDirection: null,
   lyricsData: [],
   metadata: null,
   chordsData: [],
