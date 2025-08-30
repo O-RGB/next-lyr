@@ -35,6 +35,31 @@ const PlaybackHighlight: React.FC<Pick<HighlightProps, "wordIndex">> = ({
   );
 };
 
+const TimedHighlight: React.FC<{ wordData: LyricWordData }> = ({
+  wordData,
+}) => {
+  const isTimed = useKaraokeStore((state) => {
+    const line = state.lyricsData[wordData.lineIndex];
+    const word = line?.find((w) => w.index === wordData.index);
+
+    if (word?.start !== null) return true;
+
+    if (state.isTimingActive && state.timingBuffer) {
+      const hasBufferEntry = state.timingBuffer.buffer.has(wordData.index);
+      if (hasBufferEntry && wordData.index < state.currentIndex) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  if (!isTimed) return null;
+
+  return (
+    <div className="absolute inset-0 border-l-4 border-l-green-500 pointer-events-none z-30" />
+  );
+};
+
 const ActiveTimingHighlight: React.FC<Pick<HighlightProps, "wordIndex">> = ({
   wordIndex,
 }) => {
@@ -57,6 +82,7 @@ const PendingCorrectionHighlight: React.FC<
   const isPendingCorrection = useKaraokeStore(
     (state) => state.correctionIndex === wordIndex
   );
+
   if (!isPendingCorrection) return null;
 
   return (
@@ -77,71 +103,55 @@ const EditingHighlight: React.FC<Pick<HighlightProps, "lineIndex">> = ({
 
   if (!isEditing) return null;
   return (
-    <div className="absolute inset-0 bg-purple-50/80 pointer-events-none" />
+    <div className="absolute inset-0 bg-purple-50/80 pointer-events-none z-5" />
   );
 };
 
 const Word = React.memo(({ wordData, onClick }: WordProps) => {
   const wordRef = useRef<HTMLDivElement | null>(null);
 
-  const isTimed = useKaraokeStore((state) => {
-    const line = state.lyricsData[wordData.lineIndex];
-    const word = line?.find((w) => w.index === wordData.index);
-    if (word?.start !== null) {
-      return true;
-    }
+  // const isActiveForScroll = useKaraokeStore((state) => {
+  //   let activeIndex: number;
+  //   if (state.isTimingActive || state.editingLineIndex !== null) {
+  //     activeIndex = state.currentIndex;
+  //   } else {
+  //     activeIndex = state.playbackIndex ?? -1;
+  //   }
+  //   return activeIndex === wordData.index;
+  // });
 
-    if (state.isTimingActive && state.timingBuffer) {
-      const hasBufferEntry = state.timingBuffer.buffer.has(wordData.index);
-      if (hasBufferEntry && wordData.index < state.currentIndex) {
-        return true;
-      }
-    }
-
-    return false;
-  });
-
-  const isActiveForScroll = useKaraokeStore((state) => {
-    let activeIndex: number;
-    if (state.isTimingActive || state.editingLineIndex !== null) {
-      activeIndex = state.currentIndex;
-    } else {
-      activeIndex = state.playbackIndex ?? -1;
-    }
-    return activeIndex === wordData.index;
-  });
-
-  useEffect(() => {
-    if (isActiveForScroll && wordRef.current) {
-      wordRef.current.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
-      });
-    }
-  }, [isActiveForScroll]);
+  // useEffect(() => {
+  //   if (isActiveForScroll && wordRef.current) {
+  //     wordRef.current.scrollIntoView({
+  //       behavior: "smooth",
+  //       inline: "center",
+  //       block: "nearest",
+  //     });
+  //   }
+  // }, [isActiveForScroll]);
 
   const baseClasses = `
     group relative cursor-pointer
-    border px-2 lg:px-2.5 py-1 lg:py-1.5
+    border px-2.5 py-1.5
     text-sm select-none text-nowrap
     font-medium shadow-sm bg-white
     border-slate-300 hover:bg-slate-100
   `;
-  const timedClass = isTimed ? "border-l-4 border-l-green-500" : "";
 
   return (
     <div
       ref={wordRef}
-      className={`${baseClasses} ${timedClass}`}
+      className={baseClasses}
       data-index={wordData.index}
       onClick={() => onClick(wordData.index)}
     >
       <span className="relative z-30">{wordData.name}</span>
+
       <EditingHighlight lineIndex={wordData.lineIndex} />
       <PlaybackHighlight wordIndex={wordData.index} />
       <PendingCorrectionHighlight wordIndex={wordData.index} />
       <ActiveTimingHighlight wordIndex={wordData.index} />
+      <TimedHighlight wordData={wordData} />
     </div>
   );
 });
