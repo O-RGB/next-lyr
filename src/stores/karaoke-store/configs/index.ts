@@ -8,7 +8,7 @@ import {
 } from "../types";
 
 export const MAX_HISTORY_SIZE = 50;
-export const DEFAULT_PRE_ROLL_OFFSET = 0.4;
+export const DEFAULT_PRE_ROLL_OFFSET = 0;
 export const DEFAULT_CHORD_DURATION = 1;
 
 export const initialPlayerState: PlayerState = {

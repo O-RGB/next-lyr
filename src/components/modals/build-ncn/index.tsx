@@ -51,6 +51,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       }));
 
       metadata.TIME_FORMAT = "TIME_MS";
+      metadata.CHARSET = undefined;
       const buffer = buildMp3(
         {
           title: metadata.TITLE,

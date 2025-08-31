@@ -67,7 +67,7 @@ export function encodeLyricsBase64(
   header = "LyrHdr1"
 ): string {
   const xmlBytes = stringToTIS620(xmlText);
-  const compressed = pako.deflate(xmlBytes, { level: 9 });
+  const compressed = pako.deflate(xmlBytes, { level: 6 });
   return header + arrayBufferToBase64(compressed);
 }
 
