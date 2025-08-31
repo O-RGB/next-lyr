@@ -190,23 +190,23 @@ export const keyOption: MIDIOptionValue<KEY>[] = [
 export interface SongInfo {
   VERSION: string;
   SOURCE: string;
-  CHARSET: string;
+  CHARSET?: string;
   TIME_FORMAT: string;
   TITLE: string;
-  KEY: KEY;
-  TEMPO: string;
-  ALBUM: string;
+  KEY?: KEY;
+  TEMPO?: string;
+  ALBUM?: string;
   ARTIST: string;
-  ARTIST_TYPE: ARTIST_TYPE;
-  AUTHOR: string;
-  GENRE: string;
-  RHYTHM: string;
-  CREATOR: string;
-  COMPANY: string;
+  ARTIST_TYPE?: ARTIST_TYPE;
+  AUTHOR?: string;
+  GENRE?: string;
+  RHYTHM?: string;
+  CREATOR?: string;
+  COMPANY?: string;
   LANGUAGE: LANGUAGE;
-  YEAR: string;
+  YEAR?: string;
   VOCAL_CHANNEL: VOCAL_CHANNEL;
-  LYRIC_TITLE: string;
+  LYRIC_TITLE?: string;
 }
 
 export const DEFAULT_SONG_INFO: SongInfo = {
@@ -621,9 +621,9 @@ function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {
           xml += "      <WORD>\r\n";
           xml += `        <TIME>${word.tick}</TIME>\r\n`;
           xml += `        <TEXT>${escapeXml(word.text)}</TEXT>\r\n`;
-          xml += `        <VOCAL>${
-            word.vocal ? escapeXml(word.vocal) : "9"
-          }</VOCAL>\r\n`;
+          // xml += `        <VOCAL>${
+          //   word.vocal ? escapeXml(word.vocal) : "9"
+          // }</VOCAL>\r\n`;
           xml += "      </WORD>\r\n";
         });
         xml += "    </LINE>\r\n";
@@ -632,6 +632,8 @@ function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {
     xml += "  </LYRIC>\r\n";
   }
   xml += "</SONG_LYRIC>\r\n";
+
+  console.log(xml);
   return xml;
 }
 

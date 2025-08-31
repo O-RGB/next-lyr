@@ -142,7 +142,9 @@ export class CurBuilder {
 
   public downloadFile(filename: string): void {
     const content = this.getFileContent();
-    const blob = new Blob([content], { type: "application/octet-stream" });
+    const blob = new Blob([content as BlobPart], {
+      type: "application/octet-stream",
+    });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = filename;

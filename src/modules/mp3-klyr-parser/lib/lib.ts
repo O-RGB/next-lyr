@@ -14,13 +14,16 @@ export function buildKLyrXML(
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+
   if (infoData && Object.keys(infoData).length > 0) {
     xml += "  <INFO>\r\n";
     for (const [key, value] of Object.entries(infoData)) {
-      xml += `    <${key}>${escapeXml(value)}</${key}>\r\n`;
+      if (value !== "" && value !== undefined)
+        xml += `    <${key}>${escapeXml(value)}</${key}>\r\n`;
     }
     xml += "  </INFO>\r\n";
   }
+
   if (lyricsData?.length > 0) {
     xml += "  <LYRIC>\r\n";
     lyricsData.forEach((line) => {
@@ -30,9 +33,12 @@ export function buildKLyrXML(
           xml += "      <WORD>\r\n";
           xml += `        <TIME>${word.tick}</TIME>\r\n`;
           xml += `        <TEXT>${escapeXml(word.text)}</TEXT>\r\n`;
-          xml += `        <VOCAL>${
-            word.vocal ? escapeXml(word.vocal) : ""
-          }</VOCAL>\r\n`;
+
+          let vocal = "";
+          if (word.vocal !== "NONE" && word.vocal !== undefined) {
+            vocal = word.vocal;
+          }
+          xml += `        <VOCAL>${escapeXml(vocal)}</VOCAL>\r\n`;
           xml += "      </WORD>\r\n";
         });
         xml += "    </LINE>\r\n";
@@ -41,12 +47,13 @@ export function buildKLyrXML(
     xml += "  </LYRIC>\r\n";
   }
   xml += "</SONG_LYRIC>\r\n";
+  console.log(xml);
   return xml;
 }
 
 export function concat(arrays: Uint8Array[]): Uint8Array {
-  const total = arrays.reduce((sum, arr) => sum + arr.length, 0);
-  const result = new Uint8Array(total);
+  let totalLength = arrays.reduce((acc, val) => acc + val.length, 0);
+  let result = new Uint8Array(totalLength);
   let offset = 0;
   for (const arr of arrays) {
     result.set(arr, offset);

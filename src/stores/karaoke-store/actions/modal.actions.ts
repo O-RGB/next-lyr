@@ -81,6 +81,11 @@ export const createModalActions: StateCreator<
       openEditModal: () => set({ isEditModalOpen: true }),
       closeEditModal: () => set({ isEditModalOpen: false }),
 
+      openAddModal: (lineIndex: number) =>
+        set({ isAddModalOpen: true, lineIndexToInsertAfter: lineIndex }),
+      closeAddModal: () =>
+        set({ isAddModalOpen: false, lineIndexToInsertAfter: null }),
+
       openChordModal: (
         chord?: ChordEvent,
         suggestedTick?: number,

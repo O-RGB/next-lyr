@@ -144,6 +144,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const buildCur = () => {
     if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
+    if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
     const lyrInline: string[] = lyricsData.map((line) =>
       line.map((word) => word.name).join("")
     );

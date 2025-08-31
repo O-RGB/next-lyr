@@ -45,6 +45,8 @@ export interface TimingState {
 
 export interface ModalState {
   isEditModalOpen: boolean;
+  isAddModalOpen: boolean; // Add this
+  lineIndexToInsertAfter: number | null; // Add this
   isChordModalOpen: boolean;
   selectedChord: ChordEvent | null;
   suggestedChordTick: number | null;
@@ -87,6 +89,7 @@ export interface ContentActions {
   importLyrics: (rawText: string) => void;
   deleteLine: (lineIndexToDelete: number) => void;
   updateLine: (lineIndexToUpdate: number, newText: string) => void;
+  insertLineAfter: (lineIndex: number, newText: string) => void; // Add this
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addChord: (chord: ChordEvent) => void;
   updateChord: (oldTick: number, newChord: ChordEvent) => void;
@@ -121,6 +124,8 @@ export interface ModalActions {
   }>;
   openEditModal: () => void;
   closeEditModal: () => void;
+  openAddModal: (lineIndex: number) => void; // Add this
+  closeAddModal: () => void; // Add this
   openChordModal: (
     chord?: ChordEvent,
     suggestedTick?: number,
@@ -174,6 +179,8 @@ export interface KaraokeState {
   isEditModalOpen: boolean;
   lyricsProcessed?: LyricsRangeArray<ISentence>;
   isChordModalOpen: boolean;
+  isAddModalOpen: boolean; // Add this
+  lineIndexToInsertAfter: number | null; // Add this
   selectedChord: ChordEvent | null;
   suggestedChordTick: number | null;
   minChordTickRange: number | null;

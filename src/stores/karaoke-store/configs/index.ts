@@ -34,6 +34,8 @@ export const initialTimingState: TimingState = {
 
 export const initialModalState: ModalState = {
   isEditModalOpen: false,
+  isAddModalOpen: false,
+  lineIndexToInsertAfter: null,
   isChordModalOpen: false,
   selectedChord: null,
   suggestedChordTick: null,

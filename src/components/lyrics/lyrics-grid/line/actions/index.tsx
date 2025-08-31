@@ -11,6 +11,7 @@ import { CiMenuKebab } from "react-icons/ci";
 import { FaEdit } from "react-icons/fa";
 import { FiLogOut, FiPlus, FiTrash2 } from "react-icons/fi";
 import { GoKebabHorizontal } from "react-icons/go";
+import { IoMdAdd } from "react-icons/io";
 
 interface LineActionProps {
   lineIndex: number;
@@ -26,6 +27,14 @@ const LineAction: React.FC<LineActionProps> = React.memo(
       {
         name: "การทำงาน",
         contextMenus: [
+          {
+            type: "add",
+            text: "แทรก",
+            icon: <IoMdAdd />,
+            onClick: () => {
+              actions.openAddModal(lineIndex);
+            },
+          },
           {
             type: "edit",
             text: "แก้ไข",

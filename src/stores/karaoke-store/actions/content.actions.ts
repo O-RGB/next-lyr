@@ -177,6 +177,31 @@ export const createContentActions: StateCreator<
         await get().actions.saveCurrentProject();
       },
 
+      insertLineAfter: async (lineIndex: number, newText: string) => {
+        saveToHistory();
+        const newWords = processRawLyrics(newText);
+        set((state) => {
+          const newLyricsData = [...state.lyricsData];
+          newLyricsData.splice(lineIndex + 1, 0, newWords);
+
+          let globalWordIndex = 0;
+          const finalLyricsData = newLyricsData.map((line, newLineIndex) =>
+            line.map((word) => ({
+              ...word,
+              lineIndex: newLineIndex,
+              index: globalWordIndex++,
+            }))
+          );
+
+          return {
+            lyricsData: finalLyricsData,
+          };
+        });
+
+        get().actions.processLyricsForPlayer();
+        await get().actions.saveCurrentProject();
+      },
+
       updateWord: async (
         index: number,
         newWordData: Partial<LyricWordData>

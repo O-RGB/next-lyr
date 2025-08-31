@@ -20,7 +20,7 @@ export interface MiscTags {
 export interface IParsedMp3Data {
   title: string;
   artist: string;
-  album: string;
+  album?: string;
   info: SongInfo;
   lyrics: LyricEvent[][];
   chords: ChordEvent[];
