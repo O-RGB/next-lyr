@@ -1,11 +1,6 @@
 import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
 import { LyricWordData } from "@/types/common.type";
 
-/**
- * Groups a flat array of LyricWordData into a nested array based on lineIndex.
- * @param words The flat array of LyricWordData.
- * @returns A nested array of LyricWordData, where each inner array represents a line.
- */
 export function groupLyricsByLine(words: LyricWordData[]): LyricWordData[][] {
   const groupedLyrics: LyricWordData[][] = [];
   for (const word of words) {
@@ -16,6 +11,7 @@ export function groupLyricsByLine(words: LyricWordData[]): LyricWordData[][] {
   }
   return groupedLyrics;
 }
+
 export function groupWordDataToEvents(
   words: LyricWordData[],
   tickConverter?: (tick: number) => number

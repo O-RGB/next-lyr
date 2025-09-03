@@ -188,6 +188,6 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
     value: result.lyricsTagKey,
     enumerable: false,
   });
-
+  
   return { parsedData: result, audioData };
 }

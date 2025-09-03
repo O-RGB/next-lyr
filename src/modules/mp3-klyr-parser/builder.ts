@@ -1,10 +1,23 @@
+import { LyricEvent, SongInfo } from "@/modules/midi-klyr-parser/lib/processor";
+import pako from "pako";
+import { IParsedMp3Data } from "./type";
 import {
   buildKLyrXML,
   concat,
   encodeLyricsBase64,
   stringToTIS620,
 } from "./lib/lib";
-import { IParsedMp3Data } from "./type";
+
+function stripID3v2(audio: ArrayBuffer): Uint8Array {
+  const bytes = new Uint8Array(audio);
+  if (bytes[0] === 73 && bytes[1] === 68 && bytes[2] === 51) {
+    // 'ID3'
+    const size =
+      (bytes[6] << 21) | (bytes[7] << 14) | (bytes[8] << 7) | bytes[9];
+    return bytes.slice(10 + size);
+  }
+  return bytes;
+}
 
 function createTextFrame(
   frameID: string,
@@ -13,9 +26,7 @@ function createTextFrame(
 ): Uint8Array {
   const encoder = new TextEncoder();
 
-  const textBytes = useTIS620
-    ? concat([stringToTIS620(text), new Uint8Array([0])])
-    : concat([encoder.encode(text), new Uint8Array([0])]);
+  const textBytes = useTIS620 ? stringToTIS620(text) : encoder.encode(text);
   const frameData = new Uint8Array(1 + textBytes.length);
   frameData[0] = 0x00;
   frameData.set(textBytes, 1);
@@ -110,7 +121,7 @@ function buildID3v2(tags: {
   const id3Header = new Uint8Array(10);
   const encoder = new TextEncoder();
   id3Header.set(encoder.encode("ID3"), 0);
-  id3Header[3] = 4;
+  id3Header[3] = 3; // Changed to ID3v2.3
   id3Header[4] = 0;
   id3Header[5] = 0;
   id3Header.set(toSynchsafe(framesBuffer.length), 6);
@@ -147,5 +158,6 @@ export function buildMp3(
   }
 
   const id3Buffer = buildID3v2(newTags);
-  return concat([id3Buffer, new Uint8Array(audioData)]).buffer as ArrayBuffer;
+  const rawAudio = stripID3v2(audioData);
+  return concat([id3Buffer, rawAudio]).buffer as ArrayBuffer;
 }

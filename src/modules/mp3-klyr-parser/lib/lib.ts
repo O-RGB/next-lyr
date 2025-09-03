@@ -66,7 +66,20 @@ export function encodeLyricsBase64(
   xmlText: string,
   header = "LyrHdr1"
 ): string {
-  const xmlBytes = stringToTIS620(xmlText);
+  let xmlBytes: Uint8Array;
+  let useTIS = true;
+  for (let i = 0; i < xmlText.length; i++) {
+    const char = xmlText.charCodeAt(i);
+    if (char > 127 && (char < 0x0e01 || char > 0x0e5b)) {
+      useTIS = false;
+      break;
+    }
+  }
+  if (useTIS) {
+    xmlBytes = stringToTIS620(xmlText);
+  } else {
+    xmlBytes = new TextEncoder().encode(xmlText); // UTF-8 fallback
+  }
   const compressed = pako.deflate(xmlBytes, { level: 6 });
   return header + arrayBufferToBase64(compressed);
 }
@@ -87,13 +100,6 @@ export function stringToTIS620(str: string): Uint8Array {
 }
 
 // READ
-
-// export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-//   let clean = base64.replace(/^LyrHdr\d*/, "").replace(/[\r\n\s]+/g, "");
-//   while (clean.length % 4 !== 0) clean += "=";
-//   return Buffer.from(clean, "base64");
-// }
-
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
   let clean = base64.replace(/^LyrHdr\d*/, "").replace(/[\r\n\s]+/g, "");
   while (clean.length % 4 !== 0) clean += "=";
