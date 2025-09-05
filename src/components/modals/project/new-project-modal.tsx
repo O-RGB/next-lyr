@@ -15,7 +15,7 @@ import {
 } from "@/modules/midi-klyr-parser/lib/processor";
 import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
-import { groupLyricsByLine } from "@/lib/karaoke/lyrics/lyrics-convert";
+import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 
 interface NewProjectModalProps {
   open: boolean;

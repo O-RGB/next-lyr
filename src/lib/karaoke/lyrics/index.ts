@@ -1,15 +1,9 @@
+import { ILyricsBuilder } from "@/lib/utils/arrayrange";
 import iconv from "iconv-lite";
 
 export function encodeCP874(str: string): Uint8Array {
   const buf = iconv.encode(str, "cp874");
   return new Uint8Array(buf);
-}
-
-export interface ILyricsBuilder {
-  name: string;
-  artist: string;
-  key: string;
-  lyrics: string[];
 }
 
 export class LyrBuilder {

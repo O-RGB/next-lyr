@@ -7,7 +7,7 @@ import { MusicMode, IMidiInfo } from "@/types/common.type";
 import { convertParsedDataForImport, createStoredFileFromFile } from "../utils";
 import { initialPlayerState, resetStateForNewFile } from "../configs";
 import { KaraokeState, FileActions } from "../types";
-import { groupLyricsByLine } from "@/lib/karaoke/lyrics/lyrics-convert";
+import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 
 export const createFileActions: StateCreator<
   KaraokeState,

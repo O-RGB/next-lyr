@@ -1,4 +1,4 @@
-import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
+import { LyricEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
 
 export function groupLyricsByLine(words: LyricWordData[]): LyricWordData[][] {
@@ -26,7 +26,7 @@ export function groupWordDataToEvents(
       : word.start ?? 0;
     groupedEvents[word.lineIndex].push({
       text: word.name,
-      tick: Math.floor(tick),
+      tick: Math.round(tick),
     });
   }
 

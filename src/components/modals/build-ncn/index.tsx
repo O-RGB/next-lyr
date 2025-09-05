@@ -1,20 +1,20 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ModalCommon from "../../common/modal";
-import { LyrBuilder } from "@/lib/karaoke/lyrics/generator";
-import { TickLyricSegmentGenerator } from "@/lib/karaoke/cur-generator";
-import { useKaraokeStore } from "@/stores/karaoke-store";
 import ButtonCommon from "@/components/common/button";
-import { MdOutlineFileDownload } from "react-icons/md";
 import Donate from "../donate/donate";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
+import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
+import { DEFAULT_PRE_ROLL_OFFSET } from "@/stores/karaoke-store/configs";
+import { LyrBuilder } from "@/lib/karaoke/lyrics";
+import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
+import { MdOutlineFileDownload } from "react-icons/md";
 import {
   buildModifiedMidi,
   ChordEvent,
+  LyricEvent,
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
-import { LyricEvent } from "@/modules/midi-klyr-parser/klyr-parser-lib";
-import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
-import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/lyrics-convert";
-import { DEFAULT_PRE_ROLL_OFFSET } from "@/stores/karaoke-store/configs";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -82,16 +82,28 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!metadata || !midiInfo) return;
     try {
       const flatLyrics = lyricsData.flat();
-      const generator = new TickLyricSegmentGenerator(
-        midiInfo.bpm,
-        midiInfo.ppq
-      );
 
-      let newLyricsData: LyricEvent[][] =
-        generator.convertLyricsWordToCursor(flatLyrics);
+      const offsetTicks =
+        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
+
+      let newLyricsData: LyricEvent[][] = groupWordDataToEvents(
+        flatLyrics,
+        (tick) => tickToCursor(tick + offsetTicks, midiInfo.ppq)
+      );
 
       const newSongInfo: SongInfo = metadata;
       const newChordsData: ChordEvent[] = chordsData;
+
+      newSongInfo.TIME_FORMAT = newSongInfo.TIME_FORMAT
+        ? newSongInfo.TIME_FORMAT
+        : "MIDI_TIME_24";
+
+      if (newLyricsData.length > 3) {
+        newSongInfo.LYRIC_TITLE = newLyricsData
+          .map((line) => line.map((w) => w.text))
+          .slice(0, 3)
+          .join(" ");
+      }
 
       const newMidiBuffer = buildModifiedMidi({
         originalMidiData: midiInfo.raw.midiData,
@@ -119,30 +131,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildLyr = () => {
-    const flatLyrics = lyricsData.flat();
-    const timedWords = flatLyrics.filter(
-      (w) => w.start !== null && w.end !== null
-    );
-
-    let timestamps: number[] = [];
-
-    if (mode === "midi" && midiInfo) {
-      const generator = new TickLyricSegmentGenerator(
-        midiInfo.bpm,
-        midiInfo.ppq
-      );
-      timestamps = generator.generateSegment(timedWords);
-
-      if (timestamps.length === 0) {
-        alert("ยังไม่มี Timestamps");
-        return;
-      }
-      generator.export();
-      generator.downloadFile(`${midiInfo?.fileName.split(".")[0]}.cur`);
-    }
-  };
-
-  const buildCur = () => {
     if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
     if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
@@ -159,6 +147,27 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
     lyr.getFileContent();
     lyr.downloadFile(`${midiInfo?.fileName.split(".")[0]}.lyr`);
+  };
+
+  const buildCur = () => {
+    if (mode === "midi" && midiInfo) {
+      const flatLyrics = lyricsData.flat();
+      const offsetTicks =
+        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
+      const generator = new TickLyricSegmentGenerator(
+        midiInfo.bpm,
+        midiInfo.ppq
+      );
+
+      const timestamps = generator.generateSegment(flatLyrics, offsetTicks);
+
+      if (timestamps.length === 0) {
+        alert("ยังไม่มี Timestamps");
+        return;
+      }
+      generator.export();
+      generator.downloadFile(`${midiInfo?.fileName.split(".")[0]}.cur`);
+    }
   };
 
   useEffect(() => {

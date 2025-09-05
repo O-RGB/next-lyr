@@ -1,12 +1,10 @@
 import { MID_FILE_TYPE, CUR_FILE_TYPE, LYR_FILE_TYPE } from "@/configs/value";
 
-
 export const readLyricsFile = async (file: File) => {
   const arrayBuffer = await file.arrayBuffer();
   const decoder = new TextDecoder("windows-874");
   const contentUtf8 = decoder.decode(arrayBuffer);
-  var lines = contentUtf8.split("\r\n"); // หรือ '\r\n' ตามที่เหมาะสม
-  // lines = lines.map((data) => data.trim());
+  var lines = contentUtf8.split("\r\n");
   return lines;
 };
 export const readCursorFile = async (file: File) => {

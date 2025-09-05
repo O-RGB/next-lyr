@@ -5,8 +5,7 @@ import {
   ParseResult,
   SongInfo,
 } from "@/modules/midi-klyr-parser/lib/processor";
-import { LyricsRangeArray } from "@/lib/karaoke/lyrics/lyrics-mapping";
-import { ISentence } from "@/lib/karaoke/lyrics/types";
+import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
 
 export type HistoryState = Pick<
   KaraokeState,
@@ -177,7 +176,7 @@ export interface KaraokeState {
 
   // ModalState
   isEditModalOpen: boolean;
-  lyricsProcessed?: LyricsRangeArray<ISentence>;
+  lyricsProcessed?: ArrayRange<ISentence>;
   isChordModalOpen: boolean;
   isAddModalOpen: boolean; // Add this
   lineIndexToInsertAfter: number | null; // Add this

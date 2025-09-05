@@ -1,13 +1,9 @@
+import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
 import {
-  convertCursorToTick,
-  processRawLyrics,
-} from "../../../lib/karaoke/utils";
-import { ISentence } from "../../../lib/karaoke/lyrics/types";
-import { LyricsRangeArray } from "../../../lib/karaoke/lyrics/lyrics-mapping";
-import {
+  cursorToTick,
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
-} from "../../../lib/karaoke/cur-generator";
+} from "../../../lib/karaoke/cursor";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
 import { DEFAULT_PRE_ROLL_OFFSET, DEFAULT_CHORD_DURATION } from "../configs";
@@ -37,7 +33,7 @@ export const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode | null,
   midiInfo: IMidiInfo | null
-): LyricsRangeArray<ISentence> | undefined => {
+): ArrayRange<ISentence> | undefined => {
   const timedWords = lyricsData.filter(
     (w) => w.start !== null && w.end !== null
   );
@@ -58,7 +54,7 @@ export const processLyricsForPlayer = (
     lyrInline[data.lineIndex] += data.name;
   });
 
-  const arrayRange = new LyricsRangeArray<ISentence>();
+  const arrayRange = new ArrayRange<ISentence>();
   let cursorIndex = 0;
 
   lyrInline
@@ -80,7 +76,7 @@ export const processLyricsForPlayer = (
       return value;
     })
     .filter((x) => x !== undefined);
-
+  console.log(arrayRange);
   return arrayRange;
 };
 
@@ -116,7 +112,8 @@ export const getPreRollTime = (
 export const convertParsedDataForImport = (
   data: any,
   isMidi: boolean,
-  songPpq: number = 480
+  songPpq: number = 480,
+  bpm: number = 120
 ) => {
   if (!data.lyrics || data.lyrics.length === 0) {
     return {
@@ -138,11 +135,17 @@ export const convertParsedDataForImport = (
     .flat()
     .sort((a: any, b: any) => a.tick - b.tick);
 
+  const offsetTicks = isMidi
+    ? (DEFAULT_PRE_ROLL_OFFSET * songPpq * bpm) / 60
+    : DEFAULT_PRE_ROLL_OFFSET;
+
   data.lyrics.forEach((line: any[], lineIndex: number) => {
     line.forEach((wordEvent: any) => {
-      const convertedTick = isMidi
-        ? convertCursorToTick(wordEvent.tick, songPpq)
-        : wordEvent.tick / 1000 - DEFAULT_PRE_ROLL_OFFSET;
+      const baseTick = isMidi
+        ? cursorToTick(wordEvent.tick, songPpq)
+        : wordEvent.tick / 1000;
+
+      const convertedTick = Math.max(0, baseTick - offsetTicks);
 
       const currentFlatIndex = flatLyrics.findIndex(
         (e: any) => e.tick === wordEvent.tick && e.text === wordEvent.text
@@ -151,13 +154,13 @@ export const convertParsedDataForImport = (
 
       let endTime: number;
       if (nextEvent) {
-        endTime = isMidi
-          ? convertCursorToTick(nextEvent.tick, songPpq)
-          : nextEvent.tick / 1000 - DEFAULT_PRE_ROLL_OFFSET;
+        const nextBaseTick = isMidi
+          ? cursorToTick(nextEvent.tick, songPpq)
+          : nextEvent.tick / 1000;
+        endTime = Math.max(0, nextBaseTick - offsetTicks);
       } else {
-        endTime = isMidi
-          ? convertedTick + songPpq
-          : convertedTick + DEFAULT_CHORD_DURATION;
+        const duration = isMidi ? songPpq : DEFAULT_CHORD_DURATION;
+        endTime = convertedTick + duration;
       }
 
       finalWords.push({

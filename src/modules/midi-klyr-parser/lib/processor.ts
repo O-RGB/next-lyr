@@ -621,9 +621,13 @@ function _buildKLyrXML(infoData: SongInfo, lyricsData: LyricEvent[][]): string {
           xml += "      <WORD>\r\n";
           xml += `        <TIME>${word.tick}</TIME>\r\n`;
           xml += `        <TEXT>${escapeXml(word.text)}</TEXT>\r\n`;
-          // xml += `        <VOCAL>${
-          //   word.vocal ? escapeXml(word.vocal) : "9"
-          // }</VOCAL>\r\n`;
+          if (word.vocal === "9" || word.vocal === "NONE") {
+            xml += `        <VOCAL></VOCAL>\r\n`;
+          } else {
+            xml += `        <VOCAL>${
+              word.vocal ? escapeXml(word.vocal) : ""
+            }</VOCAL>\r\n`;
+          }
           xml += "      </WORD>\r\n";
         });
         xml += "    </LINE>\r\n";

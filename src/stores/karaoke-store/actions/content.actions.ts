@@ -1,15 +1,11 @@
 import { StateCreator } from "zustand";
-import { processRawLyrics } from "../../../lib/karaoke/utils";
-import {
-  DEFAULT_SONG_INFO,
-  SongInfo,
-  ChordEvent,
-} from "../../../modules/midi-klyr-parser/lib/processor";
+import { KaraokeState, ContentActions, HistoryState } from "../types";
+import { SongInfo, ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
+import { processRawLyrics } from "@/lib/karaoke/utils";
+import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { processLyricsForPlayer } from "../utils";
-import { KaraokeState, ContentActions } from "../types";
-import { initialTimingState, initialModalState } from "../configs";
-import { groupLyricsByLine } from "@/lib/karaoke/lyrics/lyrics-convert";
+import { MAX_HISTORY_SIZE } from "../configs";
 
 export const createContentActions: StateCreator<
   KaraokeState,
@@ -17,9 +13,9 @@ export const createContentActions: StateCreator<
   [],
   { actions: ContentActions }
 > = (set, get) => {
-  const saveToHistory = () => {
+  const saveToHistoryAndDB = async () => {
     const state = get();
-    const currentHistoryState = {
+    const currentHistoryState: HistoryState = {
       lyricsData: state.lyricsData,
       chordsData: state.chordsData,
       metadata: state.metadata,
@@ -27,7 +23,6 @@ export const createContentActions: StateCreator<
 
     set((prevState) => {
       const newPast = [...prevState.history.past, currentHistoryState];
-      const MAX_HISTORY_SIZE = 50;
       if (newPast.length > MAX_HISTORY_SIZE) {
         newPast.shift();
       }
@@ -38,82 +33,145 @@ export const createContentActions: StateCreator<
         },
       };
     });
+
+    await get().actions.saveCurrentProject();
   };
 
   return {
     actions: {
       setMetadata: async (metadata: Partial<SongInfo>) => {
-        saveToHistory();
+        await saveToHistoryAndDB();
         set((state) => ({
-          metadata: { ...DEFAULT_SONG_INFO, ...state.metadata, ...metadata },
+          metadata: { ...(state.metadata as SongInfo), ...metadata },
         }));
         await get().actions.saveCurrentProject();
       },
-
-      processLyricsForPlayer: () => {
-        const { lyricsData, mode, playerState } = get();
-        const processed = processLyricsForPlayer(
-          lyricsData.flat(),
-          mode,
-          playerState.midiInfo
-        );
-        set({ lyricsProcessed: processed });
-      },
-
       importLyrics: async (rawText: string) => {
-        if (!rawText) return;
-
-        saveToHistory();
-        const flatLyrics = processRawLyrics(rawText);
-
-        const groupedLyrics = groupLyricsByLine(flatLyrics);
-
+        await saveToHistoryAndDB();
+        const words = processRawLyrics(rawText);
         set({
-          lyricsData: groupedLyrics,
-          ...initialTimingState,
+          lyricsData: groupLyricsByLine(words),
+          currentIndex: 0,
+          selectedLineIndex: 0,
         });
         get().actions.processLyricsForPlayer();
-
-        await get().actions.saveCurrentProject();
       },
+      deleteLine: async (lineIndexToDelete: number) => {
+        await saveToHistoryAndDB();
+        set((state) => {
+          const newLyricsData = state.lyricsData.filter(
+            (_, index) => index !== lineIndexToDelete
+          );
+          // Re-index everything after the deleted line
+          const flatLyrics = newLyricsData
+            .map((line, newLineIndex) =>
+              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
+            )
+            .flat();
 
-      addChord: async (newChord: ChordEvent) => {
-        saveToHistory();
+          // Re-calculate global index
+          let globalIndex = 0;
+          flatLyrics.forEach((word) => (word.index = globalIndex++));
+
+          return { lyricsData: groupLyricsByLine(flatLyrics) };
+        });
+        get().actions.processLyricsForPlayer();
+      },
+      updateLine: async (lineIndexToUpdate: number, newText: string) => {
+        await saveToHistoryAndDB();
+        set((state) => {
+          const newLyricsData = [...state.lyricsData];
+          const wordsInLine = newText.split("|");
+          const firstWordOfLine = state.lyricsData[lineIndexToUpdate]?.[0];
+
+          if (!firstWordOfLine) return {};
+
+          const newWords: LyricWordData[] = wordsInLine.map(
+            (wordText, wordIndex) => ({
+              name: wordText,
+              start: null,
+              end: null,
+              length: 0,
+              index: firstWordOfLine.index + wordIndex,
+              lineIndex: lineIndexToUpdate,
+            })
+          );
+
+          newLyricsData[lineIndexToUpdate] = newWords;
+
+          // Re-index all subsequent words
+          let currentGlobalIndex = firstWordOfLine.index + newWords.length;
+          for (let i = lineIndexToUpdate + 1; i < newLyricsData.length; i++) {
+            for (let j = 0; j < newLyricsData[i].length; j++) {
+              newLyricsData[i][j].index = currentGlobalIndex++;
+            }
+          }
+
+          return { lyricsData: newLyricsData };
+        });
+        get().actions.processLyricsForPlayer();
+      },
+      insertLineAfter: async (lineIndex: number, newText: string) => {
+        await saveToHistoryAndDB();
+        set((state) => {
+          const newLyricsData = [...state.lyricsData];
+          const newWords = processRawLyrics(newText).map((w) => ({
+            ...w,
+            lineIndex: lineIndex + 1,
+          }));
+          newLyricsData.splice(lineIndex + 1, 0, newWords);
+
+          // Re-index everything from the inserted line onwards
+          let globalIndex = 0;
+          const reIndexedFlat = newLyricsData
+            .map((line, newLineIndex) =>
+              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
+            )
+            .flat();
+
+          reIndexedFlat.forEach((word) => (word.index = globalIndex++));
+          return { lyricsData: groupLyricsByLine(reIndexedFlat) };
+        });
+        get().actions.processLyricsForPlayer();
+      },
+      updateWord: async (
+        index: number,
+        newWordData: Partial<LyricWordData>
+      ) => {
+        await saveToHistoryAndDB();
         set((state) => ({
-          chordsData: [...state.chordsData, newChord].sort(
+          lyricsData: state.lyricsData.map((line) =>
+            line.map((word) =>
+              word.index === index ? { ...word, ...newWordData } : word
+            )
+          ),
+        }));
+        get().actions.processLyricsForPlayer();
+      },
+      addChord: async (chord: ChordEvent) => {
+        await saveToHistoryAndDB();
+        set((state) => ({
+          chordsData: [...state.chordsData, chord].sort(
             (a, b) => a.tick - b.tick
           ),
-          ...initialModalState,
         }));
-        await get().actions.saveCurrentProject();
       },
-
-      updateChord: async (oldTick: number, updatedChord: ChordEvent) => {
-        saveToHistory();
+      updateChord: async (oldTick: number, newChord: ChordEvent) => {
+        await saveToHistoryAndDB();
         set((state) => ({
           chordsData: state.chordsData
-            .map((chord) =>
-              chord.tick === oldTick ? { ...updatedChord } : chord
-            )
+            .map((c) => (c.tick === oldTick ? newChord : c))
             .sort((a, b) => a.tick - b.tick),
-          ...initialModalState,
         }));
-        await get().actions.saveCurrentProject();
       },
-
       deleteChord: async (tickToDelete: number) => {
-        saveToHistory();
+        await saveToHistoryAndDB();
         set((state) => ({
-          chordsData: state.chordsData.filter(
-            (chord) => chord.tick !== tickToDelete
-          ),
-          ...initialModalState,
+          chordsData: state.chordsData.filter((c) => c.tick !== tickToDelete),
         }));
-        await get().actions.saveCurrentProject();
       },
-
       updateWordTiming: async (index: number, start: number, end: number) => {
-        saveToHistory();
+        await saveToHistoryAndDB();
         set((state) => ({
           lyricsData: state.lyricsData.map((line) =>
             line.map((word) =>
@@ -124,99 +182,15 @@ export const createContentActions: StateCreator<
           ),
         }));
         get().actions.processLyricsForPlayer();
-        await get().actions.saveCurrentProject();
       },
-
-      deleteLine: async (lineIndexToDelete: number) => {
-        saveToHistory();
-        set((state) => {
-          const newLyricsData = state.lyricsData
-            .filter((_, index) => index !== lineIndexToDelete)
-            .map((line, newLineIndex) =>
-              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
-            );
-
-          let globalWordIndex = 0;
-          const finalLyricsData = newLyricsData.map((line) =>
-            line.map((word) => ({ ...word, index: globalWordIndex++ }))
-          );
-
-          return { lyricsData: finalLyricsData, selectedLineIndex: null };
-        });
-
-        get().actions.processLyricsForPlayer();
-        await get().actions.saveCurrentProject();
-      },
-
-      updateLine: async (lineIndexToUpdate: number, newText: string) => {
-        saveToHistory();
-        const newWordsForLine = processRawLyrics(newText).map((word) => ({
-          ...word,
-          lineIndex: lineIndexToUpdate,
-        }));
-
-        set((state) => {
-          const newLyricsData = [...state.lyricsData];
-          newLyricsData[lineIndexToUpdate] = newWordsForLine;
-
-          let globalWordIndex = 0;
-          const finalLyricsData = newLyricsData.map((line) =>
-            line.map((word) => ({
-              ...word,
-              index: globalWordIndex++,
-            }))
-          );
-
-          return {
-            lyricsData: finalLyricsData,
-            isEditModalOpen: false,
-          };
-        });
-
-        get().actions.processLyricsForPlayer();
-        await get().actions.saveCurrentProject();
-      },
-
-      insertLineAfter: async (lineIndex: number, newText: string) => {
-        saveToHistory();
-        const newWords = processRawLyrics(newText);
-        set((state) => {
-          const newLyricsData = [...state.lyricsData];
-          newLyricsData.splice(lineIndex + 1, 0, newWords);
-
-          let globalWordIndex = 0;
-          const finalLyricsData = newLyricsData.map((line, newLineIndex) =>
-            line.map((word) => ({
-              ...word,
-              lineIndex: newLineIndex,
-              index: globalWordIndex++,
-            }))
-          );
-
-          return {
-            lyricsData: finalLyricsData,
-          };
-        });
-
-        get().actions.processLyricsForPlayer();
-        await get().actions.saveCurrentProject();
-      },
-
-      updateWord: async (
-        index: number,
-        newWordData: Partial<LyricWordData>
-      ) => {
-        saveToHistory();
-        set((state) => ({
-          lyricsData: state.lyricsData.map((line) =>
-            line.map((word) =>
-              word.index === index ? { ...word, ...newWordData } : word
-            )
-          ),
-        }));
-
-        get().actions.processLyricsForPlayer();
-        await get().actions.saveCurrentProject();
+      processLyricsForPlayer: () => {
+        const { lyricsData, mode, playerState } = get();
+        const processed = processLyricsForPlayer(
+          lyricsData.flat(),
+          mode,
+          playerState.midiInfo
+        );
+        set({ lyricsProcessed: processed });
       },
     },
   };

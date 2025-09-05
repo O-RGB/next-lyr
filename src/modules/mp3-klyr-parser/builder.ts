@@ -1,5 +1,3 @@
-import { LyricEvent, SongInfo } from "@/modules/midi-klyr-parser/lib/processor";
-import pako from "pako";
 import { IParsedMp3Data } from "./type";
 import {
   buildKLyrXML,
