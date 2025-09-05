@@ -3,18 +3,14 @@ import ModalCommon from "../../common/modal";
 import ButtonCommon from "@/components/common/button";
 import Donate from "../donate/donate";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { buildMp3 } from "@/modules/mp3-klyr-parser/builder";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
 import { DEFAULT_PRE_ROLL_OFFSET } from "@/stores/karaoke-store/configs";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
 import { MdOutlineFileDownload } from "react-icons/md";
-import {
-  buildModifiedMidi,
-  ChordEvent,
-  LyricEvent,
-  SongInfo,
-} from "@/modules/midi-klyr-parser/lib/processor";
+import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
+import { LyricEvent, SongInfo, ChordEvent, IMidiParseResult } from "@/lib/karaoke/midi/types";
+import { buildMp3 } from "@/lib/karaoke/mp3/builder";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -81,6 +77,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const handleSaveMidi = () => {
     if (!metadata || !midiInfo) return;
     try {
+
+      let midInfo  = midiInfo
       const flatLyrics = lyricsData.flat();
 
       const offsetTicks =
@@ -152,12 +150,12 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const buildCur = () => {
     if (mode === "midi" && midiInfo) {
       const flatLyrics = lyricsData.flat();
-      const offsetTicks =
-        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
       const generator = new TickLyricSegmentGenerator(
         midiInfo.bpm,
         midiInfo.ppq
       );
+      const offsetTicks =
+        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
 
       const timestamps = generator.generateSegment(flatLyrics, offsetTicks);
 

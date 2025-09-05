@@ -2,20 +2,20 @@ import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
 import InputCommon from "../common/data-input/input";
-import {
-  artistTypeOption,
-  keyOption,
-  languageOption,
-  SongInfo,
-  vocalChannelOption,
-  KEY,
-  ARTIST_TYPE,
-  LANGUAGE,
-  VOCAL_CHANNEL,
-} from "@/modules/midi-klyr-parser/lib/processor";
 import { useEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
+import {
+  ARTIST_TYPE,
+  artistTypeOption,
+  KEY,
+  keyOption,
+  LANGUAGE,
+  languageOption,
+  SongInfo,
+  VOCAL_CHANNEL,
+  vocalChannelOption,
+} from "@/lib/karaoke/midi/types";
 
 type Props = {
   adding?: boolean;

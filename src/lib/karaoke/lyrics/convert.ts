@@ -1,5 +1,5 @@
-import { LyricEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
+import { LyricEvent } from "../midi/types";
 
 export function groupLyricsByLine(words: LyricWordData[]): LyricWordData[][] {
   const groupedLyrics: LyricWordData[][] = [];

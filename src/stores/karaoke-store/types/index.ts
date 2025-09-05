@@ -1,11 +1,9 @@
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 import { Project, ProjectData, StoredFile } from "@/lib/database/db";
-import {
-  ChordEvent,
-  ParseResult,
-  SongInfo,
-} from "@/modules/midi-klyr-parser/lib/processor";
+
 import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
+import { ChordEvent, SongInfo } from "@/lib/karaoke/midi/types";
+import { ParsedSongData } from "@/lib/karaoke/shared/types";
 
 export type HistoryState = Pick<
   KaraokeState,
@@ -70,13 +68,13 @@ export interface FileActions {
   initializeMode: (mode: MusicMode) => void;
   loadMidiFile: (
     info: IMidiInfo,
-    parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+    parsedData: ParsedSongData,
     file: File
   ) => void;
   loadAudioFile: (
     src: string,
     file: File,
-    parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+    parsedData: ParsedSongData,
     duration: number
   ) => void;
   loadVideoFile: (src: string, file: File, duration: number) => void;

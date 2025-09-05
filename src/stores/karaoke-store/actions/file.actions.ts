@@ -1,13 +1,12 @@
 import { StateCreator } from "zustand";
-import {
-  DEFAULT_SONG_INFO,
-  ParseResult,
-} from "../../../modules/midi-klyr-parser/lib/processor";
+
 import { MusicMode, IMidiInfo } from "@/types/common.type";
 import { convertParsedDataForImport, createStoredFileFromFile } from "../utils";
-import { initialPlayerState, resetStateForNewFile } from "../configs";
+import { resetStateForNewFile } from "../configs";
 import { KaraokeState, FileActions } from "../types";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
+import { DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
+import { ParsedSongData } from "@/lib/karaoke/shared/types";
 
 export const createFileActions: StateCreator<
   KaraokeState,
@@ -23,12 +22,15 @@ export const createFileActions: StateCreator<
     }
 
     const isMidi = state.mode === "midi";
-    const songPpq = state.playerState.midiInfo?.ppq ?? 480;
+    const songPpq = state.playerState.midiInfo?.ppq;
+    const songBpm = state.playerState.midiInfo?.bpm;
 
+    if (!songPpq || !songBpm) return;
     const { finalWords, convertedChords } = convertParsedDataForImport(
       data,
       isMidi,
-      songPpq
+      songPpq,
+      songBpm
     );
 
     const groupedLyrics = groupLyricsByLine(finalWords);
@@ -50,7 +52,7 @@ export const createFileActions: StateCreator<
 
       loadMidiFile: async (
         info: IMidiInfo,
-        parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+        parsedData: ParsedSongData,
         file: File
       ) => {
         const storedFile = await createStoredFileFromFile(file);
@@ -81,7 +83,7 @@ export const createFileActions: StateCreator<
       loadAudioFile: async (
         src: string,
         file: File,
-        parsedData: Pick<ParseResult, "lyrics" | "chords" | "info">,
+        parsedData: ParsedSongData,
         duration: number
       ) => {
         const storedFile = await createStoredFileFromFile(file);

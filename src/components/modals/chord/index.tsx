@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import InputCommon from "@/components/common/data-input/input";
@@ -8,6 +7,7 @@ import { FaSave } from "react-icons/fa";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 type Props = {};
 

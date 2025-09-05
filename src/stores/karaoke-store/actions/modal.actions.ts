@@ -1,8 +1,8 @@
 import { StateCreator } from "zustand";
-import { ChordEvent } from "../../../modules/midi-klyr-parser/lib/processor";
 import { getPreRollTime } from "../utils";
 import { MAX_HISTORY_SIZE, initialModalState } from "../configs";
 import { KaraokeState, ModalActions, HistoryState } from "../types";
+import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 export const createModalActions: StateCreator<
   KaraokeState,

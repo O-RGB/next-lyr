@@ -7,6 +7,7 @@ import {
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
 import { DEFAULT_PRE_ROLL_OFFSET, DEFAULT_CHORD_DURATION } from "../configs";
+import { ParsedSongData } from "@/lib/karaoke/shared/types";
 
 export const createStoredFileFromFile = async (
   file: File
@@ -31,7 +32,7 @@ export const createObjectURLFromStoredFile = (
 
 export const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
-  mode: MusicMode | null,
+  mode: MusicMode,
   midiInfo: IMidiInfo | null
 ): ArrayRange<ISentence> | undefined => {
   const timedWords = lyricsData.filter(
@@ -76,7 +77,7 @@ export const processLyricsForPlayer = (
       return value;
     })
     .filter((x) => x !== undefined);
-  console.log(arrayRange);
+
   return arrayRange;
 };
 
@@ -110,37 +111,36 @@ export const getPreRollTime = (
 };
 
 export const convertParsedDataForImport = (
-  data: any,
+  data: ParsedSongData,
   isMidi: boolean,
-  songPpq: number = 480,
-  bpm: number = 120
+  songPpq: number,
+  bpm: number
 ) => {
   if (!data.lyrics || data.lyrics.length === 0) {
     return {
       finalWords: [],
       convertedChords:
         data.chords
-          ?.map((chord: any) => ({
+          ?.map((chord) => ({
             ...chord,
             tick: isMidi ? chord.tick : chord.tick / 1000,
           }))
-          .sort((a: any, b: any) => a.tick - b.tick) || [],
+          .sort((a, b) => a.tick - b.tick) || [],
     };
   }
 
   const finalWords: LyricWordData[] = [];
   let globalWordIndex = 0;
 
-  const flatLyrics = data.lyrics
-    .flat()
-    .sort((a: any, b: any) => a.tick - b.tick);
+  const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
+  // isMidi มีการ Build ออกมาแล้วคลาดเคลื่อนนิดหน่อยต้อง - จาก 0.4 ด้วย 0.35
   const offsetTicks = isMidi
-    ? (DEFAULT_PRE_ROLL_OFFSET * songPpq * bpm) / 60
+    ? ((DEFAULT_PRE_ROLL_OFFSET - 0.35) * songPpq * bpm) / 60
     : DEFAULT_PRE_ROLL_OFFSET;
 
-  data.lyrics.forEach((line: any[], lineIndex: number) => {
-    line.forEach((wordEvent: any) => {
+  data.lyrics.forEach((line, lineIndex: number) => {
+    line.forEach((wordEvent) => {
       const baseTick = isMidi
         ? cursorToTick(wordEvent.tick, songPpq)
         : wordEvent.tick / 1000;
@@ -148,7 +148,7 @@ export const convertParsedDataForImport = (
       const convertedTick = Math.max(0, baseTick - offsetTicks);
 
       const currentFlatIndex = flatLyrics.findIndex(
-        (e: any) => e.tick === wordEvent.tick && e.text === wordEvent.text
+        (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
       );
       const nextEvent = flatLyrics[currentFlatIndex + 1];
 
@@ -176,11 +176,11 @@ export const convertParsedDataForImport = (
 
   const convertedChords =
     data.chords
-      ?.map((chord: any) => ({
+      ?.map((chord) => ({
         ...chord,
         tick: isMidi ? chord.tick : chord.tick / 1000,
       }))
-      .sort((a: any, b: any) => a.tick - b.tick) || [];
+      .sort((a, b) => a.tick - b.tick) || [];
 
   return { finalWords, convertedChords };
 };

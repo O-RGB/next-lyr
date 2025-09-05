@@ -1,4 +1,6 @@
-import { ParseResult } from "@/modules/midi-klyr-parser/lib/processor";
+import { IMidiParseResult } from "@/lib/karaoke/midi/types";
+import { IParsedMp3Data } from "@/lib/karaoke/mp3/type";
+import { ParsedSongData } from "@/lib/karaoke/shared/types";
 
 export interface IOptions {
   value?: string | number | string[] | number[];
@@ -23,12 +25,12 @@ export interface ExportData {
   lyrics: Omit<LyricWordData, "index" | "lineIndex">[];
 }
 
-export interface IMidiInfo {
+export interface IMidiInfo<T = any> {
   fileName: string;
   durationTicks: number;
   ppq: number;
   bpm: number;
-  raw: ParseResult;
+  raw: T;
 }
 
 export type MusicMode = "mp3" | "midi" | "mp4" | "youtube";

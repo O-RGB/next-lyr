@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
-import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import Chord from ".";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 interface ChordItemProps {
   chord: ChordEvent;

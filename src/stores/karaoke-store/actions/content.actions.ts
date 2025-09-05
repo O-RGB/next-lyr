@@ -1,11 +1,11 @@
 import { StateCreator } from "zustand";
 import { KaraokeState, ContentActions, HistoryState } from "../types";
-import { SongInfo, ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
 import { LyricWordData } from "@/types/common.type";
 import { processRawLyrics } from "@/lib/karaoke/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { processLyricsForPlayer } from "../utils";
 import { MAX_HISTORY_SIZE } from "../configs";
+import { ChordEvent, SongInfo } from "@/lib/karaoke/midi/types";
 
 export const createContentActions: StateCreator<
   KaraokeState,
@@ -62,14 +62,13 @@ export const createContentActions: StateCreator<
           const newLyricsData = state.lyricsData.filter(
             (_, index) => index !== lineIndexToDelete
           );
-          // Re-index everything after the deleted line
+
           const flatLyrics = newLyricsData
             .map((line, newLineIndex) =>
               line.map((word) => ({ ...word, lineIndex: newLineIndex }))
             )
             .flat();
 
-          // Re-calculate global index
           let globalIndex = 0;
           flatLyrics.forEach((word) => (word.index = globalIndex++));
 
@@ -99,7 +98,6 @@ export const createContentActions: StateCreator<
 
           newLyricsData[lineIndexToUpdate] = newWords;
 
-          // Re-index all subsequent words
           let currentGlobalIndex = firstWordOfLine.index + newWords.length;
           for (let i = lineIndexToUpdate + 1; i < newLyricsData.length; i++) {
             for (let j = 0; j < newLyricsData[i].length; j++) {
@@ -121,7 +119,6 @@ export const createContentActions: StateCreator<
           }));
           newLyricsData.splice(lineIndex + 1, 0, newWords);
 
-          // Re-index everything from the inserted line onwards
           let globalIndex = 0;
           const reIndexedFlat = newLyricsData
             .map((line, newLineIndex) =>
@@ -185,6 +182,7 @@ export const createContentActions: StateCreator<
       },
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();
+        if (!mode) return;
         const processed = processLyricsForPlayer(
           lyricsData.flat(),
           mode,

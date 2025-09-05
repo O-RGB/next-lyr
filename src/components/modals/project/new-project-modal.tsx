@@ -7,15 +7,12 @@ import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
-import { readMp3 } from "@/modules/mp3-klyr-parser/read";
 import { JsSynthEngine } from "@/modules/js-synth/lib/js-synth-engine";
-import {
-  DEFAULT_SONG_INFO,
-  SongInfo,
-} from "@/modules/midi-klyr-parser/lib/processor";
-import { loadMidiFile } from "@/modules/midi-klyr-parser/lib/processor";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
+import { loadMidiFile } from "@/lib/karaoke/midi/reader";
+import { SongInfo, DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
+import { readMp3 } from "@/lib/karaoke/mp3/read";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -120,17 +117,18 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
                 raw: parsedMidi,
               };
               initialData.playerState.duration = midiInfo.durationTicks;
+              setMetadataTemp(parsedMidi.info);
+              initialData.metadata = parsedMidi.info;
+              const { finalWords: midiWords, convertedChords: midiChords } =
+                convertParsedDataForImport(
+                  parsedMidi,
+                  true,
+                  midiInfo.ppq,
+                  midiInfo.bpm
+                );
+              initialData.lyricsData = groupLyricsByLine(midiWords);
+              initialData.chordsData = midiChords;
             }
-            setMetadataTemp(parsedMidi.info);
-            initialData.metadata = parsedMidi.info;
-            const { finalWords: midiWords, convertedChords: midiChords } =
-              convertParsedDataForImport(
-                parsedMidi,
-                true,
-                parsedMidi.midiData.ticksPerBeat
-              );
-            initialData.lyricsData = groupLyricsByLine(midiWords);
-            initialData.chordsData = midiChords;
             break;
 
           case "mp3":
@@ -143,7 +141,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
               ALBUM: parsedData.album,
             };
             const { finalWords: mp3Words, convertedChords: mp3Chords } =
-              convertParsedDataForImport(parsedData, false);
+              convertParsedDataForImport(parsedData, false, 0, 0);
             initialData.lyricsData = groupLyricsByLine(mp3Words);
             initialData.chordsData = mp3Chords;
             break;

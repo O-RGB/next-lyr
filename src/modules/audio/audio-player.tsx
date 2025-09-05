@@ -6,9 +6,9 @@ import {
   useImperativeHandle,
 } from "react";
 import { useKaraokeStore } from "../../stores/karaoke-store";
-import { readMp3 } from "../mp3-klyr-parser/read";
 import CommonPlayerStyle from "@/components/common/player";
 import { useTimerStore } from "@/hooks/useTimerWorker";
+import { readMp3 } from "@/lib/karaoke/mp3/read";
 
 type Props = {
   src: string | null;

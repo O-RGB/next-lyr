@@ -1,4 +1,4 @@
-import { DEFAULT_SONG_INFO } from "../../../modules/midi-klyr-parser/lib/processor";
+import { DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
 import {
   ChordPanelState,
   KaraokeState,

@@ -1,10 +1,9 @@
-// src/components/lyrics/lyrics-grid/line/chords/chord.tsx
 import React from "react";
+import Tags from "../../../../common/tags";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import Tags from "../../../../common/tags";
-import { ChordEvent } from "@/modules/midi-klyr-parser/lib/processor";
-import { BiMenu } from "react-icons/bi"; // 1. Import ไอคอน
+import { BiMenu } from "react-icons/bi";
+import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 export interface DraggableChordTagProps {
   chord: ChordEvent;
@@ -29,7 +28,6 @@ const DraggableChordTag: React.FC<DraggableChordTagProps> = ({
     top: "-0.65rem",
     transform: CSS.Translate.toString(transform),
     zIndex: isDragging ? 50 : 10,
-    // 2. ลบ touchAction: "none" ออก เพื่อให้เลื่อนหน้าจอได้
   };
 
   return (
@@ -37,14 +35,13 @@ const DraggableChordTag: React.FC<DraggableChordTagProps> = ({
       ref={setNodeRef}
       style={style}
       onClick={onClick}
-      className="flex items-center gap-1" // จัดวางไอคอนกับแท็กให้อยู่ในแถวเดียวกัน
+      className="flex items-center gap-1"
     >
-      {/* 3. สร้าง div ครอบไอคอนเพื่อเป็น "Drag Handle" */}
       <div
         {...listeners}
         {...attributes}
-        className="cursor-grab touch-none p-1" // touch-none ป้องกันการเลื่อนจอเมื่อแตะที่นี่
-        onClick={(e) => e.stopPropagation()} // ป้องกันไม่ให้ event click ทำงานเมื่อเริ่มลาก
+        className="cursor-grab touch-none p-1"
+        onClick={(e) => e.stopPropagation()}
       >
         <BiMenu className="text-gray-500" />
       </div>

@@ -9,7 +9,7 @@ import { JsSynthEngine } from "../lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "../lib/js-synth-player";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/hooks/useTimerWorker";
-import * as LyrEditer from "../../midi-klyr-parser/lib/processor";
+import { loadMidiFile } from "../../../lib/karaoke/midi/reader";
 
 export type MidiPlayerRef = {
   play: () => void;
@@ -33,9 +33,8 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const timerControls = useTimerStore();
 
     const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
-    const { loadMidiFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
-      (state) => state.actions
-    );
+    const { loadMidiFile: importMidiFile, setIsPlaying: setGlobalIsPlaying } =
+      useKaraokeStore((state) => state.actions);
 
     useImperativeHandle(
       ref,
@@ -63,12 +62,12 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const handleFileChange = async (file: File) => {
       if (player) {
         try {
-          const parsedMidi = await LyrEditer.loadMidiFile(file);
+          const parsedMidi = await loadMidiFile(file);
           const midiInfo = await player.loadMidi(file);
           setDuration(midiInfo.durationTicks);
           setFileName(file.name);
 
-          loadMidiFile(
+          importMidiFile(
             {
               fileName: file.name,
               durationTicks: midiInfo.durationTicks,
