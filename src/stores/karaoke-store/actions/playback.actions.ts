@@ -1,6 +1,7 @@
 import { StateCreator } from "zustand";
 import { getPreRollTime } from "../utils";
 import { KaraokeState, PlaybackActions } from "../types";
+import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 
 export const createPlaybackActions: StateCreator<
   KaraokeState,
@@ -11,7 +12,28 @@ export const createPlaybackActions: StateCreator<
   actions: {
     setIsPlaying: (playing: boolean) => set({ isPlaying: playing }),
     setCurrentTime: (time: number) => {
-      set({ currentTime: time });
+      const { playerState, isPlaying, mode } = get();
+      const { duration } = playerState;
+
+      // เพิ่มเงื่อนไข: ถ้าเป็นโหมด midi, กำลังเล่นอยู่, มี duration, และเวลาปัจจุบันเกิน duration
+      if (
+        mode === "midi" &&
+        isPlaying &&
+        duration !== null &&
+        time >= duration
+      ) {
+        // ดึง player controls จากอีก store หนึ่ง
+        const { playerControls } = usePlayerSetupStore.getState();
+        if (playerControls) {
+          // สั่งให้ player หยุด!
+          playerControls.pause();
+        }
+        // ปรับเวลาให้เป็นค่าสูงสุดพอดี ไม่ให้เกิน
+        set({ currentTime: duration });
+      } else {
+        // ถ้าเงื่อนไขไม่ตรง ก็อัปเดตเวลาตามปกติ
+        set({ currentTime: time });
+      }
     },
     setPlaybackIndex: (index: number | null) => set({ playbackIndex: index }),
     setCurrentIndex: (index: number) => set({ currentIndex: index }),

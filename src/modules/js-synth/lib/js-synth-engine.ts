@@ -34,6 +34,7 @@ export class JsSynthEngine {
       const res = await fetch(DEFAULT_SOUND_FONT);
       const arraybuffer = await res.arrayBuffer();
       this.synth?.loadSFont(arraybuffer);
+
       console.info("JsSynthEngine started up successfully.");
     } catch (error) {
       console.error("Error during JsSynthEngine startup:", error);

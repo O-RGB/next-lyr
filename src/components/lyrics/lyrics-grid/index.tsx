@@ -31,12 +31,11 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
     };
   }, [rowVirtualizer, setRowVirtualizer]);
 
-  // ✨ ย้าย Logic การเลื่อนมาไว้ที่นี่
   useEffect(() => {
     if (selectedLineIndex !== null && rowVirtualizer) {
       rowVirtualizer.scrollToIndex(selectedLineIndex, {
         align: "center",
-        behavior: "smooth",
+        // behavior: "smoot",
       });
     }
   }, [selectedLineIndex, rowVirtualizer]);
