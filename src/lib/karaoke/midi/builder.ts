@@ -1,10 +1,10 @@
+import { deflateSync } from "fflate";
 import {
   arrayBufferToBase64,
   buildKLyrXML,
   stringToTIS620,
 } from "../shared/lib";
 import { MidiFile, MidiTrack, MidiEvent, BuildOptions } from "./types";
-import pako from "pako";
 
 function writeVariableLength(value: number): number[] {
   if (value < 0)
@@ -22,7 +22,9 @@ function writeVariableLength(value: number): number[] {
 
 function _encodeKLyrPayload(xml: string): string {
   const xmlBytes = stringToTIS620(xml);
-  const compressed = pako.deflate(xmlBytes, { level: 9 });
+  // const compressed = pako.deflate(xmlBytes, { level: 9 });
+  const compressed = deflateSync(xmlBytes, { level: 9 });
+
   return arrayBufferToBase64(compressed);
 }
 

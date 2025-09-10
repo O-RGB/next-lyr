@@ -1,11 +1,10 @@
-import pako from "pako";
 import {
   arrayBufferToBase64,
   stringToTIS620,
   TIS620ToString,
 } from "../shared/lib";
 import { LyricEvent, SongInfo } from "../midi/types";
-import { decompressSync } from "fflate";
+import { decompressSync, deflateSync } from "fflate";
 
 export function encodeLyricsBase64(
   xmlText: string,
@@ -25,7 +24,7 @@ export function encodeLyricsBase64(
   } else {
     xmlBytes = new TextEncoder().encode(xmlText); // UTF-8 fallback
   }
-  const compressed = pako.deflate(xmlBytes, { level: 6 });
+  const compressed = deflateSync(xmlBytes, { level: 6 });
   return header + arrayBufferToBase64(compressed);
 }
 

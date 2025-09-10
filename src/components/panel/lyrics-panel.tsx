@@ -12,7 +12,6 @@ type Props = {};
 
 export default function LyricsPanel({}: Props) {
   const isMobile = useIsMobile();
-
   const [preview, setPreview] = useState<boolean>(false);
 
   return (

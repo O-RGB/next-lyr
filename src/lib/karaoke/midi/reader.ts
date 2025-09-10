@@ -1,4 +1,3 @@
-import pako from "pako";
 import {
   MidiFile,
   MidiEvent,
@@ -11,6 +10,7 @@ import {
 } from "./types";
 import { base64ToArrayBuffer, TIS620ToString } from "../shared/lib";
 import { tempoToArrayRange } from "../lyrics/tempo-list";
+import { decompressSync } from "fflate";
 
 interface KlyrWord {
   tick: number;
@@ -226,7 +226,8 @@ function _extractDataFromEvents(
           const encodedPayload = match[2].trim();
           try {
             const compressed = base64ToArrayBuffer(encodedPayload);
-            const decompressed = pako.inflate(compressed);
+            const decompressed = decompressSync(new Uint8Array(compressed));
+
             const xmlText = TIS620ToString(decompressed);
             if (typeof window !== "undefined") {
               const parser = new DOMParser();

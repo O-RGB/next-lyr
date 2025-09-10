@@ -29,12 +29,14 @@ export default function ChordEditModal({}: Props) {
       actions.updateChord(selectedChord.tick, chord);
     } else {
       actions.addChord(chord);
+      actions.closeChordModal();
     }
   };
 
   const onDelete = (tick: number) => {
     if (selectedChord) {
       actions.deleteChord(tick);
+      actions.closeChordModal();
     }
   };
 

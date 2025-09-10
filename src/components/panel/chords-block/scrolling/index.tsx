@@ -7,10 +7,12 @@ export const AutoScroller: React.FC<{
   isMobile: boolean;
   playheadPosition: number;
 }> = ({ containerRef, pixelsPerTick, isMobile, playheadPosition }) => {
+  const actions = useKaraokeStore((state) => state.actions);
   const currentTime = useKaraokeStore((state) => state.currentTime);
   const isAutoScrolling = useKaraokeStore(
     (state) => state.isChordPanelAutoScrolling
   );
+
   useLayoutEffect(() => {
     if (!containerRef.current || !isAutoScrolling) return;
 
@@ -21,6 +23,7 @@ export const AutoScroller: React.FC<{
     } else {
       containerRef.current.scrollTop = targetScrollPos;
     }
+    actions.setChordPanelCenterTick(currentTime);
   }, [currentTime, isAutoScrolling, pixelsPerTick, containerRef, isMobile]);
   return null;
 };

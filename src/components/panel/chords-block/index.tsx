@@ -64,14 +64,12 @@ const findChordIndex = (chords: any[], tick: number): number => {
 };
 
 const ChordsBlock: React.FC = () => {
-  const mode = useKaraokeStore((state) => state.mode);
+  const mode = useKaraokeStore((state) => state.mode) ?? "midi";
   const playerState = useKaraokeStore((state) => state.playerState);
   const chordsData = useKaraokeStore((state) => state.chordsData);
   const actions = useKaraokeStore((state) => state.actions);
   const playerControls = usePlayerSetupStore((state) => state.playerControls);
   const isMobile = useIsMobile();
-  const isPlaying = useKaraokeStore((state) => state.isPlaying);
-  const currentTime = useKaraokeStore((state) => state.currentTime);
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
@@ -114,23 +112,8 @@ const ChordsBlock: React.FC = () => {
   }, [isMobile, playheadPosition, pixelsPerUnit, chordsData]);
 
   useEffect(() => {
-    if (!isPlaying) {
-      actions.setChordPanelCenterTick(currentTime);
-    }
-  }, [isPlaying, currentTime, actions]);
-
-  useEffect(() => {
     updateVisibleItems();
   }, [updateVisibleItems, containerSize]);
-
-  // useEffect(() => {
-  //   const bpm = playerState.midi?.bpm ?? 0;
-  //   if (mode === "midi" && bpm > 0) {
-  //     setZoom(Math.max(0.25, Math.min(4, 120 / bpm)));
-  //   } else {
-  //     setZoom(1);
-  //   }
-  // }, [mode, playerState.midi?.bpm]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -150,7 +133,7 @@ const ChordsBlock: React.FC = () => {
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      updateVisibleItems();
+      // updateVisibleItems();
 
       if (useKaraokeStore.getState().isChordPanelAutoScrolling) return;
 
@@ -195,13 +178,12 @@ const ChordsBlock: React.FC = () => {
     [isMobile, interruptAutoScroll]
   );
 
-  const handleAddChordAtPlayhead = useCallback(() => {
-    const {
-      isChordPanelAutoScrolling,
-      chordPanelCenterTick,
-      currentTime,
-      mode,
-    } = useKaraokeStore.getState();
+  const handleAddChordAtPlayhead = () => {
+    const currentTime = playerControls?.getCurrentTime() ?? 0;
+    const isChordPanelAutoScrolling =
+      useKaraokeStore.getState().isChordPanelAutoScrolling;
+    const chordPanelCenterTick =
+      useKaraokeStore.getState().chordPanelCenterTick;
     const tickValue = isChordPanelAutoScrolling
       ? currentTime
       : chordPanelCenterTick;
@@ -212,7 +194,7 @@ const ChordsBlock: React.FC = () => {
     );
 
     actions.openChordModal(undefined, finalTick);
-  }, [actions]);
+  };
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
