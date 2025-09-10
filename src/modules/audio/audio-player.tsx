@@ -7,8 +7,8 @@ import {
 } from "react";
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import CommonPlayerStyle from "@/components/common/player";
-import { useTimerStore } from "@/hooks/useTimerWorker";
 import { readMp3 } from "@/lib/karaoke/mp3/read";
+import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   src: string | null;
@@ -49,10 +49,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
             timerControls.seekTimer(time);
           }
         },
-        getCurrentTime: () => {
-          const time = audioRef.current?.currentTime ?? 0;
-          return time;
-        },
+        getCurrentTime: () => useKaraokeStore.getState().currentTime,
         isPlaying: () => {
           const playing = !!audioRef.current && !audioRef.current.paused;
 
@@ -98,10 +95,11 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
         audio.removeEventListener("ended", handlePause);
         audio.removeEventListener("durationchange", handleDurationChange);
       };
-    }, [setGlobalIsPlaying, timerControls]);
+    }, [setGlobalIsPlaying]);
 
     useEffect(() => {
       timerControls.initWorker();
+      timerControls.updateMode("time");
       return () => timerControls.terminateWorker();
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
@@ -173,13 +171,12 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
           className="hidden"
           preload="auto"
           onLoadedData={() => {
-            onReady?.();
+            setTimeout(() => onReady?.(), 100);
           }}
         />
         <CommonPlayerStyle
           fileName={fileName}
           isPlaying={isPlaying}
-          // onFileChange={onUploadFile}
           onPlayPause={handlePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ModalCommon from "../../common/modal";
 import { FaSave } from "react-icons/fa";
-import { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputCommon from "@/components/common/data-input/input";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
@@ -14,9 +13,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const actions = useKaraokeStore((state) => state.actions);
-  const handleEditLine = usePlayerHandlersStore(
-    (state) => state.handleEditLine
-  );
+  const { handleRetiming } = usePlayerHandlersStore();
 
   const [initialInputText, setInitialInputText] = useState<string>();
 
@@ -29,18 +26,17 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
         .map((w) => w.name)
         .join("|");
       setInitialInputText(lineWord);
+      setInputText(lineWord);
       inputRef.current?.focus();
       inputRef.current?.select();
     }
   }, [open, selectedLineIndex, lyricsData]);
 
   const handleSave = () => {
-    if (!inputText) return;
-    if (inputText.trim()) {
-      if (selectedLineIndex === null) return;
+    if (inputText && inputText.trim() && selectedLineIndex !== null) {
       actions.updateLine(selectedLineIndex, inputText);
       actions.closeEditModal();
-      handleEditLine(selectedLineIndex);
+      handleRetiming(selectedLineIndex, selectedLineIndex);
     }
   };
 
@@ -74,7 +70,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
       okButtonProps={{
         onClick: handleSave,
         children: "Save Changes",
-        icon: <FaSave></FaSave>,
+        icon: <FaSave />,
       }}
     >
       <div className="space-y-4">

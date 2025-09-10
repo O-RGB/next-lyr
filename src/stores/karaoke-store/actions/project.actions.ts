@@ -23,7 +23,7 @@ export const createProjectActions: StateCreator<
 
       const dataToSave: ProjectData = {
         playerState: {
-          midiInfo: playerState.midiInfo,
+          midi: playerState.midi,
           storedFile: playerState.storedFile,
           duration: playerState.duration,
           youtubeId: playerState.youtubeId,
@@ -68,7 +68,6 @@ export const createProjectActions: StateCreator<
         playerState: {
           ...initialPlayerState,
           ...playerState,
-          rawFile,
           audioSrc,
           videoSrc,
         },

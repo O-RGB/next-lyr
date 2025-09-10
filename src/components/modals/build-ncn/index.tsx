@@ -4,12 +4,20 @@ import ButtonCommon from "@/components/common/button";
 import Donate from "../donate/donate";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
-import { DEFAULT_PRE_ROLL_OFFSET } from "@/stores/karaoke-store/configs";
+import {
+  DEFAULT_PRE_ROLL_OFFSET_MIDI,
+  DEFAULT_PRE_ROLL_OFFSET_MP3,
+} from "@/stores/karaoke-store/configs";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
 import { MdOutlineFileDownload } from "react-icons/md";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
-import { LyricEvent, SongInfo, ChordEvent, IMidiParseResult } from "@/lib/karaoke/midi/types";
+import {
+  LyricEvent,
+  SongInfo,
+  ChordEvent,
+  IMidiParseResult,
+} from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
 
 interface BuildNcnModalProps {
@@ -18,9 +26,9 @@ interface BuildNcnModalProps {
 }
 
 const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
-  const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
+  const storedFile = useKaraokeStore((state) => state.playerState.storedFile);
   const chordsData = useKaraokeStore((state) => state.chordsData);
-  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
+  const midiInfo = useKaraokeStore((state) => state.playerState.midi);
   const mode = useKaraokeStore((state) => state.mode);
   const metadata = useKaraokeStore((state) => state.metadata);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
@@ -31,19 +39,26 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     onClose?.();
   };
 
+  const validation = () => {
+    if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
+    if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
+    if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
+  };
+
   const handleSaveMp3 = async () => {
-    if (!metadata || !rawFile) return;
+    validation();
+    if (!metadata || !storedFile) return;
     try {
       const flatLyrics = lyricsData.flat();
 
       const newLyricsData = groupWordDataToEvents(
         flatLyrics,
-        (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET) * 1000
+        (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000
       );
 
       let newChordsData = chordsData.map((x) => ({
         ...x,
-        tick: Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET) * 1000),
+        tick: Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000),
       }));
 
       metadata.TIME_FORMAT = "TIME_MS";
@@ -57,7 +72,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           info: metadata,
           lyrics: newLyricsData,
         },
-        await rawFile.arrayBuffer()
+        storedFile.buffer
       );
       const blob = new Blob([buffer], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
@@ -75,18 +90,19 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const handleSaveMidi = () => {
+    validation();
     if (!metadata || !midiInfo) return;
     try {
-
-      let midInfo  = midiInfo
       const flatLyrics = lyricsData.flat();
-
-      const offsetTicks =
-        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
 
       let newLyricsData: LyricEvent[][] = groupWordDataToEvents(
         flatLyrics,
-        (tick) => tickToCursor(tick + offsetTicks, midiInfo.ppq)
+        (tick) => {
+          const bpm = midiInfo.tempos.search(tick)?.lyrics.value.bpm ?? 120;
+          const offsetTicks =
+            (DEFAULT_PRE_ROLL_OFFSET_MIDI * midiInfo.ticksPerBeat * bpm) / 60;
+          return tickToCursor(tick + offsetTicks, midiInfo.ticksPerBeat);
+        }
       );
 
       const newSongInfo: SongInfo = metadata;
@@ -104,11 +120,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       }
 
       const newMidiBuffer = buildModifiedMidi({
-        originalMidiData: midiInfo.raw.midiData,
+        originalMidiData: { ...midiInfo },
         newSongInfo,
         newLyricsData,
         newChordsData,
-        headerToUse: midiInfo.raw.detectedHeader,
+        headerToUse: midiInfo.lyrHeader,
       });
 
       const blob = new Blob([newMidiBuffer as BlobPart], {
@@ -144,27 +160,28 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     });
 
     lyr.getFileContent();
-    lyr.downloadFile(`${midiInfo?.fileName.split(".")[0]}.lyr`);
+    lyr.downloadFile(`${storedFile?.name.split(".")[0]}.lyr`);
   };
 
   const buildCur = () => {
+    validation();
     if (mode === "midi" && midiInfo) {
       const flatLyrics = lyricsData.flat();
-      const generator = new TickLyricSegmentGenerator(
-        midiInfo.bpm,
-        midiInfo.ppq
-      );
-      const offsetTicks =
-        (DEFAULT_PRE_ROLL_OFFSET * midiInfo.ppq * midiInfo.bpm) / 60;
+      const generator = new TickLyricSegmentGenerator(midiInfo.ticksPerBeat);
 
-      const timestamps = generator.generateSegment(flatLyrics, offsetTicks);
+      const timestamps = generator.generateSegment(flatLyrics, (tick) => {
+        const bpm = midiInfo.tempos.search(tick)?.lyrics.value.bpm ?? 120;
+        const offsetTicks =
+          (DEFAULT_PRE_ROLL_OFFSET_MIDI * midiInfo.ticksPerBeat * bpm) / 60;
+        return offsetTicks;
+      });
 
       if (timestamps.length === 0) {
         alert("ยังไม่มี Timestamps");
         return;
       }
       generator.export();
-      generator.downloadFile(`${midiInfo?.fileName.split(".")[0]}.cur`);
+      generator.downloadFile(`${storedFile?.name.split(".")[0]}.cur`);
     }
   };
 
@@ -184,7 +201,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           children: "Close",
         }}
       >
-        {rawFile && lyricsData.length > 0 ? (
+        {storedFile && lyricsData.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
               <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>

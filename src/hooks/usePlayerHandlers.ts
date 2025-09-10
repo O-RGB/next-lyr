@@ -1,14 +1,12 @@
 import { create } from "zustand";
 import { calculateSeekTime } from "@/components/ui/panel";
-import { PlayerControls } from "./useKeyboardControls";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerSetupStore } from "./usePlayerSetup";
 
 interface PlayerHandlersState {
   handleStop: () => void;
   handleWordClick: (index: number) => void;
-  handleEditLine: (lineIndex: number) => void;
-  handleRetiming: (lineIndex: number) => void;
+  handleRetiming: (lineIndex: number, endLineIndex?: number) => void;
 }
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
@@ -55,23 +53,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         }
       }
     },
-    handleEditLine: async (lineIndex) => {
-      const { playerControls } = usePlayerSetupStore.getState();
-      if (!playerControls) {
-        console.warn("[handleEditLine] Aborted: playerControls not available.");
-        return;
-      }
-
-      const actions = useKaraokeStore.getState().actions;
-      const { success, preRollTime } = await actions.startEditLine(lineIndex);
-
-      if (success) {
-        useKaraokeStore.getState().actions.setIsPlaying(true);
-        playerControls.seek(preRollTime);
-        playerControls.play();
-      }
-    },
-    handleRetiming: (lineIndex: number) => {
+    handleRetiming: (lineIndex: number, endLineIndex?: number) => {
       const { playerControls } = usePlayerSetupStore.getState();
       if (!playerControls) {
         console.warn("[handleRetiming] Aborted: playerControls not available.");
@@ -79,7 +61,10 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       }
 
       const actions = useKaraokeStore.getState().actions;
-      const { success, preRollTime } = actions.startTimingFromLine(lineIndex);
+      const { success, preRollTime } = actions.startTimingFromLine(
+        lineIndex,
+        endLineIndex
+      );
 
       if (success) {
         playerControls.seek(preRollTime);

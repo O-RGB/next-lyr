@@ -1,11 +1,10 @@
 import { StateCreator } from "zustand";
-
-import { MusicMode, IMidiInfo } from "@/types/common.type";
+import { MusicMode } from "@/types/common.type";
 import { convertParsedDataForImport, createStoredFileFromFile } from "../utils";
 import { resetStateForNewFile } from "../configs";
 import { KaraokeState, FileActions } from "../types";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
-import { DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
+import { DEFAULT_SONG_INFO, IMidiParseResult } from "@/lib/karaoke/midi/types";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";
 
 export const createFileActions: StateCreator<
@@ -22,15 +21,15 @@ export const createFileActions: StateCreator<
     }
 
     const isMidi = state.mode === "midi";
-    const songPpq = state.playerState.midiInfo?.ppq;
-    const songBpm = state.playerState.midiInfo?.bpm;
+    const songPpq = state.playerState.midi?.ticksPerBeat;
+    const tempos = state.playerState.midi?.tempos;
 
-    if (!songPpq || !songBpm) return;
+    if (!songPpq || !tempos) return;
     const { finalWords, convertedChords } = convertParsedDataForImport(
       data,
       isMidi,
       songPpq,
-      songBpm
+      tempos
     );
 
     const groupedLyrics = groupLyricsByLine(finalWords);
@@ -50,11 +49,7 @@ export const createFileActions: StateCreator<
         set({ ...get(), mode });
       },
 
-      loadMidiFile: async (
-        info: IMidiInfo,
-        parsedData: ParsedSongData,
-        file: File
-      ) => {
+      loadMidiFile: async (midi: IMidiParseResult, file: File) => {
         const storedFile = await createStoredFileFromFile(file);
         const lyricsExist = get().lyricsData.length > 0;
 
@@ -62,21 +57,20 @@ export const createFileActions: StateCreator<
           ...state,
           playerState: {
             ...state.playerState,
-            midiInfo: info,
-            duration: info.durationTicks,
-            rawFile: file,
+            midi: midi,
+            duration: midi.duration,
             storedFile,
           },
-          ...(lyricsExist ? {} : resetStateForNewFile(info.fileName)),
+          ...(lyricsExist ? {} : resetStateForNewFile(storedFile.name)),
           metadata: {
             ...DEFAULT_SONG_INFO,
             ...(lyricsExist ? state.metadata : {}),
-            ...parsedData.info,
+            ...midi.info,
           },
         }));
 
         if (!lyricsExist) {
-          importParsedData(parsedData);
+          importParsedData(midi);
         }
       },
 

@@ -6,14 +6,20 @@ import {
 } from "../../../lib/karaoke/cursor";
 import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
-import { DEFAULT_PRE_ROLL_OFFSET, DEFAULT_CHORD_DURATION } from "../configs";
+import {
+  DEFAULT_PRE_ROLL_OFFSET_MP3,
+  DEFAULT_CHORD_DURATION,
+  DEFAULT_PRE_ROLL_OFFSET_MIDI,
+} from "../configs";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";
+import { IMidiParseResult, TempoEvent } from "@/lib/karaoke/midi/types";
 
 export const createStoredFileFromFile = async (
   file: File
 ): Promise<StoredFile> => {
   const buffer = await file.arrayBuffer();
   return {
+    file,
     buffer,
     name: file.name,
     type: file.type,
@@ -33,7 +39,7 @@ export const createObjectURLFromStoredFile = (
 export const processLyricsForPlayer = (
   lyricsData: LyricWordData[],
   mode: MusicMode,
-  midiInfo: IMidiInfo | null
+  midi: IMidiParseResult | null
 ): ArrayRange<ISentence> | undefined => {
   const timedWords = lyricsData.filter(
     (w) => w.start !== null && w.end !== null
@@ -41,8 +47,8 @@ export const processLyricsForPlayer = (
   if (timedWords.length === 0) return undefined;
 
   let timestamps: number[] = [];
-  if (mode === "midi" && midiInfo) {
-    const generator = new TickLyricSegmentGenerator(midiInfo.bpm, midiInfo.ppq);
+  if (mode === "midi" && midi) {
+    const generator = new TickLyricSegmentGenerator(midi.ticksPerBeat);
     timestamps = generator.generateSegment(timedWords);
   } else {
     const generator = new TimestampLyricSegmentGenerator();
@@ -114,7 +120,7 @@ export const convertParsedDataForImport = (
   data: ParsedSongData,
   isMidi: boolean,
   songPpq: number,
-  bpm: number
+  tempos?: ArrayRange<TempoEvent>
 ) => {
   if (!data.lyrics || data.lyrics.length === 0) {
     return {
@@ -135,12 +141,14 @@ export const convertParsedDataForImport = (
   const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
   // isMidi มีการ Build ออกมาแล้วคลาดเคลื่อนนิดหน่อยต้อง - จาก 0.4 ด้วย 0.35
-  const offsetTicks = isMidi
-    ? ((DEFAULT_PRE_ROLL_OFFSET - 0.35) * songPpq * bpm) / 60
-    : DEFAULT_PRE_ROLL_OFFSET;
-
   data.lyrics.forEach((line, lineIndex: number) => {
     line.forEach((wordEvent) => {
+      const bpm = isMidi ? tempos!.search(wordEvent.tick)?.lyrics.value.bpm : 0;
+
+      const offsetTicks = isMidi
+        ? (DEFAULT_PRE_ROLL_OFFSET_MIDI * songPpq * bpm!) / 60
+        : DEFAULT_PRE_ROLL_OFFSET_MP3;
+
       const baseTick = isMidi
         ? cursorToTick(wordEvent.tick, songPpq)
         : wordEvent.tick / 1000;

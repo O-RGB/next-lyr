@@ -1,3 +1,4 @@
+import { ArrayRange } from "@/lib/utils/arrayrange";
 import { ParsedSongData } from "../shared/types";
 
 export interface MIDIOptionValue<T> {
@@ -13,6 +14,10 @@ export interface LyricEvent {
 export interface ChordEvent {
   chord: string;
   tick: number;
+}
+export interface TempoEvent {
+  tick: number;
+  bpm: number;
 }
 
 export type VOCAL_CHANNEL = "NONE" | "9" | "1" | "RIGHT";
@@ -231,10 +236,11 @@ export const DEFAULT_SONG_INFO: SongInfo = {
   LYRIC_TITLE: "",
 };
 
-export interface IMidiParseResult extends ParsedSongData {
-  midiData: MidiFile;
-  detectedHeader: string;
-  firstNoteOnTick: number | null;
+export interface IMidiParseResult extends ParsedSongData, MidiFile {
+  lyrHeader: string;
+  firstNote: number;
+  tempos: ArrayRange<TempoEvent>;
+  duration: number;
 }
 
 export interface BuildOptions {

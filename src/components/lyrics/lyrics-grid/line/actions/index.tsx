@@ -2,14 +2,10 @@ import ButtonCommon from "@/components/common/button";
 import ContextMenuCommon, {
   IContextMenuGroup,
 } from "@/components/common/data-input/menu";
-import PopConfirmCommon from "@/components/common/popconfrim";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
-import { BiMenu, BiPencil, BiTime, BiTrash } from "react-icons/bi";
-import { CiMenuKebab } from "react-icons/ci";
-import { FaEdit } from "react-icons/fa";
-import { FiLogOut, FiPlus, FiTrash2 } from "react-icons/fi";
+import { BiPencil, BiTime, BiTrash } from "react-icons/bi";
 import { GoKebabHorizontal } from "react-icons/go";
 import { IoMdAdd } from "react-icons/io";
 
@@ -20,7 +16,7 @@ interface LineActionProps {
 const LineAction: React.FC<LineActionProps> = React.memo(
   ({ lineIndex }) => {
     const actions = useKaraokeStore((state) => state.actions);
-    const handleRetiming = usePlayerHandlersStore().handleRetiming;
+    const { handleRetiming } = usePlayerHandlersStore();
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
 
     const menuItems: IContextMenuGroup<string>[] = [
@@ -90,48 +86,6 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           }
           items={menuItems}
         />
-        {/* <ButtonCommon
-          onClick={() => {
-            actions.selectLine(lineIndex);
-            actions.openEditModal();
-          }}
-          disabled={editingLineIndex !== null}
-          title="Edit Lyrics (Enter)"
-          color="white"
-          circle
-          variant="ghost"
-          size="xs"
-          icon={<BiPencil className="text-slate-600" />}
-          className="z-20"
-        />
-        <PopConfirmCommon
-          title="Re-time from this line?"
-          content="This will clear all timing data from this line onwards. Are you sure?"
-          openbuttonProps={{
-            disabled: editingLineIndex !== null,
-            title: "Re-time from here",
-            icon: <BiTime />,
-            circle: true,
-            color: "warning",
-            variant: "ghost",
-            size: "xs",
-            className: "z-20",
-          }}
-          onConfirm={() => handleRetiming(lineIndex)}
-        />
-        <PopConfirmCommon
-          openbuttonProps={{
-            disabled: editingLineIndex !== null,
-            title: "Delete Line",
-            icon: <BiTrash />,
-            circle: true,
-            color: "danger",
-            variant: "ghost",
-            size: "xs",
-            className: "z-20",
-          }}
-          onConfirm={() => actions.deleteLine?.(lineIndex)}
-        /> */}
       </div>
     );
   },

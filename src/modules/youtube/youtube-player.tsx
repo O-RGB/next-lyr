@@ -47,7 +47,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
         playerRef.current?.seekTo(time, true);
         timerControls.seekTimer(time);
       },
-      getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
+      getCurrentTime: () => useKaraokeStore.getState().currentTime,
       isPlaying: () => playerRef.current.getPlayerState() === 1,
       isReady: isReady,
       destroy: () => {

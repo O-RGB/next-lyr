@@ -97,6 +97,7 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
   const { tags, audioData } = readID3Tags(buffer);
 
   const miscTags = { ...tags };
+  console.log(miscTags);
   const result: IParsedMp3Data = {
     title: "",
     artist: "",
@@ -166,15 +167,10 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
 
   if (miscTags.TXXX_CHORD) {
     try {
-      const chordJSON = atob(miscTags.TXXX_CHORD);
-      const parsedChords = JSON.parse(chordJSON);
-      if (Array.isArray(parsedChords)) {
-        result.chords = parsedChords;
-      }
+      result.chords = JSON.parse(miscTags.TXXX_CHORD); // ตรง ๆ
     } catch (err) {
-      console.error("Failed to decode or parse chords:", err);
+      console.error("Failed to parse chords:", err);
     }
-    delete miscTags.TXXX_CHORD;
   }
 
   if (miscTags.TXXX_LYRICS) delete miscTags.TXXX_LYRICS;

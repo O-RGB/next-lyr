@@ -44,10 +44,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       seek: (time: number) => {
         if (videoRef.current) {
           videoRef.current.currentTime = time;
-          timerControls.seekTimer(time); // <<< เพิ่มบรรทัดนี้
+          timerControls.seekTimer(time);
         }
       },
-      getCurrentTime: () => videoRef.current?.currentTime ?? 0,
+      getCurrentTime: () => useKaraokeStore.getState().currentTime,
       isPlaying: () => !!videoRef.current && !videoRef.current.paused,
       videoEl: videoRef.current,
     }));
@@ -77,7 +77,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
         video.removeEventListener("pause", handlePause);
         video.removeEventListener("durationchange", handleDurationChange);
       };
-    }, [setGlobalIsPlaying, timerControls]);
+    }, [setGlobalIsPlaying]);
 
     useEffect(() => {
       if (file) {
@@ -153,12 +153,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
         <CommonPlayerStyle
           fileName={fileName}
           isPlaying={isPlaying}
-          // onFileChange={handleFileChange}
           onPlayPause={handlePlayPause}
           onStop={handleStop}
           onSeek={handleSeek}
           duration={duration}
-          // accept="video/mp4"
         />
       </Card>
     );

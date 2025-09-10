@@ -1,9 +1,12 @@
-import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
-import { Project, ProjectData, StoredFile } from "@/lib/database/db";
-
+import { LyricWordData, MusicMode } from "@/types/common.type";
+import { Project, StoredFile } from "@/lib/database/db";
 import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
-import { ChordEvent, SongInfo } from "@/lib/karaoke/midi/types";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";
+import {
+  ChordEvent,
+  IMidiParseResult,
+  SongInfo,
+} from "@/lib/karaoke/midi/types";
 
 export type HistoryState = Pick<
   KaraokeState,
@@ -11,10 +14,9 @@ export type HistoryState = Pick<
 >;
 
 export interface PlayerState {
-  midiInfo: IMidiInfo | null;
+  midi: IMidiParseResult | null;
   audioSrc: string | null;
   videoSrc: string | null;
-  rawFile: File | null;
   storedFile: StoredFile | null;
   youtubeId: string | null;
   duration: number | null;
@@ -33,17 +35,19 @@ export interface TimingState {
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
+  editingEndLineIndex: number | null; // <-- เพิ่ม state นี้
   playbackIndex: number | null;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
+  currentTempo: number;
   timingBuffer: TimingBufferData | null;
 }
 
 export interface ModalState {
   isEditModalOpen: boolean;
-  isAddModalOpen: boolean; // Add this
-  lineIndexToInsertAfter: number | null; // Add this
+  isAddModalOpen: boolean;
+  lineIndexToInsertAfter: number | null;
   isChordModalOpen: boolean;
   selectedChord: ChordEvent | null;
   suggestedChordTick: number | null;
@@ -66,11 +70,7 @@ export interface ProjectActions {
 
 export interface FileActions {
   initializeMode: (mode: MusicMode) => void;
-  loadMidiFile: (
-    info: IMidiInfo,
-    parsedData: ParsedSongData,
-    file: File
-  ) => void;
+  loadMidiFile: (midi: IMidiParseResult, file: File) => void;
   loadAudioFile: (
     src: string,
     file: File,
@@ -86,7 +86,7 @@ export interface ContentActions {
   importLyrics: (rawText: string) => void;
   deleteLine: (lineIndexToDelete: number) => void;
   updateLine: (lineIndexToUpdate: number, newText: string) => void;
-  insertLineAfter: (lineIndex: number, newText: string) => void; // Add this
+  insertLineAfter: (lineIndex: number, newText: string) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addChord: (chord: ChordEvent) => void;
   updateChord: (oldTick: number, newChord: ChordEvent) => void;
@@ -98,7 +98,10 @@ export interface ContentActions {
 export interface PlaybackActions {
   setIsPlaying: (playing: boolean) => void;
   startTiming: (currentTime: number) => void;
-  startTimingFromLine: (lineIndex: number) => {
+  startTimingFromLine: (
+    lineIndex: number,
+    endLineIndex?: number
+  ) => {
     success: boolean;
     preRollTime: number;
   };
@@ -109,20 +112,16 @@ export interface PlaybackActions {
   setPlaybackIndex: (index: number | null) => void;
   setCurrentIndex: (index: number) => void;
   setCurrentTime: (time: number) => void;
+  setCurrentTempo: (tempo: number) => void;
   setCorrectionIndex: (index: number | null) => void;
 }
 
 export interface ModalActions {
   selectLine: (lineIndex: number | null) => void;
-  startEditLine: (lineIndex: number) => Promise<{
-    success: boolean;
-    firstWordIndex: number;
-    preRollTime: number;
-  }>;
   openEditModal: () => void;
   closeEditModal: () => void;
-  openAddModal: (lineIndex: number) => void; // Add this
-  closeAddModal: () => void; // Add this
+  openAddModal: (lineIndex: number) => void;
+  closeAddModal: () => void;
   openChordModal: (
     chord?: ChordEvent,
     suggestedTick?: number,
@@ -161,29 +160,28 @@ export interface KaraokeState {
   chordsData: ChordEvent[];
   isPlaying: boolean;
 
-  // TimingState
   currentIndex: number;
   isTimingActive: boolean;
   editingLineIndex: number | null;
+  editingEndLineIndex: number | null;
   playbackIndex: number | null;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
+  currentTempo: number;
   timingBuffer: TimingBufferData | null;
   timingDirection: "forward" | "backward" | null;
 
-  // ModalState
   isEditModalOpen: boolean;
   lyricsProcessed?: ArrayRange<ISentence>;
   isChordModalOpen: boolean;
-  isAddModalOpen: boolean; // Add this
-  lineIndexToInsertAfter: number | null; // Add this
+  isAddModalOpen: boolean;
+  lineIndexToInsertAfter: number | null;
   selectedChord: ChordEvent | null;
   suggestedChordTick: number | null;
   minChordTickRange: number | null;
   maxChordTickRange: number | null;
 
-  // ChordPanelState
   isChordPanelAutoScrolling: boolean;
   chordPanelCenterTick: number;
   isChordPanelHovered: boolean;

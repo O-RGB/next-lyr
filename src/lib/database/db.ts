@@ -3,15 +3,17 @@ import { MusicMode, IMidiInfo } from "@/types/common.type";
 import { generateUUID } from "@/lib/uuid";
 import { KaraokeState } from "@/stores/karaoke-store/types";
 import { createStoredFileFromFile } from "@/stores/karaoke-store/utils";
+import { IMidiParseResult } from "../karaoke/midi/types";
 
 export interface StoredFile {
+  file: File;
   buffer: ArrayBuffer;
   name: string;
   type: string;
 }
 
 export interface PlayerState {
-  midiInfo: IMidiInfo | null;
+  midi: IMidiParseResult | null;
   storedFile: StoredFile | null;
   duration: number | null;
   youtubeId: string | null;

@@ -10,9 +10,12 @@ import { createProject, getProject, ProjectData } from "@/lib/database/db";
 import { JsSynthEngine } from "@/modules/js-synth/lib/js-synth-engine";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
-import { loadMidiFile } from "@/lib/karaoke/midi/reader";
+import { parseMidi } from "@/lib/karaoke/midi/reader";
 import { SongInfo, DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
 import { readMp3 } from "@/lib/karaoke/mp3/read";
+import { SiMidi } from "react-icons/si";
+import { BsFileEarmarkMusicFill } from "react-icons/bs";
+import { FaFileVideo } from "react-icons/fa";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -46,7 +49,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       let readInfo: any = {};
 
       if (projectMode === "midi") {
-        const parsedMidi = await loadMidiFile(file);
+        const parsedMidi = await parseMidi(file);
         readInfo = parsedMidi.info;
       } else if (projectMode === "mp3") {
         const { parsedData: parsedMp3 } = await readMp3(file);
@@ -57,8 +60,6 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           ALBUM: parsedMp3.album,
         };
       }
-
-      console.log("readInfo", readInfo);
       if (!readInfo.TITLE) {
         readInfo.TITLE = file.name.replace(/\.[^/.]+$/, "");
       }
@@ -91,7 +92,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     try {
       let initialData: ProjectData = {
         playerState: {
-          midiInfo: null,
+          midi: null,
           storedFile: null,
           duration: null,
           youtubeId: null,
@@ -104,27 +105,22 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       if (musicFile) {
         switch (projectMode) {
           case "midi":
-            const parsedMidi = await loadMidiFile(musicFile);
+            const parsedMidi = await parseMidi(musicFile);
             const engine = new JsSynthEngine();
             await engine.startup();
             if (engine.player) {
               const midiInfo = await engine.player.loadMidi(musicFile);
-              initialData.playerState.midiInfo = {
-                fileName: musicFile.name,
-                durationTicks: midiInfo.durationTicks,
-                ppq: midiInfo.ppq,
-                bpm: midiInfo.bpm,
-                raw: parsedMidi,
-              };
-              initialData.playerState.duration = midiInfo.durationTicks;
+              initialData.playerState.midi = midiInfo;
+              initialData.playerState.duration = midiInfo.duration;
               setMetadataTemp(parsedMidi.info);
               initialData.metadata = parsedMidi.info;
+
               const { finalWords: midiWords, convertedChords: midiChords } =
                 convertParsedDataForImport(
                   parsedMidi,
                   true,
-                  midiInfo.ppq,
-                  midiInfo.bpm
+                  midiInfo.ticksPerBeat,
+                  midiInfo.tempos
                 );
               initialData.lyricsData = groupLyricsByLine(midiWords);
               initialData.chordsData = midiChords;
@@ -141,7 +137,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
               ALBUM: parsedData.album,
             };
             const { finalWords: mp3Words, convertedChords: mp3Chords } =
-              convertParsedDataForImport(parsedData, false, 0, 0);
+              convertParsedDataForImport(parsedData, false, 0);
             initialData.lyricsData = groupLyricsByLine(mp3Words);
             initialData.chordsData = mp3Chords;
             break;
@@ -198,9 +194,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       onClose={onClose}
       okButtonProps={{
         onClick: handleCreateProject,
+        disabled: !musicFile,
       }}
       cancelButtonProps={{
         onClick: onClose,
+        disabled: !musicFile,
       }}
     >
       <div className="flex flex-col gap-4">
@@ -220,6 +218,17 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           <Upload
             accept={getAcceptType()}
             preview={true}
+            icon={
+              projectMode === "midi" ? (
+                <SiMidi className="text-4xl text-amber-500" />
+              ) : projectMode === "mp3" ? (
+                <BsFileEarmarkMusicFill className="text-4xl text-blue-500"></BsFileEarmarkMusicFill>
+              ) : projectMode === "mp4" ? (
+                <FaFileVideo className="text-4xl text-indigo-500"></FaFileVideo>
+              ) : (
+                ""
+              )
+            }
             onChange={handleFileSelect}
           />
         ) : (
@@ -236,6 +245,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             className="flex flex-col gap-4"
             inputSize={"md"}
             adding
+            disabled={!musicFile}
             onFieldChange={(data) => {
               setMetadataTemp({ ...DEFAULT_SONG_INFO, ...data });
             }}

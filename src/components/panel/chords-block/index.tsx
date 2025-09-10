@@ -123,14 +123,14 @@ const ChordsBlock: React.FC = () => {
     updateVisibleItems();
   }, [updateVisibleItems, containerSize]);
 
-  useEffect(() => {
-    const bpm = playerState.midiInfo?.bpm ?? 0;
-    if (mode === "midi" && bpm > 0) {
-      setZoom(Math.max(0.25, Math.min(4, 120 / bpm)));
-    } else {
-      setZoom(1);
-    }
-  }, [mode, playerState.midiInfo?.bpm]);
+  // useEffect(() => {
+  //   const bpm = playerState.midi?.bpm ?? 0;
+  //   if (mode === "midi" && bpm > 0) {
+  //     setZoom(Math.max(0.25, Math.min(4, 120 / bpm)));
+  //   } else {
+  //     setZoom(1);
+  //   }
+  // }, [mode, playerState.midi?.bpm]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -328,7 +328,7 @@ const ChordsBlock: React.FC = () => {
                     <Ruler
                       totalDuration={totalDuration}
                       mode={mode ?? "midi"}
-                      ppq={playerState.midiInfo?.ppq ?? 480}
+                      ppq={playerState.midi?.ticksPerBeat ?? 480}
                       pixelsPerUnit={pixelsPerUnit}
                       zoom={zoom}
                       isMobile={isMobile}

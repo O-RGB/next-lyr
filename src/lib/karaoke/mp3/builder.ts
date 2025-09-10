@@ -1,7 +1,6 @@
 import { buildKLyrXML, stringToTIS620 } from "../shared/lib";
-import { encodeLyricsBase64 } from "./lib";
+import { encodeLyricsBase64, uint8ArrayToBase64 } from "./lib";
 import { IParsedMp3Data } from "./type";
-
 
 function concat(arrays: Uint8Array[]): Uint8Array {
   let totalLength = arrays.reduce((acc, val) => acc + val.length, 0);
@@ -119,7 +118,7 @@ function buildID3v2(tags: {
   }
 
   if (tags.ChordsBase64) {
-    frames.push(createTxxxFrame("CHORD", tags.ChordsBase64));
+    frames.push(createTextFrame("CHORD", tags.ChordsBase64));
   }
 
   const framesBuffer = concat(frames);
@@ -158,7 +157,8 @@ export function buildMp3(
   }
 
   if (parsedData.chords?.length) {
-    newTags.ChordsBase64 = btoa(JSON.stringify(parsedData.chords));
+    const chordJSON = JSON.stringify(parsedData.chords);
+    newTags.ChordsBase64 = chordJSON;
   }
 
   const id3Buffer = buildID3v2(newTags);

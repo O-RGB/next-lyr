@@ -1,20 +1,13 @@
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 import { usePlayerSetupStore } from "./usePlayerSetup";
+import { usePlayerHandlersStore } from "./usePlayerHandlers";
+import { PlayerRef } from "@/components/ui/player-host";
+ 
 
-export type PlayerControls = {
-  play: () => void;
-  pause: () => void;
-  seek: (time: number) => void;
-  getCurrentTime: () => number;
-  isPlaying: () => boolean;
-};
-
-export const useKeyboardControls = (
-  player: PlayerControls | null,
-  onEditLine: (lineIndex: number) => void
-) => {
+export const useKeyboardControls = (player: PlayerRef | null) => {
   const actions = useKaraokeStore((state) => state.actions);
+  const { handleRetiming } = usePlayerHandlersStore();
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
@@ -94,20 +87,24 @@ export const useKeyboardControls = (
 
         if (e.ctrlKey && e.code === "Enter" && selectedLineIndex !== null) {
           e.preventDefault();
-          onEditLine(selectedLineIndex);
+          handleRetiming(selectedLineIndex, selectedLineIndex);
           return;
         }
       }
 
       if (e.code === "Space") {
         e.preventDefault();
+        console.log("isStampingMode", isStampingMode);
         if (isStampingMode) return;
 
+        console.log("isPlaying", isPlaying);
+        
         if (isPlaying) {
           player.pause();
         } else {
           let seekTime;
-
+          
+          console.log("playFromScrolledPosition", playFromScrolledPosition);
           if (playFromScrolledPosition) {
             seekTime = chordPanelCenterTick;
             actions.setPlayFromScrolledPosition(false);
@@ -174,11 +171,10 @@ export const useKeyboardControls = (
           if (isTimingActive) {
             const { isLineEnd } = actions.recordTiming(currentTime);
 
-            if (currentIndex + 1 >= flatLyrics.length) {
-              alert("All timing complete!");
+            if (isLineEnd) {
               player.pause();
               actions.stopTiming();
-            } else if (!isLineEnd) {
+            } else {
               actions.goToNextWord();
             }
           } else {
@@ -194,12 +190,12 @@ export const useKeyboardControls = (
     actions,
     isEditModalOpen,
     player,
-    selectedLineIndex, // ✨ เพิ่ม dependency นี้
+    selectedLineIndex,
     lyricsData,
     isTimingActive,
     correctionIndex,
     currentIndex,
-    onEditLine,
+    handleRetiming,
     editingLineIndex,
     playFromScrolledPosition,
     chordPanelCenterTick,

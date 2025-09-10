@@ -16,16 +16,12 @@ export const tickToCursor = (tick: number, ppq: number): number => {
   return Math.round(tick / (ppq / 24));
 };
 
-interface LyricSegmentGenerator {
-  generateSegment(words: LyricWordData[], offsetTicks?: number): number[];
-}
-
-export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
+export class TickLyricSegmentGenerator {
   private ticksPerBeat: number;
   private cursor: number[] = [];
   private buffer: Uint8Array | undefined;
 
-  constructor(BPM: number, ppq: number) {
+  constructor(ppq: number) {
     this.ticksPerBeat = ppq;
   }
 
@@ -37,7 +33,7 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
     words: LyricWordData[],
     toUnitConverter: (time: number) => number,
     fromUnitConverter: (unit: number) => number,
-    offsetTicks: number = 0
+    offsetTicks?: (tick: number) => number
   ): { finalTimestamps: number[]; finalUnits: number[] } {
     const lines = groupLyricsByLine(words);
     const generatedUnits: number[] = [];
@@ -46,7 +42,9 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
       if (line.length === 0) return;
 
       const tokens = line.map((word) => ({
-        unit: toUnitConverter((word.start ?? 0) + offsetTicks),
+        unit: toUnitConverter(
+          (word.start ?? 0) + (offsetTicks ? offsetTicks?.(word.start ?? 0) : 0)
+        ),
         text: word.name,
       }));
 
@@ -54,7 +52,10 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
       const nextLine = lines[lineIndex + 1];
       const nextGroupStartUnit =
         nextLine?.[0]?.start !== null && nextLine?.[0]?.start !== undefined
-          ? toUnitConverter(nextLine[0].start + offsetTicks)
+          ? toUnitConverter(
+              nextLine[0].start +
+                (offsetTicks ? offsetTicks?.(nextLine[0].start) : 0)
+            )
           : null;
 
       const lastTokenUnit = tokens[tokens.length - 1].unit;
@@ -144,7 +145,10 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
     return { finalTimestamps, finalUnits: generatedUnits };
   }
 
-  generateSegment(words: LyricWordData[], offsetTicks: number = 0): number[] {
+  generateSegment(
+    words: LyricWordData[],
+    offsetTicks?: (tick: number) => number
+  ): number[] {
     const { finalTimestamps, finalUnits } = this.generateSmoothedTimestamps(
       words,
       (tick) => tickToCursor(tick, this.ticksPerBeat),
@@ -188,7 +192,7 @@ export class TickLyricSegmentGenerator implements LyricSegmentGenerator {
   }
 }
 
-export class TimestampLyricSegmentGenerator implements LyricSegmentGenerator {
+export class TimestampLyricSegmentGenerator {
   generateSegment(words: LyricWordData[]): number[] {
     const timings: number[] = [];
     if (words.length === 0) return timings;

@@ -76,7 +76,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
         return (
           <MidiPlayer
             ref={midiPlayerRef}
-            file={playerState.rawFile}
+            file={playerState.storedFile?.file}
             onReady={() => {
               onReady?.();
             }}
@@ -87,7 +87,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
           <AudioPlayer
             ref={audioPlayerRef}
             src={playerState.audioSrc}
-            file={playerState.rawFile}
+            file={playerState.storedFile?.file}
             onReady={() => {
               onReady?.();
             }}
@@ -98,7 +98,7 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
           <VideoPlayer
             ref={videoRef}
             src={playerState.videoSrc}
-            file={playerState.rawFile}
+            file={playerState.storedFile?.file}
             onReady={() => {
               onReady?.();
             }}

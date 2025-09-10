@@ -7,8 +7,10 @@ import {
   SongInfo,
   LyricEvent,
   ChordEvent,
+  TempoEvent,
 } from "./types";
 import { base64ToArrayBuffer, TIS620ToString } from "../shared/lib";
+import { tempoToArrayRange } from "../lyrics/tempo-list";
 
 interface KlyrWord {
   tick: number;
@@ -41,7 +43,7 @@ function _parseEvent(
   if (status < 0x80) {
     if (!runningStatus) {
       console.warn("Running status expected but none set, forcing fallback");
-      status = 0x90; // Fallback to Note On on channel 0
+      status = 0x90;
     } else {
       status = runningStatus;
       isRunningStatus = true;
@@ -52,7 +54,6 @@ function _parseEvent(
   let currentOffset = isRunningStatus ? offset : offset + 1;
 
   if (status === 0xff) {
-    // Meta Event
     const metaType = view.getUint8(currentOffset++);
     const lengthResult = readVariableLength(view, currentOffset);
     currentOffset = lengthResult.nextOffset;
@@ -67,7 +68,6 @@ function _parseEvent(
       nextOffset: currentOffset,
     };
   } else if (eventType >= 0x8 && eventType <= 0xe) {
-    // Channel Event
     const paramCount = eventType === 0xc || eventType === 0xd ? 1 : 2;
     const data = [];
     for (let i = 0; i < paramCount; i++) {
@@ -81,7 +81,6 @@ function _parseEvent(
       nextOffset: currentOffset,
     };
   } else if (status === 0xf0 || status === 0xf7) {
-    // Sysex Event
     const lengthResult = readVariableLength(view, currentOffset);
     currentOffset = lengthResult.nextOffset;
     const data = new Uint8Array(view.buffer, currentOffset, lengthResult.value);
@@ -170,32 +169,47 @@ function _parseKLyrXML(xmlDoc: Document): {
 
 function _extractDataFromEvents(
   midiData: MidiFile
-): Omit<IMidiParseResult, "midiData"> {
+): Omit<
+  IMidiParseResult,
+  "midiData" | "format" | "ticksPerBeat" | "trackCount" | "tracks"
+> {
   let songInfo: any = {};
   let lyrics: LyricEvent[][] = [];
   let chords: ChordEvent[] = [];
+  let tempoChanges: TempoEvent[] = [];
   let detectedHeader = "LyrHdr1";
   let foundLyrics = false;
-  let firstNoteOnTick: number | null = null;
+  let firstNote: number = 0;
+  let duration = 0;
 
   midiData.tracks.forEach((track) => {
     track.forEach((event) => {
+      if (event.absoluteTime > duration) {
+        duration = event.absoluteTime;
+      }
+
       if (
         event.type === "channel" &&
         event.status >= 0x90 &&
         event.status <= 0x9f
       ) {
         if ((event as any).data && (event as any).data[1] > 0) {
-          if (
-            firstNoteOnTick === null ||
-            event.absoluteTime < firstNoteOnTick
-          ) {
-            firstNoteOnTick = event.absoluteTime;
+          if (firstNote === null || event.absoluteTime < firstNote) {
+            firstNote = event.absoluteTime;
           }
         }
       }
-
       if (event.type !== "meta") return;
+      if (event.metaType === 0x51 && event.data && event.data.length === 3) {
+        const microsecondsPerBeat =
+          (event.data[0] << 16) | (event.data[1] << 8) | event.data[2];
+        const bpm = 60000000 / microsecondsPerBeat;
+        tempoChanges.push({
+          tick: event.absoluteTime,
+          bpm: Math.round(bpm),
+        });
+      }
+
       if (event.metaType === 0x06 && event.text) {
         chords.push({ chord: event.text, tick: event.absoluteTime });
       }
@@ -235,18 +249,32 @@ function _extractDataFromEvents(
   });
 
   chords.sort((a, b) => a.tick - b.tick);
-  return { info: songInfo, lyrics, chords, detectedHeader, firstNoteOnTick };
+
+  const tempos = tempoToArrayRange(tempoChanges, duration);
+
+  return {
+    info: songInfo,
+    lyrics,
+    chords,
+    lyrHeader: detectedHeader,
+    firstNote,
+    tempos,
+    duration,
+  };
 }
 
 export function parse(arrayBuffer: ArrayBuffer): IMidiParseResult {
   const midiData = _parseMidiFile(arrayBuffer);
   const extracted = _extractDataFromEvents(midiData);
-  return { midiData, ...extracted };
+  return { ...midiData, ...extracted };
 }
 
-export async function loadMidiFile(
-  file: File | Blob
+export async function parseMidi(
+  input: File | Blob | ArrayBuffer
 ): Promise<IMidiParseResult> {
-  const arrayBuffer = await file.arrayBuffer();
+  if (input instanceof ArrayBuffer) {
+    return parse(input);
+  }
+  const arrayBuffer = await input.arrayBuffer();
   return parse(arrayBuffer);
 }

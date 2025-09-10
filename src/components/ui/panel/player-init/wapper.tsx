@@ -14,12 +14,12 @@ const PlayerSetupWapper: React.FC<PlayerSetupWapperProps> = ({
 }) => {
   const mode = useKaraokeStore((state) => state.mode);
   const projectId = useKaraokeStore((state) => state.projectId);
-  const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
+  const storedFile = useKaraokeStore((state) => state.playerState.storedFile);
   const duration = useKaraokeStore((state) => state.playerState.duration);
 
   const playerSetup = usePlayerSetup(
     projectId,
-    rawFile,
+    storedFile,
     mode,
     duration,
     isPlayerReady

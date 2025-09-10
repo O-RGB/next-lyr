@@ -1,4 +1,3 @@
-import { ChordEvent, LyricEvent, SongInfo } from "../midi/types";
 import { ParsedSongData } from "../shared/types";
 
 export const DEFAULT_MISC: MiscTags = {

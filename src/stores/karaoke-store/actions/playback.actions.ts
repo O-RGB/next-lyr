@@ -11,27 +11,25 @@ export const createPlaybackActions: StateCreator<
 > = (set, get) => ({
   actions: {
     setIsPlaying: (playing: boolean) => set({ isPlaying: playing }),
+    setCurrentTempo(tempo) {
+      set({ currentTempo: tempo });
+    },
     setCurrentTime: (time: number) => {
       const { playerState, isPlaying, mode } = get();
       const { duration } = playerState;
-
-      // เพิ่มเงื่อนไข: ถ้าเป็นโหมด midi, กำลังเล่นอยู่, มี duration, และเวลาปัจจุบันเกิน duration
       if (
         mode === "midi" &&
         isPlaying &&
         duration !== null &&
         time >= duration
       ) {
-        // ดึง player controls จากอีก store หนึ่ง
         const { playerControls } = usePlayerSetupStore.getState();
         if (playerControls) {
-          // สั่งให้ player หยุด!
           playerControls.pause();
         }
-        // ปรับเวลาให้เป็นค่าสูงสุดพอดี ไม่ให้เกิน
+
         set({ currentTime: duration });
       } else {
-        // ถ้าเงื่อนไขไม่ตรง ก็อัปเดตเวลาตามปกติ
         set({ currentTime: time });
       }
     },
@@ -77,7 +75,7 @@ export const createPlaybackActions: StateCreator<
       });
     },
 
-    startTimingFromLine: (lineIndex: number) => {
+    startTimingFromLine: (lineIndex: number, endLineIndex?: number) => {
       const flatLyrics = get().lyricsData.flat();
       const firstWordOfLine = flatLyrics.find((w) => w.lineIndex === lineIndex);
 
@@ -85,12 +83,13 @@ export const createPlaybackActions: StateCreator<
         return { success: false, preRollTime: 0 };
       }
 
+      const finalEndLineIndex = endLineIndex ?? get().lyricsData.length - 1;
       const firstWordIndex = firstWordOfLine.index;
       const preRollTime = getPreRollTime(lineIndex, flatLyrics);
 
       set((state) => ({
         lyricsData: state.lyricsData.map((line, idx) =>
-          idx >= lineIndex
+          idx >= lineIndex && idx <= finalEndLineIndex
             ? line.map((word) => ({
                 ...word,
                 start: null,
@@ -101,7 +100,8 @@ export const createPlaybackActions: StateCreator<
         ),
         currentIndex: firstWordIndex,
         selectedLineIndex: lineIndex,
-        editingLineIndex: null,
+        editingLineIndex: lineIndex,
+        editingEndLineIndex: finalEndLineIndex,
         isTimingActive: false,
         correctionIndex: null,
         lyricsProcessed: undefined,
@@ -113,7 +113,7 @@ export const createPlaybackActions: StateCreator<
 
     recordTiming: (currentTime: number) => {
       const state = get();
-      const { timingBuffer, lyricsData, currentIndex, editingLineIndex } =
+      const { timingBuffer, lyricsData, currentIndex, editingEndLineIndex } =
         state;
 
       if (!timingBuffer) {
@@ -135,11 +135,11 @@ export const createPlaybackActions: StateCreator<
       }
 
       const nextWord = flatLyrics[currentIndex + 1];
-      if (!nextWord) {
-        isLineEnd = true;
-      } else if (
-        editingLineIndex !== null &&
-        nextWord.lineIndex !== editingLineIndex
+
+      if (
+        !nextWord ||
+        (editingEndLineIndex !== null &&
+          nextWord.lineIndex > editingEndLineIndex)
       ) {
         isLineEnd = true;
       }
@@ -160,9 +160,10 @@ export const createPlaybackActions: StateCreator<
         },
       });
 
-      if (isLineEnd && editingLineIndex !== null) {
-        get().actions.stopTiming();
-      }
+      // ลบส่วนที่เรียก stopTiming() ออกจากตรงนี้
+      // if (isLineEnd) {
+      //   get().actions.stopTiming();
+      // }
 
       return { isLineEnd };
     },
@@ -263,6 +264,7 @@ export const createPlaybackActions: StateCreator<
           return {
             isTimingActive: false,
             editingLineIndex: null,
+            editingEndLineIndex: null,
             timingBuffer: null,
             timingDirection: null,
           };
@@ -288,6 +290,7 @@ export const createPlaybackActions: StateCreator<
           lyricsData: newLyricsData,
           isTimingActive: false,
           editingLineIndex: null,
+          editingEndLineIndex: null,
           timingBuffer: null,
           timingDirection: null,
         };

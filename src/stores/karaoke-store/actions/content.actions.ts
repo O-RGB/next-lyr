@@ -186,7 +186,7 @@ export const createContentActions: StateCreator<
         const processed = processLyricsForPlayer(
           lyricsData.flat(),
           mode,
-          playerState.midiInfo
+          playerState.midi
         );
         set({ lyricsProcessed: processed });
       },

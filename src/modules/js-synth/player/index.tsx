@@ -3,13 +3,14 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from "react";
 import CommonPlayerStyle from "@/components/common/player";
 import { JsSynthEngine } from "../lib/js-synth-engine";
 import { JsSynthPlayerEngine } from "../lib/js-synth-player";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/hooks/useTimerWorker";
-import { loadMidiFile } from "../../../lib/karaoke/midi/reader";
+import { parseMidi } from "../../../lib/karaoke/midi/reader";
 
 export type MidiPlayerRef = {
   play: () => void;
@@ -32,9 +33,9 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const [duration, setDuration] = useState(0);
     const timerControls = useTimerStore();
 
-    const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
-    const { loadMidiFile: importMidiFile, setIsPlaying: setGlobalIsPlaying } =
-      useKaraokeStore((state) => state.actions);
+    const { loadMidiFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
+      (state) => state.actions
+    );
 
     useImperativeHandle(
       ref,
@@ -47,38 +48,31 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         },
         seek: (tick: number) => {
           player?.seek(tick);
-
-          if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
-            const timeInSeconds = (tick / midiInfo.ppq) * (60 / midiInfo.bpm);
-            timerControls.seekTimer(timeInSeconds);
-          }
+          timerControls.seekTimer(tick);
         },
-        getCurrentTime: () => player?.getCurrentTime() ?? 0,
+        getCurrentTime: () => useKaraokeStore.getState().currentTime,
         isPlaying: () => player?.isPlaying() ?? false,
       }),
-      [player, midiInfo, timerControls]
+      [player, timerControls]
     );
 
     const handleFileChange = async (file: File) => {
       if (player) {
         try {
-          const parsedMidi = await loadMidiFile(file);
+          const parsedMidi = await parseMidi(file);
           const midiInfo = await player.loadMidi(file);
-          setDuration(midiInfo.durationTicks);
+
+          if (midiInfo.tempos) {
+            timerControls.updateTempoMap(midiInfo.tempos);
+          }
+
+          if (midiInfo.ticksPerBeat) {
+            timerControls.updatePpq(midiInfo.ticksPerBeat);
+          }
+
+          setDuration(midiInfo.duration);
           setFileName(file.name);
-
-          importMidiFile(
-            {
-              fileName: file.name,
-              durationTicks: midiInfo.durationTicks,
-              ppq: midiInfo.ppq,
-              bpm: midiInfo.bpm,
-              raw: parsedMidi,
-            },
-            parsedMidi,
-            file
-          );
-
+          loadMidiFile(parsedMidi, file);
           timerControls.resetTimer();
           setTimeout(() => {
             onReady?.();
@@ -108,22 +102,19 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       currentRef.current?.seek(value);
     };
 
-    const handleStateChange = (playing: boolean) => {
-      setIsPlaying(playing);
-      setGlobalIsPlaying(playing);
+    const handleStateChange = useCallback(
+      (playing: boolean) => {
+        setIsPlaying(playing);
+        setGlobalIsPlaying(playing);
 
-      if (playing) {
-        if (midiInfo && midiInfo.bpm > 0 && midiInfo.ppq > 0) {
-          const timeInSeconds =
-            ((player?.getCurrentTime() ?? 0) / midiInfo.ppq) *
-            (60 / midiInfo.bpm);
-          timerControls.seekTimer(timeInSeconds);
+        if (playing) {
+          timerControls.startTimer();
+        } else {
+          timerControls.stopTimer();
         }
-        timerControls.startTimer();
-      } else {
-        timerControls.stopTimer();
-      }
-    };
+      },
+      [setGlobalIsPlaying, timerControls]
+    );
 
     const initialize = async () => {
       const engine = new JsSynthEngine();
@@ -135,24 +126,25 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
 
     useEffect(() => {
       timerControls.initWorker();
-      return () => timerControls.terminateWorker();
+      return () => {
+        timerControls.terminateWorker();
+      };
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
     useEffect(() => {
+      console.log("initialize midi player");
       initialize();
     }, []);
 
     useEffect(() => {
       if (!player) return;
-
       player.addEventListener("statechange", handleStateChange);
       setIsPlaying(player.isPlaying());
       setGlobalIsPlaying(player.isPlaying());
-
       return () => {
         player.removeEventListener("statechange", handleStateChange);
       };
-    }, [player, setGlobalIsPlaying, timerControls, midiInfo]);
+    }, [player, setGlobalIsPlaying, handleStateChange]);
 
     useEffect(() => {
       if (file && player) {

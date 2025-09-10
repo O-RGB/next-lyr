@@ -39,44 +39,7 @@ export const createModalActions: StateCreator<
       selectLine: (lineIndex: number | null) =>
         set({ selectedLineIndex: lineIndex }),
 
-      startEditLine: async (lineIndex: number) => {
-        await saveToHistoryAndDB();
-        const { lyricsData } = get();
-
-        const flatLyrics = lyricsData.flat();
-        const firstWordOfLine = flatLyrics.find(
-          (w) => w.lineIndex === lineIndex
-        );
-
-        if (!firstWordOfLine) {
-          return { success: false, firstWordIndex: 0, preRollTime: 0 };
-        }
-
-        const firstWordIndex = firstWordOfLine.index;
-
-        const preRollTime = getPreRollTime(lineIndex, flatLyrics);
-
-        set((state) => ({
-          selectedLineIndex: lineIndex,
-          lyricsData: state.lyricsData.map((line, idx) =>
-            idx === lineIndex
-              ? line.map((word) => ({
-                  ...word,
-                  start: null,
-                  end: null,
-                  length: 0,
-                }))
-              : line
-          ),
-          currentIndex: firstWordIndex,
-          editingLineIndex: lineIndex,
-          isTimingActive: false,
-          correctionIndex: null,
-          lyricsProcessed: undefined,
-        }));
-
-        return { success: true, firstWordIndex, preRollTime };
-      },
+      // ลบ startEditLine action ออก
 
       openEditModal: () => set({ isEditModalOpen: true }),
       closeEditModal: () => set({ isEditModalOpen: false }),

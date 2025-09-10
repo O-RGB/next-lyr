@@ -23,6 +23,7 @@ type Props = {
   onFieldChange?: (metadata: Partial<SongInfo>) => void;
   inputSize?: "sm" | "md" | "lg" | undefined;
   className?: string;
+  disabled?: boolean;
 };
 
 export default function MetadataForm({
@@ -31,12 +32,17 @@ export default function MetadataForm({
   initMetadata,
   inputSize = "sm",
   className = "flex flex-col gap-2 lg:p-4",
+  disabled = false,
 }: Props) {
+  const mode = useKaraokeStore((s) => s.mode);
   const metadata = useKaraokeStore((s) => s.metadata);
+  const midiData = useKaraokeStore((s) => s.playerState.midi);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
 
-  const midiInfo = useKaraokeStore((state) => state.playerState.midiInfo);
-  const rawFile = useKaraokeStore((state) => state.playerState.rawFile);
+  const midiInfo =
+    mode === "midi" ? useKaraokeStore((state) => state.playerState.midi) : true;
+  const midi =
+    mode === "midi" ? useKaraokeStore((state) => state.playerState.midi) : true;
 
   const initName = Form.useForm({
     defaultValues: {
@@ -77,6 +83,14 @@ export default function MetadataForm({
     if (initMetadata) {
       initName.reset(initMetadata);
     }
+
+    if (initName.getValues("TEMPO") === "") {
+      let bpm = midiData?.tempos.getByIndex(0)?.value.bpm;
+      if (bpm === undefined) {
+        bpm = 0;
+      }
+      initName.setValue("TEMPO", `${bpm}`);
+    }
   }, [initMetadata, initName]);
 
   return (
@@ -91,7 +105,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Song Title :"
                 inputSize={inputSize}
               />
@@ -106,7 +120,7 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile && adding === false}
+                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
                   options={keyOption}
                   label="Key :"
                   inputSize={inputSize}
@@ -125,7 +139,7 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile && adding === false}
+                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
                   label="Tempo :"
                   inputSize={inputSize}
                 />
@@ -143,7 +157,7 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile && adding === false}
+                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
                   options={artistTypeOption}
                   label="Gender :"
                   inputSize={inputSize}
@@ -159,7 +173,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Album :"
                 inputSize={inputSize}
               />
@@ -173,7 +187,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Artist :"
                 inputSize={inputSize}
               />
@@ -187,7 +201,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Composer :"
                 inputSize={inputSize}
               />
@@ -201,7 +215,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Rhythm/Genre :"
                 inputSize={inputSize}
               />
@@ -219,7 +233,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Creator :"
                 inputSize={inputSize}
               />
@@ -237,7 +251,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 label="Music Label :"
                 inputSize={inputSize}
               />
@@ -255,7 +269,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={!midiInfo && !rawFile && adding === false}
+                disabled={(!midiInfo && !midi && adding === false ) || disabled}
                 options={languageOption}
                 label="Language :"
                 inputSize={inputSize}
@@ -271,7 +285,7 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile && adding === false}
+                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
                   label="Year :"
                   inputSize={inputSize}
                 />
@@ -289,7 +303,7 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={!midiInfo && !rawFile && adding === false}
+                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
                   options={vocalChannelOption}
                   label="Vocal Channel :"
                   inputSize={inputSize}
