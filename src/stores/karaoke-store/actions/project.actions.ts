@@ -42,7 +42,7 @@ export const createProjectActions: StateCreator<
     },
 
     loadProject: (project: Project) => {
-      const { playerState, ...restOfData } = project.data;
+      const { playerState, lyricsData, chordsData, metadata } = project.data;
       let audioSrc: string | null = null;
       let videoSrc: string | null = null;
       let rawFile: File | null = null;
@@ -61,13 +61,17 @@ export const createProjectActions: StateCreator<
       }
 
       set({
+        // Reset state ที่จำเป็นเท่านั้น ไม่ใช้ ...initialState ทั้งหมด
         ...initialState,
-        ...restOfData,
+        lyricsData,
+        chordsData,
+        metadata,
         projectId: project.id,
         mode: project.mode,
         playerState: {
-          ...initialPlayerState,
+          // ใช้ ...playerState เพื่อเก็บข้อมูลเดิมจาก db ไว้
           ...playerState,
+          // และอัปเดต src/url ที่สร้างขึ้นมาใหม่
           audioSrc,
           videoSrc,
         },

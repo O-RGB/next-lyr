@@ -62,11 +62,13 @@ export const createFileActions: StateCreator<
             storedFile,
           },
           ...(lyricsExist ? {} : resetStateForNewFile(storedFile.name)),
-          metadata: {
-            ...DEFAULT_SONG_INFO,
-            ...(lyricsExist ? state.metadata : {}),
-            ...midi.info,
-          },
+          metadata:
+            state.metadata && state.metadata.TITLE
+              ? state.metadata
+              : {
+                  ...DEFAULT_SONG_INFO,
+                  ...midi.info,
+                },
         }));
 
         if (!lyricsExist) {
@@ -93,11 +95,13 @@ export const createFileActions: StateCreator<
             duration,
           },
           ...(lyricsExist ? {} : resetStateForNewFile(file.name)),
-          metadata: {
-            ...DEFAULT_SONG_INFO,
-            ...(lyricsExist ? state.metadata : {}),
-            ...parsedData.info,
-          },
+          metadata:
+            state.metadata && state.metadata.TITLE
+              ? state.metadata
+              : {
+                  ...DEFAULT_SONG_INFO,
+                  ...parsedData.info,
+                },
         }));
 
         if (!lyricsExist) {

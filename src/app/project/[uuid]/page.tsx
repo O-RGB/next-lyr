@@ -27,6 +27,7 @@ export default function ProjectPage() {
         }
 
         const project = await getProject(uuid);
+        console.log("project", project?.data.metadata);
 
         if (project) {
           loadProject(project);

@@ -2,7 +2,7 @@ import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
 import InputCommon from "../common/data-input/input";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
 import {
@@ -46,19 +46,7 @@ export default function MetadataForm({
 
   const initName = Form.useForm({
     defaultValues: {
-      TITLE: "",
-      KEY: "C" as KEY,
-      TEMPO: "",
-      ARTIST_TYPE: "M" as ARTIST_TYPE,
-      ALBUM: "",
-      ARTIST: "",
-      AUTHOR: "",
-      GENRE: "",
-      CREATOR: "",
-      COMPANY: "",
-      LANGUAGE: "THAI" as LANGUAGE,
-      YEAR: "",
-      VOCAL_CHANNEL: "9" as VOCAL_CHANNEL,
+      ...metadata,
     },
   });
 
@@ -71,27 +59,41 @@ export default function MetadataForm({
       LANGUAGE: currentValues.LANGUAGE as LANGUAGE,
       VOCAL_CHANNEL: currentValues.VOCAL_CHANNEL as VOCAL_CHANNEL,
     };
+    console.log("update metadata");
     setMetadata(typedValues);
     onFieldChange?.(typedValues);
   };
+
+  // useEffect(() => {
+  //   if (initMetadata) {
+  //     initName.reset(initMetadata);
+  //   }
+  // }, [initMetadata, initName]);
+
+  useLayoutEffect(() => {
+    if (initName.getValues("TEMPO") === "") {
+      const ranges = midiData?.tempos.ranges;
+      if (ranges && (ranges?.length ?? 0) > 0) {
+        let bpm = ranges[0].value.value.bpm;
+        if (bpm === undefined) {
+          bpm = 0;
+        }
+        initName.setValue("TEMPO", `${bpm}`);
+      }
+    }
+  }, [midiData?.tempos]);
 
   useEffect(() => {
     if (metadata) {
       initName.reset(metadata);
     }
+  }, [metadata]);
 
+  useEffect(() => {
     if (initMetadata) {
       initName.reset(initMetadata);
     }
-
-    if (initName.getValues("TEMPO") === "") {
-      let bpm = midiData?.tempos.getByIndex(0)?.value.bpm;
-      if (bpm === undefined) {
-        bpm = 0;
-      }
-      initName.setValue("TEMPO", `${bpm}`);
-    }
-  }, [initMetadata, initName]);
+  }, [initMetadata]);
 
   return (
     <div>
@@ -105,7 +107,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Song Title :"
                 inputSize={inputSize}
               />
@@ -120,7 +122,9 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                  disabled={
+                    (!midiInfo && !midi && adding === false) || disabled
+                  }
                   options={keyOption}
                   label="Key :"
                   inputSize={inputSize}
@@ -139,7 +143,9 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                  disabled={
+                    (!midiInfo && !midi && adding === false) || disabled
+                  }
                   label="Tempo :"
                   inputSize={inputSize}
                 />
@@ -157,7 +163,9 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                  disabled={
+                    (!midiInfo && !midi && adding === false) || disabled
+                  }
                   options={artistTypeOption}
                   label="Gender :"
                   inputSize={inputSize}
@@ -173,7 +181,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Album :"
                 inputSize={inputSize}
               />
@@ -187,7 +195,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Artist :"
                 inputSize={inputSize}
               />
@@ -201,7 +209,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Composer :"
                 inputSize={inputSize}
               />
@@ -215,7 +223,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Rhythm/Genre :"
                 inputSize={inputSize}
               />
@@ -233,7 +241,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Creator :"
                 inputSize={inputSize}
               />
@@ -251,7 +259,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 label="Music Label :"
                 inputSize={inputSize}
               />
@@ -269,7 +277,7 @@ export default function MetadataForm({
                   field.onBlur();
                   handleBlurUpdate();
                 }}
-                disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                disabled={(!midiInfo && !midi && adding === false) || disabled}
                 options={languageOption}
                 label="Language :"
                 inputSize={inputSize}
@@ -285,7 +293,9 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                  disabled={
+                    (!midiInfo && !midi && adding === false) || disabled
+                  }
                   label="Year :"
                   inputSize={inputSize}
                 />
@@ -303,7 +313,9 @@ export default function MetadataForm({
                     field.onBlur();
                     handleBlurUpdate();
                   }}
-                  disabled={(!midiInfo && !midi && adding === false ) || disabled}
+                  disabled={
+                    (!midiInfo && !midi && adding === false) || disabled
+                  }
                   options={vocalChannelOption}
                   label="Vocal Channel :"
                   inputSize={inputSize}

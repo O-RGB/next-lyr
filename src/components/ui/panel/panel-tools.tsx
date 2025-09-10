@@ -16,13 +16,25 @@ import AllowSound from "@/allow-sound";
 
 export const MobileControls = () => {
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
+  const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+  const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+
   const handleKeyDown = (key: string) => {
     const event = new KeyboardEvent("keydown", { code: key, bubbles: true });
     window.dispatchEvent(event);
   };
 
+  const isEditTimingMode = isTimingActive || editingLineIndex !== null;
+
+  const arrowButtonBaseClass =
+    "relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-full rounded-lg";
+
+  const arrowButtonTimingClass = isEditTimingMode
+    ? "border-purple-500 ring-2 ring-purple-200"
+    : "border-gray-300 hover:border-gray-400";
+
   return (
-    <div className="relative lg:hidden bg-white/80">
+    <div className="relative lg:hidden bg-white/80 ">
       <div className="px-4 py-2 ">
         <div className="flex items-center justify-center gap-4 w-full">
           <div>
@@ -63,20 +75,22 @@ export const MobileControls = () => {
           <div className="h-6 w-px bg-gray-300" />
 
           <div className="flex gap-2 w-full">
+            {/* --- START: โค้ดที่แก้ไข --- */}
             <button
               onClick={() => handleKeyDown("ArrowLeft")}
-              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-full rounded-lg"
+              className={`${arrowButtonBaseClass} ${arrowButtonTimingClass}`}
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <FaArrowLeft className="h-3 w-3 text-gray-700 mx-auto" />
             </button>
             <button
               onClick={() => handleKeyDown("ArrowRight")}
-              className="relative overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 active:from-gray-200 active:to-gray-300 border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg active:shadow-inner transition-all duration-150 transform hover:scale-105 active:scale-95 select-none touch-manipulation h-10 w-full rounded-lg"
+              className={`${arrowButtonBaseClass} ${arrowButtonTimingClass}`}
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <FaArrowRight className="h-3 w-3 text-gray-700 mx-auto" />
             </button>
+            {/* --- END: โค้ดที่แก้ไข --- */}
           </div>
 
           <div>

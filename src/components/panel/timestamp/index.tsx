@@ -45,8 +45,9 @@ const TimeStampe: React.FC<TimeStampeProps> = ({}) => {
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-4 p-1 px-3 bg-black rounded-md text-white font-mono text-sm">
-        {currentTempo} BPM.
+      <div className="flex items-center gap-1 p-1 px-3 bg-black rounded-md text-white font-mono text-sm">
+        <span className="text-[10px]">BPM:</span>
+        <span>{currentTempo}</span>
       </div>
     </div>
   );

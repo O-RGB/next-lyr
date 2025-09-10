@@ -3,13 +3,13 @@ import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import Upload from "@/components/common/data-input/upload";
 import TextareaCommon from "@/components/common/data-input/textarea";
-import { loadWords } from "@/lib/wordcut";
 import { BiImport } from "react-icons/bi";
 import { BsStars } from "react-icons/bs";
 import { FaFile } from "react-icons/fa";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
+import { tokenizeThai } from "@/lib/wordcut/utils";
 
 interface ReadLyricsModalProps {
   open?: boolean;
@@ -21,49 +21,16 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   const actions = useKaraokeStore((state) => state.actions);
   const [lyricsText, setLyricsText] = useState<string>(exText);
   const [openModal, setOpenModal] = useState<boolean>(false);
+
   const handleCloseModal = () => {
     setOpenModal(false);
     onClose?.();
     setLyricsText(exText);
   };
 
-  const autoCut = async () => {
-    const segmenter = await loadWords();
-    const lines = lyricsText.split("\n");
-
-    const processedLines = lines.map((line) => {
-      const preProcessedLine = line
-        .replaceAll("|", " ")
-        .replace(/([\u0e00-\u0e7f])([a-zA-Z'’])/g, "$1 $2")
-        .replace(/([a-zA-Z'’])([\u0e00-\u0e7f])/g, "$1 $2")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      const segmentedParts = segmenter.segmentText(preProcessedLine);
-      const allWords = segmentedParts
-        .flatMap((part) => part.split(/\s+/))
-        .filter(Boolean);
-
-      if (allWords.length === 0) return "";
-
-      let result = allWords[0];
-      for (let i = 1; i < allWords.length; i++) {
-        const prevWord = allWords[i - 1];
-        const currentWord = allWords[i];
-
-        const isPrevEnglish = /^[a-zA-Z'’]/.test(prevWord);
-        const isCurrentEnglish = /^[a-zA-Z'’]/.test(currentWord);
-
-        if (isPrevEnglish || isCurrentEnglish) {
-          result += " | " + currentWord;
-        } else {
-          result += "|" + currentWord;
-        }
-      }
-      return result;
-    });
-
-    setLyricsText(processedLines.join("\n"));
+  const handleAutoCut = async () => {
+    const processedText = await tokenizeThai(lyricsText);
+    setLyricsText(processedText);
   };
 
   const onTextChange = async (
@@ -92,6 +59,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   useEffect(() => {
     setOpenModal(open ?? false);
   }, [open]);
+
   return (
     <>
       <ModalCommon
@@ -104,7 +72,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
             <ButtonCommon
               size="sm"
               onClick={onClose}
-              icon={<IoArrowBackCircle></IoArrowBackCircle>}
+              icon={<IoArrowBackCircle />}
               color="gray"
               className="text-nowrap"
             >
@@ -112,9 +80,9 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
             </ButtonCommon>
             <ButtonCommon
               size="sm"
-              onClick={autoCut}
+              onClick={handleAutoCut}
               disabled={lyricsText.length <= 0}
-              icon={<BsStars></BsStars>}
+              icon={<BsStars />}
               color="success"
               className="text-nowrap"
             >
@@ -133,18 +101,18 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
                 <ButtonCommon
                   size="sm"
                   className="text-nowrap"
-                  icon={<FaFile></FaFile>}
+                  icon={<FaFile />}
                   color="secondary"
                 >
-                  อ่านไฟล์​ (.lyr)
+                  อ่านไฟล์ (.lyr)
                 </ButtonCommon>
               }
-            ></Upload>
+            />
             <ButtonCommon
               size="sm"
               className="text-nowrap"
               onClick={handleOnAdd}
-              icon={<BiImport></BiImport>}
+              icon={<BiImport />}
             >
               นำเข้า
             </ButtonCommon>
@@ -155,7 +123,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
           value={lyricsText}
           onChange={onTextChange}
           className="!h-[300px] lg:!h-[400px]"
-        ></TextareaCommon>
+        />
       </ModalCommon>
     </>
   );

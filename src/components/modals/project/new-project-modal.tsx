@@ -113,7 +113,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
               initialData.playerState.midi = midiInfo;
               initialData.playerState.duration = midiInfo.duration;
               setMetadataTemp(parsedMidi.info);
-              initialData.metadata = parsedMidi.info;
+              initialData.metadata = {
+                ...DEFAULT_SONG_INFO,
+                ...parsedMidi.info,
+                ...metadata,
+              };
 
               const { finalWords: midiWords, convertedChords: midiChords } =
                 convertParsedDataForImport(
@@ -132,9 +136,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
               ...parsedData.info,
-              TITLE: parsedData.title || metadata.TITLE,
-              ARTIST: parsedData.artist,
-              ALBUM: parsedData.album,
+              ...metadata,
             };
             const { finalWords: mp3Words, convertedChords: mp3Chords } =
               convertParsedDataForImport(parsedData, false, 0);

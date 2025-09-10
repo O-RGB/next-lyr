@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import ModalCommon from "../../common/modal";
-import { FaSave } from "react-icons/fa";
+import { FaEdit, FaPlus, FaSave } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputCommon from "@/components/common/data-input/input";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import ButtonCommon from "@/components/common/button";
+import { IoArrowBackCircle } from "react-icons/io5";
+import { BsStars } from "react-icons/bs";
+import { tokenizeThai } from "@/lib/wordcut/utils";
 
 interface EditLyricLineModalProps {
   open?: boolean;
@@ -15,9 +19,9 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const actions = useKaraokeStore((state) => state.actions);
   const { handleRetiming } = usePlayerHandlersStore();
 
-  const [initialInputText, setInitialInputText] = useState<string>();
+  const [initialInputText, setInitialInputText] = useState<string>("");
 
-  const [inputText, setInputText] = useState<string>();
+  const [inputText, setInputText] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,6 +55,11 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     }
   };
 
+  const cutText = async () => {
+    const processedText = await tokenizeThai(inputText);
+    setInputText(processedText);
+  };
+
   useEffect(() => {
     setInputText(initialInputText);
   }, [initialInputText]);
@@ -64,14 +73,36 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
         handleClose();
       }}
       open={(open ?? false) && selectedLineIndex !== null}
-      cancelButtonProps={{
-        onClick: handleClose,
-      }}
-      okButtonProps={{
-        onClick: handleSave,
-        children: "Save Changes",
-        icon: <FaSave />,
-      }}
+      footer={
+        <div className="flex items-center justify-end gap-3">
+          <ButtonCommon
+            size="sm"
+            color="gray"
+            icon={<IoArrowBackCircle />}
+            onClick={handleClose}
+          >
+            Close
+          </ButtonCommon>
+          <ButtonCommon
+            size="sm"
+            disabled={inputText.length <= 0}
+            icon={<BsStars />}
+            color="success"
+            className="text-nowrap"
+            onClick={cutText}
+          >
+            ตัดคำ
+          </ButtonCommon>
+          <ButtonCommon
+            onClick={handleSave}
+            color="primary"
+            size="sm"
+            icon={<FaEdit></FaEdit>}
+          >
+            Edit
+          </ButtonCommon>
+        </div>
+      }
     >
       <div className="space-y-4">
         <div>

@@ -40,6 +40,7 @@ export const createContentActions: StateCreator<
   return {
     actions: {
       setMetadata: async (metadata: Partial<SongInfo>) => {
+        console.log("Update Metadata....")
         await saveToHistoryAndDB();
         set((state) => ({
           metadata: { ...(state.metadata as SongInfo), ...metadata },
