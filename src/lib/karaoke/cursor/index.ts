@@ -45,7 +45,7 @@ export class TickLyricSegmentGenerator {
         unit: toUnitConverter(
           (word.start ?? 0) + (offsetTicks ? offsetTicks?.(word.start ?? 0) : 0)
         ),
-        text: word.name,
+        text: word.text,
       }));
 
       const fullText = tokens.map((t) => t.text).join("");
@@ -238,7 +238,7 @@ export class TimestampLyricSegmentGenerator {
       const effectiveDuration =
         (segmentDuration * speedMultiplier) / speedFactor;
 
-      const charsInWord = word.name.length;
+      const charsInWord = word.text.length;
       if (charsInWord === 0) return;
 
       let lastTime = word.start ?? 0;

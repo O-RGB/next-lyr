@@ -1,36 +1,45 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { LyricsCharacterStyle } from "../../lyrics-character";
 
 interface LyricsCharacterProps extends LyricsCharacterStyle {
   clip: number;
   text: string;
+  className?: string;
 }
 
-const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text, ...props }) => {
+const LyricsCharacter: React.FC<LyricsCharacterProps> = ({
+  clip,
+  text,
+  className,
+  fontOutline = "font-outline-2 md:font-outline-4",
+  ...props
+}) => {
   const clipStyle = {
     transition: clip === 0 ? "" : "clip-path 0.2s ease-out",
     clipPath: `inset(-100% -100% -100% ${clip}%)`,
   };
 
   const textOver: React.CSSProperties | undefined = {
-    display: "inline-block",
+    display: "block",
     whiteSpace: "nowrap" as const,
     overflow: "hidden",
     textOverflow: "clip",
     height: "auto",
     maxHeight: "none",
-    minHeight: "1.2em",
-    lineHeight: "1.5",
+    lineHeight: 1.5,
   };
+
+  const fontWeight = props.fontWeight ? props.fontWeight : "bold";
 
   return (
     <div
+      className={className}
       style={{
-        fontSize: props.fontSize ? props.fontSize : 35,
+        // fontSize: props.fontSize ? props.fontSize : 35,
         position: "relative",
         left: 0,
         top: 0,
-        fontWeight: "bold",
+        fontWeight,
       }}
     >
       <div
@@ -38,18 +47,18 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text, ...props 
         style={{
           ...clipStyle,
           ...textOver,
-          color: "#fcfe17",
+          color: props.color?.color ? props.color?.color : "#fcfe17",
         }}
       >
         {text}
       </div>
 
       <div
-        className={`absolute font-outline-2 md:font-outline-4 left-0 top-0 w-fit h-full z-20`}
+        className={`absolute ${fontOutline} left-0 top-0 w-fit h-full z-20`}
         style={{
           ...clipStyle,
           ...textOver,
-          color: "#000000",
+          color: props.activeColor?.color ? props.activeColor.color : "#000000",
         }}
       >
         {text}
@@ -59,9 +68,11 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text, ...props 
         <div
           style={{
             ...textOver,
-            color: "#ffffff",
+            color: props.activeColor?.colorBorder
+              ? props.activeColor.colorBorder
+              : "#ffffff",
           }}
-          className="z-10 font-outline-2 md:font-outline-4 absolute top-0 left-0"
+          className={`z-10 ${fontOutline} absolute top-0 left-0`}
         >
           {text}
         </div>
@@ -69,7 +80,9 @@ const LyricsCharacter: React.FC<LyricsCharacterProps> = ({ clip, text, ...props 
         <div
           style={{
             ...textOver,
-            color: "#0000FF",
+            color: props.color?.colorBorder
+              ? props.color.colorBorder
+              : "#0000FF",
           }}
           className="z-20 relative"
         >

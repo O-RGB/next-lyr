@@ -19,6 +19,7 @@ export interface IParsedMp3Data extends ParsedSongData {
   album?: string;
   miscTags?: MiscTags;
   lyricsTagKey?: string;
+  duration?: number;
 }
 
 export interface IReadMp3Result {

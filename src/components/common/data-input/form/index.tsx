@@ -140,12 +140,12 @@ function FormItem<T extends FieldValues>({
         <label
           htmlFor={name as string}
           className={`select-none font-medium ${
-            hasError ? "text-red-500" : "text-white/80"
+            hasError ? "text-red-500" : "text-gray-500"
           } ${
             required ? "after:content-['*'] after:text-red-500 after:ml-1" : ""
           }`}
         >
-          {label}
+          <span className="text-xs">{label}</span>
           {tooltip && (
             <span className="ml-1 text-xs text-gray-400" title={tooltip}>
               <MdHelpOutline className="inline w-4 h-4" />

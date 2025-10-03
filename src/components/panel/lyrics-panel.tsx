@@ -26,7 +26,7 @@ export default function LyricsPanel({}: Props) {
       {isMobile ? (
         <div className="flex flex-col gap-2 w-full h-full overflow-hidden">
           {preview && (
-            <div className=" bg-gray-200 rounded-md">
+            <div className="bg-gradient-to-r from-violet-100 to-pink-200 rounded-md">
               <div className="flex items-center justify-center w-full h-full p-2 min-h-28">
                 <LyricsPlayer
                   textStyle={{

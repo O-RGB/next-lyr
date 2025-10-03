@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import LyricsCharacter from "../character";
-import { LyricsCharacterStyle } from "@/components/lyrics/lyrics-character";
 import { groupThaiCharacters } from "@/lib/karaoke/cursor/lib";
 import { ISentence } from "@/lib/utils/arrayrange";
+import { LyricsCharacterStyle } from "../../lyrics-character";
 
 interface LyricsListProps {
   sentence?: ISentence;
-  nextSentence?: ISentence;
   tick: number;
   textStyle?: LyricsCharacterStyle;
 }
@@ -17,16 +16,13 @@ const LyricsList: React.FC<LyricsListProps> = ({
   textStyle,
 }) => {
   const [clipPercent, setClipPercent] = useState(0);
-  const [scale, setScale] = useState(1);
-  const textRef = useRef<HTMLDivElement>(null);
-  const lyricsContentRef = useRef<HTMLDivElement>(null);
+  const [scaleX, setScaleX] = useState(1);
+  const lyricsRef = useRef<HTMLDivElement>(null);
 
   const text = sentence?.text ?? "";
 
   const calculateClipPercent = () => {
-    if (!sentence?.valueName.length || tick < sentence.start) {
-      return 0;
-    }
+    if (!sentence?.valueName.length || tick < sentence.start) return 0;
 
     const clusters = groupThaiCharacters(text, sentence.valueName);
     if (!clusters.length) return 0;
@@ -54,40 +50,81 @@ const LyricsList: React.FC<LyricsListProps> = ({
     return 0;
   };
 
-  const updateScale = () => {
-    if (!textRef.current || !lyricsContentRef.current) return;
-
-    const containerWidth = textRef.current.offsetWidth;
-    const contentWidth = lyricsContentRef.current.offsetWidth;
-
-    setScale(contentWidth > containerWidth ? containerWidth / contentWidth : 1);
-  };
-
   useEffect(() => {
     setClipPercent(calculateClipPercent());
   }, [tick, sentence]);
 
+  const updateScale = () => {
+    if (!lyricsRef.current) return;
+
+    const textWidth = lyricsRef.current.scrollWidth;
+
+    const padding = 32;
+    const availableWidth = window.innerWidth - padding * 2;
+
+    if (textWidth > availableWidth) {
+      setScaleX(availableWidth / textWidth);
+    } else {
+      setScaleX(1);
+    }
+  };
+
   useEffect(() => {
     updateScale();
-    const handleResize = () => updateScale();
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, [text]);
+
+  useEffect(() => {
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
 
   if (!sentence) return null;
 
   return (
-    <div
-      ref={textRef}
-      className="relative px-10 w-fit"
-      style={{
-        transform: `scaleX(${scale})`,
-        transformOrigin: "center center",
-      }}
-    >
-      <div ref={lyricsContentRef}>
-        <LyricsCharacter clip={clipPercent} text={text} {...textStyle} />
+    <div>
+      <div className="w-full flex-col gap-2 overflow-hidden px-8 flex justify-center items-center">
+        <div
+          ref={lyricsRef}
+          style={{
+            transform: `scaleX(${scaleX})`,
+            transformOrigin: "center",
+            display: "inline-block",
+          }}
+        >
+          <LyricsCharacter
+            {...textStyle}
+            clip={clipPercent}
+            text={text}
+            className="text-2xl md:text-4xl"
+          />
+        </div>
+      </div>
+      <div className="w-full flex-col gap-2 overflow-hidden px-8 flex justify-center items-center">
+        <div
+          ref={lyricsRef}
+          style={{
+            transform: `scaleX(${scaleX})`,
+            transformOrigin: "center",
+            display: "inline-block",
+          }}
+        >
+          <LyricsCharacter
+            {...textStyle}
+            fontSize={textStyle?.fontSize ?? 0 - 10}
+            fontOutline="font-outline md:font-outline-2"
+            color={{
+              color: "#DF692E",
+              colorBorder: "#0000FF",
+            }}
+            activeColor={{
+              color: "#000000",
+              colorBorder: "#ffffff",
+            }}
+            className="text-xs md:text-base"
+            clip={clipPercent}
+            text={sentence.vocal}
+          />
+        </div>
       </div>
     </div>
   );

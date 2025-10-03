@@ -61,7 +61,6 @@ export const createProjectActions: StateCreator<
       }
 
       set({
-        // Reset state ที่จำเป็นเท่านั้น ไม่ใช้ ...initialState ทั้งหมด
         ...initialState,
         lyricsData,
         chordsData,
@@ -69,9 +68,7 @@ export const createProjectActions: StateCreator<
         projectId: project.id,
         mode: project.mode,
         playerState: {
-          // ใช้ ...playerState เพื่อเก็บข้อมูลเดิมจาก db ไว้
           ...playerState,
-          // และอัปเดต src/url ที่สร้างขึ้นมาใหม่
           audioSrc,
           videoSrc,
         },

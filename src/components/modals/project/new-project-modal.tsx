@@ -24,8 +24,8 @@ interface NewProjectModalProps {
 
 const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
-  const [musicFile, setMusicFile] = useState<File | null>(null);
-  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [musicFile, setMusicFile] = useState<File>();
+  const [youtubeUrl, setYoutubeUrl] = useState<string>();
   const [metadata, setMetadataTemp] = useState<SongInfo>();
 
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
@@ -40,7 +40,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const handleFileSelect = async (files: File[]) => {
     const file = files[0];
     if (!file) {
-      setMusicFile(null);
+      setMusicFile(undefined);
       return;
     }
     setMusicFile(file);
@@ -80,7 +80,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       alert("Please select a music file.");
       return;
     }
-    if (projectMode === "youtube" && !youtubeUrl.trim()) {
+    if (projectMode === "youtube" && youtubeUrl ? !youtubeUrl.trim() : false) {
       alert("Please enter a YouTube URL.");
       return;
     }
@@ -138,13 +138,15 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
               ...parsedData.info,
               ...metadata,
             };
+
             const { finalWords: mp3Words, convertedChords: mp3Chords } =
               convertParsedDataForImport(parsedData, false, 0);
+
             initialData.lyricsData = groupLyricsByLine(mp3Words);
             initialData.chordsData = mp3Chords;
             break;
         }
-      } else if (projectMode === "youtube") {
+      } else if (projectMode === "youtube" && youtubeUrl) {
         const videoId = getYouTubeId(youtubeUrl);
         if (!videoId) {
           alert("Invalid YouTube URL.");
@@ -185,9 +187,18 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     }
   };
 
+  const onProjectTypeChange = (value: MusicMode) => {
+    setProjectMode(value);
+    setMetadataTemp(DEFAULT_SONG_INFO);
+    setMusicFile(undefined);
+    setYoutubeUrl(undefined);
+  };
+
   useEffect(() => {
     setMetadataTemp(DEFAULT_SONG_INFO);
   }, [open]);
+
+  const disabled = projectMode === "youtube" ? !youtubeUrl : !musicFile;
 
   return (
     <ModalCommon
@@ -196,11 +207,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       onClose={onClose}
       okButtonProps={{
         onClick: handleCreateProject,
-        disabled: !musicFile,
+        disabled,
       }}
       cancelButtonProps={{
         onClick: onClose,
-        disabled: !musicFile,
+        disabled,
       }}
     >
       <div className="flex flex-col gap-4">
@@ -213,7 +224,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             { label: "YouTube", value: "youtube" },
           ]}
           value={projectMode}
-          onChange={(e) => setProjectMode(e.target.value as MusicMode)}
+          onChange={(e) => onProjectTypeChange(e.target.value as MusicMode)}
         />
 
         {projectMode !== "youtube" ? (
@@ -237,7 +248,9 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           <InputCommon
             label="YouTube URL"
             value={youtubeUrl}
-            onChange={(e) => setYoutubeUrl(e.target.value)}
+            onChange={(e) => {
+              setYoutubeUrl(e.target.value);
+            }}
             placeholder="Enter the YouTube video URL"
           />
         )}
@@ -245,9 +258,9 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         <div className="">
           <MetadataForm
             className="flex flex-col gap-4"
-            inputSize={"md"}
+            inputSize="md"
             adding
-            disabled={!musicFile}
+            disabled={disabled}
             onFieldChange={(data) => {
               setMetadataTemp({ ...DEFAULT_SONG_INFO, ...data });
             }}

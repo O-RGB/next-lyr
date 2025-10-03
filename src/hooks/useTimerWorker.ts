@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useKaraokeStore } from "../stores/karaoke-store";
 
-type TimerMode = "tick" | "time";
+type TimerMode = "Tick" | "Time";
 
 type TimerStore = {
   worker: Worker | null;
@@ -14,19 +14,17 @@ type TimerStore = {
   initWorker: () => void;
   terminateWorker: () => void;
   updatePpq: (ppq: number) => void;
+  updateDuration: (duration: number) => void;
   updateMode: (mode: TimerMode) => void;
   updateTempoMap: (tempos: any) => void;
-
   getCurrentTiming: () => Promise<{ value: number; bpm: number }>;
 };
 
 export const useTimerStore = create<TimerStore>((set, get) => ({
   worker: null,
-  mode: "tick",
+  mode: "Tick",
 
-  initWorker: () => {
-    if (get().worker) return;
-
+  initWorker() {
     const karaokeActions = useKaraokeStore.getState().actions;
 
     const worker = new Worker(
@@ -35,17 +33,20 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
 
     worker.onmessage = (e: MessageEvent) => {
       const { type, value, bpm } = e.data;
+      switch (type) {
+        case "Tick":
+        case "Time":
+          karaokeActions.setCurrentTime(value);
 
-      if (type === "tick" || type === "time") {
-        karaokeActions.setCurrentTime(value);
+          if (bpm !== undefined) {
+            karaokeActions.setCurrentTempo(bpm);
+          }
 
-        if (bpm) {
-          karaokeActions.setCurrentTempo(bpm);
-        }
+          break;
       }
     };
 
-    set({ worker });
+    get().worker = worker;
   },
 
   terminateWorker: () => {
@@ -79,23 +80,16 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     });
   },
 
-  startTimer: (params) => {
-    const worker = get().worker;
-    if (params?.mode) {
-      set({ mode: params.mode });
-      worker?.postMessage({
-        command: "updateMode",
-        value: { mode: params.mode },
-      });
-    }
-    worker?.postMessage({ command: "start", value: params });
+  startTimer() {
+    get().worker?.postMessage({ command: "start" });
   },
 
-  stopTimer: () => {
+  stopTimer() {
     get().worker?.postMessage({ command: "stop" });
   },
 
-  seekTimer: (value: number) => {
+  seekTimer(value: number) {
+    console.log("seeking, ", value);
     get().worker?.postMessage({ command: "seek", value: value });
   },
 
@@ -111,16 +105,21 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     }
   },
 
-  updateTempoMap: (tempos: any) => {
+  updateTempoMap(tempos: any) {
     get().worker?.postMessage({ command: "setTempoMap", value: { tempos } });
   },
 
-  updatePpq: (ppq: number) => {
+  updatePpq(ppq: number) {
     get().worker?.postMessage({ command: "updatePpq", value: { ppq } });
   },
+  updateDuration(duration: number) {
+    get().worker?.postMessage({
+      command: "updateDuration",
+      value: { duration },
+    });
+  },
 
-  updateMode: (mode: TimerMode) => {
-    set({ mode });
+  updateMode(mode: TimerMode) {
     get().worker?.postMessage({ command: "updateMode", value: { mode } });
   },
 }));

@@ -1,7 +1,3 @@
-import { IMidiParseResult } from "@/lib/karaoke/midi/types";
-import { IParsedMp3Data } from "@/lib/karaoke/mp3/type";
-import { ParsedSongData } from "@/lib/karaoke/shared/types";
-
 export interface IOptions {
   value?: string | number | string[] | number[];
   label?: React.ReactNode;
@@ -11,7 +7,8 @@ export interface IOptions {
 }
 
 export interface LyricWordData {
-  name: string;
+  text: string;
+  vocal?: string;
   start: number | null;
   end: number | null;
   length: number;

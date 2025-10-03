@@ -83,9 +83,13 @@ export interface FileActions {
 
 export interface ContentActions {
   setMetadata: (metadata: Partial<SongInfo>) => void;
-  importLyrics: (rawText: string) => void;
+  importLyrics: (rawText: string, autoSub: boolean) => void;
   deleteLine: (lineIndexToDelete: number) => void;
-  updateLine: (lineIndexToUpdate: number, newText: string) => void;
+  updateLine: (
+    lineIndexToUpdate: number,
+    newText: string,
+    vocal: string[]
+  ) => void;
   insertLineAfter: (lineIndex: number, newText: string) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addChord: (chord: ChordEvent) => void;

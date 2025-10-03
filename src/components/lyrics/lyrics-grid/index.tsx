@@ -20,7 +20,7 @@ const LyricsGrid: React.FC<LyricsGridProps> = ({}) => {
   const rowVirtualizer = useVirtualizer({
     count: groupedLines.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 50,
+    estimateSize: () => 60,
     overscan: 5,
   });
 

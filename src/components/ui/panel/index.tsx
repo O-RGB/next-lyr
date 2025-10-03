@@ -40,7 +40,6 @@ const LyrEditerPanel: React.FC = () => {
       <KeyboardRender />
       <main className="flex flex-col h-[calc(100dvh-36px)]">
         <PanelTools></PanelTools>
-
         <EditLyricLineModal open={isEditModalOpen} />
         <AddLyricLineModal open={isAddModalOpen} />
       </main>

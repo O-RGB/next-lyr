@@ -40,16 +40,16 @@ export const createContentActions: StateCreator<
   return {
     actions: {
       setMetadata: async (metadata: Partial<SongInfo>) => {
-        console.log("Update Metadata....")
+        console.log("Update Metadata....");
         await saveToHistoryAndDB();
         set((state) => ({
           metadata: { ...(state.metadata as SongInfo), ...metadata },
         }));
         await get().actions.saveCurrentProject();
       },
-      importLyrics: async (rawText: string) => {
+      importLyrics: async (rawText: string, autoSub: boolean) => {
         await saveToHistoryAndDB();
-        const words = processRawLyrics(rawText);
+        const words = processRawLyrics(rawText, autoSub);
         set({
           lyricsData: groupLyricsByLine(words),
           currentIndex: 0,
@@ -77,7 +77,11 @@ export const createContentActions: StateCreator<
         });
         get().actions.processLyricsForPlayer();
       },
-      updateLine: async (lineIndexToUpdate: number, newText: string) => {
+      updateLine: async (
+        lineIndexToUpdate: number,
+        newText: string,
+        vocal: string[]
+      ) => {
         await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = [...state.lyricsData];
@@ -88,7 +92,8 @@ export const createContentActions: StateCreator<
 
           const newWords: LyricWordData[] = wordsInLine.map(
             (wordText, wordIndex) => ({
-              name: wordText,
+              text: wordText,
+              vocal: vocal[wordIndex] ? vocal[wordIndex] : "",
               start: null,
               end: null,
               length: 0,
@@ -114,7 +119,7 @@ export const createContentActions: StateCreator<
         await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = [...state.lyricsData];
-          const newWords = processRawLyrics(newText).map((w) => ({
+          const newWords = processRawLyrics(newText, false).map((w) => ({
             ...w,
             lineIndex: lineIndex + 1,
           }));
@@ -184,6 +189,7 @@ export const createContentActions: StateCreator<
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();
         if (!mode) return;
+
         const processed = processLyricsForPlayer(
           lyricsData.flat(),
           mode,

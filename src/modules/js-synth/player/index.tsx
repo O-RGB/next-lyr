@@ -62,12 +62,18 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
           const parsedMidi = await parseMidi(file);
           const midiInfo = await player.loadMidi(file);
 
+          console.log(midiInfo);
+
           if (midiInfo.tempos) {
             timerControls.updateTempoMap(midiInfo.tempos);
           }
 
           if (midiInfo.ticksPerBeat) {
             timerControls.updatePpq(midiInfo.ticksPerBeat);
+          }
+
+          if (midiInfo.duration) {
+            timerControls.updateDuration(midiInfo.duration);
           }
 
           setDuration(midiInfo.duration);
@@ -126,6 +132,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
 
     useEffect(() => {
       timerControls.initWorker();
+      timerControls.updateMode("Tick")
       return () => {
         timerControls.terminateWorker();
       };

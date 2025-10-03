@@ -5,6 +5,7 @@ export interface ISentence {
   text: string;
   start: number;
   valueName: number[];
+  vocal: string
 }
 
 export interface ILyricsBuilder {

@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react";
 
-export type ButtonSize = "xs"| "sm" | "md" | "lg";
+export type ButtonSize = "xs" | "sm" | "md" | "lg";
 export type ButtonVariant = "solid" | "outline" | "ghost";
 export type ButtonColor =
   | "primary"

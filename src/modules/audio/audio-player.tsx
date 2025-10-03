@@ -99,7 +99,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
 
     useEffect(() => {
       timerControls.initWorker();
-      timerControls.updateMode("time");
+      timerControls.updateMode("Time");
       return () => timerControls.terminateWorker();
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
@@ -120,6 +120,10 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
 
         const tempAudio = document.createElement("audio");
         tempAudio.src = audioUrl;
+
+        if (parsedData.duration) {
+          timerControls.updateDuration(parsedData.duration);
+        }
 
         const handleMetadata = () => {
           loadAudioFile(audioUrl, file, parsedData, tempAudio.duration);

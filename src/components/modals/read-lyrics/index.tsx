@@ -10,6 +10,7 @@ import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { IoArrowBackCircle } from "react-icons/io5";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
 import { tokenizeThai } from "@/lib/wordcut/utils";
+import CheckboxGroup from "@/components/common/data-input/checkbox";
 
 interface ReadLyricsModalProps {
   open?: boolean;
@@ -20,6 +21,8 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   const exText = "ตัว|อย่าง|เนื้อ|เพลง\nของ|คุณ";
   const actions = useKaraokeStore((state) => state.actions);
   const [lyricsText, setLyricsText] = useState<string>(exText);
+
+  const [isOpenSub, setOpenSub] = useState<boolean>(false);
   const [openModal, setOpenModal] = useState<boolean>(false);
 
   const handleCloseModal = () => {
@@ -51,7 +54,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
 
   const handleOnAdd = async () => {
     if (lyricsText.length > 0) {
-      actions.importLyrics(lyricsText);
+      actions.importLyrics(lyricsText, isOpenSub);
     }
     onClose?.();
   };
@@ -119,11 +122,34 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
           </div>
         }
       >
-        <TextareaCommon
-          value={lyricsText}
-          onChange={onTextChange}
-          className="!h-[300px] lg:!h-[400px]"
-        />
+        <div className="p-2 border rounded-md mb-2 bg-slate-100">
+          <label className="text-xs font-medium text-slate-600 mb-1 block">
+            เพิ่มเติม
+          </label>
+          <CheckboxGroup
+            onChange={(values) => {
+              const isCheck = values.find((x) => "sub-eng");
+              if (isCheck) setOpenSub(true);
+              else setOpenSub(false);
+            }}
+            options={[
+              {
+                label: "เพิ่มซับไตเติ้ล Eng (ภาษาไทยเท่านั้น)",
+                value: "sub-eng",
+              },
+            ]}
+          ></CheckboxGroup>
+        </div>
+        <div className="p-2 border rounded-md bg-slate-100">
+          <label className="text-xs font-medium text-slate-600 mb-1 block">
+            เนื้อเพลง
+          </label>
+          <TextareaCommon
+            value={lyricsText}
+            onChange={onTextChange}
+            className="!h-[300px] lg:!h-[400px]"
+          />
+        </div>
       </ModalCommon>
     </>
   );

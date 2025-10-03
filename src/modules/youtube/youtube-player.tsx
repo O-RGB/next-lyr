@@ -34,7 +34,6 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const [playerState, setPlayerState] = useState(false);
 
     const actions = useKaraokeStore((state) => state.actions);
-
     const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("Load a YouTube URL");
@@ -58,11 +57,17 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const handleReady = (event: { target: YouTubePlayer }) => {
       playerRef.current = event.target;
       const videoData = event.target.getVideoData();
+
+      const duration = event.target.getDuration();
       setFileName(videoData.title);
-      setDuration(event.target.getDuration());
+      setDuration(duration);
       setIsReady(true);
       onReady(event);
       timerControls.resetTimer();
+
+      setTimeout(() => {
+        timerControls.updateDuration(duration);
+      }, 100);
     };
 
     const handleStateChange = (e: { data: number }) => {
@@ -80,7 +85,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     };
 
     const opts = {
-      height: "320",
+      height: "100%",
       width: "100%",
       playerVars: {
         autoplay: 0,
@@ -114,6 +119,7 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
 
     useEffect(() => {
       timerControls.initWorker();
+      timerControls.updateMode("Time");
       return () => timerControls.terminateWorker();
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
@@ -126,10 +132,10 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
               opts={opts}
               onReady={handleReady}
               onStateChange={handleStateChange}
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden aspect-video"
             />
           ) : (
-            <div className="h-[320px] w-full bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
+            <div className="aspect-video bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
               Please load a YouTube URL
             </div>
           )}

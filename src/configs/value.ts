@@ -8,4 +8,4 @@ export const EMK_TYPE = "EMK";
 export const NCN_TYPE = "NCN";
 export const SONG_TYPE = { 0: EMK_TYPE, 1: NCN_TYPE };
 
-export const DICT_WORDCUT = "/dict.json";
+export const DICT_WORDCUT = "/tokenizer/th.json";

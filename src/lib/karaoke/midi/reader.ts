@@ -234,7 +234,11 @@ function _extractDataFromEvents(
               const klyrData = _parseKLyrXML(xmlDoc);
               songInfo = klyrData.info;
               lyrics = klyrData.lyrics.map((line) =>
-                line.map((word) => ({ text: word.name, tick: word.tick }))
+                line.map((word) => ({
+                  text: word.name,
+                  tick: word.tick,
+                  vocal: word.vocal,
+                }))
               );
               foundLyrics = true;
             }

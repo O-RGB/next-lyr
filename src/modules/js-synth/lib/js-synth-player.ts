@@ -93,9 +93,6 @@ export class JsSynthPlayerEngine {
       midiData = await parseMidi(midiBuffer);
     }
 
-    // const { updatePpq } = useTimerStore.getState();
-    // updatePpq(midiData.ticksPerBeat);
-
     await this.player.resetPlayer();
     await this.player.addSMFDataToPlayer(midiBuffer);
     this.seek(0);

@@ -25,8 +25,8 @@ export function groupWordDataToEvents(
       ? tickConverter(word.start ?? 0)
       : word.start ?? 0;
     groupedEvents[word.lineIndex].push({
-      text: word.name,
-      tick: Math.round(tick),
+      text: word.text,
+      tick: tick,
     });
   }
 
@@ -46,7 +46,8 @@ export const mapEventsToWordData = (
       const end = next ? convert(next.tick) : null;
 
       return {
-        name: event.text,
+        text: event.text,
+        vocal: event.vocal,
         start,
         end,
         length: end !== null ? end - start : 0,

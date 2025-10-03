@@ -1,5 +1,5 @@
 import { buildKLyrXML, stringToTIS620 } from "../shared/lib";
-import { encodeLyricsBase64, uint8ArrayToBase64 } from "./lib";
+import { encodeLyricsBase64 } from "./lib";
 import { IParsedMp3Data } from "./type";
 
 function concat(arrays: Uint8Array[]): Uint8Array {

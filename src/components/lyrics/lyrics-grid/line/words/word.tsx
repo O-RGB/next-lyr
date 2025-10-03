@@ -139,19 +139,31 @@ const Word = React.memo(({ wordData, onClick }: WordProps) => {
   `;
 
   return (
-    <div
-      ref={wordRef}
-      className={baseClasses}
-      data-index={wordData.index}
-      onClick={() => onClick(wordData.index)}
-    >
-      <span className="relative z-30">{wordData.name}</span>
+    <div className="w-fit">
+      <div
+        ref={wordRef}
+        className={baseClasses}
+        data-index={wordData.index}
+        onClick={() => onClick(wordData.index)}
+      >
+        <span className="relative z-30">{wordData.text}</span>
 
-      <EditingHighlight lineIndex={wordData.lineIndex} />
-      <PlaybackHighlight wordIndex={wordData.index} />
-      <PendingCorrectionHighlight wordIndex={wordData.index} />
-      <ActiveTimingHighlight wordIndex={wordData.index} />
-      <TimedHighlight wordData={wordData} />
+        <EditingHighlight lineIndex={wordData.lineIndex} />
+        <PlaybackHighlight wordIndex={wordData.index} />
+        <PendingCorrectionHighlight wordIndex={wordData.index} />
+        <ActiveTimingHighlight wordIndex={wordData.index} />
+        <TimedHighlight wordData={wordData} />
+      </div>
+
+      {wordData.vocal && (
+        <div className="text-[7px] w-full mt-1">
+          <div className="relative text-center bg-white text-gray-600 border border-gray-100/80 shadow-sm rounded-md h-3">
+            <div className="absolute px-2 right-0 left-0 top-0 truncate z-10">
+              {wordData.vocal}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

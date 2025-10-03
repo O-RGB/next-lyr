@@ -23,7 +23,7 @@ const LineRow: React.FC<LineRowProps> = ({
 
   return (
     <div
-      className="relative flex h-full w-full gap-2 lg:gap-3  "
+      className="relative flex h-full w-full gap-2 lg:gap-3"
       ref={lineRef}
       data-line-index={lineIndex}
     >

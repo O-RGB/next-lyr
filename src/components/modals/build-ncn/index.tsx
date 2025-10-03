@@ -19,6 +19,7 @@ import {
   IMidiParseResult,
 } from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
+import { getProject } from "@/lib/database/db";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -26,6 +27,7 @@ interface BuildNcnModalProps {
 }
 
 const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
+  const projectId = useKaraokeStore((state) => state.projectId);
   const storedFile = useKaraokeStore((state) => state.playerState.storedFile);
   const chordsData = useKaraokeStore((state) => state.chordsData);
   const midiInfo = useKaraokeStore((state) => state.playerState.midi);
@@ -43,6 +45,28 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
     if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
+  };
+
+  const handleBuildYoutube = async () => {
+    if (!metadata) return;
+    validation();
+    if (!projectId) return;
+    const project = await getProject(projectId);
+    if (!project) return;
+
+    // แปลงเป็น minified JSON
+    const json = JSON.stringify(project);
+
+    // สร้าง blob และดาวน์โหลด
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${metadata.TITLE || "project"}.min.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleSaveMp3 = async () => {
@@ -149,7 +173,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
     if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
     const lyrInline: string[] = lyricsData.map((line) =>
-      line.map((word) => word.name).join("")
+      line.map((word) => word.text).join("")
     );
 
     const lyr = new LyrBuilder({
@@ -201,7 +225,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           children: "Close",
         }}
       >
-        {storedFile && lyricsData.length > 0 ? (
+        {(mode !== "youtube" ? storedFile : true) && lyricsData.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
               <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>
@@ -241,6 +265,15 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   icon={<MdOutlineFileDownload className="text-lg" />}
                 >
                   บันทึก <span className="font-bold">.mp3</span>
+                </ButtonCommon>
+              )}
+              {mode === "youtube" && (
+                <ButtonCommon
+                  onClick={handleBuildYoutube}
+                  color="secondary"
+                  icon={<MdOutlineFileDownload className="text-lg" />}
+                >
+                  บันทึก <span className="font-bold">.json</span>
                 </ButtonCommon>
               )}
             </div>

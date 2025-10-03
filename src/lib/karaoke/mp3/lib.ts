@@ -1,6 +1,7 @@
 import pako from "pako";
 import {
   arrayBufferToBase64,
+  base64ToArrayBuffer,
   stringToTIS620,
   TIS620ToString,
 } from "../shared/lib";
@@ -52,11 +53,9 @@ export function decodeTIS620Text(text: string): string {
 
 export function decodeLyricsBase64(encoded: string): string {
   try {
-    const cleanBase64 = encoded.replace(/^LyrHdr\d*/, "");
-    const compressed = Uint8Array.from(atob(cleanBase64), (c) =>
-      c.charCodeAt(0)
-    );
-    const decompressed = decompressSync(compressed);
+    const clean = encoded.replace(/^LyrHdr\d*/, "");
+    const compressed = base64ToArrayBuffer(clean);
+    const decompressed = pako.inflate(compressed);
     return TIS620ToString(decompressed);
   } catch (e) {
     console.error("Failed to decompress lyrics data:", e);

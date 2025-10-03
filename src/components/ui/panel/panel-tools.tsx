@@ -147,18 +147,22 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full relative">
+    <div className="flex flex-col lg:flex-row w-full h-full relative ">
       <AllowSound>
         <div className="relative lg:flex-grow flex flex-col h-full order-2 lg:order-1">
-          <div className="h-full lg:h-[70%] ">
+          <div className="h-full lg:h-[70%]">
             <LyricsPanel />
           </div>
 
-          <div className="hidden lg:flex h-[30%] bg-gray-400 items-center justify-center">
+          <div className="hidden lg:flex h-[30%] bg-gradient-to-r from-violet-200 to-pink-300 items-center justify-center">
             <LyricsPlayer />
           </div>
         </div>
-        <div className="lg:w-[25%] p-0 lg:p-4 lg:bg-slate-200/50 lg:border-l lg:border-slate-300 lg:h-full lg:overflow-auto order-1 lg:order-2 flex-shrink-0">
+        <div
+          className={`lg:w-[300px] p-0 lg:p-4 lg:bg-slate-200/50 
+          lg:border-l lg:border-slate-300 lg:h-full lg:overflow-auto order-1 
+          lg:order-2 flex-shrink-0`}
+        >
           <PlayerInit />
           <div className="hidden lg:block">
             <MetadataForm />

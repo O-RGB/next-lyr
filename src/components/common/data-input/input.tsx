@@ -62,6 +62,7 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
             className={inputClassName}
             onFocus={handleFocus(onFocus)}
             onBlur={handleBlur(onBlur)}
+            value={props.value ?? ""}
           />
         </div>
       </BaseInputWrapper>

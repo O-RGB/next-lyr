@@ -1,7 +1,6 @@
 import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
-import InputCommon from "../common/data-input/input";
 import { useEffect, useLayoutEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
@@ -16,6 +15,7 @@ import {
   VOCAL_CHANNEL,
   vocalChannelOption,
 } from "@/lib/karaoke/midi/types";
+import InputCommon from "../common/data-input/input";
 
 type Props = {
   adding?: boolean;
@@ -113,7 +113,7 @@ export default function MetadataForm({
               />
             )}
           </Form.Item>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Form.Item<SongInfo> required name="KEY" className="w-full h-full">
               {(field) => (
                 <SelectCommon

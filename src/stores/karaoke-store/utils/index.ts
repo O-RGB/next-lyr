@@ -1,18 +1,18 @@
 import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
+import { LyricWordData, MusicMode } from "@/types/common.type";
+import { StoredFile } from "@/lib/database/db";
+import { ParsedSongData } from "@/lib/karaoke/shared/types";
+import { IMidiParseResult, TempoEvent } from "@/lib/karaoke/midi/types";
 import {
   cursorToTick,
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
 } from "../../../lib/karaoke/cursor";
-import { LyricWordData, MusicMode, IMidiInfo } from "@/types/common.type";
-import { StoredFile } from "@/lib/database/db";
 import {
   DEFAULT_PRE_ROLL_OFFSET_MP3,
   DEFAULT_CHORD_DURATION,
   DEFAULT_PRE_ROLL_OFFSET_MIDI,
 } from "../configs";
-import { ParsedSongData } from "@/lib/karaoke/shared/types";
-import { IMidiParseResult, TempoEvent } from "@/lib/karaoke/midi/types";
 
 export const createStoredFileFromFile = async (
   file: File
@@ -54,18 +54,33 @@ export const processLyricsForPlayer = (
     const generator = new TimestampLyricSegmentGenerator();
     timestamps = generator.generateSegment(timedWords);
   }
-
   const lyrInline: string[] = [];
+  const vocalInline: string[] = [];
+
+  const grouped: Record<number, typeof lyricsData> = {};
   lyricsData.forEach((data) => {
-    if (!lyrInline[data.lineIndex]) lyrInline[data.lineIndex] = "";
-    lyrInline[data.lineIndex] += data.name;
+    if (!grouped[data.lineIndex]) grouped[data.lineIndex] = [];
+    grouped[data.lineIndex].push(data);
+  });
+
+  Object.keys(grouped).forEach((line) => {
+    const items = grouped[Number(line)];
+    lyrInline[Number(line)] = items.map((i) => i.text).join("");
+    vocalInline[Number(line)] = items
+      .map((i, idx) => {
+        if (!i.vocal) return "";
+
+        const isLastWithVocal = items.slice(idx + 1).every((j) => !j.vocal);
+        return i.vocal + (isLastWithVocal ? "" : "-");
+      })
+      .join("");
   });
 
   const arrayRange = new ArrayRange<ISentence>();
   let cursorIndex = 0;
 
   lyrInline
-    .map((line) => {
+    .map((line, index) => {
       const lineLength = line.length;
       if (lineLength === 0) return undefined;
 
@@ -78,7 +93,13 @@ export const processLyricsForPlayer = (
 
       const [start, ...valueName] = lineCursor;
       const end = valueName[lineLength - 1] || start;
-      const value = { text: line, start, valueName, end };
+      const value = {
+        text: line,
+        start,
+        valueName,
+        end,
+        vocal: vocalInline[index],
+      };
       arrayRange.push([start, end], value);
       return value;
     })
@@ -140,7 +161,6 @@ export const convertParsedDataForImport = (
 
   const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
 
-  // isMidi มีการ Build ออกมาแล้วคลาดเคลื่อนนิดหน่อยต้อง - จาก 0.4 ด้วย 0.35
   data.lyrics.forEach((line, lineIndex: number) => {
     line.forEach((wordEvent) => {
       const bpm = isMidi ? tempos!.search(wordEvent.tick)?.lyrics.value.bpm : 0;
@@ -172,7 +192,8 @@ export const convertParsedDataForImport = (
       }
 
       finalWords.push({
-        name: wordEvent.text,
+        text: wordEvent.text,
+        vocal: wordEvent.vocal,
         start: convertedTick,
         end: endTime,
         length: endTime - convertedTick,

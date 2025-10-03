@@ -36,12 +36,12 @@ const RulerLineWord: React.FC<RulerLineWordProps> = ({
     >
       <div
         className={`${color} w-1.5 h-1.5 rounded-full`}
-        title={`"${word.name}" Start: ${word.start}`}
+        title={`"${word.text}" Start: ${word.start}`}
       />
       <div className={`flex-1 h-[1px] ${color}`} />
       <div
         className={`${color} w-1.5 h-1.5 rounded-full`}
-        title={`"${word.name}" End: ${word.end}`}
+        title={`"${word.text}" End: ${word.end}`}
       />
     </div>
   );

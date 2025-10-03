@@ -53,7 +53,7 @@ export const createProject = async (
   name: string,
   mode: MusicMode,
   initialData: ProjectData,
-  musicFile: File | null
+  musicFile?: File
 ): Promise<string> => {
   try {
     if (musicFile) {
