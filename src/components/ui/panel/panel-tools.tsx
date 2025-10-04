@@ -1,7 +1,7 @@
 import LyricsPlayer from "@/components/lyrics/karaoke-lyrics";
 import MetadataForm from "@/components/metadata/metadata-form";
 import LyricsPanel from "@/components/panel/lyrics-panel";
-import React from "react";
+import React, { useState } from "react";
 import PlayerInit from "./player-init";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import {
@@ -12,7 +12,7 @@ import {
   FaPlay,
   FaPause,
 } from "react-icons/fa";
-import AllowSound from "@/allow-sound";
+import AllowSound from "@/components/providers/allow-sound";
 
 export const MobileControls = () => {
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
@@ -113,6 +113,7 @@ interface PanelToolsProps {}
 const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   const mode = useKaraokeStore((state) => state.mode);
   const projectId = useKaraokeStore((state) => state.projectId);
+  const [onMobilePreview, setMobilePreview] = useState<boolean>(false);
 
   if (!projectId) {
     return (
@@ -147,14 +148,14 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full relative ">
+    <div className=" flex flex-col lg:flex-row w-full h-full relative ">
       <AllowSound>
-        <div className="relative lg:flex-grow flex flex-col h-full order-2 lg:order-1">
+        <div className="relative lg:flex-grow flex flex-col h-full order-2 lg:order-1 overflow-hidden">
           <div className="h-full lg:h-[70%]">
-            <LyricsPanel />
+            <LyricsPanel onPreview={setMobilePreview} />
           </div>
 
-          <div className="hidden lg:flex h-[30%] bg-gradient-to-r from-violet-200 to-pink-300 items-center justify-center">
+          <div className="hidden lg:flex h-[30%] bg-gradient-to-r from-violet-200 to-pink-300 items-center justify-center overflow-auto">
             <LyricsPlayer />
           </div>
         </div>
@@ -163,7 +164,18 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
           lg:border-l lg:border-slate-300 lg:h-full lg:overflow-auto order-1 
           lg:order-2 flex-shrink-0`}
         >
-          <PlayerInit />
+          <div
+            className={`fixed flex lg:flex-none gap-2 lg:relative z-50 left-0 right-2 lg:right-0 w-full px-2 lg:px-0 ${
+              !onMobilePreview ? "top-20 lg:top-0" : "top-[203px] lg:top-0"
+            }`}
+          >
+            <div className="w-full lg:w-0"></div>
+            <div className="w-[20%] lg:w-full">
+              <PlayerInit
+                containerClassName={`w-full !h-[100px] lg:!w-auto lg:!h-auto aspect-auto lg:aspect-video `}
+              />
+            </div>
+          </div>
           <div className="hidden lg:block">
             <MetadataForm />
           </div>

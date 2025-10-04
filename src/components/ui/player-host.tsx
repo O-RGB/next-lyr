@@ -31,10 +31,12 @@ export type PlayerRef = {
 
 type PlayerHostProps = {
   onReady?: () => void;
+  videoOnly?: boolean;
+  containerClassName?: string;
 };
 
 const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
-  ({ onReady }, ref) => {
+  ({ onReady, videoOnly, containerClassName }, ref) => {
     const mode = useKaraokeStore((state) => state.mode);
     const playerState = useKaraokeStore((state) => state.playerState);
     const actions = useKaraokeStore((state) => state.actions);
@@ -107,6 +109,8 @@ const PlayerHost = forwardRef<PlayerRef, PlayerHostProps>(
       case "youtube":
         return (
           <YoutubePlayer
+            videoOnly={videoOnly}
+            containerClassName={containerClassName}
             ref={youtubeRef}
             youtubeId={playerState.youtubeId}
             onReady={onPlayerReady}

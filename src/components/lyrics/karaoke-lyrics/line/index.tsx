@@ -59,7 +59,7 @@ const LyricsList: React.FC<LyricsListProps> = ({
 
     const textWidth = lyricsRef.current.scrollWidth;
 
-    const padding = 32;
+    const padding = 20;
     const availableWidth = window.innerWidth - padding * 2;
 
     if (textWidth > availableWidth) {
@@ -81,50 +81,40 @@ const LyricsList: React.FC<LyricsListProps> = ({
   if (!sentence) return null;
 
   return (
-    <div>
-      <div className="w-full flex-col gap-2 overflow-hidden px-8 flex justify-center items-center">
-        <div
-          ref={lyricsRef}
-          style={{
-            transform: `scaleX(${scaleX})`,
-            transformOrigin: "center",
-            display: "inline-block",
-          }}
-        >
-          <LyricsCharacter
-            {...textStyle}
-            clip={clipPercent}
-            text={text}
-            className="text-2xl md:text-4xl"
-          />
-        </div>
+    <div
+      ref={lyricsRef}
+      className="relative w-full"
+      style={{
+        transform: `scaleX(${scaleX})`,
+        transformOrigin: "center",
+        display: "inline-block",
+      }}
+    >
+      <div className="w-full flex-col gap-2 overflow-hidden flex justify-center items-center">
+        <LyricsCharacter
+          {...textStyle}
+          clip={clipPercent}
+          text={text}
+          className="text-2xl md:text-4xl"
+        />
       </div>
-      <div className="w-full flex-col gap-2 overflow-hidden px-8 flex justify-center items-center">
-        <div
-          ref={lyricsRef}
-          style={{
-            transform: `scaleX(${scaleX})`,
-            transformOrigin: "center",
-            display: "inline-block",
+      <div className="w-full flex-col gap-2 overflow-hidden flex justify-center items-center">
+        <LyricsCharacter
+          {...textStyle}
+          fontSize={textStyle?.fontSize ?? 0 - 10}
+          fontOutline="font-outline md:font-outline-2"
+          color={{
+            color: "#DF692E",
+            colorBorder: "#0000FF",
           }}
-        >
-          <LyricsCharacter
-            {...textStyle}
-            fontSize={textStyle?.fontSize ?? 0 - 10}
-            fontOutline="font-outline md:font-outline-2"
-            color={{
-              color: "#DF692E",
-              colorBorder: "#0000FF",
-            }}
-            activeColor={{
-              color: "#000000",
-              colorBorder: "#ffffff",
-            }}
-            className="text-xs md:text-base"
-            clip={clipPercent}
-            text={sentence.vocal}
-          />
-        </div>
+          activeColor={{
+            color: "#000000",
+            colorBorder: "#ffffff",
+          }}
+          className="text-xs md:text-base"
+          clip={clipPercent}
+          text={sentence.vocal}
+        />
       </div>
     </div>
   );

@@ -14,7 +14,9 @@ import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {
   youtubeId: string | null;
+  videoOnly?: boolean;
   onReady: (event: { target: any }) => void;
+  containerClassName?: string;
 };
 
 export type YouTubePlayerRef = {
@@ -28,7 +30,7 @@ export type YouTubePlayerRef = {
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
-  ({ youtubeId, onReady }, ref) => {
+  ({ youtubeId, onReady, videoOnly, containerClassName }, ref) => {
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [isReady, setIsReady] = useState(false);
     const [playerState, setPlayerState] = useState(false);
@@ -124,32 +126,35 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     }, [timerControls.initWorker, timerControls.terminateWorker]);
 
     return (
-      <Card className="bg-white/50 p-4 rounded-lg w-full space-y-3">
-        <div className="relative">
-          {youtubeId ? (
-            <YouTube
-              videoId={youtubeId}
-              opts={opts}
-              onReady={handleReady}
-              onStateChange={handleStateChange}
-              className="rounded-lg overflow-hidden aspect-video"
-            />
-          ) : (
-            <div className="aspect-video bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
-              Please load a YouTube URL
+      <Card className={`lg:p-4 bg-white/50 h-full rounded-lg w-full space-y-3`}>
+        {youtubeId && (
+          <div
+            className={`relative overflow-hidden w-full h-full rounded-lg ${
+              containerClassName || ""
+            }`}
+          >
+            <div className="absolute top-1/2 left-1/2 w-[177.78%] h-full -translate-x-1/2 -translate-y-1/2 scale-125">
+              <YouTube
+                videoId={youtubeId}
+                opts={opts}
+                onReady={handleReady}
+                onStateChange={handleStateChange}
+                className="w-full h-full"
+              />
             </div>
-          )}
-          <div className="absolute top-0 left-0 w-full h-full bg-transparent z-10"></div>
-        </div>
+          </div>
+        )}
 
-        <CommonPlayerStyle
-          fileName={fileName}
-          isPlaying={playerState}
-          onPlayPause={togglePlayPause}
-          onStop={handleStop}
-          onSeek={handleSeek}
-          duration={duration}
-        />
+        <div className="hidden lg:block">
+          <CommonPlayerStyle
+            fileName={fileName}
+            isPlaying={playerState}
+            onPlayPause={togglePlayPause}
+            onStop={handleStop}
+            onSeek={handleSeek}
+            duration={duration}
+          />
+        </div>
       </Card>
     );
   }

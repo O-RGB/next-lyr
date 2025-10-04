@@ -8,9 +8,12 @@ import LyricsPlayer from "../lyrics/karaoke-lyrics";
 import { useState } from "react";
 import MobileActionButton from "./actions";
 
-type Props = {};
+type Props = {
+  youtubeRender?: React.ReactNode;
+  onPreview?: (isPreview: boolean) => void;
+};
 
-export default function LyricsPanel({}: Props) {
+export default function LyricsPanel({ youtubeRender, onPreview }: Props) {
   const isMobile = useIsMobile();
   const [preview, setPreview] = useState<boolean>(false);
 
@@ -18,6 +21,7 @@ export default function LyricsPanel({}: Props) {
     <Card className="flex flex-col p-2 lg:p-4 h-full bg-gray-50 gap-2">
       <div className="flex justify-between">
         <div className="text-lg font-semibold">Lyric</div>
+
         <div>
           <TimeStampe />
         </div>
@@ -26,8 +30,8 @@ export default function LyricsPanel({}: Props) {
       {isMobile ? (
         <div className="flex flex-col gap-2 w-full h-full overflow-hidden">
           {preview && (
-            <div className="bg-gradient-to-r from-violet-100 to-pink-200 rounded-md">
-              <div className="flex items-center justify-center w-full h-full p-2 min-h-28">
+            <div className="bg-gradient-to-r from-violet-100 to-pink-200 rounded-md ">
+              <div className="flex items-center justify-center w-full p-2 overflow-hidden h-[115px]">
                 <LyricsPlayer
                   textStyle={{
                     fontSize: 20,
@@ -36,8 +40,12 @@ export default function LyricsPanel({}: Props) {
               </div>
             </div>
           )}
-          <div className="h-[100px] flex-shrink-0">
-            <ChordsBlock />
+
+          <div className="flex flex-row gap-2 h-[100px] flex-shrink-0">
+            <div className="w-full">
+              <ChordsBlock />
+            </div>
+            <div className="w-[20%]">{youtubeRender}</div>
           </div>
           <div className="flex-grow min-h-0 overflow-auto ">
             <LyricsGrid />
@@ -46,7 +54,10 @@ export default function LyricsPanel({}: Props) {
           <div className="flex justify-end gap-1.5">
             <MobileActionButton
               preview={preview}
-              setPreview={setPreview}
+              setPreview={(bool) => {
+                setPreview(bool);
+                onPreview?.(bool);
+              }}
             ></MobileActionButton>
           </div>
 

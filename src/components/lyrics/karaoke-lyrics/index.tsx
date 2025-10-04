@@ -40,8 +40,8 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
 
   return (
     <div className="flex flex-col h-full w-fit">
-      <div className="flex-grow flex items-center justify-center relative w-fit rounded-lg text-center overflow-auto [&::-webkit-scrollbar]:hidden duration-300">
-        <div className="flex flex-col items-center justify-center text-white drop-shadow-lg w-fit overflow-visible py-4">
+      <div className="flex-grow flex relative w-fit rounded-lg text-center overflow-auto [&::-webkit-scrollbar]:hidden duration-300 items-center">
+        <div className="flex flex-col text-white drop-shadow-lg w-fit overflow-visible py-4 items-center">
           <LyricsList
             tick={isTopActive ? currentTime : 0}
             sentence={topSentence}

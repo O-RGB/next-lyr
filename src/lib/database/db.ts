@@ -109,3 +109,13 @@ export const deleteProject = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+export const deleteAllProjects = async (): Promise<void> => {
+  try {
+    await db.projects.clear();
+    console.log("All projects have been deleted.");
+  } catch (error) {
+    console.error("Failed to delete all projects:", error);
+    throw error;
+  }
+};
