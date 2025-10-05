@@ -4,22 +4,18 @@ import ButtonCommon from "@/components/common/button";
 import Donate from "../donate/donate";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
-import {
-  DEFAULT_PRE_ROLL_OFFSET_MIDI,
-  DEFAULT_PRE_ROLL_OFFSET_MP3,
-} from "@/stores/karaoke-store/configs";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
 import { MdOutlineFileDownload } from "react-icons/md";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
-import {
-  LyricEvent,
-  SongInfo,
-  ChordEvent,
-  IMidiParseResult,
-} from "@/lib/karaoke/midi/types";
+import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
 import { getProject } from "@/lib/database/db";
+import {
+  DEFAULT_PRE_ROLL_OFFSET_MIDI,
+  DEFAULT_PRE_ROLL_OFFSET_MP3,
+} from "@/stores/karaoke-store/configs";
+import pako from "pako";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -54,15 +50,15 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     const project = await getProject(projectId);
     if (!project) return;
 
-    // แปลงเป็น minified JSON
     const json = JSON.stringify(project);
+    const compressed = pako.gzip(json);
+    const blob = new Blob([compressed], { type: "application/octet-stream" });
+    const filename = `${metadata.TITLE || "project"}.ykr`;
 
-    // สร้าง blob และดาวน์โหลด
-    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${metadata.TITLE || "project"}.min.json`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -273,7 +269,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   color="secondary"
                   icon={<MdOutlineFileDownload className="text-lg" />}
                 >
-                  บันทึก <span className="font-bold">.json</span>
+                  บันทึก <span className="font-bold">.ykr</span>
                 </ButtonCommon>
               )}
             </div>

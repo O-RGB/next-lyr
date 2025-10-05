@@ -148,7 +148,7 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
   }
 
   return (
-    <div className=" flex flex-col lg:flex-row w-full h-full relative ">
+    <div className="flex flex-col lg:flex-row w-full h-full relative">
       <AllowSound>
         <div className="relative lg:flex-grow flex flex-col h-full order-2 lg:order-1 overflow-hidden">
           <div className="h-full lg:h-[70%]">
