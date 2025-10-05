@@ -41,7 +41,7 @@ export default function LyricsPanel({ youtubeRender, onPreview }: Props) {
             </div>
           )}
 
-          <div className="flex flex-row gap-2 h-[100px] flex-shrink-0">
+          <div className="flex flex-row gap-2 h-[100px] flex-shrink-0 z-50">
             <div className="w-full">
               <ChordsBlock />
             </div>

@@ -165,7 +165,7 @@ const PanelTools: React.FC<PanelToolsProps> = ({}) => {
           lg:order-2 flex-shrink-0`}
         >
           <div
-            className={`fixed flex lg:flex-none gap-2 lg:relative z-50 left-0 right-2 lg:right-0 w-full px-2 lg:px-0 ${
+            className={`fixed flex lg:flex-none gap-2 lg:relative z-10 left-0 right-2 lg:right-0 w-full px-2 lg:px-0 ${
               !onMobilePreview ? "top-20 lg:top-0" : "top-[203px] lg:top-0"
             }`}
           >
