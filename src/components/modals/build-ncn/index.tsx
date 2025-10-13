@@ -53,12 +53,12 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
     const newLyricsData = groupWordDataToEvents(
       flatLyrics,
-      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.8)) * 1000
+      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
     );
 
     let newChordsData = chordsData.map((x) => ({
       ...x,
-      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.8)) * 1000),
+      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000),
     }));
 
     const json = JSON.stringify({
@@ -66,7 +66,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       data: { ...project.data, newLyricsData, chordsData: newChordsData },
     } as Project);
 
-    console.log("json", json);
+    console.log("json", project.data.metadata);
     const compressed = pako.gzip(json);
     const blob = new Blob([compressed], { type: "application/octet-stream" });
     const filename = `${metadata.TITLE || "project"}.ykr`;
