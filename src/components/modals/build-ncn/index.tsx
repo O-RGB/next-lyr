@@ -10,7 +10,7 @@ import { MdOutlineFileDownload } from "react-icons/md";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
 import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
-import { getProject } from "@/lib/database/db";
+import { getProject, Project } from "@/lib/database/db";
 import {
   DEFAULT_PRE_ROLL_OFFSET_MIDI,
   DEFAULT_PRE_ROLL_OFFSET_MP3,
@@ -49,8 +49,24 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!projectId) return;
     const project = await getProject(projectId);
     if (!project) return;
+    const flatLyrics = lyricsData.flat();
 
-    const json = JSON.stringify(project);
+    const newLyricsData = groupWordDataToEvents(
+      flatLyrics,
+      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
+    );
+
+    let newChordsData = chordsData.map((x) => ({
+      ...x,
+      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000),
+    }));
+
+    const json = JSON.stringify({
+      ...project,
+      data: { ...project.data, newLyricsData, chordsData: newChordsData },
+    } as Project);
+
+    console.log("json", json);
     const compressed = pako.gzip(json);
     const blob = new Blob([compressed], { type: "application/octet-stream" });
     const filename = `${metadata.TITLE || "project"}.ykr`;
