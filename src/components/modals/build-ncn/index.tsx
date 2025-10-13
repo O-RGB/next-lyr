@@ -53,12 +53,12 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
     const newLyricsData = groupWordDataToEvents(
       flatLyrics,
-      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
+      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.8)) * 1000
     );
 
     let newChordsData = chordsData.map((x) => ({
       ...x,
-      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000),
+      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.8)) * 1000),
     }));
 
     const json = JSON.stringify({
