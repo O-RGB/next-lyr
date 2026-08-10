@@ -1,4 +1,6 @@
 import { LyricEvent, SongInfo } from "../midi/types";
+import { buildKlyrXml } from "../lyrics-core/xml";
+import type { LyricsDocument } from "../lyrics-core/types";
 
 export function stringToTIS620(str: string): Uint8Array {
   const bytes = [];
@@ -56,76 +58,25 @@ export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
-export function escapeXml(text: string): string {
-  return text.replace(/[<>&'"]/g, (c) => {
-    switch (c) {
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case "&":
-        return "&amp;";
-      case "'":
-        return "&apos;";
-      case '"':
-        return "&quot;";
-      default:
-        return c;
-    }
-  });
-}
-
 export function buildKLyrXML(
   infoData: SongInfo,
   lyricsData: LyricEvent[][],
   mode: "midi" | "mp3"
 ): string {
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n<SONG_LYRIC>\r\n';
+  const document: LyricsDocument = {
+    source: mode === "midi" ? "KMID" : "MP3",
+    timeBase:
+      mode === "midi" ? { kind: "midi-tick", ppq: 0 } : { kind: "seconds" },
+    info: infoData,
+    lines: lyricsData.map((line, lineIndex) =>
+      line.map((word, wordIndex) => ({
+        id: `lyric-${lineIndex}-${wordIndex}`,
+        text: word.text,
+        vocal: word.vocal,
+        at: mode === "mp3" ? word.tick / 1000 : word.tick,
+      }))
+    ),
+  };
 
-  if (infoData && Object.keys(infoData).length > 0) {
-    xml += "  <INFO>\r\n";
-    for (const [key, value] of Object.entries(infoData)) {
-      if (value !== "" && value !== undefined)
-        xml += `    <${key}>${escapeXml(String(value))}</${key}>\r\n`;
-    }
-    xml += "  </INFO>\r\n";
-  }
-
-  if (lyricsData?.length > 0) {
-    xml += "  <LYRIC>\r\n";
-    lyricsData.forEach((line) => {
-      if (line.length > 0) {
-        xml += "    <LINE>\r\n";
-        if (mode === "midi") {
-          xml += `      <TIME>${line[0].tick}</TIME>\r\n`;
-        }
-        line.forEach((word) => {
-          xml += "      <WORD>\r\n";
-          xml += `        <TIME>${word.tick}</TIME>\r\n`;
-          xml += `        <TEXT>${escapeXml(word.text)}</TEXT>\r\n`;
-          if (mode === "midi") {
-            if (word.vocal === "9" || word.vocal === "NONE") {
-              xml += `        <VOCAL></VOCAL>\r\n`;
-            } else {
-              xml += `        <VOCAL>${
-                word.vocal ? escapeXml(word.vocal) : ""
-              }</VOCAL>\r\n`;
-            }
-          } else {
-            let vocal = "";
-            if (word.vocal !== "NONE" && word.vocal !== undefined) {
-              vocal = word.vocal;
-            }
-            xml += `        <VOCAL>${escapeXml(vocal)}</VOCAL>\r\n`;
-          }
-          xml += "      </WORD>\r\n";
-        });
-        xml += "    </LINE>\r\n";
-      }
-    });
-    xml += "  </LYRIC>\r\n";
-  }
-  xml += "</SONG_LYRIC>\r\n";
-  console.log(xml);
-  return xml;
+  return buildKlyrXml(document);
 }

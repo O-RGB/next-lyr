@@ -1,4 +1,3 @@
-import { useTimerStore } from "@/hooks/useTimerWorker";
 import { parseMidi } from "@/lib/karaoke/midi/reader";
 import { IMidiParseResult } from "@/lib/karaoke/midi/types";
 import { fixMidiHeader } from "@/lib/karaoke/ncn";

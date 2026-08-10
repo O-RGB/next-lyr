@@ -6,7 +6,7 @@ import {
   TIS620ToString,
 } from "../shared/lib";
 import { LyricEvent, SongInfo } from "../midi/types";
-import { decompressSync } from "fflate";
+import { parseKlyrXml } from "../lyrics-core/xml";
 
 export function encodeLyricsBase64(
   xmlText: string,
@@ -67,38 +67,23 @@ export function parseKLyrXML(xmlString: string): {
   info: SongInfo;
   lyrics: LyricEvent[][];
 } {
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-  const parserError = xmlDoc.querySelector("parsererror");
-  if (parserError)
-    throw new Error("XML parsing error: " + parserError.textContent);
-
-  const info: any = {};
-  const infoNode = xmlDoc.querySelector("INFO");
-  if (infoNode) {
-    for (const child of Array.from(infoNode.children)) {
-      info[child.tagName] = child.textContent || "";
-    }
-  }
-
-  const lyrics: LyricEvent[][] = [];
-  xmlDoc.querySelectorAll("LYRIC LINE").forEach((lineNode) => {
-    const words: LyricEvent[] = [];
-    lineNode.querySelectorAll("WORD").forEach((wordNode) => {
-      const timeNode = wordNode.querySelector("TIME");
-      const textNode = wordNode.querySelector("TEXT");
-      const vocalNode = wordNode.querySelector("VOCAL");
-      if (timeNode && textNode) {
-        words.push({
-          tick: parseInt(timeNode.textContent || "0", 10),
-          text: textNode.textContent || "",
-          vocal: vocalNode ? vocalNode.textContent || "" : "",
-        });
-      }
-    });
-    if (words.length > 0) lyrics.push(words);
+  const document = parseKlyrXml(xmlString, {
+    source: "MP3",
+    timeBase: { kind: "seconds" },
   });
-  return { info, lyrics };
+
+  return {
+    info: document.info as SongInfo,
+    lyrics: document.lines.map((line) =>
+      line
+        .filter((word) => word.at !== null)
+        .map((word) => ({
+          tick: word.at! * 1000,
+          text: word.text,
+          vocal: word.vocal,
+        }))
+    ),
+  };
 }
 
 export function uint8ArrayToBase64(bytes: Uint8Array): string {

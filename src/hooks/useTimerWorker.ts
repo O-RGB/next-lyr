@@ -28,7 +28,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     const karaokeActions = useKaraokeStore.getState().actions;
 
     const worker = new Worker(
-      new URL("/public/worker/timer-worker.ts", import.meta.url)
+      new URL("../../public/worker/timer-worker.ts", import.meta.url)
     );
 
     worker.onmessage = (e: MessageEvent) => {

@@ -99,6 +99,8 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         },
         metadata: metadata,
         lyricsData: [],
+        lyricsDocument: null,
+        lyricsXml: "",
         chordsData: [],
       };
 
@@ -119,14 +121,20 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
                 ...metadata,
               };
 
-              const { finalWords: midiWords, convertedChords: midiChords } =
-                convertParsedDataForImport(
+              const {
+                finalWords: midiWords,
+                convertedChords: midiChords,
+                lyricsDocument,
+                lyricsXml,
+              } = convertParsedDataForImport(
                   parsedMidi,
                   true,
                   midiInfo.ticksPerBeat,
                   midiInfo.tempos
                 );
               initialData.lyricsData = groupLyricsByLine(midiWords);
+              initialData.lyricsDocument = lyricsDocument;
+              initialData.lyricsXml = lyricsXml;
               initialData.chordsData = midiChords;
             }
             break;
@@ -139,10 +147,16 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
               ...metadata,
             };
 
-            const { finalWords: mp3Words, convertedChords: mp3Chords } =
-              convertParsedDataForImport(parsedData, false, 0);
+            const {
+              finalWords: mp3Words,
+              convertedChords: mp3Chords,
+              lyricsDocument,
+              lyricsXml,
+            } = convertParsedDataForImport(parsedData, false, 0);
 
             initialData.lyricsData = groupLyricsByLine(mp3Words);
+            initialData.lyricsDocument = lyricsDocument;
+            initialData.lyricsXml = lyricsXml;
             initialData.chordsData = mp3Chords;
             break;
         }

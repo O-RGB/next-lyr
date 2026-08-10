@@ -1,4 +1,4 @@
-import { PlayerRef } from "@/components/ui/player-host";
+import { PlayerRef } from "@/modules/player";
 import { useRef, useEffect } from "react";
 import { create } from "zustand";
 import { useTimerStore } from "./useTimerWorker";

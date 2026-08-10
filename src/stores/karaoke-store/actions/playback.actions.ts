@@ -296,6 +296,7 @@ export const createPlaybackActions: StateCreator<
         };
       });
 
+      get().actions.syncLyricsDocument();
       get().actions.processLyricsForPlayer();
       await get().actions.saveCurrentProject();
     },

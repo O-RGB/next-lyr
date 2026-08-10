@@ -4,6 +4,7 @@ import { generateUUID } from "@/lib/uuid";
 import { KaraokeState } from "@/stores/karaoke-store/types";
 import { createStoredFileFromFile } from "@/stores/karaoke-store/utils";
 import { IMidiParseResult } from "../karaoke/midi/types";
+import type { LyricsDocument } from "../karaoke/lyrics-core/types";
 
 export interface StoredFile {
   file: File;
@@ -22,6 +23,8 @@ export interface PlayerState {
 export interface ProjectData {
   playerState: PlayerState;
   lyricsData: KaraokeState["lyricsData"];
+  lyricsDocument?: LyricsDocument | null;
+  lyricsXml?: string;
   chordsData: KaraokeState["chordsData"];
   metadata: KaraokeState["metadata"];
 }

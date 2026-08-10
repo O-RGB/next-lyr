@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
-import { PlayerRef } from "@/components/ui/player-host";
+import { PlayerRef } from "@/modules/player";
 
 export const usePlaybackSync = (playerControls: PlayerRef | null) => {
   const actions = useKaraokeStore((state) => state.actions);

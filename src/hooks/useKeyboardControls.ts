@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
 import { usePlayerSetupStore } from "./usePlayerSetup";
 import { usePlayerHandlersStore } from "./usePlayerHandlers";
-import { PlayerRef } from "@/components/ui/player-host";
+import { PlayerRef } from "@/modules/player";
  
 
 export const useKeyboardControls = (player: PlayerRef | null) => {

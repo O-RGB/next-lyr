@@ -39,10 +39,8 @@ export default function MetadataForm({
   const midiData = useKaraokeStore((s) => s.playerState.midi);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
 
-  const midiInfo =
-    mode === "midi" ? useKaraokeStore((state) => state.playerState.midi) : true;
-  const midi =
-    mode === "midi" ? useKaraokeStore((state) => state.playerState.midi) : true;
+  const midiInfo = mode === "midi" ? midiData : true;
+  const midi = mode === "midi" ? midiData : true;
 
   const initName = Form.useForm({
     defaultValues: {

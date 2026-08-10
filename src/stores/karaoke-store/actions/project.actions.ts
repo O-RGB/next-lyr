@@ -4,6 +4,11 @@ import { Project, ProjectData, updateProject } from "@/lib/database/db";
 import { createObjectURLFromStoredFile } from "../utils";
 import { initialState, initialPlayerState } from "../configs";
 import { KaraokeState, ProjectActions } from "../types";
+import {
+  lyricsDocumentToWordData,
+  wordDataToLyricsDocument,
+} from "@/lib/karaoke/lyrics-core/timeline";
+import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
 
 export const createProjectActions: StateCreator<
   KaraokeState,
@@ -16,6 +21,8 @@ export const createProjectActions: StateCreator<
       const projectId = get().projectId;
       const playerState = get().playerState;
       const lyricsData = get().lyricsData;
+      const lyricsDocument = get().lyricsDocument;
+      const lyricsXml = get().lyricsXml;
       const chordsData = get().chordsData;
       const metadata = get().metadata;
 
@@ -29,6 +36,8 @@ export const createProjectActions: StateCreator<
           youtubeId: playerState.youtubeId,
         },
         lyricsData: lyricsData,
+        lyricsDocument,
+        lyricsXml,
         chordsData: chordsData,
         metadata: metadata,
       };
@@ -43,6 +52,25 @@ export const createProjectActions: StateCreator<
 
     loadProject: (project: Project) => {
       const { playerState, lyricsData, chordsData, metadata } = project.data;
+      const ppq = playerState.midi?.ticksPerBeat ?? 0;
+      const source = project.mode === "midi" ? "KMID" : "MP3";
+      const timeBase =
+        project.mode === "midi"
+          ? { kind: "midi-tick" as const, ppq }
+          : { kind: "seconds" as const };
+      const lyricsDocument =
+        project.data.lyricsDocument ??
+        wordDataToLyricsDocument({
+          lyricsData,
+          source,
+          timeBase,
+          info: metadata ?? {},
+        });
+      const restoredLyricsData = lyricsDocumentToWordData(
+        lyricsDocument,
+        ppq
+      );
+      const lyricsXml = project.data.lyricsXml ?? buildKlyrXml(lyricsDocument);
       let audioSrc: string | null = null;
       let videoSrc: string | null = null;
       let rawFile: File | null = null;
@@ -62,7 +90,9 @@ export const createProjectActions: StateCreator<
 
       set({
         ...initialState,
-        lyricsData,
+        lyricsData: restoredLyricsData,
+        lyricsDocument,
+        lyricsXml,
         chordsData,
         metadata,
         projectId: project.id,

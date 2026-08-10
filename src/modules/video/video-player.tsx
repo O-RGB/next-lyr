@@ -8,7 +8,6 @@ import {
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
 import CommonPlayerStyle from "@/components/common/player";
-import { TimerControls } from "@/components/ui/player-host";
 import { useTimerStore } from "@/hooks/useTimerWorker";
 
 type Props = {

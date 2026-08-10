@@ -1,6 +1,7 @@
 import { DEFAULT_SONG_INFO } from "../midi/types";
-import { decodeLyricsBase64, decodeTIS620Text, parseKLyrXML } from "./lib";
+import { decodeLyricsBase64, decodeTIS620Text } from "./lib";
 import { IReadMp3Result, IParsedMp3Data, DEFAULT_MISC } from "./type";
+import { parseKlyrXml } from "../lyrics-core/xml";
 
 async function getMp3Duration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -175,9 +176,22 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
       const lyricsXML = decodeLyricsBase64(lyricsRawData);
       if (lyricsXML) {
         console.log("MP3: ", lyricsXML);
-        const klyrData = parseKLyrXML(lyricsXML);
-        result.info = klyrData.info;
-        result.lyrics = klyrData.lyrics;
+        const document = parseKlyrXml(lyricsXML, {
+          source: "MP3",
+          timeBase: { kind: "seconds" },
+        });
+        result.info = document.info as IParsedMp3Data["info"];
+        result.lyricsDocument = document;
+        result.lyricsXml = lyricsXML;
+        result.lyrics = document.lines.map((line) =>
+          line
+            .filter((word) => word.at !== null)
+            .map((word) => ({
+              text: word.text,
+              tick: word.at! * 1000,
+              vocal: word.vocal,
+            }))
+        );
       }
     } catch (err) {
       console.error("Failed to decode or parse lyrics:", err);

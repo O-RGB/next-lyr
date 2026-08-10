@@ -7,10 +7,11 @@ import {
   IMidiParseResult,
   SongInfo,
 } from "@/lib/karaoke/midi/types";
+import type { LyricsDocument } from "@/lib/karaoke/lyrics-core/types";
 
 export type HistoryState = Pick<
   KaraokeState,
-  "lyricsData" | "chordsData" | "metadata"
+  "lyricsData" | "lyricsDocument" | "lyricsXml" | "chordsData" | "metadata"
 >;
 
 export interface PlayerState {
@@ -82,6 +83,7 @@ export interface FileActions {
 }
 
 export interface ContentActions {
+  syncLyricsDocument: () => void;
   setMetadata: (metadata: Partial<SongInfo>) => void;
   importLyrics: (rawText: string, autoSub: boolean) => void;
   deleteLine: (lineIndexToDelete: number) => void;
@@ -160,6 +162,8 @@ export interface KaraokeState {
   mode: MusicMode | null;
   playerState: PlayerState;
   lyricsData: LyricWordData[][];
+  lyricsDocument: LyricsDocument | null;
+  lyricsXml: string;
   metadata: SongInfo | null;
   chordsData: ChordEvent[];
   isPlaying: boolean;

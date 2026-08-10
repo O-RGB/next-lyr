@@ -17,6 +17,8 @@ export const createHistoryActions: StateCreator<
         const newPast = past.slice(0, past.length - 1);
         const currentState: HistoryState = {
           lyricsData: state.lyricsData,
+          lyricsDocument: state.lyricsDocument,
+          lyricsXml: state.lyricsXml,
           chordsData: state.chordsData,
           metadata: state.metadata,
         };
@@ -43,6 +45,8 @@ export const createHistoryActions: StateCreator<
         const newFuture = future.slice(1);
         const currentState: HistoryState = {
           lyricsData: state.lyricsData,
+          lyricsDocument: state.lyricsDocument,
+          lyricsXml: state.lyricsXml,
           chordsData: state.chordsData,
           metadata: state.metadata,
         };

@@ -4,15 +4,14 @@ import { StoredFile } from "@/lib/database/db";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";
 import { IMidiParseResult, TempoEvent } from "@/lib/karaoke/midi/types";
 import {
-  cursorToTick,
+  lyricsDocumentToWordData,
+  parsedDataToLyricsDocument,
+} from "@/lib/karaoke/lyrics-core/timeline";
+import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
+import {
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
 } from "../../../lib/karaoke/cursor";
-import {
-  DEFAULT_PRE_ROLL_OFFSET_MP3,
-  DEFAULT_CHORD_DURATION,
-  DEFAULT_PRE_ROLL_OFFSET_MIDI,
-} from "../configs";
 
 export const createStoredFileFromFile = async (
   file: File
@@ -143,65 +142,21 @@ export const convertParsedDataForImport = (
   songPpq: number,
   tempos?: ArrayRange<TempoEvent>
 ) => {
-  if (!data.lyrics || data.lyrics.length === 0) {
-    return {
-      finalWords: [],
-      convertedChords:
-        data.chords
-          ?.map((chord) => ({
-            ...chord,
-            tick: isMidi ? chord.tick : chord.tick / 1000,
-          }))
-          .sort((a, b) => a.tick - b.tick) || [],
-    };
-  }
-
-  const finalWords: LyricWordData[] = [];
-  let globalWordIndex = 0;
-
-  const flatLyrics = data.lyrics.flat().sort((a, b) => a.tick - b.tick);
-
-  data.lyrics.forEach((line, lineIndex: number) => {
-    line.forEach((wordEvent) => {
-      const bpm = isMidi ? tempos!.search(wordEvent.tick)?.lyrics.value.bpm : 0;
-
-      const offsetTicks = isMidi
-        ? (DEFAULT_PRE_ROLL_OFFSET_MIDI * songPpq * bpm!) / 60
-        : DEFAULT_PRE_ROLL_OFFSET_MP3;
-
-      const baseTick = isMidi
-        ? cursorToTick(wordEvent.tick, songPpq)
-        : wordEvent.tick / 1000;
-
-      const convertedTick = Math.max(0, baseTick - offsetTicks);
-
-      const currentFlatIndex = flatLyrics.findIndex(
-        (e) => e.tick === wordEvent.tick && e.text === wordEvent.text
-      );
-      const nextEvent = flatLyrics[currentFlatIndex + 1];
-
-      let endTime: number;
-      if (nextEvent) {
-        const nextBaseTick = isMidi
-          ? cursorToTick(nextEvent.tick, songPpq)
-          : nextEvent.tick / 1000;
-        endTime = Math.max(0, nextBaseTick - offsetTicks);
-      } else {
-        const duration = isMidi ? songPpq : DEFAULT_CHORD_DURATION;
-        endTime = convertedTick + duration;
-      }
-
-      finalWords.push({
-        text: wordEvent.text,
-        vocal: wordEvent.vocal,
-        start: convertedTick,
-        end: endTime,
-        length: endTime - convertedTick,
-        index: globalWordIndex++,
-        lineIndex: lineIndex,
-      });
-    });
+  const document = parsedDataToLyricsDocument(data, {
+    source: isMidi ? "KMID" : "MP3",
+    timeBase: isMidi
+      ? {
+          kind: "midi-tick",
+          ppq: songPpq,
+          tempoChanges: tempos?.ranges.map((range) => ({
+            tick: range.key[0],
+            bpm: range.value.value.bpm,
+          })),
+        }
+      : { kind: "seconds" },
   });
+
+  const finalWords = lyricsDocumentToWordData(document, songPpq);
 
   const convertedChords =
     data.chords
@@ -211,5 +166,10 @@ export const convertParsedDataForImport = (
       }))
       .sort((a, b) => a.tick - b.tick) || [];
 
-  return { finalWords, convertedChords };
+  return {
+    finalWords: finalWords.flat(),
+    convertedChords,
+    lyricsDocument: document,
+    lyricsXml: data.lyricsXml ?? buildKlyrXml(document),
+  };
 };

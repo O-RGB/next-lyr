@@ -21,21 +21,24 @@ export const createFileActions: StateCreator<
     }
 
     const isMidi = state.mode === "midi";
-    const songPpq = state.playerState.midi?.ticksPerBeat;
+    const songPpq = state.playerState.midi?.ticksPerBeat ?? 0;
     const tempos = state.playerState.midi?.tempos;
 
-    if (!songPpq || !tempos) return;
-    const { finalWords, convertedChords } = convertParsedDataForImport(
+    if (isMidi && (!songPpq || !tempos)) return;
+    const { finalWords, convertedChords, lyricsDocument, lyricsXml } =
+      convertParsedDataForImport(
       data,
       isMidi,
       songPpq,
       tempos
-    );
+      );
 
     const groupedLyrics = groupLyricsByLine(finalWords);
 
     set({
       lyricsData: groupedLyrics,
+      lyricsDocument,
+      lyricsXml,
       chordsData: convertedChords,
     });
 

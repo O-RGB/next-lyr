@@ -32,8 +32,13 @@ export class JsSynthEngine {
       this.player = new JsSynthPlayerEngine(synth, audioContext);
 
       const res = await fetch(DEFAULT_SOUND_FONT);
+      if (!res.ok) {
+        throw new Error(
+          `Could not load the default soundfont (${res.status} ${res.statusText})`
+        );
+      }
       const arraybuffer = await res.arrayBuffer();
-      this.synth?.loadSFont(arraybuffer);
+      await synth.loadSFont(arraybuffer);
 
       console.info("JsSynthEngine started up successfully.");
     } catch (error) {

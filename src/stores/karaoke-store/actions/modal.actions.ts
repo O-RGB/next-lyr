@@ -14,6 +14,8 @@ export const createModalActions: StateCreator<
     const state = get();
     const currentHistoryState: HistoryState = {
       lyricsData: state.lyricsData,
+      lyricsDocument: state.lyricsDocument,
+      lyricsXml: state.lyricsXml,
       chordsData: state.chordsData,
       metadata: state.metadata,
     };

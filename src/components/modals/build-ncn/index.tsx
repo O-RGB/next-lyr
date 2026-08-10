@@ -6,6 +6,7 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
+import { lyricsDocumentToEvents } from "@/lib/karaoke/lyrics-core/timeline";
 import { MdOutlineFileDownload } from "react-icons/md";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
 import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
@@ -30,6 +31,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const mode = useKaraokeStore((state) => state.mode);
   const metadata = useKaraokeStore((state) => state.metadata);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const lyricsDocument = useKaraokeStore((state) => state.lyricsDocument);
 
   const [openModal, setOpenModal] = useState<boolean>(false);
   const handleCloseModal = () => {
@@ -49,17 +51,23 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!projectId) return;
     const project = await getProject(projectId);
     if (!project) return;
-    const flatLyrics = lyricsData.flat();
+      const flatLyrics = lyricsData.flat();
 
-    const newLyricsData = groupWordDataToEvents(
-      flatLyrics,
-      (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
-    );
+      const newLyricsData = lyricsDocument
+        ? lyricsDocumentToEvents(lyricsDocument)
+        : groupWordDataToEvents(
+            flatLyrics,
+            (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
+          );
 
-    let newChordsData = chordsData.map((x) => ({
-      ...x,
-      tick: Math.floor((x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000),
-    }));
+      let newChordsData = chordsData.map((x) => ({
+        ...x,
+        tick: lyricsDocument
+          ? Math.floor(x.tick * 1000)
+          : Math.floor(
+              (x.tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
+            ),
+      }));
 
     const json = JSON.stringify({
       ...project,
@@ -87,14 +95,18 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     try {
       const flatLyrics = lyricsData.flat();
 
-      const newLyricsData = groupWordDataToEvents(
-        flatLyrics,
-        (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000
-      );
+      const newLyricsData = lyricsDocument
+        ? lyricsDocumentToEvents(lyricsDocument)
+        : groupWordDataToEvents(
+            flatLyrics,
+            (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000
+          );
 
       let newChordsData = chordsData.map((x) => ({
         ...x,
-        tick: Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000),
+        tick: lyricsDocument
+          ? Math.floor(x.tick * 1000)
+          : Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000),
       }));
 
       metadata.TIME_FORMAT = "TIME_MS";
@@ -131,15 +143,14 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     try {
       const flatLyrics = lyricsData.flat();
 
-      let newLyricsData: LyricEvent[][] = groupWordDataToEvents(
-        flatLyrics,
-        (tick) => {
-          const bpm = midiInfo.tempos.search(tick)?.lyrics.value.bpm ?? 120;
-          const offsetTicks =
-            (DEFAULT_PRE_ROLL_OFFSET_MIDI * midiInfo.ticksPerBeat * bpm) / 60;
-          return tickToCursor(tick + offsetTicks, midiInfo.ticksPerBeat);
-        }
-      );
+      let newLyricsData: LyricEvent[][] = lyricsDocument
+        ? lyricsDocumentToEvents(lyricsDocument)
+        : groupWordDataToEvents(flatLyrics, (tick) => {
+            const bpm = midiInfo.tempos.search(tick)?.lyrics.value.bpm ?? 120;
+            const offsetTicks =
+              (DEFAULT_PRE_ROLL_OFFSET_MIDI * midiInfo.ticksPerBeat * bpm) / 60;
+            return tickToCursor(tick + offsetTicks, midiInfo.ticksPerBeat);
+          });
 
       const newSongInfo: SongInfo = metadata;
       const newChordsData: ChordEvent[] = chordsData;

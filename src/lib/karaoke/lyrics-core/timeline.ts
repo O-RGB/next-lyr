@@ -1,0 +1,142 @@
+import type { LyricEvent, SongInfo } from "../midi/types";
+import type { LyricWordData } from "@/types/common.type";
+import type { ParsedSongData } from "../shared/types";
+import type {
+  LyricsDocument,
+  LyricsSourceKind,
+  LyricsTimeBase,
+  LyricsWord,
+} from "./types";
+
+export function createEmptyLyricsDocument(
+  source: LyricsSourceKind,
+  timeBase: LyricsTimeBase,
+  info: Partial<SongInfo> = {}
+): LyricsDocument {
+  return { source, timeBase, info, lines: [] };
+}
+
+export function parsedDataToLyricsDocument(
+  data: Pick<ParsedSongData, "info" | "lyrics"> &
+    Partial<Pick<ParsedSongData, "lyricsDocument">>,
+  options: { source: LyricsSourceKind; timeBase: LyricsTimeBase }
+): LyricsDocument {
+  if (data.lyricsDocument) {
+    return {
+      ...data.lyricsDocument,
+      source: options.source,
+      timeBase: options.timeBase,
+      info: { ...data.lyricsDocument.info, ...data.info },
+    };
+  }
+
+  const lines: LyricsWord[][] = data.lyrics.map((line, lineIndex) =>
+    line.map((word, wordIndex) => ({
+      id: `lyric-${lineIndex}-${wordIndex}`,
+      text: word.text,
+      vocal: word.vocal,
+      at:
+        options.timeBase.kind === "seconds" ? word.tick / 1000 : word.tick,
+    }))
+  );
+
+  return {
+    source: options.source,
+    timeBase: options.timeBase,
+    info: data.info,
+    lines,
+  };
+}
+
+export function lyricsDocumentToWordData(
+  document: LyricsDocument,
+  ppq: number
+): LyricWordData[][] {
+  const defaultDuration =
+    document.timeBase.kind === "midi-tick" ? Math.max(1, ppq || 1) : 1;
+  const allWords = document.lines.flat();
+  let globalIndex = 0;
+
+  return document.lines.map((line, lineIndex) =>
+    line.map((word) => {
+      const nextTimedWord = allWords
+        .slice(allWords.indexOf(word) + 1)
+        .find((candidate) => candidate.at !== null);
+      const start = word.at;
+      const end =
+        start === null
+          ? null
+          : nextTimedWord?.at ?? start + defaultDuration;
+
+      return {
+        text: word.text,
+        vocal: word.vocal,
+        start,
+        end,
+        length: start !== null && end !== null ? Math.max(0, end - start) : 0,
+        index: globalIndex++,
+        lineIndex,
+      };
+    })
+  );
+}
+
+export function wordDataToLyricsDocument(options: {
+  lyricsData: LyricWordData[][];
+  source: LyricsSourceKind;
+  timeBase: LyricsTimeBase;
+  info: Partial<SongInfo>;
+}): LyricsDocument {
+  return {
+    source: options.source,
+    timeBase: options.timeBase,
+    info: options.info,
+    lines: options.lyricsData.map((line, lineIndex) =>
+      line.map((word, wordIndex) => ({
+        id: `lyric-${lineIndex}-${wordIndex}`,
+        text: word.text,
+        vocal: word.vocal,
+        at: word.start,
+      }))
+    ),
+  };
+}
+
+export function lyricsDocumentToEvents(document: LyricsDocument): LyricEvent[][] {
+  return document.lines.map((line) =>
+    line
+      .filter((word): word is LyricsWord & { at: number } => word.at !== null)
+      .map((word) => ({
+        text: word.text,
+        tick:
+          document.timeBase.kind === "seconds" ? word.at * 1000 : word.at,
+        vocal: word.vocal,
+      }))
+  );
+}
+
+export function ncnToLyricsDocument(
+  cursorTicks: number[],
+  lyricLines: string[],
+  info: Partial<SongInfo> = {},
+  ppq = 0
+): LyricsDocument {
+  let cursorIndex = 0;
+
+  return {
+    source: "NCN",
+    timeBase: { kind: "midi-tick", ppq },
+    info,
+    lines: lyricLines.slice(3).flatMap((line, lineIndex) => {
+      if (line.trim() === "") return [];
+
+      const words = (line + " ").split("").map((text, wordIndex) => ({
+        id: `lyric-${lineIndex}-${wordIndex}`,
+        text,
+        at: cursorTicks[cursorIndex++] ?? null,
+      }));
+
+      return [words];
+    }),
+  };
+}

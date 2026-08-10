@@ -6,6 +6,10 @@ import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { processLyricsForPlayer } from "../utils";
 import { MAX_HISTORY_SIZE } from "../configs";
 import { ChordEvent, SongInfo } from "@/lib/karaoke/midi/types";
+import {
+  wordDataToLyricsDocument,
+} from "@/lib/karaoke/lyrics-core/timeline";
+import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
 
 export const createContentActions: StateCreator<
   KaraokeState,
@@ -13,10 +17,41 @@ export const createContentActions: StateCreator<
   [],
   { actions: ContentActions }
 > = (set, get) => {
+  const syncLyricsDocument = () => {
+    const state = get();
+    const document = wordDataToLyricsDocument({
+      lyricsData: state.lyricsData,
+      source:
+        state.mode === "midi"
+          ? "KMID"
+          : state.mode === "mp3"
+          ? "MP3"
+          : "LYRIC_EDITOR",
+      timeBase:
+        state.mode === "midi"
+          ? {
+              kind: "midi-tick",
+              ppq: state.playerState.midi?.ticksPerBeat ?? 0,
+              tempoChanges: state.playerState.midi?.tempos?.ranges.map(
+                (range) => ({
+                  tick: range.key[0],
+                  bpm: range.value.value.bpm,
+                })
+              ),
+            }
+          : { kind: "seconds" },
+      info: state.metadata ?? {},
+    });
+
+    set({ lyricsDocument: document, lyricsXml: buildKlyrXml(document) });
+  };
+
   const saveToHistoryAndDB = async () => {
     const state = get();
     const currentHistoryState: HistoryState = {
       lyricsData: state.lyricsData,
+      lyricsDocument: state.lyricsDocument,
+      lyricsXml: state.lyricsXml,
       chordsData: state.chordsData,
       metadata: state.metadata,
     };
@@ -39,22 +74,27 @@ export const createContentActions: StateCreator<
 
   return {
     actions: {
+      syncLyricsDocument,
       setMetadata: async (metadata: Partial<SongInfo>) => {
         console.log("Update Metadata....");
         await saveToHistoryAndDB();
         set((state) => ({
           metadata: { ...(state.metadata as SongInfo), ...metadata },
         }));
+        syncLyricsDocument();
         await get().actions.saveCurrentProject();
       },
       importLyrics: async (rawText: string, autoSub: boolean) => {
         await saveToHistoryAndDB();
         const words = processRawLyrics(rawText, autoSub);
+        const groupedLyrics = groupLyricsByLine(words);
         set({
-          lyricsData: groupLyricsByLine(words),
+          lyricsData: groupedLyrics,
           currentIndex: 0,
           selectedLineIndex: 0,
         });
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       deleteLine: async (lineIndexToDelete: number) => {
@@ -75,6 +115,8 @@ export const createContentActions: StateCreator<
 
           return { lyricsData: groupLyricsByLine(flatLyrics) };
         });
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       updateLine: async (
@@ -113,6 +155,8 @@ export const createContentActions: StateCreator<
 
           return { lyricsData: newLyricsData };
         });
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       insertLineAfter: async (lineIndex: number, newText: string) => {
@@ -135,6 +179,8 @@ export const createContentActions: StateCreator<
           reIndexedFlat.forEach((word) => (word.index = globalIndex++));
           return { lyricsData: groupLyricsByLine(reIndexedFlat) };
         });
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       updateWord: async (
@@ -149,6 +195,8 @@ export const createContentActions: StateCreator<
             )
           ),
         }));
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       addChord: async (chord: ChordEvent) => {
@@ -184,6 +232,8 @@ export const createContentActions: StateCreator<
             )
           ),
         }));
+        syncLyricsDocument();
+        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
       },
       processLyricsForPlayer: () => {

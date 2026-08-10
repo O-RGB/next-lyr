@@ -4,19 +4,14 @@ import {
   MidiEvent,
   MidiTrack,
   IMidiParseResult,
-  SongInfo,
   LyricEvent,
   ChordEvent,
   TempoEvent,
 } from "./types";
 import { base64ToArrayBuffer, TIS620ToString } from "../shared/lib";
 import { tempoToArrayRange } from "../lyrics/tempo-list";
-
-interface KlyrWord {
-  tick: number;
-  name: string;
-  vocal?: string;
-}
+import { parseKlyrXml } from "../lyrics-core/xml";
+import type { LyricsDocument } from "../lyrics-core/types";
 
 function readVariableLength(
   view: DataView,
@@ -135,38 +130,6 @@ function _parseMidiFile(buffer: ArrayBuffer): MidiFile {
   return { format, trackCount, ticksPerBeat, tracks };
 }
 
-function _parseKLyrXML(xmlDoc: Document): {
-  info: SongInfo;
-  lyrics: KlyrWord[][];
-} {
-  const info: any = {};
-  const infoNode = xmlDoc.querySelector("INFO");
-  if (infoNode) {
-    for (const child of Array.from(infoNode.children)) {
-      info[child.tagName] = child.textContent || "";
-    }
-  }
-  const lyrics: KlyrWord[][] = [];
-  const lyricNodes = xmlDoc.querySelectorAll("LYRIC LINE");
-  lyricNodes.forEach((lineNode) => {
-    const words: KlyrWord[] = [];
-    lineNode.querySelectorAll("WORD").forEach((wordNode) => {
-      const timeNode = wordNode.querySelector("TIME");
-      const textNode = wordNode.querySelector("TEXT");
-      const vocalNode = wordNode.querySelector("VOCAL");
-      if (timeNode && textNode) {
-        words.push({
-          tick: parseInt(timeNode.textContent || "0", 10),
-          name: textNode.textContent || "",
-          vocal: vocalNode ? vocalNode.textContent || "" : "",
-        });
-      }
-    });
-    if (words.length > 0) lyrics.push(words);
-  });
-  return { info, lyrics };
-}
-
 function _extractDataFromEvents(
   midiData: MidiFile
 ): Omit<
@@ -177,6 +140,8 @@ function _extractDataFromEvents(
   let lyrics: LyricEvent[][] = [];
   let chords: ChordEvent[] = [];
   let tempoChanges: TempoEvent[] = [];
+  let lyricsDocument: LyricsDocument | undefined;
+  let lyricsXml: string | undefined;
   let detectedHeader = "LyrHdr1";
   let foundLyrics = false;
   let firstNote: number = 0;
@@ -229,16 +194,24 @@ function _extractDataFromEvents(
             const decompressed = pako.inflate(compressed);
             const xmlText = TIS620ToString(decompressed);
             if (typeof window !== "undefined") {
-              const parser = new DOMParser();
-              const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-              const klyrData = _parseKLyrXML(xmlDoc);
-              songInfo = klyrData.info;
-              lyrics = klyrData.lyrics.map((line) =>
-                line.map((word) => ({
-                  text: word.name,
-                  tick: word.tick,
-                  vocal: word.vocal,
-                }))
+              const document = parseKlyrXml(xmlText, {
+                source: "KMID",
+                timeBase: {
+                  kind: "midi-tick",
+                  ppq: midiData.ticksPerBeat,
+                },
+              });
+              lyricsDocument = document;
+              lyricsXml = xmlText;
+              songInfo = document.info;
+              lyrics = document.lines.map((line) =>
+                line
+                  .filter((word) => word.at !== null)
+                  .map((word) => ({
+                    text: word.text,
+                    tick: word.at!,
+                    vocal: word.vocal,
+                  }))
               );
               foundLyrics = true;
             }
@@ -264,6 +237,8 @@ function _extractDataFromEvents(
     firstNote,
     tempos,
     duration,
+    lyricsDocument,
+    lyricsXml,
   };
 }
 
