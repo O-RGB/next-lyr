@@ -7,6 +7,7 @@ import {
   LyricEvent,
   ChordEvent,
   TempoEvent,
+  TimeSignatureEvent,
 } from "./types";
 import { base64ToArrayBuffer, TIS620ToString } from "../shared/lib";
 import { tempoToArrayRange } from "../lyrics/tempo-list";
@@ -140,11 +141,12 @@ function _extractDataFromEvents(
   let lyrics: LyricEvent[][] = [];
   let chords: ChordEvent[] = [];
   let tempoChanges: TempoEvent[] = [];
+  let timeSignatures: TimeSignatureEvent[] = [];
   let lyricsDocument: LyricsDocument | undefined;
   let lyricsXml: string | undefined;
   let detectedHeader = "LyrHdr1";
   let foundLyrics = false;
-  let firstNote: number = 0;
+  let firstNote: number | null = null;
   let duration = 0;
 
   midiData.tracks.forEach((track) => {
@@ -172,6 +174,14 @@ function _extractDataFromEvents(
         tempoChanges.push({
           tick: event.absoluteTime,
           bpm: Math.round(bpm),
+        });
+      }
+
+      if (event.metaType === 0x58 && event.data && event.data.length >= 2) {
+        timeSignatures.push({
+          tick: event.absoluteTime,
+          numerator: event.data[0] || 4,
+          denominator: 2 ** event.data[1],
         });
       }
 
@@ -226,6 +236,11 @@ function _extractDataFromEvents(
   });
 
   chords.sort((a, b) => a.tick - b.tick);
+  timeSignatures.sort((a, b) => a.tick - b.tick);
+
+  if (timeSignatures.length === 0 || timeSignatures[0].tick > 0) {
+    timeSignatures.unshift({ tick: 0, numerator: 4, denominator: 4 });
+  }
 
   const tempos = tempoToArrayRange(tempoChanges, duration);
 
@@ -234,8 +249,9 @@ function _extractDataFromEvents(
     lyrics,
     chords,
     lyrHeader: detectedHeader,
-    firstNote,
+    firstNote: firstNote ?? 0,
     tempos,
+    timeSignatures,
     duration,
     lyricsDocument,
     lyricsXml,

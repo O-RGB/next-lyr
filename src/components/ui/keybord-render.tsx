@@ -1,1 +1,1 @@
-export { EditorRuntime as default } from "@/modules/editor/components/editor-runtime";
+export { LyricsEditorRuntime as default } from "@/modules/lyrics-editor";

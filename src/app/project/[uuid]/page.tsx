@@ -1,10 +1,10 @@
 "use client";
 
-import { EditorPage } from "@/modules/editor";
+import { ProjectPage as ProjectEditorPage } from "@/modules/project";
 import { useParams } from "next/navigation";
 
 export default function ProjectPage() {
   const params = useParams<{ uuid: string }>();
 
-  return <EditorPage projectId={params.uuid} />;
+  return <ProjectEditorPage projectId={params.uuid} />;
 }

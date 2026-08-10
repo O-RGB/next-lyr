@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { calculateSeekTime } from "@/modules/editor/lib/timing";
+import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerSetupStore } from "./usePlayerSetup";
 

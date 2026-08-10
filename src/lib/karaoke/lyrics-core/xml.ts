@@ -52,12 +52,23 @@ export function parseKlyrXmlDocument(
       words.push({
         id: `lyric-${lineIndex}-${wordIndex}`,
         at: parseWordAt(timeNode?.textContent, options.timeBase),
-        text: textNode.textContent || "",
+        text: textNode.textContent || " ",
         vocal: vocalNode?.textContent || "",
       });
     });
 
-    if (words.length > 0) lines.push(words);
+    lines.push(
+      words.length > 0
+        ? words
+        : [
+            {
+              id: `lyric-${lineIndex}-0`,
+              at: null,
+              text: " ",
+              vocal: "",
+            },
+          ]
+    );
   });
 
   return {

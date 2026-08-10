@@ -19,6 +19,11 @@ export interface TempoEvent {
   tick: number;
   bpm: number;
 }
+export interface TimeSignatureEvent {
+  tick: number;
+  numerator: number;
+  denominator: number;
+}
 
 export type VOCAL_CHANNEL = "NONE" | "9" | "1" | "RIGHT";
 export const vocalChannelOption: MIDIOptionValue<VOCAL_CHANNEL>[] = [
@@ -240,6 +245,7 @@ export interface IMidiParseResult extends ParsedSongData, MidiFile {
   lyrHeader: string;
   firstNote: number;
   tempos: ArrayRange<TempoEvent>;
+  timeSignatures: TimeSignatureEvent[];
   duration: number;
 }
 

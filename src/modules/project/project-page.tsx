@@ -1,10 +1,13 @@
 "use client";
 
-import { EditorShell } from "./components/editor-shell";
-import { useEditorProject } from "./hooks/use-editor-project";
+import { LyricsEditorRuntime } from "@/modules/lyrics-editor";
+import ProjectWorkspace from "@/modules/workspace";
+import { ProjectDialogs } from "./project-dialogs";
+import { ProjectToolbar } from "./project-toolbar";
+import { useProjectLoader } from "./use-project-loader";
 
-export function EditorPage({ projectId }: { projectId: string }) {
-  const project = useEditorProject(projectId);
+export function ProjectPage({ projectId }: { projectId: string }) {
+  const project = useProjectLoader(projectId);
 
   if (project.status === "loading") {
     return (
@@ -36,5 +39,16 @@ export function EditorPage({ projectId }: { projectId: string }) {
     );
   }
 
-  return <EditorShell />;
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden bg-gray-100">
+      <ProjectToolbar />
+      <main className="min-h-0 flex-1">
+        <ProjectWorkspace />
+      </main>
+      <ProjectDialogs />
+      <LyricsEditorRuntime />
+    </div>
+  );
 }
+
+export default ProjectPage;

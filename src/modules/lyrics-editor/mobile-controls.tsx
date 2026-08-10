@@ -14,7 +14,7 @@ function dispatchKey(code: string) {
   window.dispatchEvent(new KeyboardEvent("keydown", { code, bubbles: true }));
 }
 
-export function EditorMobileControls() {
+export function LyricsMobileControls() {
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
@@ -37,25 +37,20 @@ export function EditorMobileControls() {
         >
           {isPlaying ? <FaPause className="mx-auto" /> : <FaPlay className="mx-auto" />}
         </button>
-
         <span className="mx-1 h-6 w-px bg-gray-200" />
-
         <button type="button" className={buttonClass} onClick={() => dispatchKey("ArrowUp")} aria-label="Previous line">
           <FaArrowUp className="mx-auto" />
         </button>
         <button type="button" className={buttonClass} onClick={() => dispatchKey("ArrowDown")} aria-label="Next line">
           <FaArrowDown className="mx-auto" />
         </button>
-
         <span className="mx-1 h-6 w-px bg-gray-200" />
-
         <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowLeft")} aria-label="Previous word">
           <FaArrowLeft className="mx-auto" />
         </button>
         <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowRight")} aria-label="Next word">
           <FaArrowRight className="mx-auto" />
         </button>
-
         <span className={`ml-1 h-2 w-2 rounded-full ${isPlaying ? "bg-green-500" : "bg-gray-300"}`} />
       </div>
     </div>

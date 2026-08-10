@@ -11,11 +11,7 @@ export function processRawLyrics(
   const thaiKaraoke = ThaiKaraoke.getInstance();
 
   lines.forEach((line, lineIndex) => {
-    // split โดยใช้ '|' แต่ยังคงช่องว่างเดิมของคำ
-    const lineWords = line
-      .split("|")
-      .map((w) => w) // ไม่ trim
-      .filter((w) => w !== "");
+    const lineWords = splitLyricLine(line);
 
     lineWords.forEach((wordText) => {
       let vocal = undefined;
@@ -34,4 +30,13 @@ export function processRawLyrics(
     });
   });
   return words;
+}
+
+/**
+ * Preserve an editor row when a source line contains no lyric token.
+ * A placeholder is added only when splitting produced no content at all.
+ */
+export function splitLyricLine(line: string): string[] {
+  const words = line.split("|").filter((word) => word !== "");
+  return words.length > 0 ? words : [" "];
 }

@@ -176,10 +176,68 @@ function invalidateCache(): void {
   cachedTicksPerSecond = 0;
 }
 
+function getTicksPerSecond(tick: number): number {
+  const bpm = findBpmForTick(tick);
+  cachedTicksPerSecond = Math.max(0, (bpm * ppq) / 60);
+  return cachedTicksPerSecond;
+}
+
+/**
+ * Advance ticks using the tempo map instead of assuming one BPM for the
+ * entire interval. This keeps an exact timing request accurate even when the
+ * worker has not run its next 50ms display update yet.
+ */
+function advanceTicks(startTick: number, elapsedSeconds: number): number {
+  let tick = startTick;
+  let remainingSeconds = Math.max(0, elapsedSeconds);
+
+  while (remainingSeconds > 0) {
+    const ticksPerSecond = getTicksPerSecond(tick);
+    if (ticksPerSecond <= 0) return tick;
+
+    const nextTempoTick = tempoMap.find(
+      (entry) => entry.key[0] > tick
+    )?.key[0];
+    const secondsToTempoChange =
+      nextTempoTick === undefined
+        ? Number.POSITIVE_INFINITY
+        : Math.max(0, (nextTempoTick - tick) / ticksPerSecond);
+
+    const stepSeconds = Math.min(remainingSeconds, secondsToTempoChange);
+    tick += stepSeconds * ticksPerSecond;
+    remainingSeconds -= stepSeconds;
+
+    if (!Number.isFinite(secondsToTempoChange) || stepSeconds < secondsToTempoChange) {
+      break;
+    }
+
+    if (stepSeconds === 0) break;
+  }
+
+  return tick;
+}
+
+function getValueAt(now: number): number {
+  if (!isRunning || lastTickTime === null) return accumulatedValue;
+
+  const elapsedSeconds = Math.max(0, (now - lastTickTime) / 1000);
+  return mode === "Tick"
+    ? advanceTicks(accumulatedValue, elapsedSeconds)
+    : accumulatedValue + elapsedSeconds;
+}
+
+function syncValueToNow(): number {
+  const now = performance.now();
+  accumulatedValue = getValueAt(now);
+  if (isRunning) lastTickTime = now;
+  return accumulatedValue;
+}
+
 /**
  * Stop the timing interval
  */
 function stopTick(): void {
+  syncValueToNow();
   isRunning = false;
 
   if (intervalId !== null) {
@@ -198,33 +256,20 @@ function tick(): void {
   if (!isRunning || lastTickTime === null) return;
 
   const now = performance.now();
-  const deltaTime = now - lastTickTime;
+  accumulatedValue = getValueAt(now);
   lastTickTime = now;
 
   let bpm = cachedBpm;
 
-  // Update accumulated value based on mode
-  if (mode === "Tick") {
-    bpm = findBpmForTick(accumulatedValue);
-
-    if (cachedTicksPerSecond === 0 || bpm !== cachedBpm) {
-      cachedTicksPerSecond = (bpm * ppq) / 60;
-    }
-
-    const elapsedTicks = (deltaTime / 1000) * cachedTicksPerSecond;
-    accumulatedValue += elapsedTicks;
-  } else {
-    // Time mode
-    accumulatedValue += deltaTime / 1000;
-  }
+  if (mode === "Tick") bpm = findBpmForTick(accumulatedValue);
 
   // Validate accumulated value
   if (isNaN(accumulatedValue) || !isFinite(accumulatedValue)) {
     console.error(
       "Invalid accumulatedValue:",
       accumulatedValue,
-      "deltaTime:",
-      deltaTime
+      "mode:",
+      mode
     );
     accumulatedValue = 0;
   }
@@ -349,6 +394,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>): void => {
       invalidateCache();
       lastCountdownValue = -1;
       lastTickValueSent = -1; // Reset tick tracking
+      lastTickTime = isRunning ? performance.now() : null;
 
       // Always send message after seek (whether running or not)
       const bpm = findBpmForTick(accumulatedValue);
@@ -377,6 +423,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>): void => {
     }
 
     case "getTiming": {
+      syncValueToNow();
       const currentBpm = findBpmForTick(accumulatedValue);
       const remainingTime = getRemainingTime();
 

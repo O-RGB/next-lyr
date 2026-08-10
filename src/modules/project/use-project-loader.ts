@@ -2,18 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { getProject } from "@/lib/database/db";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
-type EditorProjectState = {
+type ProjectLoadState = {
   status: "loading" | "ready" | "error";
   error: string | null;
   reload: () => void;
 };
 
-export function useEditorProject(projectId: string): EditorProjectState {
+export function useProjectLoader(projectId: string): ProjectLoadState {
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
-  const [status, setStatus] = useState<EditorProjectState["status"]>("loading");
+  const [status, setStatus] = useState<ProjectLoadState["status"]>("loading");
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-
   const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
@@ -33,7 +32,6 @@ export function useEditorProject(projectId: string): EditorProjectState {
         const project = await getProject(projectId);
         if (!project) throw new Error("Project not found");
         if (cancelled) return;
-
         loadProject(project);
         setStatus("ready");
       } catch (cause) {

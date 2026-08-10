@@ -10,7 +10,6 @@ export function EditorPlayerSlot({ preview }: { preview: boolean }) {
   const mode = useKaraokeStore((state) => state.mode);
   const storedFile = useKaraokeStore((state) => state.playerState.storedFile);
   const duration = useKaraokeStore((state) => state.playerState.duration);
-
   const playerKey = `${projectId ?? "none"}:${mode ?? "none"}:${
     storedFile?.file?.name ?? "none"
   }`;
@@ -34,7 +33,7 @@ function EditorPlayerRuntime({
   duration,
   preview,
 }: {
-  projectId: string | null;
+  projectId: ReturnType<typeof useKaraokeStore.getState>["projectId"];
   mode: ReturnType<typeof useKaraokeStore.getState>["mode"];
   storedFile: ReturnType<typeof useKaraokeStore.getState>["playerState"]["storedFile"];
   duration: number | null;

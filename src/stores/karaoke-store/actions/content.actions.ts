@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand";
 import { KaraokeState, ContentActions, HistoryState } from "../types";
 import { LyricWordData } from "@/types/common.type";
-import { processRawLyrics } from "@/lib/karaoke/utils";
+import { processRawLyrics, splitLyricLine } from "@/lib/karaoke/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { processLyricsForPlayer } from "../utils";
 import { MAX_HISTORY_SIZE } from "../configs";
@@ -127,7 +127,7 @@ export const createContentActions: StateCreator<
         await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = [...state.lyricsData];
-          const wordsInLine = newText.split("|");
+          const wordsInLine = splitLyricLine(newText);
           const firstWordOfLine = state.lyricsData[lineIndexToUpdate]?.[0];
 
           if (!firstWordOfLine) return {};

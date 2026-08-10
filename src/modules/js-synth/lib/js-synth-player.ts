@@ -42,11 +42,16 @@ export class JsSynthPlayerEngine {
     return this._isPlaying;
   }
 
-  public play() {
+  public async play() {
     if (this._isPlaying) return;
 
-    this.audioContext.resume();
-    this.player.playPlayer();
+    try {
+      await this.audioContext.resume();
+      await this.player.playPlayer();
+    } catch (error) {
+      console.error("Unable to start MIDI playback:", error);
+      return;
+    }
 
     this._isPlaying = true;
 

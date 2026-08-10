@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useKaraokeStore } from "../stores/karaoke-store";
-import { usePlayerSetupStore } from "./usePlayerSetup";
 import { usePlayerHandlersStore } from "./usePlayerHandlers";
+import { useTimerStore } from "./useTimerWorker";
 import { PlayerRef } from "@/modules/player";
  
 
@@ -12,7 +12,6 @@ export const useKeyboardControls = (player: PlayerRef | null) => {
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
-  const correctionIndex = useKaraokeStore((state) => state.correctionIndex);
   const currentIndex = useKaraokeStore((state) => state.currentIndex);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
   const timingBuffer = useKaraokeStore((state) => state.timingBuffer);
@@ -24,10 +23,8 @@ export const useKeyboardControls = (player: PlayerRef | null) => {
   );
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
-  const rowVirtualizer = usePlayerSetupStore((state) => state.rowVirtualizer);
-
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       if (
         ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) ||
         isEditModalOpen ||
@@ -94,17 +91,12 @@ export const useKeyboardControls = (player: PlayerRef | null) => {
 
       if (e.code === "Space") {
         e.preventDefault();
-        console.log("isStampingMode", isStampingMode);
         if (isStampingMode) return;
 
-        console.log("isPlaying", isPlaying);
-        
         if (isPlaying) {
           player.pause();
         } else {
           let seekTime;
-          
-          console.log("playFromScrolledPosition", playFromScrolledPosition);
           if (playFromScrolledPosition) {
             seekTime = chordPanelCenterTick;
             actions.setPlayFromScrolledPosition(false);
@@ -157,7 +149,10 @@ export const useKeyboardControls = (player: PlayerRef | null) => {
 
       if (player.isPlaying() && e.code === "ArrowRight") {
         e.preventDefault();
-        const currentTime = player.getCurrentTime();
+        const timer = useTimerStore.getState();
+        const currentTime = timer.worker
+          ? (await timer.getCurrentTiming()).value
+          : player.getCurrentTime();
 
         const currentWord = currentIndex > -1 ? flatLyrics[currentIndex] : null;
 
@@ -193,14 +188,12 @@ export const useKeyboardControls = (player: PlayerRef | null) => {
     selectedLineIndex,
     lyricsData,
     isTimingActive,
-    correctionIndex,
     currentIndex,
     handleRetiming,
     editingLineIndex,
     playFromScrolledPosition,
     chordPanelCenterTick,
     isPlaying,
-    rowVirtualizer,
     timingBuffer,
   ]);
 };

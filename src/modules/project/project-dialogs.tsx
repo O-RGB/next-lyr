@@ -5,7 +5,7 @@ import EditLyricLineModal from "@/components/modals/edit-lyrics/edit-lyric-line-
 import DonateModal from "@/components/modals/donate";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
-export function EditorDialogs() {
+export function ProjectDialogs() {
   const isEditModalOpen = useKaraokeStore((state) => state.isEditModalOpen);
   const isAddModalOpen = useKaraokeStore((state) => state.isAddModalOpen);
 
