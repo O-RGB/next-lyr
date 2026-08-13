@@ -1,4 +1,4 @@
-import { ArrayRange } from "@/lib/utils/arrayrange";
+import { ArrayRange } from "@/lib/array-range";
 import { TempoEvent } from "../../midi/types";
 
 export const tempoToArrayRange = (

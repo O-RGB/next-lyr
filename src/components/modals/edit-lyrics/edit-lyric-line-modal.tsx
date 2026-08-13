@@ -1,17 +1,13 @@
+import { CircleArrowLeft, Eraser, Sparkles, SquarePen, WandSparkles } from "lucide-react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "@/components/common/button";
 import Form from "@/components/common/data-input/form";
 import { useState, useEffect, useRef } from "react";
-import { FaEdit } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
-import { IoArrowBackCircle } from "react-icons/io5";
-import { BsStars } from "react-icons/bs";
 import { tokenizeThai } from "@/lib/wordcut/utils";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import InputCommon from "@/components/common/data-input/input";
-import { MdAutoFixHigh, MdCleanHands } from "react-icons/md";
-import { GrClear } from "react-icons/gr";
 
 interface EditLyricLineModalProps {
   open?: boolean;
@@ -133,7 +129,6 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
 
   return (
     <ModalCommon
-      modalId="edit-lyrics"
       title="Edit Lyric Line"
       onClose={() => {
         onTextChange(initialInputText);
@@ -145,7 +140,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
           <ButtonCommon
             size="sm"
             color="gray"
-            icon={<IoArrowBackCircle />}
+            icon={<CircleArrowLeft />}
             onClick={handleClose}
           >
             Close
@@ -155,7 +150,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
             onClick={handleSave}
             color="primary"
             size="sm"
-            icon={<FaEdit></FaEdit>}
+            icon={<SquarePen></SquarePen>}
           >
             Edit
           </ButtonCommon>
@@ -166,7 +161,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
         <div>
           <label
             htmlFor="edit-line-input"
-            className="text-sm font-medium text-slate-600 mb-1 block"
+            className="text-sm font-medium text-foreground mb-1 block"
           >
             Edit (use | to separate words):
           </label>
@@ -182,7 +177,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
             <ButtonCommon
               size="sm"
               disabled={inputText.length <= 0}
-              icon={<BsStars />}
+              icon={<Sparkles />}
               color="success"
               className="text-nowrap"
               onClick={cutText}
@@ -202,7 +197,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 onClick={autoThaiToKaraoke}
                 color="primary"
                 size="sm"
-                icon={<MdAutoFixHigh></MdAutoFixHigh>}
+                icon={<WandSparkles></WandSparkles>}
               >
                 ออโต้ซับ
               </ButtonCommon>
@@ -211,7 +206,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 disabled={vocal.length == 0}
                 color="secondary"
                 size="sm"
-                icon={<GrClear></GrClear>}
+                icon={<Eraser></Eraser>}
               >
                 ล้าง
               </ButtonCommon>
@@ -229,7 +224,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 return (
                   <div
                     key={`vocal-list-${index}`}
-                    className="p-1 border bg-gray-100 rounded-lg"
+                    className="p-1 border bg-raised rounded-lg"
                   >
                     <Form.Item
                       className="w-fit"

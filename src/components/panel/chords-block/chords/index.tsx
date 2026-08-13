@@ -1,7 +1,7 @@
+import { Menu, Pencil } from "lucide-react";
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { BiPencil, BiMenu } from "react-icons/bi";
 import ButtonCommon from "@/components/common/button";
 
 interface ChordProps {
@@ -37,8 +37,8 @@ const Chord: React.FC<ChordProps> = React.memo(
             flex flex-col items-center py-1 px-1 min-h-[60px]
             ${
               isActive
-                ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
-                : "text-purple-700 bg-white border-purple-200 hover:bg-purple-50 shadow-sm"
+                ? "bg-primary text-primary-foreground ring-2 ring-primary scale-105 shadow-lg"
+                : "text-primary bg-panel border-primary/40 hover:bg-primary/10 shadow-sm"
             }
           `}
         >
@@ -48,8 +48,8 @@ const Chord: React.FC<ChordProps> = React.memo(
             className="cursor-grab active:cursor-grabbing touch-none"
             onClick={(e) => e.stopPropagation()}
           >
-            <BiMenu
-              className={`w-3 h-3 ${isActive ? "text-white" : "text-gray-300"}`}
+            <Menu
+              className={`w-3 h-3 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`}
             />
           </div>
 
@@ -67,12 +67,12 @@ const Chord: React.FC<ChordProps> = React.memo(
               variant="ghost"
               color={isActive ? "white" : "secondary"}
               className={`!p-1 !bg-transparent  ${
-                isActive ? "hover:bg-white/20" : "hover:bg-purple-100"
+                isActive ? "hover:bg-panel/20" : "hover:bg-primary/10"
               }`}
               size="xs"
               title="Edit Chord"
             >
-              <BiPencil className="w-3 h-3" />
+              <Pencil className="w-3 h-3" />
             </ButtonCommon>
           </div>
         </div>
@@ -90,8 +90,8 @@ const Chord: React.FC<ChordProps> = React.memo(
           flex justify-between items-center px-2 gap-1
           ${
             isActive
-              ? "bg-purple-600 text-white ring-2 ring-purple-400 scale-105 shadow-lg"
-              : "text-purple-700 bg-white border-purple-200 hover:bg-purple-50 shadow-sm"
+              ? "bg-primary text-primary-foreground ring-2 ring-primary scale-105 shadow-lg"
+              : "text-primary bg-panel border-primary/40 hover:bg-primary/10 shadow-sm"
           }
         `}
       >
@@ -101,8 +101,8 @@ const Chord: React.FC<ChordProps> = React.memo(
           className="cursor-grab active:cursor-grabbing touch-none p-1"
           onClick={(e) => e.stopPropagation()}
         >
-          <BiMenu
-            className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-500"}`}
+          <Menu
+            className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`}
           />
         </div>
 
@@ -120,7 +120,7 @@ const Chord: React.FC<ChordProps> = React.memo(
             size="xs"
             color={!isActive ? "white" : "secondary"}
           >
-            <BiPencil className="w-3 h-3" />
+            <Pencil className="w-3 h-3" />
           </ButtonCommon>
         </div>
       </div>

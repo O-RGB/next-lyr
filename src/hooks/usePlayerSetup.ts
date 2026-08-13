@@ -1,24 +1,17 @@
 import { PlayerRef } from "@/modules/player";
 import { useRef, useEffect } from "react";
 import { create } from "zustand";
-import { useTimerStore } from "./useTimerWorker";
-import { Virtualizer } from "@tanstack/react-virtual";
+import { useTimerStore } from "@/timer-worker/store";
 import { StoredFile } from "@/lib/database/db";
 
 interface PlayerSetupState {
   playerControls: PlayerRef | null;
   setPlayerControls: (controls: PlayerRef | null) => void;
-  rowVirtualizer: Virtualizer<HTMLDivElement, Element> | null;
-  setRowVirtualizer: (
-    virtualizer: Virtualizer<HTMLDivElement, Element> | null
-  ) => void;
 }
 
 export const usePlayerSetupStore = create<PlayerSetupState>((set) => ({
   playerControls: null,
   setPlayerControls: (controls) => set({ playerControls: controls }),
-  rowVirtualizer: null,
-  setRowVirtualizer: (virtualizer) => set({ rowVirtualizer: virtualizer }),
 }));
 
 export const usePlayerSetup = (
@@ -30,18 +23,18 @@ export const usePlayerSetup = (
 ) => {
   const { setPlayerControls } = usePlayerSetupStore();
   const playerRef = useRef<PlayerRef>(null);
-  const timerControls = useTimerStore();
+  const timerControls = useTimerStore.getState();
 
   useEffect(() => {
     setPlayerControls(null);
     timerControls.forceStopTimer();
-  }, [projectId, storedFile, timerControls, setPlayerControls]);
+  }, [projectId, storedFile, setPlayerControls]);
 
   useEffect(() => {
     if (mode) {
       timerControls.forceStopTimer();
     }
-  }, [mode, timerControls]);
+  }, [mode]);
 
   useEffect(() => {
     if (mode && playerRef.current && isPlayerReady) {
@@ -51,6 +44,8 @@ export const usePlayerSetup = (
         seek: (time) => playerRef.current?.seek(time),
         getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
         isPlaying: () => playerRef.current?.isPlaying() ?? false,
+        setPlaybackRate: (rate) => playerRef.current?.setPlaybackRate?.(rate),
+        setVolume: (volume) => playerRef.current?.setVolume?.(volume),
       });
     }
   }, [mode, isPlayerReady, setPlayerControls]);

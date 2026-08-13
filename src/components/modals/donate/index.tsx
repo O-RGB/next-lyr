@@ -1,5 +1,5 @@
+import { Heart, HeartHandshake } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { BiHeart, BiDonateHeart } from "react-icons/bi";
 import ModalCommon from "../../common/modal";
 import Donate from "./donate";
 

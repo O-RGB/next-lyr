@@ -1,4 +1,4 @@
-import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
+import { ArrayRange, ISentence } from "@/lib/array-range";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";

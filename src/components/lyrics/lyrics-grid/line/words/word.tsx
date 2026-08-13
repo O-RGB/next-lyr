@@ -72,7 +72,7 @@ const ActiveTimingHighlight: React.FC<Pick<HighlightProps, "wordIndex">> = ({
   if (!isActive) return null;
 
   return (
-    <div className="absolute rounded-md inset-0 outline outline-2 outline-blue-500 bg-blue-100/60 pointer-events-none z-20" />
+    <div className="absolute rounded-md inset-0 outline outline-2 outline-blue-500 bg-primary/10/60 pointer-events-none z-20" />
   );
 };
 
@@ -103,7 +103,7 @@ const EditingHighlight: React.FC<Pick<HighlightProps, "lineIndex">> = ({
 
   if (!isEditing) return null;
   return (
-    <div className="absolute rounded-md inset-0 bg-purple-50/80 pointer-events-none z-5" />
+    <div className="absolute rounded-md inset-0 bg-primary/10/80 pointer-events-none z-5" />
   );
 };
 
@@ -134,8 +134,8 @@ const Word = React.memo(({ wordData, onClick }: WordProps) => {
     group relative cursor-pointer
     border px-2.5 py-1.5
     text-sm select-none text-nowrap
-    font-medium shadow-sm bg-white rounded-md
-    border-slate-200 hover:bg-slate-100
+    font-medium shadow-sm bg-panel rounded-md
+    border-line hover:bg-raised
   `;
 
   return (
@@ -157,7 +157,7 @@ const Word = React.memo(({ wordData, onClick }: WordProps) => {
 
       {wordData.vocal && (
         <div className="text-[7px] w-full mt-1">
-          <div className="relative text-center bg-white text-gray-600 border border-gray-100/80 shadow-sm rounded-md h-3">
+          <div className="relative text-center bg-panel text-foreground border border-line/80 shadow-sm rounded-md h-3">
             <div className="absolute px-2 right-0 left-0 top-0 truncate z-10">
               {wordData.vocal}
             </div>

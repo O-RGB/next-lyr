@@ -1,7 +1,6 @@
 // src/components/common/player/index.tsx
+import { Pause, Play, Square } from "lucide-react";
 import React from "react";
-import { FaPlay, FaPause, FaStop } from "react-icons/fa";
-import { useKaraokeStore } from "@/stores/karaoke-store";
 import { TimerRange } from "./render-time";
 
 interface CommonPlayerStyleProps {
@@ -13,6 +12,40 @@ interface CommonPlayerStyleProps {
   duration: number;
 }
 
+interface PlayerButtonsProps {
+  fileName: string;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  onStop: () => void;
+}
+
+const PlayerButtons = React.memo<PlayerButtonsProps>(
+  ({ fileName, isPlaying, onPlayPause, onStop }) => (
+    <div className="flex justify-center items-center gap-2">
+      <button
+        onClick={onPlayPause}
+        disabled={!fileName}
+        className="p-3 bg-panel rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
+      >
+        {isPlaying ? (
+          <Pause className="h-5 w-5 text-foreground" />
+        ) : (
+          <Play className="h-5 w-5 text-foreground" />
+        )}
+      </button>
+      <button
+        onClick={onStop}
+        disabled={!fileName}
+        className="p-3 bg-panel rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
+      >
+        <Square className="h-5 w-5 text-foreground" />
+      </button>
+    </div>
+  )
+);
+
+PlayerButtons.displayName = "PlayerButtons";
+
 const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   fileName,
   isPlaying,
@@ -22,28 +55,13 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   duration,
 }) => {
   return (
-    <div className="bg-white/50 p-4 rounded-lg flex items-center justify-center gap-4 w-full">
-      {/* ปุ่มควบคุม Player */}
-      <div className="flex justify-center items-center gap-2">
-        <button
-          onClick={onPlayPause}
-          disabled={!fileName}
-          className="p-3 bg-white rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
-        >
-          {isPlaying ? (
-            <FaPause className="h-5 w-5 text-gray-700" />
-          ) : (
-            <FaPlay className="h-5 w-5 text-gray-700" />
-          )}
-        </button>
-        <button
-          onClick={onStop}
-          disabled={!fileName}
-          className="p-3 bg-white rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
-        >
-          <FaStop className="h-5 w-5 text-gray-700" />
-        </button>
-      </div>
+    <div className="bg-panel/50 p-4 rounded-lg flex items-center justify-center gap-4 w-full">
+      <PlayerButtons
+        fileName={fileName}
+        isPlaying={isPlaying}
+        onPlayPause={onPlayPause}
+        onStop={onStop}
+      />
       <TimerRange
         duration={duration || 100}
         onSeek={onSeek}
@@ -53,4 +71,4 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   );
 };
 
-export default CommonPlayerStyle;
+export default React.memo(CommonPlayerStyle);

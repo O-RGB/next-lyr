@@ -1,240 +1,105 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Modal, ModalProps } from "react-responsive-modal";
-import { MdClose } from "react-icons/md";
-import ButtonCommon, { ButtonCommonProps } from "./button";
-import { IoArrowBackCircle } from "react-icons/io5";
-import "react-responsive-modal/styles.css";
+import { ArrowLeft } from "lucide-react";
+import React from "react";
 
-export interface ModalCommonProps extends ModalProps {
+import ButtonCommon, { type ButtonCommonProps } from "./button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+/**
+ * The editor's modal, rebuilt on the shared base-ui dialog.
+ *
+ * The previous version hand-rolled focus trapping, scroll locking, an iOS body
+ * position hack and its own animation timers. base-ui does all of that, so what
+ * is left here is only the parts specific to this app: the title bar, the
+ * scrollable body, and the default OK/Cancel footer.
+ */
+export interface ModalCommonProps {
+  open: boolean;
+  onClose: () => void;
   children?: React.ReactNode;
-  title?: React.ReactNode | string;
-  modalClassName?: string;
-  okButtonProps?: ButtonCommonProps;
-  cancelButtonProps?: ButtonCommonProps;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  /** Pass `null` to render no footer at all. */
   footer?: React.ReactNode | null;
-  destroyOnClose?: boolean;
-  animationCloseDuration?: number;
-  maxHeight?: string;
+  /** Pass `null` to drop just that button. */
+  okButtonProps?: ButtonCommonProps | null;
+  cancelButtonProps?: ButtonCommonProps | null;
+  modalClassName?: string;
+  className?: string;
 }
 
 const ModalCommon: React.FC<ModalCommonProps> = ({
+  open,
+  onClose,
   children,
   title,
-  onClose,
-  open,
-  modalClassName,
+  description,
+  footer,
   okButtonProps,
   cancelButtonProps,
-  footer,
-  destroyOnClose = true,
-  animationCloseDuration = 300,
-  maxHeight = "90dvh", // เปลี่ยนเป็น vh เพื่อความเข้ากันได้กับ iOS
-  ...props
+  modalClassName,
+  className,
 }) => {
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [shouldRender, setShouldRender] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setShouldRender(true);
-      setIsVisible(true);
-    } else {
-      setIsVisible(false);
-      if (destroyOnClose) {
-        const timer = setTimeout(
-          () => setShouldRender(false),
-          animationCloseDuration
-        );
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [open, destroyOnClose, animationCloseDuration]);
-
-  // iOS Safari fix: prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      // เก็บ scroll position เดิม
-      const scrollY = window.scrollY;
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-
-      return () => {
-        // คืนค่า scroll position
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.width = "";
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [open]);
-
-  if (!shouldRender) return null;
-
   return (
-    <Modal
-      {...props}
-      open={isVisible}
-      onClose={onClose}
-      center
-      blockScroll={false} // ปิด blockScroll ของ library เพราะเราจัดการเอง
-      closeIcon={
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
-          <MdClose className="text-gray-600 text-lg hover:text-gray-800" />
-        </div>
-      }
-      classNames={{
-        modal: `!w-[95vw] sm:!w-[90vw] lg:!w-[800px] xl:!w-[900px] !p-0 ${
-          modalClassName || ""
-        }`,
-        ...props.classNames,
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
       }}
-      styles={{
-        modalContainer: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "2vh 6px",
-          minHeight: "90vh",
-          // iOS Safari specific fixes
-          WebkitOverflowScrolling: "auto",
-          // overflowScrolling: "auto",
-        },
-        modal: {
-          WebkitOverflowScrolling: "touch",
-          maxHeight: maxHeight,
-          borderRadius: "12px",
-          backgroundColor: "white",
-          boxShadow:
-            "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)",
-          transition: `all ${animationCloseDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-          transform: isVisible ? "scale(1)" : "scale(0.95)",
-          opacity: isVisible ? 1 : 0,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          margin: 0,
-          position: "relative",
-          // iOS Safari specific
-          WebkitTransform: isVisible ? "scale(1)" : "scale(0.95)",
-          ...props.styles?.modal,
-        },
-        overlay: {
-          backgroundColor: "rgba(0, 0, 0, 0.6)",
-          backdropFilter: "blur(8px)",
-          transition: `all ${animationCloseDuration}ms ease`,
-          opacity: isVisible ? 1 : 0,
-          // iOS Safari fix
-          WebkitBackdropFilter: "blur(8px)",
-        },
-        closeButton: {
-          top: "16px",
-          right: "16px",
-          background: "transparent",
-          position: "absolute",
-          zIndex: 10,
-          border: "none",
-          padding: "0",
-        },
-      }}
-      animationDuration={animationCloseDuration}
     >
-      <div className="flex flex-col h-full min-h-0">
-        {title && (
-          <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
-            <h2 className="text-xl font-semibold text-gray-800 pr-8">
-              {title}
-            </h2>
-          </div>
+      <DialogContent
+        className={cn(
+          // Wide enough for the lyric and chord tables this editor puts in modals.
+          "max-h-[92dvh] gap-0 overflow-hidden p-0 sm:max-w-[min(900px,92vw)]",
+          modalClassName,
+          className
         )}
+      >
+        {title ? (
+          <DialogHeader className="shrink-0 border-b border-line bg-panel px-5 py-4 pr-12">
+            <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+            {description ? (
+              <DialogDescription>{description}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+        ) : null}
 
-        <div
-          ref={modalContentRef}
-          className="flex-1 overflow-y-auto p-4"
-          style={{
-            scrollBehavior: "smooth",
-            overscrollBehavior: "contain",
-            scrollbarWidth: "thin",
-            scrollbarColor: "#CBD5E0 #F7FAFC",
-            // iOS Safari specific fixes
-            WebkitOverflowScrolling: "touch",
-            transform: "translateZ(0)", // Force hardware acceleration
-            willChange: "scroll-position", // Optimize for scroll
-            // ป้องกันการ bounce ของ iOS
-            overflowX: "hidden",
-          }}
-          // iOS Safari touch event handlers
-          onTouchStart={(e) => {
-            // Allow native scrolling
-            e.stopPropagation();
-          }}
-          onTouchMove={(e) => {
-            // Allow native scrolling
-            e.stopPropagation();
-          }}
-        >
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
           {children}
         </div>
 
-        {footer !== null && (
-          <div className="flex-shrink-0 p-4 border-t bg-white">
-            {footer ? (
-              footer
-            ) : (
+        {footer !== null ? (
+          <div className="shrink-0 border-t border-line bg-panel-2 p-4">
+            {footer ?? (
               <div className="flex items-center justify-end gap-3">
-                {cancelButtonProps !== null && (
+                {cancelButtonProps !== null ? (
                   <ButtonCommon
                     size="sm"
                     color="gray"
-                    icon={<IoArrowBackCircle />}
+                    icon={<ArrowLeft />}
                     onClick={onClose}
                     {...cancelButtonProps}
                   >
                     {cancelButtonProps?.children ?? "Cancel"}
                   </ButtonCommon>
-                )}
-                {okButtonProps !== null && (
+                ) : null}
+                {okButtonProps !== null ? (
                   <ButtonCommon color="primary" size="sm" {...okButtonProps}>
                     {okButtonProps?.children ?? "OK"}
                   </ButtonCommon>
-                )}
+                ) : null}
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        /* Desktop scrollbar styles */
-        .overflow-y-auto::-webkit-scrollbar {
-          width: 6px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-track {
-          background: #f1f5f9;
-          border-radius: 3px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 3px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-
-        /* iOS Safari specific fixes */
-        @supports (-webkit-touch-callout: none) {
-          /* iOS only styles */
-          .overflow-y-auto {
-            -webkit-overflow-scrolling: touch !important;
-            overflow-scrolling: touch !important;
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            will-change: scroll-position;
-          }
-        }
-      `}</style>
-    </Modal>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 };
 

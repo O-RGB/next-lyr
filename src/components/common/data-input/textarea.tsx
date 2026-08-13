@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import {
   BaseInputProps,
-  useInputFocus,
   getInputBaseClass,
   BaseInputWrapper,
 } from "./base";
@@ -38,13 +37,10 @@ const TextareaCommon = forwardRef<HTMLTextAreaElement, TextareaCommonProps>(
     },
     ref
   ) => {
-    const { isFocused, handleFocus, handleBlur } = useInputFocus();
-
     const textareaClassName = getInputBaseClass(
-      isFocused,
       error,
       inputSize,
-      `placeholder:text-gray-400 resize-${resize} min-h-[${
+      `placeholder:text-muted-foreground resize-${resize} min-h-[${
         rows * 1.5
       }rem] ${className}`
     );
@@ -66,8 +62,8 @@ const TextareaCommon = forwardRef<HTMLTextAreaElement, TextareaCommonProps>(
             rows={rows}
             placeholder={placeholder}
             className={textareaClassName}
-            onFocus={handleFocus(onFocus)}
-            onBlur={handleBlur(onBlur)}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
         </div>
       </BaseInputWrapper>

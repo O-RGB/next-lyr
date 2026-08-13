@@ -1,14 +1,55 @@
+"use client";
+
 import {
-  useState,
-  useEffect,
-  useRef,
   forwardRef,
+  useEffect,
   useImperativeHandle,
+  useRef,
+  useState,
 } from "react";
-import { useKaraokeStore } from "../../stores/karaoke-store";
+
 import CommonPlayerStyle from "@/components/common/player";
-import { readMp3 } from "@/lib/karaoke/mp3/read";
-import { useTimerStore } from "@/hooks/useTimerWorker";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import { clipPlayer } from "@/lib/karaoke-engine/clip-player";
+import { audioEngine } from "@/lib/karaoke-engine/engine";
+import { transport } from "@/lib/karaoke-engine/transport";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import { useTimerStore } from "@/timer-worker/store";
+
+const timer = useTimerStore.getState;
+const AUDIO_ASSET_ID = "legacy-editor-audio";
+const AUDIO_TRACK_ID = "legacy-editor-audio-track";
+const AUDIO_CLIP_ID = "legacy-editor-audio-clip";
+
+async function readBlobDuration(blob: Blob): Promise<number | null> {
+  const url = URL.createObjectURL(blob);
+  const audio = document.createElement("audio");
+  audio.preload = "metadata";
+  audio.src = url;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      audio.addEventListener("loadedmetadata", () => resolve(), { once: true });
+      audio.addEventListener("error", () => reject(new Error("Invalid audio file")), {
+        once: true,
+      });
+      audio.load();
+    });
+    return Number.isFinite(audio.duration) ? audio.duration : null;
+  } finally {
+    URL.revokeObjectURL(url);
+    audio.removeAttribute("src");
+  }
+}
+
+export type AudioPlayerRef = {
+  play: () => void;
+  pause: () => void;
+  seek: (time: number) => Promise<void>;
+  getCurrentTime: () => number;
+  isPlaying: () => boolean;
+  setPlaybackRate: (rate: number) => void;
+  setVolume: (volume: number) => void;
+};
 
 type Props = {
   src: string | null;
@@ -16,177 +57,208 @@ type Props = {
   onReady?: () => void;
 };
 
-export type AudioPlayerRef = {
-  play: () => void;
-  pause: () => void;
-  seek: (time: number) => void;
-  getCurrentTime: () => number;
-  isPlaying: () => boolean;
-};
-
+/** Uses the same sample-clock transport as MIDI, with one decoded clip. */
 const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
   ({ src, file, onReady }, ref) => {
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const { loadAudioFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
-      (state) => state.actions
+    const sourceDuration = useKaraokeStore(
+      (state) => state.playerState.duration
     );
-    const timerControls = useTimerStore();
+    const setGlobalIsPlaying = useKaraokeStore(
+      (state) => state.actions.setIsPlaying
+    );
+    const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
-    const [duration, setDuration] = useState(0);
-
-    useImperativeHandle(ref, () => {
-      return {
-        play: () => {
-          audioRef.current?.play();
-        },
-        pause: () => {
-          audioRef.current?.pause();
-        },
-        seek: (time: number) => {
-          if (audioRef.current) {
-            audioRef.current.currentTime = time;
-            timerControls.seekTimer(time);
-          }
-        },
-        getCurrentTime: () => useKaraokeStore.getState().currentTime,
-        isPlaying: () => {
-          const playing = !!audioRef.current && !audioRef.current.paused;
-
-          return playing;
-        },
-      };
-    });
+    const [duration, setDuration] = useState(sourceDuration ?? 0);
+    const blobRef = useRef<Blob | null>(null);
+    const durationRef = useRef(0);
+    const midiBufferSizeRef = useRef(midiBufferSize);
+    const onReadyRef = useRef(onReady);
 
     useEffect(() => {
-      if (file) {
-        setFileName(file.name);
-      }
-    }, [file]);
+      onReadyRef.current = onReady;
+    }, [onReady]);
 
     useEffect(() => {
-      const audio = audioRef.current;
-      if (!audio) {
-        return;
-      }
+      midiBufferSizeRef.current = midiBufferSize;
+      if (!blobRef.current || durationRef.current <= 0) return;
+      const track = {
+        id: AUDIO_TRACK_ID,
+        kind: "audio" as const,
+        name: "Audio",
+        volume: 1,
+        pan: 0,
+        muted: false,
+        soloed: false,
+      };
+      const clip = {
+        id: AUDIO_CLIP_ID,
+        trackId: AUDIO_TRACK_ID,
+        assetId: AUDIO_ASSET_ID,
+        startSec: 0,
+        offsetSec: 0,
+        durationSec: durationRef.current,
+        gain: 1,
+        fadeInSec: 0,
+        fadeOutSec: 0,
+      };
+      transport.setArrangement(
+        [track],
+        [clip],
+        durationRef.current,
+        120,
+        4,
+        midiBufferSize
+      );
+    }, [midiBufferSize]);
 
-      const handlePlay = () => {
-        setIsPlaying(true);
-        setGlobalIsPlaying(true);
-        timerControls.startTimer();
-      };
-      const handlePause = () => {
-        setIsPlaying(false);
-        setGlobalIsPlaying(false);
-        timerControls.stopTimer();
-      };
-      const handleDurationChange = () => {
-        setDuration(audio.duration);
-      };
+    useEffect(() => {
+      timer().initWorker({
+        mode: "Time",
+        clock: () => audioEngine.exactCurrentTime || performance.now() / 1000,
+        position: () => (transport.playing ? transport.position : null),
+      });
 
-      audio.addEventListener("play", handlePlay);
-      audio.addEventListener("pause", handlePause);
-      audio.addEventListener("ended", handlePause);
-      audio.addEventListener("durationchange", handleDurationChange);
+      const applyTimingCompensation = () => {
+        timer().updateLatency(
+          audioEngine.hardwareOutputLatencySeconds +
+            useSettingsStore.getState().latencyMs / 1000
+        );
+      };
+      applyTimingCompensation();
+
+      const unsubscribe = transport.subscribe((state) => {
+        const playing = state === "playing";
+        setIsPlaying(playing);
+        setGlobalIsPlaying(playing);
+        if (playing) {
+          applyTimingCompensation();
+          timer().scheduleStartAt(transport.audioAnchor);
+        }
+        else if (state === "stopped") timer().stopTimer();
+      });
 
       return () => {
-        audio.removeEventListener("play", handlePlay);
-        audio.removeEventListener("pause", handlePause);
-        audio.removeEventListener("ended", handlePause);
-        audio.removeEventListener("durationchange", handleDurationChange);
+        unsubscribe();
+        timer().terminateWorker();
+        transport.dispose();
+        clipPlayer.dispose();
+        audioEngine.dispose();
       };
     }, [setGlobalIsPlaying]);
 
     useEffect(() => {
-      timerControls.initWorker();
-      timerControls.updateMode("Time");
-      return () => timerControls.terminateWorker();
-    }, [timerControls.initWorker, timerControls.terminateWorker]);
+      if (!sourceDuration) return;
+      setDuration(sourceDuration);
+    }, [sourceDuration]);
 
     useEffect(() => {
-      if (src && audioRef.current) {
-        audioRef.current.src = src;
-        audioRef.current.load();
-      }
-    }, [src]);
-
-    const onUploadFile = async (file?: File) => {
-      if (!file) return;
-      try {
-        const { parsedData } = await readMp3(file);
-        const audioUrl = URL.createObjectURL(file);
-
-        setFileName(file.name);
-
-        const tempAudio = document.createElement("audio");
-        tempAudio.src = audioUrl;
-
-        if (parsedData.duration) {
-          timerControls.updateDuration(parsedData.duration);
+      let cancelled = false;
+      const prepare = async () => {
+        transport.stop();
+        let blob: Blob | null = file ?? null;
+        if (!blob && src) {
+          const response = await fetch(src);
+          if (!response.ok) throw new Error("Unable to read the audio file");
+          blob = await response.blob();
         }
+        if (!blob || cancelled) return;
 
-        const handleMetadata = () => {
-          loadAudioFile(audioUrl, file, parsedData, tempAudio.duration);
-          timerControls.resetTimer();
-          tempAudio.removeEventListener("loadedmetadata", handleMetadata);
+        blobRef.current = blob;
+        const detectedDuration =
+          sourceDuration ?? (await readBlobDuration(blob));
+        const clipDuration = Math.max(0.01, detectedDuration ?? 1);
+        durationRef.current = clipDuration;
+        const track = {
+          id: AUDIO_TRACK_ID,
+          kind: "audio" as const,
+          name: "Audio",
+          volume: 1,
+          pan: 0,
+          muted: false,
+          soloed: false,
+        };
+        const clip = {
+          id: AUDIO_CLIP_ID,
+          trackId: AUDIO_TRACK_ID,
+          assetId: AUDIO_ASSET_ID,
+          startSec: 0,
+          offsetSec: 0,
+          durationSec: clipDuration,
+          gain: 1,
+          fadeInSec: 0,
+          fadeOutSec: 0,
         };
 
-        tempAudio.addEventListener("loadedmetadata", handleMetadata);
-      } catch (error) {
-        console.error("Error processing MP3 file:", error);
-        alert("Failed to process MP3 file. It might be invalid or corrupted.");
-      }
-    };
+        clipPlayer.setBlobs(new Map([[AUDIO_ASSET_ID, blob]]));
+        transport.setArrangement(
+          [track],
+          [clip],
+          clipDuration,
+          120,
+          4,
+          midiBufferSizeRef.current
+        );
+        setFileName(file?.name ?? "Audio");
+        setDuration(clipDuration);
+        onReadyRef.current?.();
+      };
 
-    const handlePlayPause = () => {
-      if (isPlaying) {
-        audioRef.current?.pause();
-      } else {
-        audioRef.current?.play();
-      }
-    };
+      void prepare().catch((error: unknown) => {
+        if (!cancelled) {
+          console.error("Error preparing audio engine:", error);
+          alert(error instanceof Error ? error.message : "Could not prepare audio");
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [file, sourceDuration, src]);
 
-    const handleStop = () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        timerControls.seekTimer(0);
-      }
-    };
-
-    const handleSeek = (value: number) => {
-      if (audioRef.current) {
-        audioRef.current.currentTime = value;
-        timerControls.seekTimer(value);
-      }
-    };
-
-    useEffect(() => {
-      if (file && audioRef) {
-        onUploadFile(file);
-      }
-    }, [file, audioRef]);
+    useImperativeHandle(ref, () => ({
+      play: () => {
+        void transport.play().catch((error: unknown) => {
+          console.error("Unable to start audio playback:", error);
+        });
+      },
+      pause: () => transport.pause(),
+      seek: (time) => {
+        const wasPlaying = transport.playing;
+        const pending = transport.seek(time);
+        if (wasPlaying) {
+          return pending.then(() => timer().seekTimerAt(time, transport.audioAnchor));
+        }
+        timer().seekTimer(time);
+        return Promise.resolve();
+      },
+      getCurrentTime: () => timer().presentationValue,
+      isPlaying: () => transport.playing,
+      setPlaybackRate: (rate) => transport.setPlaybackRate(rate),
+      setVolume: (volume) => audioEngine.setMasterVolume(volume),
+    }), []);
 
     return (
-      <>
-        <audio
-          ref={audioRef}
-          src={src ?? undefined}
-          className="hidden"
-          preload="auto"
-          onLoadedData={() => {
-            setTimeout(() => onReady?.(), 100);
-          }}
-        />
-        <CommonPlayerStyle
-          fileName={fileName}
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          onStop={handleStop}
-          onSeek={handleSeek}
-          duration={duration}
-        />
-      </>
+      <CommonPlayerStyle
+        fileName={fileName}
+        isPlaying={isPlaying}
+        onPlayPause={() => {
+          if (transport.playing) transport.pause();
+          else void transport.play();
+        }}
+        onStop={() => {
+          transport.stop();
+          timer().seekTimer(0);
+        }}
+        onSeek={(time) => {
+          const pending = transport.seek(time);
+          if (transport.playing) {
+            void pending.then(() => timer().seekTimerAt(time, transport.audioAnchor));
+          } else {
+            timer().seekTimer(time);
+          }
+        }}
+        duration={duration}
+      />
     );
   }
 );

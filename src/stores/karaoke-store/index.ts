@@ -7,6 +7,7 @@ import { initialState } from "./configs";
 import { createModalActions } from "./actions/modal.actions";
 import { createPlaybackActions } from "./actions/playback.actions";
 import { createProjectActions } from "./actions/project.actions";
+import { createSoundfontActions } from "./actions/soundfont.actions";
 import { KaraokeState } from "./types";
 
 export const useKaraokeStore = create<KaraokeState>()((set, get) => ({
@@ -14,6 +15,9 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => ({
   actions: {
     // Project actions
     ...createProjectActions(set, get, undefined as any).actions,
+
+    // SoundFont library actions
+    ...createSoundfontActions(set, get, undefined as any).actions,
 
     // File actions
     ...createFileActions(set, get, undefined as any).actions,

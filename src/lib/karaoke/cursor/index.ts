@@ -1,20 +1,15 @@
 import { LyricWordData } from "@/types/common.type";
 import { groupLyricsByLine } from "../lyrics/convert";
 import { clustersFromText } from "./lib";
+import { cursorToTick, tickToCursor } from "./units";
 
-export const cursorToTick = (cur: number, ppq: number): number => {
-  if (ppq === 0) return 0;
-  return Math.round((cur * ppq) / 24);
-};
-
-export const cursorToTicks = (cursor: number[], ppq: number): number[] => {
-  return cursor.map((cur) => cursorToTick(cur, ppq));
-};
-
-export const tickToCursor = (tick: number, ppq: number): number => {
-  if (ppq === 0) return 0;
-  return Math.round(tick / (ppq / 24));
-};
+export {
+  CURSOR_PPQ,
+  cursorToTick,
+  cursorToTicks,
+  tickToCursor,
+  ticksToCursor,
+} from "./units";
 
 export class TickLyricSegmentGenerator {
   private ticksPerBeat: number;

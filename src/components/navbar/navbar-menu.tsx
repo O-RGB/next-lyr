@@ -1,156 +1,198 @@
-import Dropdown from "../common/dropdown/dropdown";
-import ButtonCommon from "@/components/common/button";
+"use client";
+
+import {
+  Code,
+  FolderOpen,
+  Menu,
+  MicVocal,
+  History as HistoryIcon,
+  Keyboard,
+  Moon,
+  Redo2,
+  Save,
+  Settings2,
+  Sun,
+  Waves,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
-import Drawer, { MenuItem } from "../common/drawer";
-import React, { useState, useEffect } from "react";
-import { BiUndo, BiRedo, BiMenu, BiFolderOpen } from "react-icons/bi";
-import { MdOutlineLyrics } from "react-icons/md";
-import { IMenusType } from "./navbar.d";
-import { FaCode, FaFileUpload, FaSave } from "react-icons/fa";
+import React from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import {
+  canRedo as historyCanRedo,
+  canUndo as historyCanUndo,
+} from "@/stores/karaoke-store/history";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { IMenusType } from "./navbar.d";
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;
 }
 
-const NavBarMemu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
-  const { undo, redo } = useKaraokeStore((state) => state.actions);
-  const { past, future } = useKaraokeStore((state) => state.history);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) setIsDrawerOpen(false);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const handleMenuClick = (value: IMenusType) => {
-    onSelectMenu?.(value);
-    setIsDrawerOpen(false);
-  };
-
-  const menuConfig: MenuItem[] = [
-    {
-      label: "เปิด",
-      icon: <BiFolderOpen />,
-      onClick: () => handleMenuClick("PROJECT_OPEN"),
-    },
-    {
-      label: "บันทึก",
-      icon: <FaSave />,
-      onClick: () => handleMenuClick("EXPORT_FILE"),
-    },
-    {
-      label: "เนื้อเพลง",
-      icon: <MdOutlineLyrics />,
-      onClick: () => handleMenuClick("LYRICS_ADD"),
-    },
-    {
-      label: "ย้อนกลับ",
-      icon: <BiUndo />,
-      onClick: () => {
-        undo();
-        setIsDrawerOpen(false);
-      },
-      disabled: past.length === 0,
-      title: "ย้อนกลับ (Ctrl+Z)",
-    },
-    {
-      label: "ก่อนหน้า",
-      icon: <BiRedo />,
-      onClick: () => {
-        redo();
-        setIsDrawerOpen(false);
-      },
-      disabled: future.length === 0,
-      title: "ก่อนหน้า (Ctrl+Y)",
-    },
-  ];
+const NavBarTitle = React.memo(function NavBarTitle() {
+  const title = useKaraokeStore((state) => state.metadata?.TITLE);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   return (
-    <div className="flex justify-between px-2 h-9 items-center">
-      <div className="flex items-center">
-        <div className="font-bold text-white select-none cursor-default flex gap-2 items-center mr-2">
-          <img src="/image.png" alt="Logo" className="w-5 h-5" />
-          <span className="hidden sm:inline">Lyrics Editor</span>
-        </div>
+    <span className="min-w-0 flex-1 truncate px-1 text-sm font-medium text-muted-foreground">
+      {title || text(locale, "ยังไม่ได้ตั้งชื่อเพลง", "Untitled song")}
+    </span>
+  );
+});
 
-        {/* Desktop Menu: สร้างจาก config */}
-        <div className="flex">
-          {menuConfig.map((item, index) =>
-            item.children ? (
-              <Dropdown key={index} items={item.children}>
-                <ButtonCommon
-                  variant="ghost"
-                  className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
-                  icon={item.icon}
-                  size="sm"
-                >
-                  {item.label}
-                </ButtonCommon>
-              </Dropdown>
-            ) : (
-              <ButtonCommon
-                key={index}
-                variant="ghost"
-                childrenClassName="hidden lg:block"
-                className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
-                icon={item.icon}
-                onClick={item.onClick}
-                disabled={item.disabled}
-                title={item.title}
-                size="sm"
-              >
-                {item.label}
-              </ButtonCommon>
-            )
-          )}
-        </div>
-      </div>
+const NavBarHistoryActions = React.memo(function NavBarHistoryActions() {
+  const { undo, redo } = useKaraokeStore((state) => state.actions);
+  const history = useKaraokeStore((state) => state.history);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
-      <div className="flex items-center">
-        <div className="hidden md:flex items-center">
-          <Link href={"/lyr-decode"}>
-            <ButtonCommon
-              color="white"
-              size="sm"
-              className="!p-1 !px-3"
-              icon={<FaCode />}
+  const canUndo = historyCanUndo(history);
+  const canRedo = historyCanRedo(history);
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={!canUndo}
+              onClick={undo}
+              aria-label={text(locale, "ย้อนกลับ", "Undo")}
             >
-              <span className="text-xs">Source Code</span>
-            </ButtonCommon>
-          </Link>
-        </div>
+              <Redo2 className="scale-x-[-1]" />
+            </Button>
+          }
+        />
+        <TooltipContent>{text(locale, "ย้อนกลับ", "Undo")} · Ctrl+Z</TooltipContent>
+      </Tooltip>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <ButtonCommon
-            onClick={() => setIsDrawerOpen(true)}
-            variant="ghost"
-            className="!shadow-none !rounded-none !border-none !justify-start text-sm !text-white hover:!bg-white/20"
-            size="sm"
-          >
-            <BiMenu size={24} />
-          </ButtonCommon>
-        </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={!canRedo}
+              onClick={redo}
+              aria-label={text(locale, "ทำซ้ำ", "Redo")}
+            >
+              <Redo2 />
+            </Button>
+          }
+        />
+        <TooltipContent>{text(locale, "ทำซ้ำ", "Redo")} · Ctrl+Y</TooltipContent>
+      </Tooltip>
+    </>
+  );
+});
+
+const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
+  const { resolvedTheme, setTheme } = useTheme();
+  const openDialog = useUiStore((state) => state.openDialog);
+  const locale = useSettingsStore((state) => state.uiLocale);
+
+  return (
+    <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:px-5">
+      <div className="flex shrink-0 items-center gap-2 pr-1">
+        <span className="grid size-9 place-items-center bg-primary/15 text-primary">
+          <Waves className="size-5" />
+        </span>
+        <span className="hidden text-sm font-semibold tracking-tight sm:block">
+          {text(locale, "Lyrics Editor", "Lyrics Editor")}
+        </span>
       </div>
 
-      <Drawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        menuItems={[
-          ...menuConfig,
-          {
-            label: "Source Code",
-            icon: <FaCode />,
-            href: "/lyr-decode",
-          },
-        ]}
-      />
+      <Separator orientation="vertical" className="hidden h-6 sm:block" />
+
+      <NavBarTitle />
+
+      {/* Undo/redo stay one tap away; everything else lives in the menu. */}
+      <NavBarHistoryActions />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" size="sm" className="gap-1.5">
+              <Menu className="size-5" />
+              <span className="hidden sm:inline">{text(locale, "เมนู", "Menu")}</span>
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{text(locale, "โปรเจกต์", "Project")}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onSelectMenu?.("PROJECT_OPEN")}>
+              <FolderOpen />
+              {text(locale, "เปิดโปรเจกต์", "Open project")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSelectMenu?.("EXPORT_FILE")}>
+              <Save />
+              {text(locale, "บันทึก / ส่งออก", "Save / export")}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{text(locale, "เนื้อเพลง", "Lyrics")}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onSelectMenu?.("LYRICS_ADD")}>
+              <MicVocal />
+              {text(locale, "ใส่เนื้อเพลง", "Add lyrics")}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{text(locale, "ตั้งค่า", "Settings")}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => openDialog("settings")}>
+              <Settings2 />
+              {text(locale, "ตั้งค่าเสียงและจังหวะ", "Audio and timing")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openDialog("shortcuts")}>
+              <Keyboard />
+              {text(locale, "ปุ่มลัด", "Shortcuts")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openDialog("history")}>
+              <HistoryIcon />
+              {text(locale, "ประวัติการแก้ไข", "Edit history")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            >
+              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+              {text(locale, "ธีม", "Theme")}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {resolvedTheme === "dark" ? text(locale, "สว่าง", "Light") : text(locale, "มืด", "Dark")}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              render={<Link href="/lyr-decode" />}
+            >
+              <Code />
+              Source Code
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
 
-export default NavBarMemu;
+export default NavBarMenu;

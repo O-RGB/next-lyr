@@ -1,65 +1,55 @@
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import React, { useMemo } from "react";
+import { useTimerStore } from "@/timer-worker/store";
+import React, { useEffect, useRef } from "react";
 import BeatIndicator from "./beat-indicator";
 
-const DEFAULT_TIME_SIGNATURE = { tick: 0, numerator: 4, denominator: 4 };
-const EMPTY_TIME_SIGNATURES: typeof DEFAULT_TIME_SIGNATURE[] = [];
-
-interface TimeStampeProps {}
-
-const TimeStampe: React.FC<TimeStampeProps> = ({}) => {
-  const currentTime = useKaraokeStore((state) => state.currentTime);
-  const currentTempo = useKaraokeStore((state) => state.currentTempo);
+const TimeStampe: React.FC = () => {
   const mode = useKaraokeStore((state) => state.mode);
-  const ticksPerBeat = useKaraokeStore(
-    (state) => state.playerState.midi?.ticksPerBeat ?? 0
-  );
-  const timeSignatures =
-    useKaraokeStore((state) => state.playerState.midi?.timeSignatures) ??
-    EMPTY_TIME_SIGNATURES;
+  const timeRef = useRef<HTMLSpanElement>(null);
+  const tempoRef = useRef<HTMLSpanElement>(null);
 
-  const currentBeat = useMemo(() => {
-    if (mode !== "midi" || !ticksPerBeat) {
-      return -1;
-    }
+  useEffect(() => {
+    const update = (value: number, bpm: number) => {
+      if (timeRef.current) {
+        timeRef.current.textContent =
+          mode === "midi" ? String(Math.round(value)) : value.toFixed(2);
+      }
+      if (tempoRef.current) tempoRef.current.textContent = String(bpm);
+    };
 
-    const signature = timeSignatures.reduce(
-      (current, candidate) =>
-        candidate.tick <= currentTime ? candidate : current,
-      DEFAULT_TIME_SIGNATURE
-    );
-    const ticksPerSignatureBeat =
-      ticksPerBeat * (4 / signature.denominator);
-    const ticksPerMeasure = ticksPerSignatureBeat * signature.numerator;
-    const ticksIntoMeasure =
-      Math.max(0, currentTime - signature.tick) % ticksPerMeasure;
-    const beatInMeasure = Math.floor(
-      ticksIntoMeasure / ticksPerSignatureBeat
-    );
+    const initial = useTimerStore.getState();
+    update(initial.displayValue, initial.displayBpm);
 
-    return beatInMeasure;
-  }, [currentTime, mode, ticksPerBeat, timeSignatures]);
+    return useTimerStore.subscribe((next, previous) => {
+      if (
+        next.displayValue !== previous.displayValue ||
+        next.displayBpm !== previous.displayBpm
+      ) {
+        update(next.displayValue, next.displayBpm);
+      }
+    });
+  }, [mode]);
 
   return (
     <div className="flex gap-2 items-center">
-      <div className="flex items-center gap-4 p-1 px-3 bg-black rounded-md text-white font-mono text-sm">
-        {currentBeat !== -1 && <BeatIndicator currentBeat={currentBeat} />}
+      <div className="tabnum flex items-center gap-4 border border-line-soft bg-lane px-3 py-1 text-sm text-foreground">
+        {mode === "midi" && <BeatIndicator />}
 
         <div className="flex items-center">
-          <span className="text-[10px] mr-1">
+          <span className="label-xs mr-1">
             {mode === "midi" ? "Tick:" : "Time:"}
           </span>
           <span>
-            {mode === "midi" ? Math.round(currentTime) : currentTime.toFixed(2)}
+            <span ref={timeRef} />
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-1 p-1 px-3 bg-black rounded-md text-white font-mono text-sm">
-        <span className="text-[10px]">BPM:</span>
-        <span>{currentTempo}</span>
+      <div className="tabnum flex items-center gap-1 border border-line-soft bg-lane px-3 py-1 text-sm text-foreground">
+        <span className="label-xs">BPM:</span>
+        <span ref={tempoRef} />
       </div>
     </div>
   );
 };
 
-export default TimeStampe;
+export default React.memo(TimeStampe);

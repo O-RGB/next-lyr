@@ -42,18 +42,18 @@ const SingleCheckbox: React.FC<SingleCheckboxProps> = ({
           flex items-center justify-center
           transition-all duration-200
           ${
-            checked ? "bg-blue-500 border-blue-500" : "bg-white border-gray-300"
+            checked ? "bg-primary border-primary" : "bg-panel border-line"
           }
           ${
             disabled
               ? "opacity-50 cursor-not-allowed"
-              : "peer-hover:border-blue-500"
+              : "peer-hover:border-primary"
           }
         `}
         >
           {checked && (
             <svg
-              className="w-3 h-3 text-white"
+              className="w-3 h-3 text-primary-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -70,7 +70,7 @@ const SingleCheckbox: React.FC<SingleCheckboxProps> = ({
       </div>
       <span
         className={`
-        text-gray-700
+        text-foreground
         ${disabled ? "opacity-50 cursor-not-allowed" : ""}
       `}
       >

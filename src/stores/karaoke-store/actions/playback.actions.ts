@@ -12,7 +12,7 @@ export const createPlaybackActions: StateCreator<
   actions: {
     setIsPlaying: (playing: boolean) => set({ isPlaying: playing }),
     setCurrentTempo(tempo) {
-      set({ currentTempo: tempo });
+      set((state) => (state.currentTempo === tempo ? {} : { currentTempo: tempo }));
     },
     setCurrentTime: (time: number) => {
       const { playerState, isPlaying, mode } = get();
@@ -28,9 +28,11 @@ export const createPlaybackActions: StateCreator<
           playerControls.pause();
         }
 
-        set({ currentTime: duration });
+        set((state) =>
+          state.currentTime === duration ? {} : { currentTime: duration }
+        );
       } else {
-        set({ currentTime: time });
+        set((state) => (state.currentTime === time ? {} : { currentTime: time }));
       }
     },
     setPlaybackIndex: (index: number | null) => set({ playbackIndex: index }),
@@ -298,7 +300,13 @@ export const createPlaybackActions: StateCreator<
 
       get().actions.syncLyricsDocument();
       get().actions.processLyricsForPlayer();
-      await get().actions.saveCurrentProject();
+
+      // A stamping session is one undo step. The per-word buffer is transient
+      // while it runs, so committing here — the moment the buffer is written
+      // into the lyrics — is the granularity a person actually wants back.
+      if (timingBufferData && timingBufferData.buffer.size > 0) {
+        get().actions.commitHistory("ปาดเนื้อร้อง");
+      }
     },
   },
 });

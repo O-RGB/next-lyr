@@ -10,7 +10,10 @@ import type { YouTubePlayer } from "react-youtube";
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
 import CommonPlayerStyle from "@/components/common/player";
-import { useTimerStore } from "@/hooks/useTimerWorker";
+import { useTimerStore } from "@/timer-worker/store";
+
+/** Stable reference: the timer store's actions never change identity. */
+const timer = useTimerStore.getState;
 
 type Props = {
   youtubeId: string | null;
@@ -22,11 +25,13 @@ type Props = {
 export type YouTubePlayerRef = {
   play: () => void;
   pause: () => void;
-  seek: (time: number) => void;
+  seek: (time: number) => Promise<void>;
   getCurrentTime: () => number;
   isPlaying: () => boolean;
   isReady: boolean;
   destroy: () => void;
+  setPlaybackRate: (rate: number) => void;
+  setVolume: (volume: number) => void;
 };
 
 const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
@@ -36,7 +41,6 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const [playerState, setPlayerState] = useState(false);
 
     const actions = useKaraokeStore((state) => state.actions);
-    const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("Load a YouTube URL");
     const [duration, setDuration] = useState(0);
@@ -46,9 +50,13 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       pause: () => playerRef.current?.pauseVideo(),
       seek: (time: number) => {
         playerRef.current?.seekTo(time, true);
-        timerControls.seekTimer(time);
+        timer().seekTimer(time);
+        return Promise.resolve();
       },
-      getCurrentTime: () => useKaraokeStore.getState().currentTime,
+      setPlaybackRate: (rate: number) => playerRef.current?.setPlaybackRate(rate),
+      setVolume: (volume: number) =>
+        playerRef.current?.setVolume(Math.round(volume * 100)),
+      getCurrentTime: () => timer().presentationValue,
       isPlaying: () => playerRef.current.getPlayerState() === 1,
       isReady: isReady,
       destroy: () => {
@@ -65,10 +73,10 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       setDuration(duration);
       setIsReady(true);
       onReady(event);
-      timerControls.resetTimer();
+      timer().resetTimer();
 
       setTimeout(() => {
-        timerControls.updateDuration(duration);
+        timer().updateDuration(duration, "seconds");
       }, 100);
     };
 
@@ -79,10 +87,10 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
       actions.setIsPlaying(isCurrentlyPlaying);
 
       if (isCurrentlyPlaying) {
-        timerControls.seekTimer(playerRef.current?.getCurrentTime() ?? 0);
-        timerControls.startTimer();
+        timer().seekTimer(playerRef.current?.getCurrentTime() ?? 0);
+        timer().startTimer();
       } else {
-        timerControls.stopTimer();
+        timer().stopTimer();
       }
     };
 
@@ -111,22 +119,26 @@ const YoutubePlayer = forwardRef<YouTubePlayerRef, Props>(
     const handleStop = () => {
       playerRef.current?.seekTo(0, true);
       playerRef.current?.pauseVideo();
-      timerControls.seekTimer(0);
+      timer().seekTimer(0);
     };
 
     const handleSeek = (value: number) => {
       playerRef.current?.seekTo(value, true);
-      timerControls.seekTimer(value);
+      timer().seekTimer(value);
     };
 
     useEffect(() => {
-      timerControls.initWorker();
-      timerControls.updateMode("Time");
-      return () => timerControls.terminateWorker();
-    }, [timerControls.initWorker, timerControls.terminateWorker]);
+      // The iframe only exposes a polled currentTime, so re-syncing against it
+      // matters more here than anywhere else.
+      timer().initWorker({
+        mode: "Time",
+        position: () => playerRef.current?.getCurrentTime() ?? null,
+      });
+      return () => timer().terminateWorker();
+    }, []);
 
     return (
-      <Card className={`lg:p-4 bg-white/50 h-full rounded-lg w-full space-y-3`}>
+      <Card className={`lg:p-4 bg-panel/50 h-full rounded-lg w-full space-y-3`}>
         {youtubeId && (
           <div
             className={`relative overflow-hidden w-full h-full rounded-lg ${

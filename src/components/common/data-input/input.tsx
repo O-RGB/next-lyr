@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import {
   BaseInputProps,
-  useInputFocus,
   getInputBaseClass,
   BaseInputWrapper,
 } from "./base";
@@ -27,6 +26,7 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
       className = "",
       type = "text",
       placeholder,
+      value,
       onFocus,
       onBlur,
       id,
@@ -34,13 +34,10 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
     },
     ref
   ) => {
-    const { isFocused, handleFocus, handleBlur } = useInputFocus();
-
     const inputClassName = getInputBaseClass(
-      isFocused,
       error,
       inputSize,
-      `placeholder:text-gray-400 ${className}`
+      `placeholder:text-muted-foreground ${className}`
     );
 
     return (
@@ -60,9 +57,9 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
             type={type}
             placeholder={placeholder}
             className={inputClassName}
-            onFocus={handleFocus(onFocus)}
-            onBlur={handleBlur(onBlur)}
-            value={props.value ?? ""}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            {...(value !== undefined ? { value: value ?? "" } : {})}
           />
         </div>
       </BaseInputWrapper>

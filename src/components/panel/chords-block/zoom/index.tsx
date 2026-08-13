@@ -14,7 +14,7 @@ const ZoomControl: React.FC<ZoomControlProps> = React.memo(
   ({ isMobile, zoom, setZoom }) => {
     if (isMobile) {
       return (
-        <div className="flex flex-col items-center justify-center p-2 bg-gray-100 rounded-md w-[40px] flex-shrink-0">
+        <div className="flex flex-col items-center justify-center p-2 bg-raised rounded-md w-[40px] flex-shrink-0">
           <Range
             direction="vertical"
             min="0.25"
@@ -29,7 +29,7 @@ const ZoomControl: React.FC<ZoomControlProps> = React.memo(
     }
 
     return (
-      <div className="flex items-center p-2 bg-gray-100 rounded-md">
+      <div className="flex items-center p-2 bg-raised rounded-md">
         <span className="text-xs font-bold mr-2">Zoom:</span>
         <Range
           min="0.25"

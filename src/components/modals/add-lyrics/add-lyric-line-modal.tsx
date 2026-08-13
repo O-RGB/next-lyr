@@ -1,12 +1,10 @@
+import { CircleArrowLeft, Plus, Save, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ModalCommon from "../../common/modal";
-import { FaPlus, FaSave } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputCommon from "@/components/common/data-input/input";
 import ButtonCommon from "@/components/common/button";
 import { tokenizeThai } from "@/lib/wordcut/utils";
-import { BsStars } from "react-icons/bs";
-import { IoArrowBackCircle } from "react-icons/io5";
 
 interface AddLyricLineModalProps {
   open?: boolean;
@@ -52,7 +50,6 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
 
   return (
     <ModalCommon
-      modalId="add-lyrics"
       title={`Add Lyric Line After Line ${
         lineIndexToInsertAfter !== null ? lineIndexToInsertAfter + 1 : ""
       }`}
@@ -63,7 +60,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
           <ButtonCommon
             size="sm"
             color="gray"
-            icon={<IoArrowBackCircle />}
+            icon={<CircleArrowLeft />}
             onClick={handleClose}
           >
             Close
@@ -71,14 +68,14 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
           <ButtonCommon
             size="sm"
             disabled={inputText.length <= 0}
-            icon={<BsStars />}
+            icon={<Sparkles />}
             color="success"
             className="text-nowrap"
             onClick={cutText}
           >
             ตัดคำ
           </ButtonCommon>
-          <ButtonCommon color="primary" size="sm" icon={<FaPlus></FaPlus>}>
+          <ButtonCommon color="primary" size="sm" icon={<Plus></Plus>}>
             Add
           </ButtonCommon>
         </div>
@@ -89,14 +86,14 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
       // okButtonProps={{
       //   onClick: handleSave,
       //   children: "Add Line",
-      //   icon: <FaSave />,
+      //   icon: <Save />,
       // }}
     >
       <div className="space-y-4">
         <div>
           <label
             htmlFor="add-line-input"
-            className="text-sm font-medium text-slate-600 mb-1 block"
+            className="text-sm font-medium text-foreground mb-1 block"
           >
             New line (use | to separate words):
           </label>

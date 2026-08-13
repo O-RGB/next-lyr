@@ -1,8 +1,8 @@
+import { MicVocal, StickyNote } from "lucide-react";
 import ButtonCommon from "@/components/common/button";
 import ModalCommon from "@/components/common/modal";
 import MetadataForm from "@/components/metadata/metadata-form";
 import React, { useEffect, useState } from "react";
-import { MdOutlineLyrics, MdOutlineStickyNote2 } from "react-icons/md";
 
 interface MobileActionButtonProps {
   preview?: boolean;
@@ -23,7 +23,7 @@ const MobileActionButton: React.FC<MobileActionButtonProps> = ({
         }}
         color={preview ? "warning" : "white"}
         size="xs"
-        icon={<MdOutlineLyrics></MdOutlineLyrics>}
+        icon={<MicVocal></MicVocal>}
       >
         Preview
       </ButtonCommon>
@@ -40,7 +40,7 @@ const MobileActionButton: React.FC<MobileActionButtonProps> = ({
         onClick={() => setMetadata(true)}
         color="white"
         size="xs"
-        icon={<MdOutlineStickyNote2></MdOutlineStickyNote2>}
+        icon={<StickyNote></StickyNote>}
       >
         Metadata
       </ButtonCommon>

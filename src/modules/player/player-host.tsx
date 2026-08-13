@@ -23,9 +23,12 @@ export type TimerControls = {
 export type PlayerRef = {
   play: () => void;
   pause: () => void;
-  seek: (time: number) => void;
+  seek: (time: number) => Promise<void> | void;
   getCurrentTime: () => number;
   isPlaying: () => boolean;
+  /** Optional: not every source can change speed or level. */
+  setPlaybackRate?: (rate: number) => void;
+  setVolume?: (volume: number) => void;
 };
 
 type PlayerHostProps = {

@@ -3,7 +3,6 @@ import {
   BaseInputProps,
   BaseInputWrapper,
   getInputBaseClass,
-  useInputFocus,
 } from "./base";
 
 interface SelectOption {
@@ -43,10 +42,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
     },
     ref
   ) => {
-    const { isFocused, handleFocus, handleBlur } = useInputFocus();
-
     const selectClassName = getInputBaseClass(
-      isFocused,
       error,
       inputSize,
       `appearance-none cursor-pointer ${className}`
@@ -67,8 +63,8 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
             ref={ref}
             id={id}
             className={selectClassName}
-            onFocus={handleFocus(onFocus)}
-            onBlur={handleBlur(onBlur)}
+            onFocus={onFocus}
+            onBlur={onBlur}
           >
             {placeholder && (
               <option value="" disabled>
@@ -89,7 +85,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
           {/* Custom dropdown arrow */}
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

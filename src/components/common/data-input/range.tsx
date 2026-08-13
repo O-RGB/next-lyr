@@ -12,8 +12,8 @@ const Range: React.FC<RangeProps> = ({
 }) => {
   const orientationStyles =
     direction === "vertical"
-      ? "w-2 h-full flex-grow appearance-none bg-gray-300 rounded-lg outline-none cursor-pointer"
-      : "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700";
+      ? "w-2 h-full flex-grow appearance-none bg-line-strong rounded-lg outline-none cursor-pointer"
+      : "w-full h-2 bg-raised-2 rounded-lg appearance-none cursor-pointer dark:bg-panel-2";
 
   const writingModeStyle: CSSProperties =
     direction === "vertical"

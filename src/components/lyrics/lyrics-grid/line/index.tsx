@@ -28,7 +28,7 @@ const LineRow: React.FC<LineRowProps> = ({
       data-line-index={lineIndex}
     >
       <SelectedColorLine lineIndex={lineIndex} />
-      <div className="relative w-4 h-full flex items-center justify-center bg-gray-100 z-20">
+      <div className="relative w-4 h-full flex items-center justify-center bg-raised z-20">
         <div className="px-2 text-[9px]">{lineIndex + 1}</div>
       </div>
       <div className="relative flex flex-col items-center justify-center gap-1 lg:gap-2 flex-1 min-w-0">

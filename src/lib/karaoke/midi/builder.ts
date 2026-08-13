@@ -80,7 +80,7 @@ function _createModifiedMidi(
     (newSongInfo && Object.keys(newSongInfo).length > 0) ||
     (newLyricsData && newLyricsData.length > 0)
   ) {
-    const klyrXml = buildKLyrXML(newSongInfo, newLyricsData, "midi");
+    const klyrXml = buildKLyrXML(newSongInfo, newLyricsData, "midi", ticksPerBeat);
     const encodedKLyr = _encodeKLyrPayload(klyrXml);
     const newLyricTrack: MidiTrack = [
       {

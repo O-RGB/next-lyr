@@ -16,7 +16,7 @@ export function ProjectWorkspace() {
           <div className="h-full lg:h-[70%]">
             <LyricsEditorPanel onPreviewChange={setPreview} />
           </div>
-          <div className="hidden h-[30%] items-center justify-center overflow-auto bg-gradient-to-r from-violet-200 to-pink-300 lg:flex">
+          <div className="hidden h-[30%] items-center justify-center overflow-auto bg-lane ring-1 ring-line-soft lg:flex">
             <LyricsPreview />
           </div>
         </section>

@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "@/components/common/button";
@@ -5,9 +6,8 @@ import Donate from "../donate/donate";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
-import { TickLyricSegmentGenerator, tickToCursor } from "@/lib/karaoke/cursor";
+import { TickLyricSegmentGenerator } from "@/lib/karaoke/cursor";
 import { lyricsDocumentToEvents } from "@/lib/karaoke/lyrics-core/timeline";
-import { MdOutlineFileDownload } from "react-icons/md";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
 import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
@@ -146,10 +146,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       let newLyricsData: LyricEvent[][] = lyricsDocument
         ? lyricsDocumentToEvents(lyricsDocument)
         : groupWordDataToEvents(flatLyrics, (tick) => {
+            // Real ticks only — buildKLyrXML scales to cursor units on write.
             const bpm = midiInfo.tempos.search(tick)?.lyrics.value.bpm ?? 120;
             const offsetTicks =
               (DEFAULT_PRE_ROLL_OFFSET_MIDI * midiInfo.ticksPerBeat * bpm) / 60;
-            return tickToCursor(tick + offsetTicks, midiInfo.ticksPerBeat);
+            return Math.round(tick + offsetTicks);
           });
 
       const newSongInfo: SongInfo = metadata;
@@ -239,7 +240,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   return (
     <>
       <ModalCommon
-        modalId="save-ncn"
         title="บันทึก"
         open={openModal}
         onClose={handleCloseModal}
@@ -250,14 +250,14 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       >
         {(mode !== "youtube" ? storedFile : true) && lyricsData.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-2xl shadow-sm">
-              <p className="text-sm text-gray-600 font-medium">ดาวน์โหลดไฟล์</p>
+            <div className="flex flex-col gap-2 p-4 bg-panel-2 rounded-2xl shadow-sm">
+              <p className="text-sm text-foreground font-medium">ดาวน์โหลดไฟล์</p>
               {mode === "midi" && (
                 <>
                   <ButtonCommon
                     onClick={buildCur}
                     color="primary"
-                    icon={<MdOutlineFileDownload className="text-lg" />}
+                    icon={<Download className="text-lg" />}
                   >
                     ดาวน์โหลดไฟล์ <span className="font-bold">.cur</span>
                   </ButtonCommon>
@@ -265,7 +265,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   <ButtonCommon
                     onClick={buildLyr}
                     color="success"
-                    icon={<MdOutlineFileDownload className="text-lg" />}
+                    icon={<Download className="text-lg" />}
                   >
                     ดาวน์โหลดไฟล์ <span className="font-bold">.lyr</span>
                   </ButtonCommon>
@@ -275,7 +275,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   <ButtonCommon
                     onClick={handleSaveMidi}
                     color="secondary"
-                    icon={<MdOutlineFileDownload className="text-lg" />}
+                    icon={<Download className="text-lg" />}
                   >
                     บันทึก <span className="font-bold">.mid</span>
                   </ButtonCommon>
@@ -285,7 +285,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                 <ButtonCommon
                   onClick={handleSaveMp3}
                   color="secondary"
-                  icon={<MdOutlineFileDownload className="text-lg" />}
+                  icon={<Download className="text-lg" />}
                 >
                   บันทึก <span className="font-bold">.mp3</span>
                 </ButtonCommon>
@@ -294,7 +294,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                 <ButtonCommon
                   onClick={handleBuildYoutube}
                   color="secondary"
-                  icon={<MdOutlineFileDownload className="text-lg" />}
+                  icon={<Download className="text-lg" />}
                 >
                   บันทึก <span className="font-bold">.ykr</span>
                 </ButtonCommon>

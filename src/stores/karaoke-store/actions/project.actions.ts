@@ -9,6 +9,8 @@ import {
   wordDataToLyricsDocument,
 } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
+import { initHistory } from "../history";
+import { normalizeSoundfontLibrary } from "@/lib/soundfonts";
 
 export const createProjectActions: StateCreator<
   KaraokeState,
@@ -25,6 +27,8 @@ export const createProjectActions: StateCreator<
       const lyricsXml = get().lyricsXml;
       const chordsData = get().chordsData;
       const metadata = get().metadata;
+      const soundfonts = get().soundfonts;
+      const activeSoundfontId = get().activeSoundfontId;
 
       if (!projectId) return;
 
@@ -40,6 +44,8 @@ export const createProjectActions: StateCreator<
         lyricsXml,
         chordsData: chordsData,
         metadata: metadata,
+        soundfonts,
+        activeSoundfontId,
       };
 
       try {
@@ -52,6 +58,9 @@ export const createProjectActions: StateCreator<
 
     loadProject: (project: Project) => {
       const { playerState, lyricsData, chordsData, metadata } = project.data;
+      const { soundfonts, activeSoundfontId } = normalizeSoundfontLibrary(
+        project.data
+      );
       const ppq = playerState.midi?.ticksPerBeat ?? 0;
       const source = project.mode === "midi" ? "KMID" : "MP3";
       const timeBase =
@@ -97,11 +106,25 @@ export const createProjectActions: StateCreator<
         metadata,
         projectId: project.id,
         mode: project.mode,
+        soundfonts,
+        activeSoundfontId,
         playerState: {
           ...playerState,
           audioSrc,
           videoSrc,
         },
+        // Seed the log with what was loaded, so undo cannot reach back past the
+        // opening state into an empty document.
+        history: initHistory(
+          {
+            lyricsData: restoredLyricsData,
+            lyricsDocument,
+            lyricsXml,
+            chordsData,
+            metadata,
+          },
+          "เปิดโปรเจกต์"
+        ),
       });
 
       get().actions.processLyricsForPlayer();

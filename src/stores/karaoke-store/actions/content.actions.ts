@@ -4,7 +4,6 @@ import { LyricWordData } from "@/types/common.type";
 import { processRawLyrics, splitLyricLine } from "@/lib/karaoke/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { processLyricsForPlayer } from "../utils";
-import { MAX_HISTORY_SIZE } from "../configs";
 import { ChordEvent, SongInfo } from "@/lib/karaoke/midi/types";
 import {
   wordDataToLyricsDocument,
@@ -46,46 +45,31 @@ export const createContentActions: StateCreator<
     set({ lyricsDocument: document, lyricsXml: buildKlyrXml(document) });
   };
 
-  const saveToHistoryAndDB = async () => {
-    const state = get();
-    const currentHistoryState: HistoryState = {
-      lyricsData: state.lyricsData,
-      lyricsDocument: state.lyricsDocument,
-      lyricsXml: state.lyricsXml,
-      chordsData: state.chordsData,
-      metadata: state.metadata,
-    };
-
-    set((prevState) => {
-      const newPast = [...prevState.history.past, currentHistoryState];
-      if (newPast.length > MAX_HISTORY_SIZE) {
-        newPast.shift();
-      }
-      return {
-        history: {
-          past: newPast,
-          future: [],
-        },
-      };
-    });
-
-    await get().actions.saveCurrentProject();
-  };
+  /** Record the state produced by an action, under a label. */
+  const commit = (label: string, coalesce?: string) =>
+    get().actions.commitHistory(label, coalesce);
 
   return {
     actions: {
       syncLyricsDocument,
       setMetadata: async (metadata: Partial<SongInfo>) => {
-        console.log("Update Metadata....");
-        await saveToHistoryAndDB();
+        const currentMetadata = get().metadata;
+        const changed = (Object.keys(metadata) as (keyof SongInfo)[]).some(
+          (key) => currentMetadata?.[key] !== metadata[key]
+        );
+
+        // A blur caused by moving focus is not an edit. Avoid creating new
+        // metadata/document/history references when all values are unchanged.
+        if (!changed) return;
+
         set((state) => ({
           metadata: { ...(state.metadata as SongInfo), ...metadata },
         }));
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
+        // Typing a title is one undo step, not one per keystroke.
+        commit("แก้ข้อมูลเพลง", "metadata");
       },
       importLyrics: async (rawText: string, autoSub: boolean) => {
-        await saveToHistoryAndDB();
         const words = processRawLyrics(rawText, autoSub);
         const groupedLyrics = groupLyricsByLine(words);
         set({
@@ -94,11 +78,10 @@ export const createContentActions: StateCreator<
           selectedLineIndex: 0,
         });
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("นำเข้าเนื้อร้อง");
       },
       deleteLine: async (lineIndexToDelete: number) => {
-        await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = state.lyricsData.filter(
             (_, index) => index !== lineIndexToDelete
@@ -116,15 +99,14 @@ export const createContentActions: StateCreator<
           return { lyricsData: groupLyricsByLine(flatLyrics) };
         });
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("ลบบรรทัด");
       },
       updateLine: async (
         lineIndexToUpdate: number,
         newText: string,
         vocal: string[]
       ) => {
-        await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = [...state.lyricsData];
           const wordsInLine = splitLyricLine(newText);
@@ -156,11 +138,10 @@ export const createContentActions: StateCreator<
           return { lyricsData: newLyricsData };
         });
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("แก้บรรทัด");
       },
       insertLineAfter: async (lineIndex: number, newText: string) => {
-        await saveToHistoryAndDB();
         set((state) => {
           const newLyricsData = [...state.lyricsData];
           const newWords = processRawLyrics(newText, false).map((w) => ({
@@ -180,14 +161,13 @@ export const createContentActions: StateCreator<
           return { lyricsData: groupLyricsByLine(reIndexedFlat) };
         });
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("เพิ่มบรรทัด");
       },
       updateWord: async (
         index: number,
         newWordData: Partial<LyricWordData>
       ) => {
-        await saveToHistoryAndDB();
         set((state) => ({
           lyricsData: state.lyricsData.map((line) =>
             line.map((word) =>
@@ -196,33 +176,32 @@ export const createContentActions: StateCreator<
           ),
         }));
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("แก้คำ");
       },
       addChord: async (chord: ChordEvent) => {
-        await saveToHistoryAndDB();
         set((state) => ({
           chordsData: [...state.chordsData, chord].sort(
             (a, b) => a.tick - b.tick
           ),
         }));
+        commit("เพิ่มคอร์ด");
       },
       updateChord: async (oldTick: number, newChord: ChordEvent) => {
-        await saveToHistoryAndDB();
         set((state) => ({
           chordsData: state.chordsData
             .map((c) => (c.tick === oldTick ? newChord : c))
             .sort((a, b) => a.tick - b.tick),
         }));
+        commit("แก้คอร์ด");
       },
       deleteChord: async (tickToDelete: number) => {
-        await saveToHistoryAndDB();
         set((state) => ({
           chordsData: state.chordsData.filter((c) => c.tick !== tickToDelete),
         }));
+        commit("ลบคอร์ด");
       },
       updateWordTiming: async (index: number, start: number, end: number) => {
-        await saveToHistoryAndDB();
         set((state) => ({
           lyricsData: state.lyricsData.map((line) =>
             line.map((word) =>
@@ -233,8 +212,8 @@ export const createContentActions: StateCreator<
           ),
         }));
         syncLyricsDocument();
-        await get().actions.saveCurrentProject();
         get().actions.processLyricsForPlayer();
+        commit("ปรับเวลาคำ", "word-timing");
       },
       processLyricsForPlayer: () => {
         const { lyricsData, mode, playerState } = get();

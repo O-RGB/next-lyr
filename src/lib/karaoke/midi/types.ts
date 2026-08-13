@@ -1,4 +1,4 @@
-import { ArrayRange } from "@/lib/utils/arrayrange";
+import { ArrayRange } from "@/lib/array-range";
 import { ParsedSongData } from "../shared/types";
 
 export interface MIDIOptionValue<T> {

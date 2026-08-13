@@ -77,19 +77,19 @@ export const Ruler: React.FC<RulerProps> = React.memo(
             className={
               isMobile
                 ? isMajor
-                  ? "h-4 w-px bg-gray-400"
-                  : "h-2 w-px bg-gray-200"
+                  ? "h-4 w-px bg-line-strong"
+                  : "h-2 w-px bg-raised-2"
                 : isMajor
-                ? "w-4 h-px bg-gray-400"
-                : "w-2 h-px bg-gray-200"
+                ? "w-4 h-px bg-line-strong"
+                : "w-2 h-px bg-raised-2"
             }
           />
           {isMajor && (
             <span
               className={
                 isMobile
-                  ? "absolute top-5 text-[7px] text-gray-400 -translate-x-1/2"
-                  : "absolute left-5 text-[7px] text-gray-400 -translate-y-1/2"
+                  ? "absolute top-5 text-[7px] text-muted-foreground -translate-x-1/2"
+                  : "absolute left-5 text-[7px] text-muted-foreground -translate-y-1/2"
               }
             >
               {formatTickLabel(i, zoom)}

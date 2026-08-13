@@ -1,3 +1,4 @@
+import { FileMusic, FileVideo, Piano } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ModalCommon from "@/components/common/modal";
 import SelectCommon from "@/components/common/data-input/select";
@@ -7,15 +8,15 @@ import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
-import { JsSynthEngine } from "@/modules/js-synth/lib/js-synth-engine";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { parseMidi } from "@/lib/karaoke/midi/reader";
 import { SongInfo, DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
 import { readMp3 } from "@/lib/karaoke/mp3/read";
-import { SiMidi } from "react-icons/si";
-import { BsFileEarmarkMusicFill } from "react-icons/bs";
-import { FaFileVideo } from "react-icons/fa";
+import {
+  DEFAULT_SOUNDFONT_ENTRY,
+  DEFAULT_SOUNDFONT_ID,
+} from "@/lib/soundfonts";
 
 interface NewProjectModalProps {
   open: boolean;
@@ -102,45 +103,44 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         lyricsDocument: null,
         lyricsXml: "",
         chordsData: [],
+        soundfonts: [DEFAULT_SOUNDFONT_ENTRY],
+        activeSoundfontId: DEFAULT_SOUNDFONT_ID,
       };
 
       if (musicFile) {
         switch (projectMode) {
-          case "midi":
+          case "midi": {
             const parsedMidi = await parseMidi(musicFile);
-            const engine = new JsSynthEngine();
-            await engine.startup();
-            if (engine.player) {
-              const midiInfo = await engine.player.loadMidi(musicFile);
-              initialData.playerState.midi = midiInfo;
-              initialData.playerState.duration = midiInfo.duration;
-              setMetadataTemp(parsedMidi.info);
-              initialData.metadata = {
-                ...DEFAULT_SONG_INFO,
-                ...parsedMidi.info,
-                ...metadata,
-              };
+            initialData.playerState.midi = parsedMidi;
+            initialData.playerState.duration = parsedMidi.duration;
+            setMetadataTemp(parsedMidi.info);
+            initialData.metadata = {
+              ...DEFAULT_SONG_INFO,
+              ...parsedMidi.info,
+              ...metadata,
+            };
 
-              const {
-                finalWords: midiWords,
-                convertedChords: midiChords,
-                lyricsDocument,
-                lyricsXml,
-              } = convertParsedDataForImport(
-                  parsedMidi,
-                  true,
-                  midiInfo.ticksPerBeat,
-                  midiInfo.tempos
-                );
-              initialData.lyricsData = groupLyricsByLine(midiWords);
-              initialData.lyricsDocument = lyricsDocument;
-              initialData.lyricsXml = lyricsXml;
-              initialData.chordsData = midiChords;
-            }
+            const {
+              finalWords: midiWords,
+              convertedChords: midiChords,
+              lyricsDocument,
+              lyricsXml,
+            } = convertParsedDataForImport(
+              parsedMidi,
+              true,
+              parsedMidi.ticksPerBeat,
+              parsedMidi.tempos
+            );
+            initialData.lyricsData = groupLyricsByLine(midiWords);
+            initialData.lyricsDocument = lyricsDocument;
+            initialData.lyricsXml = lyricsXml;
+            initialData.chordsData = midiChords;
             break;
+          }
 
-          case "mp3":
+          case "mp3": {
             const { parsedData } = await readMp3(musicFile);
+            initialData.playerState.duration = parsedData.duration ?? null;
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
               ...parsedData.info,
@@ -159,6 +159,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             initialData.lyricsXml = lyricsXml;
             initialData.chordsData = mp3Chords;
             break;
+          }
         }
       } else if (projectMode === "youtube" && youtubeUrl) {
         const videoId = getYouTubeId(youtubeUrl);
@@ -247,11 +248,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             preview={true}
             icon={
               projectMode === "midi" ? (
-                <SiMidi className="text-4xl text-amber-500" />
+                <Piano className="text-4xl text-amber-500" />
               ) : projectMode === "mp3" ? (
-                <BsFileEarmarkMusicFill className="text-4xl text-blue-500"></BsFileEarmarkMusicFill>
+                <FileMusic className="text-4xl text-primary"></FileMusic>
               ) : projectMode === "mp4" ? (
-                <FaFileVideo className="text-4xl text-indigo-500"></FaFileVideo>
+                <FileVideo className="text-4xl text-primary"></FileVideo>
               ) : (
                 ""
               )

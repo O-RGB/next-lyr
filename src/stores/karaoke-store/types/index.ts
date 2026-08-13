@@ -1,6 +1,6 @@
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { Project, StoredFile } from "@/lib/database/db";
-import { ArrayRange, ISentence } from "@/lib/utils/arrayrange";
+import { ArrayRange, ISentence } from "@/lib/array-range";
 import { ParsedSongData } from "@/lib/karaoke/shared/types";
 import {
   ChordEvent,
@@ -8,6 +8,8 @@ import {
   SongInfo,
 } from "@/lib/karaoke/midi/types";
 import type { LyricsDocument } from "@/lib/karaoke/lyrics-core/types";
+import type { SoundfontEntry } from "@/lib/soundfonts";
+import type { History } from "../history";
 
 export type HistoryState = Pick<
   KaraokeState,
@@ -67,6 +69,12 @@ export interface ProjectActions {
   loadProject: (project: Project) => void;
   clearProject: () => void;
   saveCurrentProject: () => Promise<void>;
+}
+
+export interface SoundfontActions {
+  importSoundfont: (file: File, replaceId?: string) => Promise<void>;
+  selectSoundfont: (soundfontId: string) => Promise<void>;
+  removeSoundfont: (soundfontId: string) => Promise<void>;
 }
 
 export interface FileActions {
@@ -147,9 +155,17 @@ export interface ChordPanelActions {
 export interface HistoryActions {
   undo: () => void;
   redo: () => void;
+  /** Jump straight to a logged entry, for the history panel. */
+  jumpToHistory: (id: string) => void;
+  /**
+   * Snapshot the current state under a label. Call it *before* mutating, so
+   * the entry describes the state the user can return to.
+   */
+  commitHistory: (label: string, coalesce?: string) => void;
 }
 
 export type AllActions = ProjectActions &
+  SoundfontActions &
   FileActions &
   ContentActions &
   PlaybackActions &
@@ -160,6 +176,8 @@ export type AllActions = ProjectActions &
 export interface KaraokeState {
   projectId: string | null;
   mode: MusicMode | null;
+  soundfonts: SoundfontEntry[];
+  activeSoundfontId: string;
   playerState: PlayerState;
   lyricsData: LyricWordData[][];
   lyricsDocument: LyricsDocument | null;
@@ -195,10 +213,7 @@ export interface KaraokeState {
   isChordPanelHovered: boolean;
   playFromScrolledPosition: boolean;
 
-  history: {
-    past: HistoryState[];
-    future: HistoryState[];
-  };
+  history: History<HistoryState>;
 
   actions: AllActions;
 }

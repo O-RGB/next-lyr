@@ -1,7 +1,7 @@
 import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
-import { useEffect, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import InputNumberCommon from "../common/data-input/input-number";
 import {
@@ -26,7 +26,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export default function MetadataForm({
+function MetadataForm({
   adding = false,
   onFieldChange,
   initMetadata,
@@ -35,7 +35,6 @@ export default function MetadataForm({
   disabled = false,
 }: Props) {
   const mode = useKaraokeStore((s) => s.mode);
-  const metadata = useKaraokeStore((s) => s.metadata);
   const midiData = useKaraokeStore((s) => s.playerState.midi);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
 
@@ -44,7 +43,7 @@ export default function MetadataForm({
 
   const initName = Form.useForm({
     defaultValues: {
-      ...metadata,
+      ...useKaraokeStore.getState().metadata,
     },
   });
 
@@ -57,7 +56,17 @@ export default function MetadataForm({
       LANGUAGE: currentValues.LANGUAGE as LANGUAGE,
       VOCAL_CHANNEL: currentValues.VOCAL_CHANNEL as VOCAL_CHANNEL,
     };
-    console.log("update metadata");
+
+    // Moving focus between fields must not be treated as an edit. In
+    // particular, setMetadata also rebuilds the lyrics document and history,
+    // which makes unrelated parts of the editor (including its header) react
+    // to a plain input click.
+    const previousMetadata = useKaraokeStore.getState().metadata;
+    const changed = (Object.keys(typedValues) as (keyof SongInfo)[]).some(
+      (key) => previousMetadata?.[key] !== typedValues[key]
+    );
+    if (!changed) return;
+
     setMetadata(typedValues);
     onFieldChange?.(typedValues);
   };
@@ -82,10 +91,15 @@ export default function MetadataForm({
   }, [midiData?.tempos]);
 
   useEffect(() => {
-    if (metadata) {
-      initName.reset(metadata);
-    }
-  }, [metadata]);
+    // Keep external project loads in sync without subscribing the whole form
+    // to metadata changes. A blur save updates metadata, but must not rebuild
+    // every field in this form.
+    return useKaraokeStore.subscribe((next, previous) => {
+      if (next.metadata !== previous.metadata && next.metadata) {
+        initName.reset(next.metadata);
+      }
+    });
+  }, [initName]);
 
   useEffect(() => {
     if (initMetadata) {
@@ -95,7 +109,7 @@ export default function MetadataForm({
 
   return (
     <div>
-      <Card className="bg-white/50 rounded-lg">
+      <Card className="bg-panel/50 rounded-lg">
         <Form form={initName} onFinish={() => {}} className={className}>
           <Form.Item<SongInfo> required name="TITLE" className="w-full h-full">
             {(field) => (
@@ -326,3 +340,5 @@ export default function MetadataForm({
     </div>
   );
 }
+
+export default React.memo(MetadataForm);

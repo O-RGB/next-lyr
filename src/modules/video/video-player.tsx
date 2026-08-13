@@ -8,7 +8,10 @@ import {
 import { useKaraokeStore } from "../../stores/karaoke-store";
 import Card from "../../components/common/card";
 import CommonPlayerStyle from "@/components/common/player";
-import { useTimerStore } from "@/hooks/useTimerWorker";
+import { useTimerStore } from "@/timer-worker/store";
+
+/** Stable reference: the timer store's actions never change identity. */
+const timer = useTimerStore.getState;
 
 type Props = {
   src: string | null;
@@ -19,7 +22,7 @@ type Props = {
 export type VideoPlayerRef = {
   play: () => void;
   pause: () => void;
-  seek: (time: number) => void;
+  seek: (time: number) => Promise<void>;
   getCurrentTime: () => number;
   isPlaying: () => boolean;
   videoEl: HTMLVideoElement | null;
@@ -31,7 +34,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
     const { loadVideoFile, setIsPlaying: setGlobalIsPlaying } = useKaraokeStore(
       (state) => state.actions
     );
-    const timerControls = useTimerStore();
 
     const [fileName, setFileName] = useState("");
     const [isPlaying, setIsPlaying] = useState(false);
@@ -43,10 +45,17 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       seek: (time: number) => {
         if (videoRef.current) {
           videoRef.current.currentTime = time;
-          timerControls.seekTimer(time);
+          timer().seekTimer(time);
         }
+        return Promise.resolve();
       },
-      getCurrentTime: () => useKaraokeStore.getState().currentTime,
+      setPlaybackRate: (rate: number) => {
+        if (videoRef.current) videoRef.current.playbackRate = rate;
+      },
+      setVolume: (volume: number) => {
+        if (videoRef.current) videoRef.current.volume = Math.max(0, Math.min(1, volume));
+      },
+      getCurrentTime: () => timer().presentationValue,
       isPlaying: () => !!videoRef.current && !videoRef.current.paused,
       videoEl: videoRef.current,
     }));
@@ -58,12 +67,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       const handlePlay = () => {
         setIsPlaying(true);
         setGlobalIsPlaying(true);
-        timerControls.startTimer();
+        timer().startTimer();
       };
       const handlePause = () => {
         setIsPlaying(false);
         setGlobalIsPlaying(false);
-        timerControls.stopTimer();
+        timer().stopTimer();
       };
       const handleDurationChange = () => setDuration(video.duration);
 
@@ -85,9 +94,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
     }, [file]);
 
     useEffect(() => {
-      timerControls.initWorker();
-      return () => timerControls.terminateWorker();
-    }, [timerControls.initWorker, timerControls.terminateWorker]);
+      timer().initWorker({
+        mode: "Time",
+        position: () => videoRef.current?.currentTime ?? null,
+      });
+      return () => timer().terminateWorker();
+    }, []);
 
     useEffect(() => {
       if (src && videoRef.current) {
@@ -104,7 +116,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
 
       const handleMetadata = () => {
         loadVideoFile(videoUrl, file, tempVideo.duration);
-        timerControls.resetTimer();
+        timer().updateDuration(tempVideo.duration, "seconds");
+        timer().resetTimer();
         tempVideo.removeEventListener("loadedmetadata", handleMetadata);
       };
 
@@ -123,14 +136,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
-        timerControls.seekTimer(0);
+        timer().seekTimer(0);
       }
     };
 
     const handleSeek = (value: number) => {
       if (videoRef.current) {
         videoRef.current.currentTime = value;
-        timerControls.seekTimer(value);
+        timer().seekTimer(value);
       }
     };
 
@@ -141,7 +154,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, Props>(
     }, [file, videoRef]);
 
     return (
-      <Card className="bg-white/50 p-2 lg:p-4 rounded-lg w-full space-y-3">
+      <Card className="bg-panel/50 p-2 lg:p-4 rounded-lg w-full space-y-3">
         <video
           ref={videoRef}
           src={src || ""}

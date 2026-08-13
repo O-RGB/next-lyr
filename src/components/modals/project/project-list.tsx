@@ -1,8 +1,7 @@
+import { Music, Plus, Trash2 } from "lucide-react";
 import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
-import { BiPlus, BiTrash, BiMusic } from "react-icons/bi";
-import { FaMusic } from "react-icons/fa";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { deleteProject, getAllProjects, Project } from "@/lib/database/db";
 import NewProjectModal from "./new-project-modal";
@@ -53,39 +52,39 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
         onClose={onClose}
         cancelButtonProps={{ hidden: true }}
         okButtonProps={{
-          icon: <BiPlus />,
+          icon: <Plus />,
           onClick: () => setIsNewProjectModalOpen(true),
           children: "New Project",
         }}
       >
         <div>
           {projects.length > 0 ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-line">
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="group flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="group flex items-center justify-between p-4 hover:bg-panel-2 transition-colors cursor-pointer"
                   onClick={() => handleSelectProject(project)}
                 >
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     {/* Project Icon */}
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <FaMusic className="text-purple-600 text-lg" />
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Music className="text-primary text-lg" />
                       </div>
                     </div>
 
                     {/* Project Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                        <h3 className="text-sm font-medium text-foreground truncate">
                           {project.name}
                         </h3>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 uppercase">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-raised text-foreground uppercase">
                           {project.mode}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Updated:{" "}
                         {new Date(project.updatedAt).toLocaleDateString()}
                       </p>
@@ -104,8 +103,8 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
                           e.stopPropagation();
                           handleDeleteProject(project.id!);
                         }}
-                        icon={<BiTrash />}
-                        className="hover:bg-red-50"
+                        icon={<Trash2 />}
+                        className="hover:bg-destructive/10"
                       />
                     </div>
                   </div>
@@ -114,17 +113,17 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
             </div>
           ) : (
             <div className="text-center py-12 px-4">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BiMusic className="text-gray-400 text-2xl" />
+              <div className="w-16 h-16 bg-raised rounded-full flex items-center justify-center mx-auto mb-4">
+                <Music className="text-muted-foreground text-2xl" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 No projects yet
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Create your first karaoke project to get started
               </p>
               <ButtonCommon
-                icon={<BiPlus />}
+                icon={<Plus />}
                 onClick={() => setIsNewProjectModalOpen(true)}
                 className="mx-auto"
               >

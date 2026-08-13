@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand";
 import { getPreRollTime } from "../utils";
-import { MAX_HISTORY_SIZE, initialModalState } from "../configs";
-import { KaraokeState, ModalActions, HistoryState } from "../types";
+import { initialModalState } from "../configs";
+import { KaraokeState, ModalActions } from "../types";
 import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 export const createModalActions: StateCreator<
@@ -10,32 +10,6 @@ export const createModalActions: StateCreator<
   [],
   { actions: ModalActions }
 > = (set, get) => {
-  const saveToHistoryAndDB = async () => {
-    const state = get();
-    const currentHistoryState: HistoryState = {
-      lyricsData: state.lyricsData,
-      lyricsDocument: state.lyricsDocument,
-      lyricsXml: state.lyricsXml,
-      chordsData: state.chordsData,
-      metadata: state.metadata,
-    };
-
-    set((prevState) => {
-      const newPast = [...prevState.history.past, currentHistoryState];
-      if (newPast.length > MAX_HISTORY_SIZE) {
-        newPast.shift();
-      }
-      return {
-        history: {
-          past: newPast,
-          future: [],
-        },
-      };
-    });
-
-    await get().actions.saveCurrentProject();
-  };
-
   return {
     actions: {
       selectLine: (lineIndex: number | null) =>

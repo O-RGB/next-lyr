@@ -5,6 +5,7 @@ import { KaraokeState } from "@/stores/karaoke-store/types";
 import { createStoredFileFromFile } from "@/stores/karaoke-store/utils";
 import { IMidiParseResult } from "../karaoke/midi/types";
 import type { LyricsDocument } from "../karaoke/lyrics-core/types";
+import type { SoundfontEntry } from "../soundfonts/types";
 
 export interface StoredFile {
   file: File;
@@ -27,6 +28,27 @@ export interface ProjectData {
   lyricsXml?: string;
   chordsData: KaraokeState["chordsData"];
   metadata: KaraokeState["metadata"];
+  soundfonts?: SoundfontEntry[];
+  activeSoundfontId?: string;
+}
+
+export interface SoundfontBlobRecord {
+  key: string;
+  projectId: string;
+  soundfontId: string;
+  chunkIndex: number;
+  blob: Blob;
+  bytes: number;
+}
+
+export interface EditorFontRecord {
+  id: string;
+  name: string;
+  family: string;
+  type: string;
+  bytes: number;
+  buffer: ArrayBuffer;
+  createdAt: Date;
 }
 
 export interface Project {
@@ -40,6 +62,8 @@ export interface Project {
 
 export class MySubClassedDexie extends Dexie {
   projects!: Table<Project>;
+  soundfontBlobs!: Table<SoundfontBlobRecord>;
+  editorFonts!: Table<EditorFontRecord>;
 
   constructor() {
     super("karaokeProjectDB");
@@ -47,10 +71,19 @@ export class MySubClassedDexie extends Dexie {
     this.version(6).stores({
       projects: "&id, name, createdAt, updatedAt",
     });
+    this.version(7).stores({
+      projects: "&id, name, createdAt, updatedAt",
+      soundfontBlobs: "&key, projectId, [projectId+soundfontId]",
+    });
+    this.version(8).stores({
+      projects: "&id, name, createdAt, updatedAt",
+      soundfontBlobs: "&key, projectId, [projectId+soundfontId]",
+      editorFonts: "&id, name, createdAt",
+    });
   }
 }
 
-const db = new MySubClassedDexie();
+export const db = new MySubClassedDexie();
 
 export const createProject = async (
   name: string,
@@ -106,7 +139,10 @@ export const updateProject = async (
 
 export const deleteProject = async (id: string): Promise<void> => {
   try {
-    await db.projects.delete(id);
+    await db.transaction("rw", db.projects, db.soundfontBlobs, async () => {
+      await db.projects.delete(id);
+      await db.soundfontBlobs.where("projectId").equals(id).delete();
+    });
   } catch (error) {
     console.error(`Failed to delete project ${id}:`, error);
     throw error;
@@ -115,7 +151,10 @@ export const deleteProject = async (id: string): Promise<void> => {
 
 export const deleteAllProjects = async (): Promise<void> => {
   try {
-    await db.projects.clear();
+    await db.transaction("rw", db.projects, db.soundfontBlobs, async () => {
+      await db.projects.clear();
+      await db.soundfontBlobs.clear();
+    });
     console.log("All projects have been deleted.");
   } catch (error) {
     console.error("Failed to delete all projects:", error);

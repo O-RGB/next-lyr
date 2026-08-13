@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+
+import { useSettingsStore } from "@/features/settings/settings-store";
+import { text } from "@/features/settings/locale";
 import Card from "@/components/common/card";
 import useIsMobile from "@/hooks/useIsMobile";
 import MobileActionButton from "@/components/panel/actions";
@@ -16,6 +19,8 @@ type LyricsPanelProps = {
 
 export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const isMobile = useIsMobile();
+  const previewFontSize = useSettingsStore((state) => state.previewFontSize);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const [preview, setPreview] = useState(false);
 
   const setPreviewVisible = (visible: boolean) => {
@@ -24,17 +29,17 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   };
 
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-2 bg-gray-50 p-2 lg:p-4">
+    <Card className="flex h-full min-h-0 flex-col gap-2 border-0 bg-panel p-2 lg:p-4">
       <header className="flex shrink-0 items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-800">Lyrics</h1>
+        <h1 className="text-lg font-semibold text-foreground">{text(locale, "เนื้อเพลง", "Lyrics")}</h1>
         <Timestamp />
       </header>
 
       {isMobile ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
           {preview && (
-            <div className="flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-r from-violet-100 to-pink-200 p-2">
-              <LyricsPreview textStyle={{ fontSize: 20 }} />
+            <div className="flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
+              <LyricsPreview textStyle={{ fontSize: previewFontSize }} />
             </div>
           )}
 
@@ -62,4 +67,4 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   );
 }
 
-export default LyricsEditorPanel;
+export default React.memo(LyricsEditorPanel);

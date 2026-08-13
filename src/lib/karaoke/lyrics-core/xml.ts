@@ -1,3 +1,4 @@
+import { cursorToTick, tickToCursor } from "../cursor/units";
 import type { SongInfo } from "../midi/types";
 import type {
   LyricsDocument,
@@ -17,13 +18,23 @@ function parseNumber(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * Read a `<TIME>` value into the document's internal unit.
+ *
+ * `LyricsWord.at` is always a real MIDI tick — or seconds, for MP3-backed
+ * lyrics. KLYR stores its times as NCN cursor units on a fixed 24-per-beat
+ * grid, so they must be scaled by the song's PPQ on the way in. Skipping this
+ * makes the lyrics run ahead of the music by a factor of `ppq / 24`, which is
+ * 20x on a typical 480 PPQ song.
+ */
 function parseWordAt(
   value: string | null | undefined,
   timeBase: LyricsTimeBase
 ): number | null {
   const parsed = parseNumber(value);
   if (parsed === null) return null;
-  return timeBase.kind === "seconds" ? parsed / 1000 : parsed;
+  if (timeBase.kind === "seconds") return parsed / 1000;
+  return cursorToTick(parsed, timeBase.ppq);
 }
 
 export function parseKlyrXmlDocument(
@@ -113,9 +124,11 @@ function escapeXml(value: string): string {
   });
 }
 
+/** Inverse of {@link parseWordAt}, so a document round-trips unchanged. */
 function toXmlTime(word: LyricsWord, timeBase: LyricsTimeBase): string {
   if (word.at === null) return "";
-  return String(Math.round(timeBase.kind === "seconds" ? word.at * 1000 : word.at));
+  if (timeBase.kind === "seconds") return String(Math.round(word.at * 1000));
+  return String(tickToCursor(word.at, timeBase.ppq));
 }
 
 function isValidTagName(value: string): boolean {

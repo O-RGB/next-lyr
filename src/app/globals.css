@@ -1,61 +1,362 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-html,
-body {
-  height: 100%;
-  min-height: 100dvh;
-  width: 100vw;
-  /* overflow: hidden; */
-  overscroll-behavior: none;
-  position: fixed;
-  inset: 0;
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Next Lyr — shares the NKML Studio surface so the karaoke tools read as one app.
+
+  White panels, cool gray layers and a single blue accent, plus a small set of
+  editor-only tokens for the lyric grid, ruler and chord lanes.
+*/
+
+:root {
+  --font-ui: var(--font-noto-sans-thai), ui-sans-serif, sans-serif;
+  --font-lyrics: var(--font-noto-sans-thai), ui-sans-serif, sans-serif;
+  --base: #f4f6fa;
+  --panel: #ffffff;
+  --panel-2: #f8f9fc;
+  --raised: #e9edf4;
+  --raised-2: #dde3ed;
+  --line: #d7dee9;
+  --line-soft: #e7ebf2;
+  --line-strong: #bcc6d4;
+
+  --text: #1c2430;
+  --text-muted: #5f6b7a;
+  --text-dim: #7b8796;
+
+  --brand: #2878e8;
+  --brand-soft: #2878e833;
+  --brand-2: #0a9b78;
+  --warn: #b36b00;
+  --danger: #d94862;
+
+  --lane: #f2f5f9;
+  --lane-alt: #eaf0f7;
+  --grid-bar: #c9d2df;
+  --grid-beat: #dfe5ed;
+  --ruler: #e8edf4;
+  --playhead: #e05268;
+
+  /* Lyric editor accents: the word being sung, and words already timed. */
+  --lyric-active: #2878e8;
+  --lyric-timed: #0a9b78;
+  --lyric-pending: #7b8796;
+  --chord: #b36b00;
+
+  /* shadcn surface tokens → studio palette */
+  --background: var(--base);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --popover: var(--panel-2);
+  --popover-foreground: var(--text);
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: var(--raised);
+  --secondary-foreground: var(--text);
+  --muted: var(--raised);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--raised-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--brand);
+  --radius: 0rem;
+
+  --chart-1: var(--brand);
+  --chart-2: var(--brand-2);
+  --chart-3: var(--warn);
+  --chart-4: #a78bfa;
+  --chart-5: var(--danger);
+
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--raised);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--brand);
 }
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-text-size-adjust: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+/* A layered dark theme: the lyric canvas is deepest, chrome is lifted, and
+   controls/popovers sit on clearly brighter planes. */
+.dark {
+  color-scheme: dark;
 
-  @apply min-h-dvh;
+  --base: #0d1117;
+  --panel: #171c24;
+  --panel-2: #202a38;
+  --raised: #293646;
+  --raised-2: #35465a;
+  --line: #3a4a5e;
+  --line-soft: #263342;
+  --line-strong: #566a82;
+
+  --text: #f4f7fb;
+  --text-muted: #b4c0d0;
+  --text-dim: #8795a8;
+
+  --brand: #78aaff;
+  --brand-soft: #78aaff3d;
+  --brand-2: #4bd3ae;
+  --warn: #f4bd68;
+  --danger: #ff7892;
+
+  --lane: #131a23;
+  --lane-alt: #18212d;
+  --grid-bar: #3b4a5d;
+  --grid-beat: #263342;
+  --ruler: #1b2532;
+  --playhead: #ff647a;
+
+  --lyric-active: #78aaff;
+  --lyric-timed: #4bd3ae;
+  --lyric-pending: #8795a8;
+  --chord: #f4bd68;
+
+  --primary-foreground: #08111e;
+  --sidebar-primary-foreground: #08111e;
 }
 
-* {
-  touch-action: manipulation;
+@theme inline {
+  --color-base: var(--base);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-raised: var(--raised);
+  --color-raised-2: var(--raised-2);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-txt: var(--text);
+  --color-dim: var(--text-dim);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-lane: var(--lane);
+  --color-lane-alt: var(--lane-alt);
+  --color-ruler: var(--ruler);
+  --color-grid-bar: var(--grid-bar);
+  --color-grid-beat: var(--grid-beat);
+  --color-playhead: var(--playhead);
+  --color-lyric-active: var(--lyric-active);
+  --color-lyric-timed: var(--lyric-timed);
+  --color-lyric-pending: var(--lyric-pending);
+  --color-chord: var(--chord);
+
+  --font-sans: var(--font-noto-sans-thai);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-noto-sans-thai);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
 @layer base {
-  .font-outline {
-    -webkit-text-stroke: 1px;
+  * {
+    @apply border-border outline-ring/50;
   }
-  .font-outline-2 {
-    -webkit-text-stroke: 2px;
+  /* The editor uses one squared visual language for touch targets and panels. */
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
   }
-  .font-outline-3 {
-    -webkit-text-stroke: 3px;
+  html {
+    @apply font-sans;
+    font-family: var(--font-ui);
+    color-scheme: light;
+    background: var(--base);
+    /* The lyric grid owns horizontal scrolling; the page must never slide. */
+    overflow-x: hidden;
   }
-  .font-outline-4 {
-    -webkit-text-stroke: 4px;
+  body {
+    @apply bg-background text-foreground;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: none;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
-  .font-outline-8 {
-    -webkit-text-stroke: 8px;
+
+  button,
+  [role="button"],
+  input,
+  select {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    user-select: text;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
   }
 }
 
-.szh-menu-custom > ul {
-  border-radius: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  z-index: 999;
+/* The editor is a fixed-height app shell, not a scrolling document. */
+.app-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--panel) 0 56px, var(--base) 56px);
 }
 
-textarea {
-  -webkit-text-size-adjust: 100%; /* ป้องกันการปรับขนาดตัวอักษรใน WebKit */
-  touch-action: manipulation; /* ป้องกันการซูมเมื่อสัมผัสในบางกรณี */
-  font-size: 16px;
+.dark .app-shell {
+  background:
+    radial-gradient(circle at 50% -20%, rgb(65 91 125 / 0.18), transparent 42%),
+    linear-gradient(180deg, var(--panel) 0 56px, var(--base) 56px);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 2px solid var(--base);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9aa6b6;
+}
+::-webkit-scrollbar-corner {
+  background: var(--base);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Small uppercase section labels used all over the chrome. */
+@utility label-xs {
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+@utility tabnum {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: -0.02em;
+}
+
+/* Inline metadata chips: key, BPM, format badges. */
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 7px;
+  background: var(--raised);
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Comfortable hit area on touch without changing the visual size. */
+@utility touch-target {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+}
+
+@utility drag-none {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Karaoke playback view: outlined text stays readable over any wallpaper. */
+@utility font-outline {
+  -webkit-text-stroke: 1px;
+}
+@utility font-outline-2 {
+  -webkit-text-stroke: 2px;
+}
+@utility font-outline-3 {
+  -webkit-text-stroke: 3px;
+}
+@utility font-outline-4 {
+  -webkit-text-stroke: 4px;
+}
+@utility font-outline-8 {
+  -webkit-text-stroke: 8px;
+}
+
+@media (max-width: 767px) {
+  body {
+    font-size: 15px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  [data-slot="dialog-content"] {
+    max-width: none;
+  }
 }

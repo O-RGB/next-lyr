@@ -1,3 +1,4 @@
+import { CircleCheck, CircleHelp } from "lucide-react";
 import React, {
   isValidElement,
   cloneElement,
@@ -7,7 +8,7 @@ import React, {
 } from "react";
 import {
   FormProvider,
-  Controller,
+  Control,
   UseFormReturn,
   UseFormProps,
   useFormContext,
@@ -17,7 +18,6 @@ import {
   Path,
   RegisterOptions,
 } from "react-hook-form";
-import { MdError, MdCheckCircle, MdHelpOutline } from "react-icons/md";
 
 export interface Rule {
   required?: boolean;
@@ -105,6 +105,132 @@ function convertRulesToRHF<T extends FieldValues>(
   return rhfRules;
 }
 
+interface RegisteredFormFieldProps<T extends FieldValues> {
+  control: Control<T>;
+  getValues: UseFormReturn<T>["getValues"];
+  register: UseFormReturn<T>["register"];
+  name: Path<T>;
+  rules: RegisterOptions<T>;
+  children: (field: ControllerRenderProps<T, Path<T>>) => ReactNode;
+  help?: string;
+  validateStatus?: "success" | "error";
+  hasFeedback: boolean;
+}
+
+function FieldLabel<T extends FieldValues>({
+  name,
+  label,
+  required,
+  tooltip,
+}: Pick<FormItemProps<T>, "name" | "label" | "required" | "tooltip">) {
+  if (!label) return null;
+
+  return (
+    <label
+      htmlFor={name as string}
+      className={`select-none font-medium text-muted-foreground ${
+        required ? "after:content-['*'] after:text-destructive after:ml-1" : ""
+      }`}
+    >
+      <span className="text-xs">{label}</span>
+      {tooltip && (
+        <span className="ml-1 text-xs text-muted-foreground" title={tooltip}>
+          <CircleHelp className="inline w-4 h-4" />
+        </span>
+      )}
+    </label>
+  );
+}
+
+function RegisteredFormField<T extends FieldValues>({
+  control,
+  getValues,
+  register,
+  name,
+  rules,
+  children,
+  help,
+  validateStatus,
+  hasFeedback,
+}: RegisteredFormFieldProps<T>) {
+  const registered = register(name, rules);
+  const currentValue = getValues(name);
+
+  const isEvent = (value: unknown): value is React.SyntheticEvent =>
+    !!value && typeof value === "object" && "target" in value;
+
+  const handleChange = (value: unknown, event?: React.SyntheticEvent) => {
+    if (event) {
+      // InputNumber supplies the parsed number as the first argument and the
+      // native event as the second. Preserve the parsed value for RHF.
+      registered.onChange({
+        target: { name, value },
+        type: "change",
+      });
+    } else if (isEvent(value)) {
+      registered.onChange(value);
+    } else {
+      registered.onChange({
+        target: { name, value },
+        type: "change",
+      });
+    }
+    setTimeout(() => {
+      const formContext = control._formState;
+      if (formContext && (window as any).__formChangeCallback) {
+        (window as any).__formChangeCallback(getValues());
+      }
+    }, 0);
+  };
+
+  const field = {
+    name,
+    // Leave the native field uncontrolled. Form.Item still exposes the same
+    // Controller-shaped API, while register() keeps typing/focus out of React.
+    value: undefined,
+    onChange: handleChange,
+    onBlur: (event?: React.FocusEvent) =>
+      registered.onBlur(
+        event ?? {
+          target: { name, value: getValues(name) },
+          type: "blur",
+        }
+      ),
+    ref: registered.ref,
+    defaultValue: currentValue,
+  } as unknown as ControllerRenderProps<T, Path<T>> & {
+    defaultValue?: unknown;
+  };
+  const inputElement = children(field);
+
+  const styledInputElement = isValidElement(inputElement)
+    ? cloneElement(inputElement, {
+        className: `${
+          (inputElement.props as { className?: string }).className || ""
+        } ${
+          ""
+        }`.trim(),
+      } as any)
+    : inputElement;
+
+  return (
+    <>
+      <div className="relative">{styledInputElement}</div>
+      {help && (
+        <div className="text-muted-foreground text-[10px] line-clamp-1">
+          {help}
+        </div>
+      )}
+      {validateStatus === "success" && hasFeedback && (
+        <div className="text-brand-2 text-[10px] flex items-center line-clamp-1">
+          <CircleCheck className="w-3 h-3 mr-1" />
+          Validation passed
+        </div>
+      )}
+    </>
+  );
+}
+
 function FormItem<T extends FieldValues>({
   name,
   label,
@@ -117,16 +243,7 @@ function FormItem<T extends FieldValues>({
   validateStatus,
   hasFeedback = true,
 }: FormItemProps<T>) {
-  const {
-    control,
-    formState: { errors },
-    trigger,
-    getValues,
-  } = useFormContext<T>();
-
-  const error = errors[name];
-  const hasError = !!error;
-  const errorMessage = error?.message as string;
+  const { control, getValues, register } = useFormContext<T>();
 
   const rhfRules = convertRulesToRHF<T>(rules);
 
@@ -136,75 +253,24 @@ function FormItem<T extends FieldValues>({
 
   return (
     <div className={`relative flex flex-col ${className}`}>
-      {label && (
-        <label
-          htmlFor={name as string}
-          className={`select-none font-medium ${
-            hasError ? "text-red-500" : "text-gray-500"
-          } ${
-            required ? "after:content-['*'] after:text-red-500 after:ml-1" : ""
-          }`}
-        >
-          <span className="text-xs">{label}</span>
-          {tooltip && (
-            <span className="ml-1 text-xs text-gray-400" title={tooltip}>
-              <MdHelpOutline className="inline w-4 h-4" />
-            </span>
-          )}
-        </label>
-      )}
-
-      <Controller
+      <FieldLabel
         name={name}
-        control={control}
-        rules={rhfRules}
-        render={({ field }) => {
-          const inputElement = children({
-            ...field,
-            onChange: (value: any) => {
-              field.onChange(value);
-              setTimeout(() => {
-                const formContext = control._formState;
-                if (formContext && (window as any).__formChangeCallback) {
-                  (window as any).__formChangeCallback(getValues());
-                }
-              }, 0);
-            },
-          });
-
-          const styledInputElement = isValidElement(inputElement)
-            ? cloneElement(inputElement, {
-                className: `${
-                  (inputElement.props as { className?: string }).className || ""
-                } ${
-                  hasError
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                    : ""
-                }`.trim(),
-              } as any)
-            : inputElement;
-
-          return <div className="relative">{styledInputElement}</div>;
-        }}
+        label={label}
+        required={required}
+        tooltip={tooltip}
       />
-
-      {hasError && errorMessage && (
-        <div className="text-red-500 text-[10px] flex items-center line-clamp-1">
-          <MdError className="w-3 h-3 mr-1" />
-          {errorMessage}
-        </div>
-      )}
-
-      {help && !hasError && (
-        <div className="text-gray-400 text-[10px] line-clamp-1">{help}</div>
-      )}
-
-      {validateStatus === "success" && hasFeedback && !hasError && (
-        <div className="text-green-500 text-[10px] flex items-center line-clamp-1">
-          <MdCheckCircle className="w-3 h-3 mr-1" />
-          Validation passed
-        </div>
-      )}
+      <RegisteredFormField
+        control={control}
+        getValues={getValues}
+        register={register}
+        name={name}
+        rules={rhfRules}
+        help={help}
+        validateStatus={validateStatus}
+        hasFeedback={hasFeedback}
+      >
+        {children}
+      </RegisteredFormField>
     </div>
   );
 }

@@ -1,42 +1,93 @@
 "use client";
+
+import { AlertTriangle, MicVocal } from "lucide-react";
+import React, { useState } from "react";
+import { toast } from "sonner";
+
 import NavBar from "@/components/navbar";
-import React from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { deleteAllProjects } from "@/lib/database/db";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import { text } from "@/features/settings/locale";
 
 export default function Home() {
-  const handleReset = () => {
-    const is = confirm(
-      "All data will be reset. Please refresh the page after resetting."
-    );
-    if (is) deleteAllProjects();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const locale = useSettingsStore((state) => state.uiLocale);
+
+  const handleReset = async () => {
+    setConfirmReset(false);
+    try {
+      await deleteAllProjects();
+      toast.success("ล้างข้อมูลเรียบร้อย", {
+        description: "รีเฟรชหน้าเว็บเพื่อเริ่มใหม่",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   return (
-    <div className="relative h-screen">
-      <div className="top-0 w-full bg-gradient-to-r from-violet-500 to-purple-500 z-50">
+    <div className="app-shell">
+      <header className="z-50 shrink-0 border-b border-line bg-panel/95 backdrop-blur-xl">
         <NavBar />
-      </div>
-      <div className="flex-grow flex items-center justify-center bg-gray-100 h-full">
-        <div className="text-center text-gray-500">
-          <h2 className="text-2xl font-semibold mb-2">
-            Welcome to Lyrics Editor
-          </h2>
-          <p>Please open a project or create a new one to get started.</p>
+      </header>
 
-          <div className="mt-6">
-            <p className="text-sm text-gray-400 italic mb-3">
-              If the application is not working properly, please reset your data
-              before continuing.
+      <main className="flex min-h-0 flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-md text-center">
+          <span className="mx-auto mb-4 grid size-14 place-items-center rounded-xl bg-primary/15 text-primary">
+            <MicVocal className="size-7" />
+          </span>
+
+          <h2 className="text-xl font-semibold text-foreground">
+            Next Lyrics Editor
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {text(locale, "เปิดโปรเจกต์เดิม หรือสร้างโปรเจกต์ใหม่เพื่อเริ่มทำเนื้อเพลง", "Open an existing project or create a new one to start editing lyrics")}
+          </p>
+
+          <div className="mt-8 border-t border-line pt-6">
+            <p className="text-xs text-muted-foreground">
+              {text(locale, "ถ้าโปรแกรมทำงานผิดปกติ ให้ล้างข้อมูลก่อนใช้งานต่อ", "If the app behaves unexpectedly, clear local data before continuing")}
             </p>
-            <button
-              onClick={handleReset}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg shadow transition-all duration-200"
+            <Button
+              variant="destructive"
+              size="sm"
+              className="mt-3"
+              onClick={() => setConfirmReset(true)}
             >
-              Reset Data
-            </button>
+              <AlertTriangle />
+              {text(locale, "ล้างข้อมูลทั้งหมด", "Clear all data")}
+            </Button>
           </div>
         </div>
-      </div>
+      </main>
+
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+          <AlertDialogTitle>{text(locale, "ล้างข้อมูลทั้งหมด?", "Clear all data?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {text(locale, "โปรเจกต์ทุกอันที่เก็บอยู่ในเครื่องจะถูกลบและกู้คืนไม่ได้", "Every project stored on this device will be deleted and cannot be recovered")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{text(locale, "ยกเลิก", "Cancel")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleReset}>
+              {text(locale, "ล้างข้อมูล", "Clear data")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

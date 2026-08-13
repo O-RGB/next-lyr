@@ -58,15 +58,20 @@ export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
+/**
+ * `lyricsData` ticks are real MIDI ticks; `buildKlyrXml` scales them down to
+ * NCN cursor units, so the song's PPQ has to come along for the ride.
+ */
 export function buildKLyrXML(
   infoData: SongInfo,
   lyricsData: LyricEvent[][],
-  mode: "midi" | "mp3"
+  mode: "midi" | "mp3",
+  ppq = 0
 ): string {
   const document: LyricsDocument = {
     source: mode === "midi" ? "KMID" : "MP3",
     timeBase:
-      mode === "midi" ? { kind: "midi-tick", ppq: 0 } : { kind: "seconds" },
+      mode === "midi" ? { kind: "midi-tick", ppq } : { kind: "seconds" },
     info: infoData,
     lines: lyricsData.map((line, lineIndex) =>
       line.map((word, wordIndex) => ({

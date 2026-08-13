@@ -1,13 +1,10 @@
+import { CircleArrowLeft, File, Import, Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import Upload from "@/components/common/data-input/upload";
 import TextareaCommon from "@/components/common/data-input/textarea";
-import { BiImport } from "react-icons/bi";
-import { BsStars } from "react-icons/bs";
-import { FaFile } from "react-icons/fa";
 import { useKaraokeStore } from "../../../stores/karaoke-store";
-import { IoArrowBackCircle } from "react-icons/io5";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
 import { tokenizeThai } from "@/lib/wordcut/utils";
 import CheckboxGroup from "@/components/common/data-input/checkbox";
@@ -66,7 +63,6 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   return (
     <>
       <ModalCommon
-        modalId="read-lyrics"
         title="เลือกเพลง"
         open={openModal}
         onClose={handleCloseModal}
@@ -75,7 +71,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
             <ButtonCommon
               size="sm"
               onClick={onClose}
-              icon={<IoArrowBackCircle />}
+              icon={<CircleArrowLeft />}
               color="gray"
               className="text-nowrap"
             >
@@ -85,7 +81,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               size="sm"
               onClick={handleAutoCut}
               disabled={lyricsText.length <= 0}
-              icon={<BsStars />}
+              icon={<Sparkles />}
               color="success"
               className="text-nowrap"
             >
@@ -104,7 +100,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
                 <ButtonCommon
                   size="sm"
                   className="text-nowrap"
-                  icon={<FaFile />}
+                  icon={<File />}
                   color="secondary"
                 >
                   อ่านไฟล์ (.lyr)
@@ -115,15 +111,15 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               size="sm"
               className="text-nowrap"
               onClick={handleOnAdd}
-              icon={<BiImport />}
+              icon={<Import />}
             >
               นำเข้า
             </ButtonCommon>
           </div>
         }
       >
-        <div className="p-2 border rounded-md mb-2 bg-slate-100">
-          <label className="text-xs font-medium text-slate-600 mb-1 block">
+        <div className="p-2 border rounded-md mb-2 bg-raised">
+          <label className="text-xs font-medium text-foreground mb-1 block">
             เพิ่มเติม
           </label>
           <CheckboxGroup
@@ -140,8 +136,8 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
             ]}
           ></CheckboxGroup>
         </div>
-        <div className="p-2 border rounded-md bg-slate-100">
-          <label className="text-xs font-medium text-slate-600 mb-1 block">
+        <div className="p-2 border rounded-md bg-raised">
+          <label className="text-xs font-medium text-foreground mb-1 block">
             เนื้อเพลง
           </label>
           <TextareaCommon

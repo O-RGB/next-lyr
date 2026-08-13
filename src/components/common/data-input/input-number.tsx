@@ -1,7 +1,6 @@
-import React, { useState, useCallback, forwardRef } from "react";
+import React, { useState, useCallback, useRef, forwardRef } from "react";
 import {
   BaseInputProps,
-  useInputFocus,
   getInputBaseClass,
   BaseInputWrapper,
 } from "./base";
@@ -64,7 +63,7 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
     },
     ref
   ) => {
-    const { isFocused, handleFocus, handleBlur } = useInputFocus();
+    const isFocusedRef = useRef(false);
     const [displayValue, setDisplayValue] = useState(() => {
       const initialValue = value !== undefined ? value : defaultValue;
       return initialValue !== undefined ? String(initialValue) : "";
@@ -139,7 +138,8 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
         onChange?.(validatedValue, e as any);
       }
 
-      handleBlur(onBlur)(e);
+      isFocusedRef.current = false;
+      onBlur?.(e);
     };
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -150,7 +150,8 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
         }
       }
 
-      handleFocus(onFocus)(e);
+      isFocusedRef.current = true;
+      onFocus?.(e);
     };
 
     const increment = () => {
@@ -174,7 +175,7 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
     React.useEffect(() => {
       if (value !== undefined) {
         const formattedValue =
-          formatOnBlur && !isFocused
+          formatOnBlur && !isFocusedRef.current
             ? `${prefix}${formatNumber(validateNumber(Number(value)))}${suffix}`
             : String(value);
         setDisplayValue(formattedValue);
@@ -182,7 +183,6 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
     }, [
       value,
       formatOnBlur,
-      isFocused,
       prefix,
       suffix,
       formatNumber,
@@ -190,10 +190,9 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
     ]);
 
     const inputClassName = getInputBaseClass(
-      isFocused,
       error,
       inputSize,
-      `placeholder:text-gray-400 ${showControls ? "pr-12" : ""} ${className}`
+      `placeholder:text-muted-foreground ${showControls ? "pr-12" : ""} ${className}`
     );
 
     return (
@@ -228,7 +227,7 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
                 type="button"
                 disabled={disabled}
                 onClick={increment}
-                className="flex-1 px-2 text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none"
+                className="flex-1 px-2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none"
               >
                 <svg
                   className="w-3 h-3"
@@ -245,13 +244,13 @@ const InputNumberCommon = forwardRef<HTMLInputElement, InputNumberCommonProps>(
                 </svg>
               </button>
 
-              <div className="border-t border-gray-200"></div>
+              <div className="border-t border-line"></div>
 
               <button
                 type="button"
                 disabled={disabled}
                 onClick={decrement}
-                className="flex-1 px-2 text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none"
+                className="flex-1 px-2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none"
               >
                 <svg
                   className="w-3 h-3"

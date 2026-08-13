@@ -1,11 +1,9 @@
+import { CircleArrowLeft, Save, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import InputCommon from "@/components/common/data-input/input";
 import InputNumberCommon from "@/components/common/data-input/input-number";
-import { FaSave } from "react-icons/fa";
-import { IoArrowBackCircle } from "react-icons/io5";
-import { MdDelete } from "react-icons/md";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { ChordEvent } from "@/lib/karaoke/midi/types";
 
@@ -100,7 +98,7 @@ export default function ChordEditModal({}: Props) {
             <ButtonCommon
               onClick={handleDelete}
               color="danger"
-              icon={<MdDelete></MdDelete>}
+              icon={<Trash2></Trash2>}
             >
               Delete
             </ButtonCommon>
@@ -109,14 +107,14 @@ export default function ChordEditModal({}: Props) {
             <ButtonCommon
               onClick={actions.closeChordModal}
               color="gray"
-              icon={<IoArrowBackCircle />}
+              icon={<CircleArrowLeft />}
             >
               Cancel
             </ButtonCommon>
             <ButtonCommon
               onClick={handleSave}
               color="primary"
-              icon={<FaSave></FaSave>}
+              icon={<Save></Save>}
             >
               Save Changes
             </ButtonCommon>
@@ -128,7 +126,7 @@ export default function ChordEditModal({}: Props) {
         <div>
           <label
             htmlFor="chord-text-input"
-            className="text-sm font-medium text-slate-600 mb-1 block"
+            className="text-sm font-medium text-foreground mb-1 block"
           >
             Chord Text:
           </label>
@@ -139,14 +137,14 @@ export default function ChordEditModal({}: Props) {
             value={chordText}
             onChange={(e) => setChordText(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full p-3 border border-line rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
             placeholder="e.g., C, Am7, G/B"
           />
         </div>
         <div>
           <label
             htmlFor="tick-value-input"
-            className="text-sm font-medium text-slate-600 mb-1 block"
+            className="text-sm font-medium text-foreground mb-1 block"
           >
             Tick Position:
           </label>
@@ -159,7 +157,7 @@ export default function ChordEditModal({}: Props) {
             placeholder="e.g., 0, 480, 960"
           />
           {/* {(minTick !== undefined || maxTick !== undefined) && (
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {minTick !== undefined && maxTick !== undefined
                 ? `Range: ${minTick} - ${maxTick}`
                 : minTick !== undefined

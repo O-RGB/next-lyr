@@ -1,3 +1,4 @@
+import { Clock, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
 import ButtonCommon from "@/components/common/button";
 import ContextMenuCommon, {
   IContextMenuGroup,
@@ -5,9 +6,6 @@ import ContextMenuCommon, {
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
-import { BiPencil, BiTime, BiTrash } from "react-icons/bi";
-import { GoKebabHorizontal } from "react-icons/go";
-import { IoMdAdd } from "react-icons/io";
 
 interface LineActionProps {
   lineIndex: number;
@@ -26,7 +24,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           {
             type: "add",
             text: "แทรก",
-            icon: <IoMdAdd />,
+            icon: <Plus />,
             onClick: () => {
               actions.openAddModal(lineIndex);
             },
@@ -34,7 +32,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           {
             type: "edit",
             text: "แก้ไข",
-            icon: <BiPencil />,
+            icon: <Pencil />,
             onClick: () => {
               actions.selectLine(lineIndex);
               actions.openEditModal();
@@ -43,7 +41,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           {
             type: "Re Time",
             text: "ปาดเนื้อใหม่",
-            icon: <BiTime />,
+            icon: <Clock />,
             onClick: () => {
               if (
                 confirm(
@@ -59,7 +57,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           {
             type: "delete",
             text: "ลบ",
-            icon: <BiTrash />,
+            icon: <Trash2 />,
             onClick: () => {
               if (confirm("ลบบรรทัดที่ " + (lineIndex + 1) + " ออกไป?")) {
                 actions.deleteLine?.(lineIndex);
@@ -80,7 +78,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
               circle
               variant="ghost"
               size="xs"
-              icon={<GoKebabHorizontal className="text-slate-400 rotate-90" />}
+              icon={<Ellipsis className="text-muted-foreground rotate-90" />}
               className="z-20"
             ></ButtonCommon>
           }

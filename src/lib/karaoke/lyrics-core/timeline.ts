@@ -1,3 +1,4 @@
+import { cursorToTick } from "../cursor/units";
 import type { LyricEvent, SongInfo } from "../midi/types";
 import type { LyricWordData } from "@/types/common.type";
 import type { ParsedSongData } from "../shared/types";
@@ -115,8 +116,13 @@ export function lyricsDocumentToEvents(document: LyricsDocument): LyricEvent[][]
   );
 }
 
+/**
+ * Build a document from a `.cur` + `.lyr` pair. `cursorUnits` are raw values
+ * straight out of the cursor file, on the 24-per-beat NCN grid; they are scaled
+ * here so `at` is a real MIDI tick like everywhere else.
+ */
 export function ncnToLyricsDocument(
-  cursorTicks: number[],
+  cursorUnits: number[],
   lyricLines: string[],
   info: Partial<SongInfo> = {},
   ppq = 0
@@ -133,7 +139,10 @@ export function ncnToLyricsDocument(
       const words = (line + " ").split("").map((text, wordIndex) => ({
         id: `lyric-${lineIndex}-${wordIndex}`,
         text,
-        at: cursorTicks[cursorIndex++] ?? null,
+        at: (() => {
+          const unit = cursorUnits[cursorIndex++];
+          return unit === undefined ? null : cursorToTick(unit, ppq);
+        })(),
       }));
 
       return [words];

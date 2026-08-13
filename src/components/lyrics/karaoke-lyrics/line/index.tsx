@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import LyricsCharacter from "../character";
 import { groupThaiCharacters } from "@/lib/karaoke/cursor/lib";
-import { ISentence } from "@/lib/utils/arrayrange";
+import { ISentence } from "@/lib/array-range";
 import { LyricsCharacterStyle } from "../../lyrics-character";
 
 interface LyricsListProps {

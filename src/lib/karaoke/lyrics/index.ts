@@ -1,4 +1,4 @@
-import { ILyricsBuilder } from "@/lib/utils/arrayrange";
+import { ILyricsBuilder } from "@/lib/array-range";
 import iconv from "iconv-lite";
 
 export function encodeCP874(str: string): Uint8Array {
