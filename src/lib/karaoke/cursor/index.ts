@@ -38,7 +38,7 @@ export class TickLyricSegmentGenerator {
 
       const tokens = line.map((word) => ({
         unit: toUnitConverter(
-          (word.start ?? 0) + (offsetTicks ? offsetTicks?.(word.start ?? 0) : 0)
+          (word.at ?? 0) + (offsetTicks ? offsetTicks?.(word.at ?? 0) : 0)
         ),
         text: word.text,
       }));
@@ -46,10 +46,10 @@ export class TickLyricSegmentGenerator {
       const fullText = tokens.map((t) => t.text).join("");
       const nextLine = lines[lineIndex + 1];
       const nextGroupStartUnit =
-        nextLine?.[0]?.start !== null && nextLine?.[0]?.start !== undefined
+        nextLine?.[0]?.at !== null && nextLine?.[0]?.at !== undefined
           ? toUnitConverter(
-              nextLine[0].start +
-                (offsetTicks ? offsetTicks?.(nextLine[0].start) : 0)
+              nextLine[0].at +
+                (offsetTicks ? offsetTicks?.(nextLine[0].at) : 0)
             )
           : null;
 
@@ -208,19 +208,20 @@ export class TimestampLyricSegmentGenerator {
 
       if (isNewLine) {
         if (i > 0) {
-          const midPointTime = ((prevWord.end ?? 0) + (word.start ?? 0)) / 2;
+          const midPointTime = word.at ?? prevWord.at ?? 0;
           timings.push(midPointTime);
         } else {
-          timings.push(word.start ?? 0);
+          timings.push(word.at ?? 0);
         }
         line = word.lineIndex;
       }
 
       let segmentDuration: number;
       if (nextWord && nextWord.lineIndex > word.lineIndex) {
-        segmentDuration = ((nextWord.start ?? 0) - (word.start ?? 0)) / 2;
+        segmentDuration = ((nextWord.at ?? 0) - (word.at ?? 0)) / 2;
       } else {
-        segmentDuration = (word.end ?? 0) - (word.start ?? 0);
+        const nextAt = nextWord?.at ?? (word.at ?? 0) + 1;
+        segmentDuration = nextAt - (word.at ?? 0);
       }
 
       const speedMultiplier =
@@ -236,7 +237,7 @@ export class TimestampLyricSegmentGenerator {
       const charsInWord = word.text.length;
       if (charsInWord === 0) return;
 
-      let lastTime = word.start ?? 0;
+      let lastTime = word.at ?? 0;
 
       for (let j = 0; j < charsInWord; j++) {
         const t = j / (charsInWord - 1 || 1);
@@ -246,7 +247,7 @@ export class TimestampLyricSegmentGenerator {
           easedProgress = easeOutCubic(0);
         }
 
-        let position = (word.start ?? 0) + easedProgress * effectiveDuration;
+        let position = (word.at ?? 0) + easedProgress * effectiveDuration;
 
         if (position <= lastTime) {
           position = lastTime + minCharSpacing;

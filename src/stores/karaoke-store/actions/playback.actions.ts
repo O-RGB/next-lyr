@@ -2,6 +2,11 @@ import { StateCreator } from "zustand";
 import { getPreRollTime } from "../utils";
 import { KaraokeState, PlaybackActions } from "../types";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
+import { LyricWordData } from "@/types/common.type";
+
+function cloneLyricsData(lyricsData: LyricWordData[][]): LyricWordData[][] {
+  return lyricsData.map((line) => line.map((word) => ({ ...word })));
+}
 
 export const createPlaybackActions: StateCreator<
   KaraokeState,
@@ -36,6 +41,8 @@ export const createPlaybackActions: StateCreator<
       }
     },
     setPlaybackIndex: (index: number | null) => set({ playbackIndex: index }),
+    setPlaybackVisualOverride: (override) =>
+      set({ playbackVisualOverride: override }),
     setCurrentIndex: (index: number) => set({ currentIndex: index }),
     setCorrectionIndex: (index: number | null) =>
       set({ correctionIndex: index }),
@@ -46,9 +53,17 @@ export const createPlaybackActions: StateCreator<
         let newSelectedLineIndex = state.selectedLineIndex;
         const flatLyrics = state.lyricsData.flat();
 
-        if (state.currentIndex === -1 && state.editingLineIndex === null) {
-          newCurrentIndex = 0;
-          newSelectedLineIndex = 0;
+        if (state.currentIndex === -1) {
+          if (state.editingLineIndex !== null) {
+            newCurrentIndex =
+              flatLyrics.find(
+                (word) => word.lineIndex === state.editingLineIndex
+              )?.index ?? -1;
+            newSelectedLineIndex = state.editingLineIndex;
+          } else {
+            newCurrentIndex = 0;
+            newSelectedLineIndex = 0;
+          }
         }
 
         const wordToStart = flatLyrics[newCurrentIndex];
@@ -59,10 +74,9 @@ export const createPlaybackActions: StateCreator<
           buffer: new Map(),
         };
 
-        if (wordToStart.start === null || state.editingLineIndex !== null) {
+        if (wordToStart.at === null || state.editingLineIndex !== null) {
           timingBuffer.buffer.set(wordToStart.index, {
-            start: currentTime,
-            end: null,
+            at: currentTime,
           });
         }
 
@@ -86,21 +100,23 @@ export const createPlaybackActions: StateCreator<
       }
 
       const finalEndLineIndex = endLineIndex ?? get().lyricsData.length - 1;
-      const firstWordIndex = firstWordOfLine.index;
+      // Start from box 1 of the preceding line so the user hears the full
+      // preparation line before stamping the selected line.
       const preRollTime = getPreRollTime(lineIndex, flatLyrics);
+      const snapshot = cloneLyricsData(get().lyricsData);
 
       set((state) => ({
         lyricsData: state.lyricsData.map((line, idx) =>
           idx >= lineIndex && idx <= finalEndLineIndex
             ? line.map((word) => ({
                 ...word,
-                start: null,
-                end: null,
-                length: 0,
+                at: null,
               }))
             : line
         ),
-        currentIndex: firstWordIndex,
+        // No box is selected until the first right-arrow. This keeps the
+        // retiming target visually neutral during the preparation playback.
+        currentIndex: -1,
         selectedLineIndex: lineIndex,
         editingLineIndex: lineIndex,
         editingEndLineIndex: finalEndLineIndex,
@@ -108,9 +124,45 @@ export const createPlaybackActions: StateCreator<
         correctionIndex: null,
         lyricsProcessed: undefined,
         timingBuffer: null,
+        // Retiming is a destructive preview until it is committed. Keep an
+        // immutable copy so Cancel can always restore the exact old values.
+        timingSnapshot: snapshot,
       }));
 
       return { success: true, preRollTime };
+    },
+
+    cancelTiming: async () => {
+      const snapshot = get().timingSnapshot;
+      const restoredLyricsData = snapshot
+        ? cloneLyricsData(snapshot)
+        : undefined;
+
+      set((state) => ({
+        ...(restoredLyricsData ? { lyricsData: restoredLyricsData } : {}),
+        isTimingActive: false,
+        editingLineIndex: null,
+        editingEndLineIndex: null,
+        timingBuffer: null,
+        timingDirection: null,
+        correctionIndex: null,
+        lyricsProcessed: undefined,
+        timingSnapshot: null,
+        playbackIndex: null,
+        playbackVisualOverride: null,
+        currentIndex:
+          restoredLyricsData && state.selectedLineIndex !== null
+            ? restoredLyricsData[state.selectedLineIndex]?.[0]?.index ??
+              state.currentIndex
+            : state.currentIndex,
+      }));
+
+      // Retiming clears the target line as a temporary preview. Restore the
+      // derived document and player timeline after rolling that preview back.
+      if (restoredLyricsData) {
+        get().actions.syncLyricsDocument();
+        get().actions.processLyricsForPlayer();
+      }
     },
 
     recordTiming: (currentTime: number) => {
@@ -128,31 +180,19 @@ export const createPlaybackActions: StateCreator<
 
       const currentWord = flatLyrics[currentIndex];
       if (currentWord) {
-        const currentWordData = newBuffer.get(currentWord.index) || {
-          start: currentWord.start,
-          end: null,
-        };
-        currentWordData.end = currentTime;
-        newBuffer.set(currentWord.index, currentWordData);
+        const currentWordData = newBuffer.get(currentWord.index);
+        if (!currentWordData || currentWordData.at === null) {
+          newBuffer.set(currentWord.index, { at: currentTime });
+        }
       }
 
       const nextWord = flatLyrics[currentIndex + 1];
-
       if (
         !nextWord ||
         (editingEndLineIndex !== null &&
           nextWord.lineIndex > editingEndLineIndex)
       ) {
         isLineEnd = true;
-      }
-
-      if (!isLineEnd && nextWord) {
-        const nextWordData = newBuffer.get(nextWord.index) || {
-          start: null,
-          end: null,
-        };
-        nextWordData.start = currentTime;
-        newBuffer.set(nextWord.index, nextWordData);
       }
 
       set({
@@ -210,7 +250,7 @@ export const createPlaybackActions: StateCreator<
         if (firstWordOfPreRollLine) {
           const preRollTimeFromBuffer = state.timingBuffer.buffer.get(
             firstWordOfPreRollLine.index
-          )?.start;
+          )?.at;
 
           if (
             preRollTimeFromBuffer !== null &&
@@ -234,14 +274,14 @@ export const createPlaybackActions: StateCreator<
         if (wordAfter) {
           const data = newBuffer.get(wordAfter.index);
           if (data) {
-            data.start = null;
+            data.at = null;
             newBuffer.set(wordAfter.index, data);
           }
         }
 
         const dataToCorrect = newBuffer.get(wordToCorrect.index);
         if (dataToCorrect) {
-          dataToCorrect.end = null;
+          dataToCorrect.at = null;
           newBuffer.set(wordToCorrect.index, dataToCorrect);
         }
 
@@ -263,12 +303,23 @@ export const createPlaybackActions: StateCreator<
 
       set((prevState) => {
         if (!timingBufferData || timingBufferData.buffer.size === 0) {
+          // Starting a retiming session clears its target line as a temporary
+          // preview. If no word was stamped, ending the session must restore
+          // that preview instead of leaving the whole line empty.
+          const restoredLyricsData = prevState.timingSnapshot
+            ? cloneLyricsData(prevState.timingSnapshot)
+            : undefined;
+
           return {
+            ...(restoredLyricsData
+              ? { lyricsData: restoredLyricsData }
+              : {}),
             isTimingActive: false,
             editingLineIndex: null,
             editingEndLineIndex: null,
             timingBuffer: null,
             timingDirection: null,
+            timingSnapshot: null,
           };
         }
 
@@ -278,11 +329,7 @@ export const createPlaybackActions: StateCreator<
           line.map((word) => {
             if (buffer.has(word.index)) {
               const bufferedData = buffer.get(word.index)!;
-              const start = bufferedData.start ?? word.start;
-              const end = bufferedData.end ?? word.end;
-              const length =
-                end !== null && start !== null ? Math.max(0, end - start) : 0;
-              return { ...word, start, end, length };
+              return { ...word, at: bufferedData.at };
             }
             return word;
           })
@@ -295,6 +342,7 @@ export const createPlaybackActions: StateCreator<
           editingEndLineIndex: null,
           timingBuffer: null,
           timingDirection: null,
+          timingSnapshot: null,
         };
       });
 

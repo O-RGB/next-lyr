@@ -51,30 +51,16 @@ export function parsedDataToLyricsDocument(
 
 export function lyricsDocumentToWordData(
   document: LyricsDocument,
-  ppq: number
+  _ppq: number
 ): LyricWordData[][] {
-  const defaultDuration =
-    document.timeBase.kind === "midi-tick" ? Math.max(1, ppq || 1) : 1;
-  const allWords = document.lines.flat();
   let globalIndex = 0;
 
   return document.lines.map((line, lineIndex) =>
     line.map((word) => {
-      const nextTimedWord = allWords
-        .slice(allWords.indexOf(word) + 1)
-        .find((candidate) => candidate.at !== null);
-      const start = word.at;
-      const end =
-        start === null
-          ? null
-          : nextTimedWord?.at ?? start + defaultDuration;
-
       return {
         text: word.text,
+        at: word.at,
         vocal: word.vocal,
-        start,
-        end,
-        length: start !== null && end !== null ? Math.max(0, end - start) : 0,
         index: globalIndex++,
         lineIndex,
       };
@@ -97,7 +83,7 @@ export function wordDataToLyricsDocument(options: {
         id: `lyric-${lineIndex}-${wordIndex}`,
         text: word.text,
         vocal: word.vocal,
-        at: word.start,
+        at: word.at,
       }))
     ),
   };

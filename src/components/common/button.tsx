@@ -17,6 +17,7 @@ export type ButtonSize = "xs" | "sm" | "md" | "lg";
 export type ButtonVariant = "solid" | "outline" | "ghost";
 export type ButtonColor =
   | "primary"
+  | "info"
   | "secondary"
   | "danger"
   | "warning"
@@ -44,6 +45,11 @@ export interface ButtonCommonProps
 /** Colour accents applied on top of the base variant. */
 const ACCENT: Record<ButtonColor, Record<ButtonVariant, string>> = {
   primary: { solid: "", outline: "", ghost: "" },
+  info: {
+    solid: "bg-info text-primary-foreground hover:bg-info/85",
+    outline: "border-info text-info hover:bg-info/10",
+    ghost: "text-info hover:bg-info/10",
+  },
   secondary: {
     solid: "bg-brand-2 text-primary-foreground hover:bg-brand-2/85",
     outline: "border-brand-2 text-brand-2 hover:bg-brand-2/10",
@@ -71,6 +77,7 @@ const ACCENT: Record<ButtonColor, Record<ButtonVariant, string>> = {
 /** Which base variant each colour starts from. */
 const BASE: Record<ButtonColor, Record<ButtonVariant, "default" | "outline" | "ghost" | "secondary">> = {
   primary: { solid: "default", outline: "outline", ghost: "ghost" },
+  info: { solid: "default", outline: "outline", ghost: "ghost" },
   secondary: { solid: "default", outline: "outline", ghost: "ghost" },
   danger: { solid: "default", outline: "outline", ghost: "ghost" },
   warning: { solid: "default", outline: "outline", ghost: "ghost" },

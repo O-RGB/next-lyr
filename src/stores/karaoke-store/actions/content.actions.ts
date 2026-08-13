@@ -118,9 +118,7 @@ export const createContentActions: StateCreator<
             (wordText, wordIndex) => ({
               text: wordText,
               vocal: vocal[wordIndex] ? vocal[wordIndex] : "",
-              start: null,
-              end: null,
-              length: 0,
+              at: null,
               index: firstWordOfLine.index + wordIndex,
               lineIndex: lineIndexToUpdate,
             })
@@ -201,12 +199,12 @@ export const createContentActions: StateCreator<
         }));
         commit("ลบคอร์ด");
       },
-      updateWordTiming: async (index: number, start: number, end: number) => {
+      updateWordTiming: async (index: number, at: number) => {
         set((state) => ({
           lyricsData: state.lyricsData.map((line) =>
             line.map((word) =>
               word.index === index
-                ? { ...word, start, end, length: end - start }
+                ? { ...word, at }
                 : word
             )
           ),

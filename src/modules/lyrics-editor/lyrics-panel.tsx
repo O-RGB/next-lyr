@@ -47,7 +47,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
             <div className="min-w-0 flex-1"><ChordsPanel /></div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto"><LyricsGrid /></div>
+          <div className="min-h-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
 
           <div className="flex shrink-0 justify-end gap-1.5">
             <MobileActionButton
@@ -59,7 +59,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 gap-2 overflow-hidden">
-          <div className="min-w-0 flex-1 overflow-auto"><LyricsGrid /></div>
+          <div className="min-w-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
           <div className="h-full w-[150px] shrink-0"><ChordsPanel /></div>
         </div>
       )}

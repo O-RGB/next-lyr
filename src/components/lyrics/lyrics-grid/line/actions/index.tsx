@@ -40,17 +40,15 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           },
           {
             type: "Re Time",
-            text: "ปาดเนื้อใหม่",
+            text: "ปาดใหม่",
             icon: <Clock />,
             onClick: () => {
               if (
                 confirm(
-                  "ปาดเนื้อใหม่ตั้งแต่บรรทัดที่ " +
-                    (lineIndex + 1) +
-                    " เป็นต้นไป?"
+                  "ปาดเนื้อร้องบรรทัดที่ " + (lineIndex + 1) + " ใหม่?"
                 )
               ) {
-                handleRetiming(lineIndex);
+                handleRetiming(lineIndex, lineIndex);
               }
             },
           },

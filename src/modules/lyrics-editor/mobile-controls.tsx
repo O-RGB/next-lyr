@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import RetimingCancelButton from "@/components/common/retiming-cancel";
 
 function dispatchKey(code: string) {
   window.dispatchEvent(new KeyboardEvent("keydown", { code, bubbles: true }));
@@ -45,6 +46,7 @@ export function LyricsMobileControls() {
         <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowRight")} aria-label="Next word">
           <ArrowRight className="mx-auto" />
         </button>
+        <RetimingCancelButton compact />
         <span className={`ml-1 h-2 w-2 rounded-full ${isPlaying ? "bg-brand-2" : "bg-line-strong"}`} />
       </div>
     </div>

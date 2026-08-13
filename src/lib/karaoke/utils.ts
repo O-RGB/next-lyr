@@ -1,4 +1,4 @@
-import { LyricWordData, ExportData } from "@/types/common.type";
+import { LyricWordData } from "@/types/common.type";
 import { ThaiKaraoke } from "../thai-karaoke";
 
 export function processRawLyrics(
@@ -21,9 +21,7 @@ export function processRawLyrics(
       words.push({
         text: wordText,
         vocal: vocal,
-        start: null,
-        end: null,
-        length: 0,
+        at: null,
         index: globalWordIndex++,
         lineIndex: lineIndex,
       });

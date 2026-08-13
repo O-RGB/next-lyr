@@ -1,3 +1,5 @@
+import type { LyricsWord } from "@/lib/karaoke/lyrics-core/types";
+
 export interface IOptions {
   value?: string | number | string[] | number[];
   label?: React.ReactNode;
@@ -6,15 +8,10 @@ export interface IOptions {
   options?: IOptions[];
 }
 
-export interface LyricWordData {
-  text: string;
-  vocal?: string;
-  start: number | null;
-  end: number | null;
-  length: number;
+export type LyricWordData = LyricsWord & {
   index: number;
   lineIndex: number;
-}
+};
 
 export interface ExportData {
   title: string;

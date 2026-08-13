@@ -18,8 +18,7 @@ const LineRow: React.FC<LineRowProps> = ({
   lineRef,
   onWordClick,
 }) => {
-  // const rulerStartTime = line[0]?.start ?? null;
-  // const rulerEndTime = line[line.length - 1]?.end ?? null;
+  // const rulerStartTime = line[0]?.at ?? null;
 
   return (
     <div

@@ -68,6 +68,10 @@ class Transport {
     return this.state === "playing";
   }
 
+  get loading(): boolean {
+    return this.state === "loading";
+  }
+
   /** Raw AudioContext boundary shared with the karaoke-web-online timer. */
   get audioAnchor(): number {
     return this.timerAnchorCtx;
@@ -180,8 +184,14 @@ class Transport {
     this.emit();
 
     try {
-      await audioEngine.resume({ keepAlive: true });
+      const context = await audioEngine.resume({ keepAlive: true });
+      if (context.state !== "running") {
+        throw new Error("Audio engine is not running");
+      }
       await midiSynths.ensureLoaded();
+      if (audioEngine.ctx?.state !== "running") {
+        throw new Error("Audio engine was suspended before playback started");
+      }
 
       const requestedStart = from ?? this.pausedAt;
       const start = requestedStart >= this.duration ? 0 : requestedStart;
@@ -201,7 +211,9 @@ class Transport {
         return;
       }
 
-      midiSynths.playAt(start, boundary);
+      if (!midiSynths.playAt(start, boundary)) {
+        throw new Error("MIDI engine did not schedule any audio events");
+      }
       this.anchorPos = start;
       this.anchorCtx = boundary.presentationAudioTime;
       this.timerAnchorCtx = boundary.audioContextTime;
@@ -238,7 +250,8 @@ class Transport {
     pauseAudioKeepAlive();
     midiSynths.panic();
     clipPlayer.releaseAll();
-    void audioEngine.suspend();
+    // Keep the shared AudioContext running. Suspending it here can leave the
+    // timer alive while FluidSynth fails to resume after a later click/seek.
     this.emit();
   }
 
@@ -274,8 +287,14 @@ class Transport {
       this.seekController.isCurrent(generation) &&
       this.state === "playing";
 
-    await audioEngine.resume({ keepAlive: true });
+    const context = await audioEngine.resume({ keepAlive: true });
+    if (context.state !== "running") {
+      throw new Error("Audio engine is not running after seek");
+    }
     await midiSynths.ensureLoaded();
+    if (audioEngine.ctx?.state !== "running") {
+      throw new Error("Audio engine was suspended during seek");
+    }
     await clipPlayer.prepare(this.clips, targetSeconds);
     if (!isCurrent()) return;
 
@@ -291,7 +310,9 @@ class Transport {
       return;
     }
 
-    midiSynths.playAt(targetSeconds, boundary);
+    if (!midiSynths.playAt(targetSeconds, boundary)) {
+      throw new Error("MIDI engine did not schedule audio after seek");
+    }
     this.anchorPos = targetSeconds;
     this.anchorCtx = boundary.presentationAudioTime;
     this.timerAnchorCtx = boundary.audioContextTime;

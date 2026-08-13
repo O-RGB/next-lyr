@@ -40,9 +40,7 @@ export const processLyricsForPlayer = (
   mode: MusicMode,
   midi: IMidiParseResult | null
 ): ArrayRange<ISentence> | undefined => {
-  const timedWords = lyricsData.filter(
-    (w) => w.start !== null && w.end !== null
-  );
+  const timedWords = lyricsData.filter((w) => w.at !== null);
   if (timedWords.length === 0) return undefined;
 
   let timestamps: number[] = [];
@@ -113,27 +111,10 @@ export const getPreRollTime = (
 ): number => {
   if (lineIndex <= 0) return 0;
 
-  const firstWordOfPrevLine = lyricsData.find(
+  const firstWordOfPreviousLine = lyricsData.find(
     (w) => w.lineIndex === lineIndex - 1
   );
-  if (
-    firstWordOfPrevLine?.start !== null &&
-    firstWordOfPrevLine?.start !== undefined
-  ) {
-    return firstWordOfPrevLine.start;
-  }
-
-  const firstWordOfCurrentLine = lyricsData.find(
-    (w) => w.lineIndex === lineIndex
-  );
-  if (!firstWordOfCurrentLine) return 0;
-
-  const lastTimedWordBefore = lyricsData
-    .slice(0, firstWordOfCurrentLine.index)
-    .filter((w) => w.end !== null)
-    .pop();
-
-  return lastTimedWordBefore?.end ?? 0;
+  return firstWordOfPreviousLine?.at ?? 0;
 };
 
 export const convertParsedDataForImport = (

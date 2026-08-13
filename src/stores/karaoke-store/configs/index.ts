@@ -28,6 +28,8 @@ export const initialTimingState: TimingState = {
   editingLineIndex: null,
   editingEndLineIndex: null, // <-- เพิ่มค่าเริ่มต้น
   playbackIndex: null,
+  playbackVisualOverride: null,
+  timingSnapshot: null,
   correctionIndex: null,
   selectedLineIndex: null,
   currentTime: 0,

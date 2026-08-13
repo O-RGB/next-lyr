@@ -1,35 +1,18 @@
 import { create } from "zustand";
-import { calculateSeekTime } from "@/modules/lyrics-editor";
-import { useSettingsStore } from "@/features/settings/settings-store";
+import {
+  calculatePlaybackSeekTime,
+  calculateSeekTime,
+} from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { useTimerStore } from "@/timer-worker/store";
+import { midiSynths } from "@/lib/karaoke-engine/midi-synth";
+import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
-
-/**
- * Back the start position up by the configured lead-in.
- *
- * The caller's position is in the mode's own unit — ticks for MIDI, seconds for
- * everything else — so the seconds from settings are converted before they are
- * subtracted. Mixing the two is what makes a playhead land in the wrong bar.
- */
-function applyPreRoll(position: number): number {
-  const seconds = useSettingsStore.getState().preRollSeconds;
-  if (seconds <= 0) return position;
-
-  const { mode, playerState } = useKaraokeStore.getState();
-  if (mode !== "midi") return Math.max(0, position - seconds);
-
-  const ppq = playerState.midi?.ticksPerBeat ?? 480;
-  const currentTempo = useTimerStore.getState().displayBpm;
-  const bpm = currentTempo > 0 ? currentTempo : 120;
-  const ticks = seconds * ((ppq * bpm) / 60);
-  return Math.max(0, position - ticks);
-}
 
 interface PlayerHandlersState {
   handleStop: () => void;
   handleWordClick: (index: number) => void;
   handleRetiming: (lineIndex: number, endLineIndex?: number) => void;
+  handleCancelRetiming: () => void;
 }
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
@@ -57,6 +40,8 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         const { lyricsData } = useKaraokeStore.getState();
         const { playerControls } = usePlayerSetupStore.getState();
 
+        if (transport.loading) return;
+
         const flatLyrics = lyricsData.flat();
         const word = flatLyrics.find((w) => w.index === index);
 
@@ -68,14 +53,55 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           return;
         }
 
-        const seekTo = calculateSeekTime(word, flatLyrics);
+        const targetTime = calculateSeekTime(word, flatLyrics);
+        const mode = useKaraokeStore.getState().mode;
+        const midi = useKaraokeStore.getState().playerState.midi;
+        const seekTo = calculatePlaybackSeekTime(
+          targetTime,
+          mode,
+          midi,
+          mode === "midi" ? midiSynths.playbackStartLeadSeconds : undefined
+        );
 
         useKaraokeStore.getState().actions.setIsChordPanelAutoScrolling(true);
         useKaraokeStore.getState().actions.selectLine(word.lineIndex);
-        await useKaraokeStore.getState().actions.stopTiming();
-        if (request !== navigationRequest) return;
         const wasPlaying = playerControls.isPlaying();
-        await Promise.resolve(playerControls.seek(seekTo));
+        const stopTiming = useKaraokeStore.getState().actions.stopTiming();
+        useKaraokeStore
+          .getState()
+          .actions.setPlaybackVisualOverride({
+            index,
+            // The transport leads in, but the visual must not activate until
+            // the clicked lyric's original timestamp.
+            until: targetTime,
+          });
+        useKaraokeStore.getState().actions.setPlaybackIndex(index);
+
+        // A mouse click is an explicit navigation command even during
+        // playback. The active transport seek re-arms the same player and
+        // keeps it playing at the clicked word; it must not fall through to
+        // the stopped-player start path below.
+        if (wasPlaying) {
+          await Promise.resolve(stopTiming);
+          if (request !== navigationRequest) return;
+          await Promise.resolve(playerControls.seek(seekTo));
+          return;
+        }
+
+        // MIDI must receive the user's activation before an async stop/seek
+        // continuation. Otherwise the first click can start the timer after
+        // the browser has suspended AudioContext, leaving a silent playhead.
+        if (mode === "midi" && !wasPlaying) {
+          const seek = playerControls.seek(seekTo);
+          playerControls.play();
+          await Promise.resolve(stopTiming);
+          await Promise.resolve(seek);
+        } else {
+          await Promise.resolve(stopTiming);
+          if (request !== navigationRequest) return;
+          await Promise.resolve(playerControls.seek(seekTo));
+        }
+
         if (request !== navigationRequest) return;
 
         if (!wasPlaying && !playerControls.isPlaying()) {
@@ -85,12 +111,14 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       handleRetiming: async (lineIndex: number, endLineIndex?: number) => {
         const request = ++navigationRequest;
         const { playerControls } = usePlayerSetupStore.getState();
+        if (transport.loading) return;
         if (!playerControls) {
           console.warn("[handleRetiming] Aborted: playerControls not available.");
           return;
         }
 
         const actions = useKaraokeStore.getState().actions;
+        const mode = useKaraokeStore.getState().mode;
         const { success, preRollTime } = actions.startTimingFromLine(
           lineIndex,
           endLineIndex
@@ -98,12 +126,32 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
 
         if (success) {
           const wasPlaying = playerControls.isPlaying();
-          await Promise.resolve(playerControls.seek(applyPreRoll(preRollTime)));
+          const seek = playerControls.seek(preRollTime);
+          if (mode === "midi" && !wasPlaying) {
+            // Keep the first retiming click inside the same user gesture too.
+            playerControls.play();
+          }
+          await Promise.resolve(seek);
           if (request !== navigationRequest) return;
           if (!wasPlaying && !playerControls.isPlaying()) {
             playerControls.play();
           }
         }
+      },
+      handleCancelRetiming: async () => {
+        ++navigationRequest;
+        const { playerControls } = usePlayerSetupStore.getState();
+
+        // Pause after playback has started. While the engine is still loading,
+        // pause is a no-op, so stop the shared transport to invalidate its
+        // pending start operation.
+        playerControls?.pause();
+        if (transport.loading) transport.stop();
+
+        await useKaraokeStore.getState().actions.cancelTiming();
+        useKaraokeStore.getState().actions.setIsPlaying(false);
+        useKaraokeStore.getState().actions.setPlaybackIndex(null);
+        useKaraokeStore.getState().actions.setPlaybackVisualOverride(null);
       },
     };
   }

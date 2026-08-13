@@ -21,9 +21,7 @@ export function groupWordDataToEvents(
     if (!groupedEvents[word.lineIndex]) {
       groupedEvents[word.lineIndex] = [];
     }
-    const tick = tickConverter
-      ? tickConverter(word.start ?? 0)
-      : word.start ?? 0;
+    const tick = tickConverter ? tickConverter(word.at ?? 0) : word.at ?? 0;
     groupedEvents[word.lineIndex].push({
       text: word.text,
       tick: tick,
@@ -41,16 +39,10 @@ export const mapEventsToWordData = (
 
   return lines.flatMap((line, lineIndex) =>
     line.map((event, index) => {
-      const start = convert(event.tick);
-      const next = line[index + 1];
-      const end = next ? convert(next.tick) : null;
-
       return {
         text: event.text,
         vocal: event.vocal,
-        start,
-        end,
-        length: end !== null ? end - start : 0,
+        at: convert(event.tick),
         index,
         lineIndex,
       };

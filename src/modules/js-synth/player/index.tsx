@@ -89,6 +89,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
     const latencyMs = useSettingsStore((state) => state.latencyMs);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(0);
     const arrangementRef = useRef<Track[]>([]);
@@ -116,6 +117,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
 
       const unsubscribe = transport.subscribe((state) => {
         const playing = state === "playing";
+        setIsLoading(state === "loading");
         setIsPlaying(playing);
         setGlobalIsPlaying(playing);
         if (playing) {
@@ -264,6 +266,8 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       <CommonPlayerStyle
         fileName={fileName}
         isPlaying={isPlaying}
+        isLoading={isLoading}
+        loadingLabel="กำลังเตรียม MIDI engine..."
         onPlayPause={handlePlayPause}
         onStop={handleStop}
         onSeek={seek}

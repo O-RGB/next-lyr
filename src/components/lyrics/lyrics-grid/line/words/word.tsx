@@ -42,7 +42,7 @@ const TimedHighlight: React.FC<{ wordData: LyricWordData }> = ({
     const line = state.lyricsData[wordData.lineIndex];
     const word = line?.find((w) => w.index === wordData.index);
 
-    if (word?.start !== null) return true;
+    if (word?.at !== null) return true;
 
     if (state.isTimingActive && state.timingBuffer) {
       const hasBufferEntry = state.timingBuffer.buffer.has(wordData.index);

@@ -1,11 +1,14 @@
 // src/components/common/player/index.tsx
-import { Pause, Play, Square } from "lucide-react";
+import { Loader2, Pause, Play, Square } from "lucide-react";
 import React from "react";
 import { TimerRange } from "./render-time";
+import RetimingCancelButton from "@/components/common/retiming-cancel";
 
 interface CommonPlayerStyleProps {
   fileName: string;
   isPlaying: boolean;
+  isLoading?: boolean;
+  loadingLabel?: string;
   onPlayPause: () => void;
   onStop: () => void;
   onSeek: (value: number) => void;
@@ -15,19 +18,23 @@ interface CommonPlayerStyleProps {
 interface PlayerButtonsProps {
   fileName: string;
   isPlaying: boolean;
+  isLoading: boolean;
   onPlayPause: () => void;
   onStop: () => void;
 }
 
 const PlayerButtons = React.memo<PlayerButtonsProps>(
-  ({ fileName, isPlaying, onPlayPause, onStop }) => (
+  ({ fileName, isPlaying, isLoading, onPlayPause, onStop }) => (
     <div className="flex justify-center items-center gap-2">
       <button
         onClick={onPlayPause}
-        disabled={!fileName}
+        disabled={!fileName || isLoading}
         className="p-3 bg-panel rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
+        aria-label={isLoading ? "Loading audio engine" : isPlaying ? "Pause" : "Play"}
       >
-        {isPlaying ? (
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-foreground" />
+        ) : isPlaying ? (
           <Pause className="h-5 w-5 text-foreground" />
         ) : (
           <Play className="h-5 w-5 text-foreground" />
@@ -49,6 +56,8 @@ PlayerButtons.displayName = "PlayerButtons";
 const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   fileName,
   isPlaying,
+  isLoading = false,
+  loadingLabel,
   onPlayPause,
   onStop,
   onSeek,
@@ -59,13 +68,25 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
       <PlayerButtons
         fileName={fileName}
         isPlaying={isPlaying}
+        isLoading={isLoading}
         onPlayPause={onPlayPause}
         onStop={onStop}
       />
+      <RetimingCancelButton className="hidden lg:inline-flex" />
+      {isLoading && (
+        <span
+          className="whitespace-nowrap text-xs text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          {loadingLabel ?? "Loading audio engine..."}
+        </span>
+      )}
       <TimerRange
         duration={duration || 100}
         onSeek={onSeek}
         filename={fileName}
+        disabled={isLoading}
       ></TimerRange>
     </div>
   );

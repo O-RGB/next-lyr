@@ -5,10 +5,11 @@ interface TimerRangeProps {
   duration: number;
   onSeek: (value: number) => void;
   filename?: string;
+  disabled?: boolean;
 }
 
 export const TimerRange = React.memo<TimerRangeProps>(
-  ({ duration, onSeek, filename }) => {
+  ({ duration, onSeek, filename, disabled = false }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const onSeekRef = useRef(onSeek);
 
@@ -39,7 +40,7 @@ export const TimerRange = React.memo<TimerRangeProps>(
         defaultValue={useTimerStore.getState().displayValue}
         onChange={(e) => onSeekRef.current(Number(e.target.value))}
         className="w-full h-2 bg-raised-2 rounded-lg appearance-none cursor-pointer dark:bg-panel-2 disabled:opacity-50"
-        disabled={!filename}
+        disabled={!filename || disabled}
       />
     );
   }

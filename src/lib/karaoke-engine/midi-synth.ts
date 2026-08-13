@@ -411,7 +411,11 @@ export class MidiSynthPool {
   /** Queue the complete remainder of the MIDI at the agreed render tick. */
   playAt(fromSeconds: number, boundary: MidiPlaybackBoundary): boolean {
     this.playbackGeneration += 1;
-    if (!this.synth || !this.scheduler || !this.midiTimeline) return true;
+    // Non-MIDI transports share this method but have no MIDI timeline. They
+    // are valid no-ops; a MIDI timeline without a live renderer is an error
+    // and must not allow the UI timer to run silently.
+    if (!this.midiTimeline) return true;
+    if (!this.synth || !this.scheduler) return false;
 
     this.scheduler.clear();
     this.synth.midiAllSoundsOff();

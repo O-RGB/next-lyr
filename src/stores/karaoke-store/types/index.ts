@@ -26,12 +26,15 @@ export interface PlayerState {
 }
 
 export interface TiimingBuffer {
-  start: number | null;
-  end: number | null;
+  at: number | null;
 }
 export interface TimingBufferData {
   lineIndex: number;
   buffer: Map<number, TiimingBuffer>;
+}
+export interface PlaybackVisualOverride {
+  index: number;
+  until: number;
 }
 
 export interface TimingState {
@@ -40,6 +43,8 @@ export interface TimingState {
   editingLineIndex: number | null;
   editingEndLineIndex: number | null; // <-- เพิ่ม state นี้
   playbackIndex: number | null;
+  playbackVisualOverride: PlaybackVisualOverride | null;
+  timingSnapshot: LyricWordData[][] | null;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
@@ -105,7 +110,7 @@ export interface ContentActions {
   addChord: (chord: ChordEvent) => void;
   updateChord: (oldTick: number, newChord: ChordEvent) => void;
   deleteChord: (tickToDelete: number) => void;
-  updateWordTiming: (index: number, start: number, end: number) => void;
+  updateWordTiming: (index: number, at: number) => void;
   processLyricsForPlayer: () => void;
 }
 
@@ -119,11 +124,15 @@ export interface PlaybackActions {
     success: boolean;
     preRollTime: number;
   };
+  cancelTiming: () => Promise<void>;
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
   goToNextWord: () => void;
   correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
   stopTiming: () => Promise<void>;
   setPlaybackIndex: (index: number | null) => void;
+  setPlaybackVisualOverride: (
+    override: PlaybackVisualOverride | null
+  ) => void;
   setCurrentIndex: (index: number) => void;
   setCurrentTime: (time: number) => void;
   setCurrentTempo: (tempo: number) => void;
@@ -191,6 +200,8 @@ export interface KaraokeState {
   editingLineIndex: number | null;
   editingEndLineIndex: number | null;
   playbackIndex: number | null;
+  playbackVisualOverride: PlaybackVisualOverride | null;
+  timingSnapshot: LyricWordData[][] | null;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;

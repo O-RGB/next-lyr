@@ -27,9 +27,12 @@
   --text-muted: #5f6b7a;
   --text-dim: #7b8796;
 
+  /* Semantic palette: primary = main action, info = neutral information,
+     warn = attention/editing state, danger = destructive action. */
   --brand: #2878e8;
   --brand-soft: #2878e833;
   --brand-2: #0a9b78;
+  --info: #1687c7;
   --warn: #b36b00;
   --danger: #d94862;
 
@@ -104,6 +107,7 @@
   --brand: #78aaff;
   --brand-soft: #78aaff3d;
   --brand-2: #4bd3ae;
+  --info: #67d5ff;
   --warn: #f4bd68;
   --danger: #ff7892;
 
@@ -136,6 +140,7 @@
   --color-dim: var(--text-dim);
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
+  --color-info: var(--info);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --color-lane: var(--lane);

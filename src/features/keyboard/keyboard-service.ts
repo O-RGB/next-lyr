@@ -5,6 +5,11 @@ import { create } from "zustand";
 
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
+import { midiSynths } from "@/lib/karaoke-engine/midi-synth";
+import {
+  calculatePlaybackSeekTime,
+  calculateSeekTime,
+} from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/timer-worker/store";
 
@@ -59,10 +64,6 @@ function isDialogOpen(): boolean {
 export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
   let initialized = false;
 
-  /** Selection moved since playback last started: the next Space jumps to it. */
-  let pendingLineJump = false;
-  let lastSelectedLine: number | null = null;
-
   const blocked = (event: KeyboardEvent): boolean =>
     get().paused || isTypingTarget(event.target) || isDialogOpen();
 
@@ -90,17 +91,9 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       currentIndex,
       editingLineIndex,
       timingBuffer,
-      playFromScrolledPosition,
-      chordPanelCenterTick,
+      editingEndLineIndex,
       isPlaying,
     } = store;
-
-    // Track selection changes here rather than in a React effect, so the
-    // service stays independent of the render cycle.
-    if (selectedLineIndex !== lastSelectedLine) {
-      lastSelectedLine = selectedLineIndex;
-      pendingLineJump = true;
-    }
 
     const isStampingMode = isTimingActive || editingLineIndex !== null;
     const flatLyrics = lyricsData.flat();
@@ -138,27 +131,46 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
 
       if (isPlaying || player.isPlaying()) {
         player.pause();
+        // A pause is a visual reset, not a resume point. The next Space will
+        // start from box 1 of the currently selected line.
+        actions.setPlaybackIndex(null);
+        actions.setPlaybackVisualOverride(null);
         return;
       }
 
-      // Resuming holds its position; only an explicit jump repositions.
-      if (playFromScrolledPosition) {
+      // Space always starts at box 1 of the selected line. Never resume from
+      // the last paused box or from a manually scrolled chord position.
+      const firstWord =
+        selectedLineIndex === null
+          ? undefined
+          : lyricsData[selectedLineIndex]?.[0];
+      if (firstWord) {
+        const targetTime = calculateSeekTime(firstWord, flatLyrics);
+        const seekTime = calculatePlaybackSeekTime(
+          targetTime,
+          store.mode,
+          store.playerState.midi,
+          store.mode === "midi"
+            ? midiSynths.playbackStartLeadSeconds
+            : undefined
+        );
         actions.setPlayFromScrolledPosition(false);
         actions.setIsChordPanelAutoScrolling(true);
-        actions.setCurrentTime(chordPanelCenterTick);
-        player.seek(chordPanelCenterTick);
-      } else if (pendingLineJump) {
-        pendingLineJump = false;
-        let seekTime = chordPanelCenterTick;
-        if (selectedLineIndex !== null && lyricsData[selectedLineIndex]) {
-          const firstWord = lyricsData[selectedLineIndex][0];
-          if (firstWord && firstWord.start !== null) seekTime = firstWord.start;
-        }
-        actions.setIsChordPanelAutoScrolling(true);
         actions.setCurrentTime(seekTime);
-        player.seek(seekTime);
-      } else {
-        actions.setIsChordPanelAutoScrolling(true);
+        actions.setCurrentIndex(firstWord.index);
+        actions.setPlaybackIndex(firstWord.index);
+        actions.setPlaybackVisualOverride({
+          index: firstWord.index,
+          // Keep the visual active boundary at the lyric timestamp even
+          // though the transport starts slightly earlier for the onset.
+          until: targetTime,
+        });
+        // Start in the same key gesture. Do not await seek before play or a
+        // browser may no longer consider this an activation for AudioContext.
+        const seek = player.seek(seekTime);
+        player.play();
+        await Promise.resolve(seek);
+        return;
       }
 
       player.play();
@@ -195,7 +207,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       const currentWord = currentIndex > -1 ? flatLyrics[currentIndex] : null;
       const canRecord =
         isStampingMode ||
-        (editingLineIndex === null && currentWord && currentWord.start === null);
+        (editingLineIndex === null && currentWord && currentWord.at === null);
       if (!canRecord) return;
 
       if (isTimingActive) {
@@ -208,6 +220,17 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
         }
       } else {
         actions.startTiming(currentTime);
+
+        // There is no preselected box when retiming starts. The first
+        // right-arrow stamps box 0, then advances so the orange state means
+        // "the next box to stamp".
+        const timingIndex = useKaraokeStore.getState().currentIndex;
+        const nextWord = flatLyrics[timingIndex + 1];
+        const canAdvanceWithinEdit =
+          nextWord &&
+          (editingEndLineIndex === null ||
+            nextWord.lineIndex <= editingEndLineIndex);
+        if (canAdvanceWithinEdit) actions.goToNextWord();
       }
     }
   };
