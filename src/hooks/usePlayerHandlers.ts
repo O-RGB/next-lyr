@@ -12,12 +12,41 @@ interface PlayerHandlersState {
   handleStop: () => void;
   handleWordClick: (index: number) => void;
   handleRetiming: (lineIndex: number, endLineIndex?: number) => void;
+  handleRetimingLines: (lineIndices: number[]) => void;
   handleCancelRetiming: () => void;
 }
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
   () => {
     let navigationRequest = 0;
+
+    const handleRetimingLines = async (lineIndices: number[]) => {
+      const request = ++navigationRequest;
+      const { playerControls } = usePlayerSetupStore.getState();
+      if (transport.loading) return;
+      if (!playerControls) {
+        console.warn("[handleRetimingLines] Aborted: playerControls not available.");
+        return;
+      }
+
+      const actions = useKaraokeStore.getState().actions;
+      const mode = useKaraokeStore.getState().mode;
+      const { success, preRollTime } = actions.startTimingFromLines(lineIndices);
+
+      if (!success) return;
+
+      const wasPlaying = playerControls.isPlaying();
+      const seek = playerControls.seek(preRollTime);
+      if (mode === "midi" && !wasPlaying) {
+        // Keep the first retiming click inside the same user gesture too.
+        playerControls.play();
+      }
+      await Promise.resolve(seek);
+      if (request !== navigationRequest) return;
+      if (!wasPlaying && !playerControls.isPlaying()) {
+        playerControls.play();
+      }
+    };
 
     return {
       handleStop: async () => {
@@ -108,36 +137,14 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           playerControls.play();
         }
       },
-      handleRetiming: async (lineIndex: number, endLineIndex?: number) => {
-        const request = ++navigationRequest;
-        const { playerControls } = usePlayerSetupStore.getState();
-        if (transport.loading) return;
-        if (!playerControls) {
-          console.warn("[handleRetiming] Aborted: playerControls not available.");
-          return;
-        }
-
-        const actions = useKaraokeStore.getState().actions;
-        const mode = useKaraokeStore.getState().mode;
-        const { success, preRollTime } = actions.startTimingFromLine(
-          lineIndex,
-          endLineIndex
-        );
-
-        if (success) {
-          const wasPlaying = playerControls.isPlaying();
-          const seek = playerControls.seek(preRollTime);
-          if (mode === "midi" && !wasPlaying) {
-            // Keep the first retiming click inside the same user gesture too.
-            playerControls.play();
-          }
-          await Promise.resolve(seek);
-          if (request !== navigationRequest) return;
-          if (!wasPlaying && !playerControls.isPlaying()) {
-            playerControls.play();
-          }
-        }
-      },
+      handleRetiming: (lineIndex: number, endLineIndex?: number) =>
+        handleRetimingLines(
+          Array.from(
+            { length: Math.max(0, (endLineIndex ?? lineIndex) - lineIndex + 1) },
+            (_, index) => lineIndex + index
+          )
+        ),
+      handleRetimingLines,
       handleCancelRetiming: async () => {
         ++navigationRequest;
         const { playerControls } = usePlayerSetupStore.getState();

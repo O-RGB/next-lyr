@@ -2,7 +2,6 @@
 
 import {
   Gauge,
-  Headphones,
   Loader2,
   Moon,
   Music2,
@@ -27,10 +26,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { useUiStore } from "@/features/ui/ui-store";
 import { audioEngine } from "@/lib/karaoke-engine/engine";
 import {
+  MIDI_BUFFER_SIZE_OPTIONS,
   midiBufferDurationSeconds,
   normalizeMidiBufferSize,
 } from "@/lib/karaoke-engine/midi-synth";
@@ -52,19 +51,18 @@ export function SettingsDialog() {
   const openDialog = useUiStore((state) => state.openDialog);
   const { resolvedTheme, setTheme } = useTheme();
 
-  const latencyMs = useSettingsStore((state) => state.latencyMs);
-  const preRollSeconds = useSettingsStore((state) => state.preRollSeconds);
-  const playbackRate = useSettingsStore((state) => state.playbackRate);
   const masterVolume = useSettingsStore((state) => state.masterVolume);
   const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
-  const previewFontSize = useSettingsStore((state) => state.previewFontSize);
-  const autoScroll = useSettingsStore((state) => state.autoScroll);
   const uiLocale = useSettingsStore((state) => state.uiLocale);
   const uiFontId = useSettingsStore((state) => state.uiFontId);
   const lyricsFontId = useSettingsStore((state) => state.lyricsFontId);
   const update = useSettingsStore((state) => state.set);
   const reset = useSettingsStore((state) => state.reset);
   const sampleRate = audioSampleRate();
+  const midiBufferOptionIndex = Math.max(
+    0,
+    MIDI_BUFFER_SIZE_OPTIONS.indexOf(normalizeMidiBufferSize(midiBufferSize) as (typeof MIDI_BUFFER_SIZE_OPTIONS)[number])
+  );
   const projectId = useKaraokeStore((state) => state.projectId);
   const soundfonts = useKaraokeStore((state) => state.soundfonts);
   const activeSoundfontId = useKaraokeStore(
@@ -177,46 +175,7 @@ export function SettingsDialog() {
         </DialogHeader>
 
         <div className="space-y-3">
-          <Section icon={<Headphones className="size-4 text-primary" />} title={text(uiLocale, "จังหวะและการฟัง", "Timing and listening")}>
-            <SettingSlider
-              label="ชดเชยดีเลย์เสียง"
-              hint="เสียงออกจากลำโพงช้ากว่าที่โปรแกรมสั่ง ค่านี้จะดึงเวลาที่ปาดกลับมาให้ตรงกับที่หูได้ยิน หูฟังบลูทูธมักต้อง 150–250 ms"
-              value={latencyMs}
-              min={0}
-              max={500}
-              step={5}
-              format={(value) => `${Math.round(value)} ms`}
-              onChange={(value) => update("latencyMs", value)}
-            />
-
-            <Separator className="my-4" />
-
-            <SettingSlider
-              label="เล่นนำก่อนเริ่มปาด"
-              hint="เวลาที่ให้ฟังก่อนถึงคำแรก จะได้จับจังหวะทัน"
-              value={preRollSeconds}
-              min={0}
-              max={4}
-              step={0.1}
-              format={(value) => `${value.toFixed(1)} วิ`}
-              onChange={(value) => update("preRollSeconds", value)}
-            />
-          </Section>
-
-          <Section icon={<Gauge className="size-4 text-primary" />} title={text(uiLocale, "ความเร็วและเสียง", "Speed and volume")}>
-            <SettingSlider
-              label="ความเร็วในการเล่น"
-              hint="ลดความเร็วลงเวลาเนื้อร้องรัว จะปาดตามทัน โดยระดับเสียงไม่เพี้ยน"
-              value={playbackRate}
-              min={0.5}
-              max={1.5}
-              step={0.05}
-              format={(value) => `${value.toFixed(2)}x`}
-              onChange={(value) => update("playbackRate", value)}
-            />
-
-            <Separator className="my-4" />
-
+          <Section icon={<Gauge className="size-4 text-primary" />} title={text(uiLocale, "เสียง", "Audio")}>
             <SettingSlider
               label="ระดับเสียง"
               value={masterVolume}
@@ -232,12 +191,17 @@ export function SettingsDialog() {
             <SettingSlider
               label="บัฟเฟอร์ MIDI"
               hint={`ค่าต่ำตอบสนองไวขึ้น แต่ใช้ CPU มากขึ้น ค่าสูงเบากว่า • ระบบชดเชยอัตโนมัติ ${Math.round(midiBufferDurationSeconds(normalizeMidiBufferSize(midiBufferSize), sampleRate) * 1000)} ms ที่ ${Math.round(sampleRate)} Hz`}
-              value={[4096, 8192, 16384].indexOf(midiBufferSize) < 0 ? 2 : [4096, 8192, 16384].indexOf(midiBufferSize)}
+              value={midiBufferOptionIndex}
               min={0}
-              max={2}
+              max={MIDI_BUFFER_SIZE_OPTIONS.length - 1}
               step={1}
-              format={(value) => `${[4096, 8192, 16384][Math.round(value)]} samples`}
-              onChange={(value) => update("midiBufferSize", [4096, 8192, 16384][Math.round(value)])}
+              format={(value) => `${MIDI_BUFFER_SIZE_OPTIONS[Math.round(value)]} samples`}
+              onChange={(value) =>
+                update(
+                  "midiBufferSize",
+                  MIDI_BUFFER_SIZE_OPTIONS[Math.round(value)]
+                )
+              }
             />
           </Section>
 
@@ -412,25 +376,6 @@ export function SettingsDialog() {
             </div>
 
             <Separator className="my-4" />
-            <SettingSlider
-              label="ขนาดตัวอักษรพรีวิว"
-              value={previewFontSize}
-              min={12}
-              max={48}
-              step={1}
-              format={(value) => `${Math.round(value)} px`}
-              onChange={(value) => update("previewFontSize", value)}
-            />
-
-            <Separator className="my-4" />
-
-            <SettingToggle
-              label="เลื่อนตามบรรทัดที่กำลังเล่น"
-              checked={autoScroll}
-              onChange={(value) => update("autoScroll", value)}
-            />
-
-            <Separator className="my-4" />
 
             <div className="flex items-center gap-3 text-sm">
               <span className="min-w-0 flex-1">ธีม</span>
@@ -546,23 +491,6 @@ function SettingSlider({
       />
       {hint ? <p className="pt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
-  );
-}
-
-function SettingToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-3 text-sm">
-      <span className="min-w-0 flex-1">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </label>
   );
 }
 

@@ -12,6 +12,7 @@ import LyricsGrid from "./lyrics-grid";
 import LyricsPreview from "./lyrics-preview";
 import ChordsPanel from "./chords-panel";
 import Timestamp from "./timestamp";
+import LineSelectionToolbar from "@/components/lyrics/line-selection-toolbar";
 
 type LyricsPanelProps = {
   onPreviewChange?: (visible: boolean) => void;
@@ -19,7 +20,6 @@ type LyricsPanelProps = {
 
 export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const isMobile = useIsMobile();
-  const previewFontSize = useSettingsStore((state) => state.previewFontSize);
   const locale = useSettingsStore((state) => state.uiLocale);
   const [preview, setPreview] = useState(false);
 
@@ -39,7 +39,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
           {preview && (
             <div className="flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
-              <LyricsPreview textStyle={{ fontSize: previewFontSize }} />
+              <LyricsPreview textStyle={{ fontSize: 20 }} />
             </div>
           )}
 
@@ -58,10 +58,15 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
           <LyricsMobileControls />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 gap-2 overflow-hidden">
-          <div className="min-w-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
-          <div className="h-full w-[150px] shrink-0"><ChordsPanel /></div>
-        </div>
+        <>
+          <div className="flex min-h-0 flex-1 gap-2 overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
+            <div className="h-full w-[150px] shrink-0"><ChordsPanel /></div>
+          </div>
+          <div className="hidden shrink-0 justify-start pt-1 lg:flex">
+            <LineSelectionToolbar />
+          </div>
+        </>
       )}
     </Card>
   );

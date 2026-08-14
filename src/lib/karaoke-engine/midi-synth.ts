@@ -36,7 +36,7 @@ const NO_INTERPOLATION = 0;
 
 /** ScriptProcessor frame sizes accepted by the browser audio graph. */
 export const MIDI_BUFFER_SIZE_OPTIONS = [
-  4096, 8192, 16384,
+  1024, 2048, 4096, 8192, 16384,
 ] as const;
 export const DEFAULT_MIDI_BUFFER_SIZE = 16384;
 

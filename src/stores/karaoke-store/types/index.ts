@@ -42,6 +42,8 @@ export interface TimingState {
   isTimingActive: boolean;
   editingLineIndex: number | null;
   editingEndLineIndex: number | null; // <-- เพิ่ม state นี้
+  timingLineGroups: number[][] | null;
+  timingGroupIndex: number;
   playbackIndex: number | null;
   playbackVisualOverride: PlaybackVisualOverride | null;
   timingSnapshot: LyricWordData[][] | null;
@@ -50,6 +52,13 @@ export interface TimingState {
   currentTime: number;
   currentTempo: number;
   timingBuffer: TimingBufferData | null;
+}
+
+export interface LineSelectionState {
+  lineSelectionMode: boolean;
+  selectedLineIndices: number[];
+  lineSelectionAnchor: number | null;
+  lineShiftArmed: boolean;
 }
 
 export interface ModalState {
@@ -100,6 +109,7 @@ export interface ContentActions {
   setMetadata: (metadata: Partial<SongInfo>) => void;
   importLyrics: (rawText: string, autoSub: boolean) => void;
   deleteLine: (lineIndexToDelete: number) => void;
+  deleteLines: (lineIndicesToDelete: number[]) => void;
   updateLine: (
     lineIndexToUpdate: number,
     newText: string,
@@ -124,7 +134,12 @@ export interface PlaybackActions {
     success: boolean;
     preRollTime: number;
   };
+  startTimingFromLines: (lineIndices: number[]) => {
+    success: boolean;
+    preRollTime: number;
+  };
   cancelTiming: () => Promise<void>;
+  finishTimingGroup: () => { done: boolean; preRollTime: number };
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
   goToNextWord: () => void;
   correctTimingStep: (newCurrentIndex: number) => { lineStartTime: number };
@@ -137,6 +152,14 @@ export interface PlaybackActions {
   setCurrentTime: (time: number) => void;
   setCurrentTempo: (tempo: number) => void;
   setCorrectionIndex: (index: number | null) => void;
+}
+
+export interface LineSelectionActions {
+  setLineSelectionMode: (enabled: boolean) => void;
+  toggleLineSelection: (lineIndex: number) => void;
+  clearLineSelection: () => void;
+  setLineShiftArmed: (armed: boolean) => void;
+  toggleLineShift: () => void;
 }
 
 export interface ModalActions {
@@ -179,6 +202,7 @@ export type AllActions = ProjectActions &
   ContentActions &
   PlaybackActions &
   ModalActions &
+  LineSelectionActions &
   ChordPanelActions &
   HistoryActions;
 
@@ -199,6 +223,8 @@ export interface KaraokeState {
   isTimingActive: boolean;
   editingLineIndex: number | null;
   editingEndLineIndex: number | null;
+  timingLineGroups: number[][] | null;
+  timingGroupIndex: number;
   playbackIndex: number | null;
   playbackVisualOverride: PlaybackVisualOverride | null;
   timingSnapshot: LyricWordData[][] | null;
@@ -208,6 +234,11 @@ export interface KaraokeState {
   currentTempo: number;
   timingBuffer: TimingBufferData | null;
   timingDirection: "forward" | "backward" | null;
+
+  lineSelectionMode: boolean;
+  selectedLineIndices: number[];
+  lineSelectionAnchor: number | null;
+  lineShiftArmed: boolean;
 
   isEditModalOpen: boolean;
   lyricsProcessed?: ArrayRange<ISentence>;

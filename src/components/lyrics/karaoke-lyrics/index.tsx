@@ -288,10 +288,13 @@ function getTextStyle(
   return {
     fontSize,
     fontWeight: textStyle?.fontWeight ?? 700,
-    unsungFill: textStyle?.color?.colorBorder ?? "#0000ff",
-    unsungStroke: textStyle?.activeColor?.colorBorder ?? "#ffffff",
-    sungFill: textStyle?.color?.color ?? "#fcfe17",
-    sungStroke: textStyle?.activeColor?.color ?? "#000000",
+    // Match karaoke-web-online's actual canvas mapping. The field names in
+    // this project are historical, so keep the rendered roles explicit here:
+    // unsung = yellow/black and sung = blue/white.
+    unsungFill: textStyle?.color?.color ?? "#fcfe17",
+    unsungStroke: textStyle?.activeColor?.color ?? "#000000",
+    sungFill: textStyle?.color?.colorBorder ?? "#0000ff",
+    sungStroke: textStyle?.activeColor?.colorBorder ?? "#ffffff",
     fontFamily,
     strokeWidth: Math.max(fontSize * 0.08, 2),
   };

@@ -102,6 +102,39 @@ export const createContentActions: StateCreator<
         get().actions.processLyricsForPlayer();
         commit("ลบบรรทัด");
       },
+      deleteLines: async (lineIndicesToDelete: number[]) => {
+        const deleteSet = new Set(lineIndicesToDelete);
+        if (deleteSet.size === 0) return;
+
+        set((state) => {
+          const remainingLines = state.lyricsData.filter(
+            (_, index) => !deleteSet.has(index)
+          );
+          const reIndexedFlat = remainingLines
+            .map((line, newLineIndex) =>
+              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
+            )
+            .flat();
+
+          reIndexedFlat.forEach((word, index) => {
+            word.index = index;
+          });
+
+          return {
+            lyricsData: groupLyricsByLine(reIndexedFlat),
+            selectedLineIndex:
+              remainingLines.length > 0
+                ? Math.min(
+                    state.selectedLineIndex ?? 0,
+                    remainingLines.length - 1
+                  )
+                : null,
+          };
+        });
+        syncLyricsDocument();
+        get().actions.processLyricsForPlayer();
+        commit("ลบบรรทัดที่เลือก");
+      },
       updateLine: async (
         lineIndexToUpdate: number,
         newText: string,

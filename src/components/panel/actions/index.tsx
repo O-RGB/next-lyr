@@ -2,6 +2,7 @@ import { MicVocal, StickyNote } from "lucide-react";
 import ButtonCommon from "@/components/common/button";
 import ModalCommon from "@/components/common/modal";
 import MetadataForm from "@/components/metadata/metadata-form";
+import LineSelectionToolbar from "@/components/lyrics/line-selection-toolbar";
 import React, { useEffect, useState } from "react";
 
 interface MobileActionButtonProps {
@@ -17,6 +18,9 @@ const MobileActionButton: React.FC<MobileActionButtonProps> = ({
   useEffect(() => {}, []);
   return (
     <>
+      <div className="mr-auto">
+        <LineSelectionToolbar compact />
+      </div>
       <ButtonCommon
         onClick={() => {
           setPreview?.(!preview);

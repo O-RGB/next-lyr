@@ -8,6 +8,24 @@ function cloneLyricsData(lyricsData: LyricWordData[][]): LyricWordData[][] {
   return lyricsData.map((line) => line.map((word) => ({ ...word })));
 }
 
+function groupConsecutiveLineIndices(lineIndices: number[]): number[][] {
+  const sorted = [...new Set(lineIndices)]
+    .filter((lineIndex) => Number.isInteger(lineIndex) && lineIndex >= 0)
+    .sort((left, right) => left - right);
+  const groups: number[][] = [];
+
+  for (const lineIndex of sorted) {
+    const previous = groups[groups.length - 1];
+    if (previous && lineIndex === previous[previous.length - 1] + 1) {
+      previous.push(lineIndex);
+    } else {
+      groups.push([lineIndex]);
+    }
+  }
+
+  return groups;
+}
+
 export const createPlaybackActions: StateCreator<
   KaraokeState,
   [],
@@ -91,23 +109,39 @@ export const createPlaybackActions: StateCreator<
       });
     },
 
-    startTimingFromLine: (lineIndex: number, endLineIndex?: number) => {
+    startTimingFromLine: (lineIndex: number, endLineIndex?: number) =>
+      get().actions.startTimingFromLines(
+        Array.from(
+          { length: Math.max(0, (endLineIndex ?? lineIndex) - lineIndex + 1) },
+          (_, index) => lineIndex + index
+        )
+      ),
+
+    startTimingFromLines: (lineIndices: number[]) => {
       const flatLyrics = get().lyricsData.flat();
-      const firstWordOfLine = flatLyrics.find((w) => w.lineIndex === lineIndex);
+      const groups = groupConsecutiveLineIndices(lineIndices).filter((group) =>
+        group.some((lineIndex) =>
+          flatLyrics.some((word) => word.lineIndex === lineIndex)
+        )
+      );
+      const firstGroup = groups[0];
+      const firstWordOfLine = firstGroup
+        ? flatLyrics.find((w) => w.lineIndex === firstGroup[0])
+        : undefined;
 
       if (!firstWordOfLine) {
         return { success: false, preRollTime: 0 };
       }
 
-      const finalEndLineIndex = endLineIndex ?? get().lyricsData.length - 1;
       // Start from box 1 of the preceding line so the user hears the full
       // preparation line before stamping the selected line.
-      const preRollTime = getPreRollTime(lineIndex, flatLyrics);
+      const preRollTime = getPreRollTime(firstGroup[0], flatLyrics);
       const snapshot = cloneLyricsData(get().lyricsData);
+      const selectedLineSet = new Set(groups.flat());
 
       set((state) => ({
         lyricsData: state.lyricsData.map((line, idx) =>
-          idx >= lineIndex && idx <= finalEndLineIndex
+          selectedLineSet.has(idx)
             ? line.map((word) => ({
                 ...word,
                 at: null,
@@ -117,19 +151,54 @@ export const createPlaybackActions: StateCreator<
         // No box is selected until the first right-arrow. This keeps the
         // retiming target visually neutral during the preparation playback.
         currentIndex: -1,
-        selectedLineIndex: lineIndex,
-        editingLineIndex: lineIndex,
-        editingEndLineIndex: finalEndLineIndex,
+        selectedLineIndex: firstGroup[0],
+        editingLineIndex: firstGroup[0],
+        editingEndLineIndex: firstGroup[firstGroup.length - 1],
         isTimingActive: false,
         correctionIndex: null,
         lyricsProcessed: undefined,
         timingBuffer: null,
+        timingLineGroups: groups,
+        timingGroupIndex: 0,
+        lineSelectionMode: false,
+        lineShiftArmed: false,
         // Retiming is a destructive preview until it is committed. Keep an
         // immutable copy so Cancel can always restore the exact old values.
         timingSnapshot: snapshot,
       }));
 
       return { success: true, preRollTime };
+    },
+
+    finishTimingGroup: () => {
+      const state = get();
+      const groups = state.timingLineGroups;
+      const nextGroupIndex = state.timingGroupIndex + 1;
+      const nextGroup = groups?.[nextGroupIndex];
+
+      if (!nextGroup) return { done: true, preRollTime: 0 };
+
+      const flatLyrics = state.lyricsData.flat();
+      const preRollTime = getPreRollTime(nextGroup[0], flatLyrics);
+      set({
+        currentIndex: -1,
+        selectedLineIndex: nextGroup[0],
+        editingLineIndex: nextGroup[0],
+        editingEndLineIndex: nextGroup[nextGroup.length - 1],
+        isTimingActive: false,
+        correctionIndex: null,
+        playbackIndex: null,
+        playbackVisualOverride: null,
+        timingGroupIndex: nextGroupIndex,
+        timingBuffer: state.timingBuffer
+          ? { ...state.timingBuffer, lineIndex: nextGroup[0] }
+          : {
+              lineIndex: nextGroup[0],
+              buffer: new Map(),
+            },
+      });
+
+      return { done: false, preRollTime };
     },
 
     cancelTiming: async () => {
@@ -150,6 +219,12 @@ export const createPlaybackActions: StateCreator<
         timingSnapshot: null,
         playbackIndex: null,
         playbackVisualOverride: null,
+        timingLineGroups: null,
+        timingGroupIndex: 0,
+        lineSelectionMode: false,
+        selectedLineIndices: [],
+        lineSelectionAnchor: null,
+        lineShiftArmed: false,
         currentIndex:
           restoredLyricsData && state.selectedLineIndex !== null
             ? restoredLyricsData[state.selectedLineIndex]?.[0]?.index ??
@@ -320,6 +395,12 @@ export const createPlaybackActions: StateCreator<
             timingBuffer: null,
             timingDirection: null,
             timingSnapshot: null,
+            timingLineGroups: null,
+            timingGroupIndex: 0,
+            lineSelectionMode: false,
+            selectedLineIndices: [],
+            lineSelectionAnchor: null,
+            lineShiftArmed: false,
           };
         }
 
@@ -343,6 +424,12 @@ export const createPlaybackActions: StateCreator<
           timingBuffer: null,
           timingDirection: null,
           timingSnapshot: null,
+          timingLineGroups: null,
+          timingGroupIndex: 0,
+          lineSelectionMode: false,
+          selectedLineIndices: [],
+          lineSelectionAnchor: null,
+          lineShiftArmed: false,
         };
       });
 

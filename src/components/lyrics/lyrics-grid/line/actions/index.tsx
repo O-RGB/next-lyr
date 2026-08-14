@@ -1,4 +1,11 @@
-import { Clock, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CheckSquare,
+  Clock,
+  Ellipsis,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import ButtonCommon from "@/components/common/button";
 import ContextMenuCommon, {
   IContextMenuGroup,
@@ -21,6 +28,15 @@ const LineAction: React.FC<LineActionProps> = React.memo(
       {
         name: "การทำงาน",
         contextMenus: [
+          {
+            type: "select",
+            text: "เลือก",
+            icon: <CheckSquare />,
+            onClick: () => {
+              actions.setLineSelectionMode(true);
+              actions.toggleLineSelection(lineIndex);
+            },
+          },
           {
             type: "add",
             text: "แทรก",

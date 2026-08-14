@@ -43,7 +43,10 @@ const OWNED_CODES = new Set([
   "ArrowLeft",
   "ArrowRight",
   "Enter",
+  "Escape",
 ]);
+
+const SHIFT_CODES = new Set(["ShiftLeft", "ShiftRight"]);
 
 function isTypingTarget(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null;
@@ -69,6 +72,25 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (blocked(event)) return;
+    if (SHIFT_CODES.has(event.code)) {
+      const state = useKaraokeStore.getState();
+      if (state.lineSelectionMode && state.lineSelectionAnchor !== null) {
+        event.preventDefault();
+        state.actions.setLineShiftArmed(true);
+      }
+      return;
+    }
+    if (event.code === "Escape") {
+      const state = useKaraokeStore.getState();
+      if (
+        state.lineSelectionMode ||
+        state.isTimingActive ||
+        state.editingLineIndex !== null
+      ) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (!OWNED_CODES.has(event.code)) return;
     // Claim the key now so the page cannot scroll and a focused button cannot
     // activate; the actual work happens on keyup.
@@ -76,7 +98,25 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
   };
 
   const handleKeyUp = async (event: KeyboardEvent) => {
+    if (SHIFT_CODES.has(event.code)) {
+      const state = useKaraokeStore.getState();
+      if (state.lineShiftArmed) state.actions.setLineShiftArmed(false);
+      return;
+    }
+
     if (blocked(event)) return;
+
+    if (event.code === "Escape") {
+      const state = useKaraokeStore.getState();
+      if (state.isTimingActive || state.editingLineIndex !== null) {
+        // Use the same session-level cancellation as the button so playback
+        // is stopped and the original timestamps are restored atomically.
+        void usePlayerHandlersStore.getState().handleCancelRetiming();
+      } else if (state.lineSelectionMode) {
+        state.actions.setLineSelectionMode(false);
+      }
+      return;
+    }
 
     const store = useKaraokeStore.getState();
     const { playerControls: player } = usePlayerSetupStore.getState();
@@ -214,7 +254,17 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
         const { isLineEnd } = actions.recordTiming(currentTime);
         if (isLineEnd) {
           player.pause();
-          actions.stopTiming();
+          const nextGroup = actions.finishTimingGroup();
+          if (nextGroup.done) {
+            await actions.stopTiming();
+          } else {
+            // The current group is complete, but the session is not. Seek to
+            // the line before the next group so every disconnected group gets
+            // its own audible preparation line.
+            const seek = player.seek(nextGroup.preRollTime);
+            player.play();
+            await Promise.resolve(seek);
+          }
         } else {
           actions.goToNextWord();
         }

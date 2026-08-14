@@ -5,6 +5,7 @@ import {
   ModalState,
   PlayerState,
   TimingState,
+  LineSelectionState,
 } from "../types";
 import { initHistory } from "../history";
 import { DEFAULT_SOUNDFONT_ENTRY, DEFAULT_SOUNDFONT_ID } from "@/lib/soundfonts";
@@ -27,6 +28,8 @@ export const initialTimingState: TimingState = {
   isTimingActive: false,
   editingLineIndex: null,
   editingEndLineIndex: null, // <-- เพิ่มค่าเริ่มต้น
+  timingLineGroups: null,
+  timingGroupIndex: 0,
   playbackIndex: null,
   playbackVisualOverride: null,
   timingSnapshot: null,
@@ -53,6 +56,13 @@ export const initialChordPanelState: ChordPanelState = {
   chordPanelCenterTick: 0,
   isChordPanelHovered: false,
   playFromScrolledPosition: false,
+};
+
+export const initialLineSelectionState: LineSelectionState = {
+  lineSelectionMode: false,
+  selectedLineIndices: [],
+  lineSelectionAnchor: null,
+  lineShiftArmed: false,
 };
 
 export const transientState = {
@@ -83,6 +93,7 @@ export const initialState: Omit<KaraokeState, "actions"> = {
   metadata: null,
   chordsData: [],
   ...initialTimingState,
+  ...initialLineSelectionState,
   ...initialModalState,
   ...initialChordPanelState,
   ...transientState,
@@ -100,6 +111,7 @@ export const resetStateForNewFile = (
   lyricsXml: "",
   chordsData: [],
   ...initialTimingState,
+  ...initialLineSelectionState,
   ...initialModalState,
   ...initialChordPanelState,
   ...transientState,

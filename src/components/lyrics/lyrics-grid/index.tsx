@@ -6,7 +6,6 @@ import { resizeCanvas, roundedRect, clamp } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
-import { useSettingsStore } from "@/features/settings/settings-store";
 import LineAction from "./line/actions";
 
 // Keep the editor boxes readable without making each lyric row oversized.
@@ -19,6 +18,9 @@ const WORD_FONT_SIZE = 15;
 const VOCAL_FONT_SIZE = 8;
 const HORIZONTAL_RESET_DURATION_MS = 220;
 const HORIZONTAL_OFFSET_EPSILON = 0.5;
+const LINE_SELECTION_LONG_PRESS_MS = 450;
+const POINTER_MOVE_CANCEL_DISTANCE = 6;
+const DOUBLE_ACTIVATION_WINDOW_MS = 360;
 
 interface WordHitBox {
   index: number;
@@ -40,13 +42,25 @@ const LyricsGrid: React.FC = () => {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const actions = useKaraokeStore((state) => state.actions);
+  const lineSelectionMode = useKaraokeStore(
+    (state) => state.lineSelectionMode
+  );
+  const selectedLineIndices = useKaraokeStore(
+    (state) => state.selectedLineIndices
+  );
+  const lineSelectionAnchor = useKaraokeStore(
+    (state) => state.lineSelectionAnchor
+  );
+  const lineShiftArmed = useKaraokeStore((state) => state.lineShiftArmed);
   const hideLineActions = useKaraokeStore(
     (state) =>
       state.isPlaying ||
       state.isTimingActive ||
       state.editingLineIndex !== null
   );
-  const autoScroll = useSettingsStore((state) => state.autoScroll);
+  // Playback follow is intentionally always enabled. It is part of the
+  // editor navigation model rather than a user preference.
+  const autoScroll = true;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -65,6 +79,19 @@ const LyricsGrid: React.FC = () => {
     startOffset: number;
     moved: boolean;
   } | null>(null);
+  const longPressRef = useRef<{
+    lineIndex: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    timer: ReturnType<typeof setTimeout>;
+    fired: boolean;
+  } | null>(null);
+  const doubleActivationRef = useRef<{
+    lineIndex: number;
+    at: number;
+    pointerType: string;
+  } | null>(null);
   const sizeRef = useRef({ width: 1, height: 1, dpr: 1 });
   const dirtyRef = useRef(true);
   const frameRef = useRef<number | null>(null);
@@ -77,6 +104,13 @@ const LyricsGrid: React.FC = () => {
       frameRef.current = null;
       if (dirtyRef.current) drawRef.current();
     });
+  }, []);
+
+  const clearLineSelectionLongPress = useCallback(() => {
+    const longPress = longPressRef.current;
+    if (!longPress) return;
+    clearTimeout(longPress.timer);
+    longPressRef.current = null;
   }, []);
 
   const resize = useCallback(() => {
@@ -215,6 +249,9 @@ const LyricsGrid: React.FC = () => {
           disabledText: "#667386",
           disabledMuted: "#4b5563",
           selected: "rgba(120,170,255,0.12)",
+          lineSelected: "rgba(120,170,255,0.22)",
+          selectionAnchor: "rgba(244,189,104,0.20)",
+          selectionAnchorBorder: "#f4bd68",
           active: "#78aaff",
           warn: "#f4bd68",
           warnSoft: "rgba(244,189,104,0.16)",
@@ -235,6 +272,9 @@ const LyricsGrid: React.FC = () => {
           disabledText: "#9ca3af",
           disabledMuted: "#9ca3af",
           selected: "rgba(40,120,232,0.10)",
+          lineSelected: "rgba(40,120,232,0.20)",
+          selectionAnchor: "rgba(179,107,0,0.16)",
+          selectionAnchorBorder: "#b36b00",
           active: "#2878e8",
           warn: "#b36b00",
           warnSoft: "rgba(179,107,0,0.12)",
@@ -265,6 +305,18 @@ const LyricsGrid: React.FC = () => {
           ? state.currentIndex
           : state.currentIndex - 1
         : -1;
+    const timingGroups = state.timingLineGroups ?? [];
+    const activeTimingGroup =
+      timingGroups[state.timingGroupIndex] ??
+      (state.editingLineIndex !== null ? [state.editingLineIndex] : []);
+    const activeTimingLineSet = new Set(activeTimingGroup);
+    const retimingLineSet = new Set(timingGroups.flat());
+    if (retimingLineSet.size === 0 && state.editingLineIndex !== null) {
+      retimingLineSet.add(state.editingLineIndex);
+    }
+    const queuedTimingLineSet = new Set(
+      timingGroups.slice(state.timingGroupIndex + 1).flat()
+    );
 
     for (let lineIndex = firstLine; lineIndex < lastLine; lineIndex += 1) {
       const line = lines[lineIndex] ?? [];
@@ -272,7 +324,17 @@ const LyricsGrid: React.FC = () => {
       const isPassedLine =
         focusLineIndex >= 0 && lineIndex < focusLineIndex;
       const isRetimingMode = state.editingLineIndex !== null;
-      const isRetimingLine = state.editingLineIndex === lineIndex;
+      // A retiming session can contain multiple contiguous lines. The first
+      // line is only the cursor origin; every line in the active group must
+      // stay enabled and visibly belong to the current retiming operation.
+      const isActiveTimingGroupLine =
+        isRetimingMode && activeTimingLineSet.has(lineIndex);
+      const isRetimingTargetLine =
+        isRetimingMode && retimingLineSet.has(lineIndex);
+      const isQueuedTimingLine =
+        isRetimingMode &&
+        queuedTimingLineSet.has(lineIndex) &&
+        !isActiveTimingGroupLine;
       // Keep the preceding line live during the retiming pre-roll. Its
       // playback word must still receive the normal yellow highlight and its
       // existing green timing stamps must remain visible while the next line
@@ -280,16 +342,37 @@ const LyricsGrid: React.FC = () => {
       const isPreparationLine =
         isRetimingMode && lineIndex === state.editingLineIndex! - 1;
       const isDisabledLine = isRetimingMode
-        ? !isRetimingLine && !isPreparationLine
+        ? !isActiveTimingGroupLine &&
+          !isPreparationLine &&
+          !isQueuedTimingLine
         : isPassedLine;
       const selected = state.selectedLineIndex === lineIndex;
+      const isLineSelected =
+        state.lineSelectionMode &&
+        state.selectedLineIndices.includes(lineIndex);
+      const isSelectionAnchor =
+        state.lineSelectionMode &&
+        state.lineShiftArmed &&
+        state.lineSelectionAnchor === lineIndex;
       const isTimingLine =
         state.isTimingActive && state.timingBuffer?.lineIndex === lineIndex;
 
       ctx.fillStyle = lineIndex % 2 === 0 ? colors.base : colors.alt;
       ctx.fillRect(0, y, size.width, ROW_HEIGHT);
-      if (isRetimingLine) {
+      if (isRetimingTargetLine) {
+        // Keep every line selected for this retiming session visible as one
+        // orange preparation set, even while disconnected groups are handled
+        // one group at a time by the keyboard workflow.
         ctx.fillStyle = colors.warnSoft;
+        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+      } else if (isSelectionAnchor) {
+        ctx.fillStyle = colors.selectionAnchor;
+        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+        ctx.fillStyle = colors.selectionAnchorBorder;
+        ctx.fillRect(0, y, size.width, 2);
+        ctx.fillRect(0, y + ROW_HEIGHT - 2, size.width, 2);
+      } else if (isLineSelected) {
+        ctx.fillStyle = colors.lineSelected;
         ctx.fillRect(0, y, size.width, ROW_HEIGHT);
       } else if (selected || isTimingLine) {
         ctx.fillStyle = colors.selected;
@@ -347,9 +430,13 @@ const LyricsGrid: React.FC = () => {
           state.currentIndex === word.index &&
           (state.isTimingActive || state.correctionIndex !== null);
         const isRetimingTarget =
-          state.editingLineIndex === lineIndex &&
+          isActiveTimingGroupLine &&
           retimingTargetIndex === word.index;
         const isCorrection = state.correctionIndex === word.index;
+        // During retiming, the warn target is the single source of truth.
+        // The correction marker is kept for normal timing correction, but it
+        // must not create a second red action when ArrowLeft is pressed.
+        const showCorrectionVisual = isCorrection && !isRetimingMode;
         const bufferEntry = state.timingBuffer?.buffer.get(word.index);
         const isTimed =
           word.at !== null ||
@@ -378,7 +465,7 @@ const LyricsGrid: React.FC = () => {
             : colors.timed;
           ctx.fillRect(boxX, boxY, 3, WORD_HEIGHT);
         }
-        if (isCorrection && !isDisabledLine) {
+        if (showCorrectionVisual && !isDisabledLine) {
           ctx.fillStyle = colors.pending;
           ctx.fillRect(boxX, boxY, 3, WORD_HEIGHT);
         }
@@ -391,10 +478,11 @@ const LyricsGrid: React.FC = () => {
           ? colors.active
           : isActive
           ? colors.active
-          : isCorrection
+          : showCorrectionVisual
           ? colors.pending
           : colors.boxBorder;
-        ctx.lineWidth = isRetimingTarget || isActive || isCorrection ? 2 : 1;
+        ctx.lineWidth =
+          isRetimingTarget || isActive || showCorrectionVisual ? 2 : 1;
         ctx.stroke();
 
         ctx.save();
@@ -585,7 +673,9 @@ const LyricsGrid: React.FC = () => {
     scrollToSelectedLine(initialState.selectedLineIndex);
     syncActiveLineScroll(initialState);
     return useKaraokeStore.subscribe((next, previous) => {
-      if (next.selectedLineIndex !== previous.selectedLineIndex) {
+      const selectedLineChanged =
+        next.selectedLineIndex !== previous.selectedLineIndex;
+      if (selectedLineChanged) {
         // A line's horizontal scroll is only useful while that line is
         // active. Reset the line we just left so returning to it never opens
         // at a stale right-side box.
@@ -604,6 +694,11 @@ const LyricsGrid: React.FC = () => {
         // Retiming always starts from the first box of the target line. Do
         // not carry over a horizontal offset left by normal playback/editing.
         resetLineScroll(next.editingLineIndex);
+        // Entering retiming is also a navigation event when this line was
+        // already selected but the user had scrolled the page elsewhere.
+        if (!selectedLineChanged) {
+          scrollToSelectedLine(next.editingLineIndex, true);
+        }
         markDirty();
       }
       const playbackStopped =
@@ -625,7 +720,11 @@ const LyricsGrid: React.FC = () => {
         next.isTimingActive !== previous.isTimingActive ||
         next.timingBuffer !== previous.timingBuffer ||
         next.correctionIndex !== previous.correctionIndex ||
-        next.editingLineIndex !== previous.editingLineIndex
+        next.editingLineIndex !== previous.editingLineIndex ||
+        next.lineSelectionMode !== previous.lineSelectionMode ||
+        next.selectedLineIndices !== previous.selectedLineIndices ||
+        next.lineSelectionAnchor !== previous.lineSelectionAnchor ||
+        next.lineShiftArmed !== previous.lineShiftArmed
       ) {
         if (!playbackStopped) syncActiveLineScroll(next);
         markDirty();
@@ -643,9 +742,10 @@ const LyricsGrid: React.FC = () => {
         cancelAnimationFrame(horizontalResetFrameRef.current);
         horizontalResetFrameRef.current = null;
       }
+      clearLineSelectionLongPress();
       horizontalResetAnimationsRef.current.clear();
     };
-  }, []);
+  }, [clearLineSelectionLongPress]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -661,6 +761,45 @@ const LyricsGrid: React.FC = () => {
         0,
         Math.max(0, linesRef.current.length - 1)
       );
+
+      if (linesRef.current.length === 0) return;
+
+      clearLineSelectionLongPress();
+      const state = useKaraokeStore.getState();
+      if (
+        !state.lineSelectionMode &&
+        !state.isPlaying &&
+        state.editingLineIndex === null
+      ) {
+        const longPress = {
+          lineIndex,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          timer: setTimeout(() => {
+            const currentState = useKaraokeStore.getState();
+            const activeLongPress = longPressRef.current;
+            if (
+              !activeLongPress ||
+              activeLongPress.pointerId !== event.pointerId ||
+              currentState.lineSelectionMode ||
+              currentState.isPlaying ||
+              currentState.editingLineIndex !== null
+            ) {
+              return;
+            }
+
+            currentState.actions.setLineSelectionMode(true);
+            currentState.actions.toggleLineSelection(lineIndex);
+            activeLongPress.fired = true;
+            dragRef.current = null;
+            markDirty();
+          }, LINE_SELECTION_LONG_PRESS_MS),
+          fired: false,
+        };
+        longPressRef.current = longPress;
+      }
+
       const availableWidth = Math.max(
         1,
         canvas.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
@@ -680,11 +819,24 @@ const LyricsGrid: React.FC = () => {
         moved: false,
       };
     },
-    []
+    [clearLineSelectionLongPress, markDirty]
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
+      const longPress = longPressRef.current;
+      if (
+        longPress &&
+        longPress.pointerId === event.pointerId &&
+        !longPress.fired &&
+        (Math.abs(event.clientX - longPress.startX) >=
+          POINTER_MOVE_CANCEL_DISTANCE ||
+          Math.abs(event.clientY - longPress.startY) >=
+            POINTER_MOVE_CANCEL_DISTANCE)
+      ) {
+        clearLineSelectionLongPress();
+      }
+
       const drag = dragRef.current;
       const canvas = canvasRef.current;
       if (!drag || !canvas) return;
@@ -718,7 +870,7 @@ const LyricsGrid: React.FC = () => {
       event.preventDefault();
       markDirty();
     },
-    [markDirty]
+    [clearLineSelectionLongPress, markDirty]
   );
 
   const handlePointerUp = useCallback(
@@ -729,8 +881,13 @@ const LyricsGrid: React.FC = () => {
 
       const drag = dragRef.current;
       dragRef.current = null;
+      const longPress = longPressRef.current;
+      clearLineSelectionLongPress();
       if (canvas.hasPointerCapture(event.pointerId)) {
         canvas.releasePointerCapture(event.pointerId);
+      }
+      if (longPress?.pointerId === event.pointerId && longPress.fired) {
+        return;
       }
       if (drag?.moved) {
         markDirty();
@@ -739,11 +896,48 @@ const LyricsGrid: React.FC = () => {
 
       // While retiming, the selected line is the only keyboard target. Do not
       // let a canvas click silently move the transport to another line.
-      if (useKaraokeStore.getState().editingLineIndex !== null) return;
+      const currentState = useKaraokeStore.getState();
+      if (currentState.editingLineIndex !== null) return;
 
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
+      const lineIndex = clamp(
+        Math.floor((y + scroll.scrollTop) / ROW_HEIGHT),
+        0,
+        Math.max(0, linesRef.current.length - 1)
+      );
+
+      // Selection mode owns the complete row. Clicking anywhere on a line
+      // only toggles that line; it must never seek, play, or open its menu.
+      if (currentState.lineSelectionMode) {
+        actions.toggleLineSelection(lineIndex);
+        return;
+      }
+
+      const now = performance.now();
+      const previousActivation = doubleActivationRef.current;
+      const isDoubleActivation =
+        previousActivation !== null &&
+        previousActivation.lineIndex === lineIndex &&
+        previousActivation.pointerType === event.pointerType &&
+        now - previousActivation.at <= DOUBLE_ACTIVATION_WINDOW_MS &&
+        (event.detail >= 2 || event.pointerType === "touch");
+
+      if (isDoubleActivation) {
+        doubleActivationRef.current = null;
+        event.preventDefault();
+        actions.selectLine(lineIndex);
+        actions.openEditModal();
+        return;
+      }
+
+      doubleActivationRef.current = {
+        lineIndex,
+        at: now,
+        pointerType: event.pointerType,
+      };
+
       const hit = [...hitBoxesRef.current].reverse().find(
         (box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
       );
@@ -752,11 +946,6 @@ const LyricsGrid: React.FC = () => {
         return;
       }
 
-      const lineIndex = clamp(
-        Math.floor((y + scroll.scrollTop) / ROW_HEIGHT),
-        0,
-        Math.max(0, linesRef.current.length - 1)
-      );
       if (x >= rect.width - RIGHT_GUTTER) {
         actions.selectLine(lineIndex);
         actions.openEditModal();
@@ -764,7 +953,54 @@ const LyricsGrid: React.FC = () => {
         actions.selectLine(lineIndex);
       }
     },
-    [actions, markDirty, onWordClick]
+    [actions, clearLineSelectionLongPress, markDirty, onWordClick]
+  );
+
+  const handleDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      const scroll = scrollRef.current;
+      if (!canvas || !scroll) return;
+
+      const currentState = useKaraokeStore.getState();
+      if (
+        currentState.lineSelectionMode ||
+        currentState.editingLineIndex !== null
+      ) {
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const lineIndex = clamp(
+        Math.floor(
+          (event.clientY - rect.top + scroll.scrollTop) / ROW_HEIGHT
+        ),
+        0,
+        Math.max(0, linesRef.current.length - 1)
+      );
+
+      event.preventDefault();
+      actions.selectLine(lineIndex);
+      actions.openEditModal();
+    },
+    [actions]
+  );
+
+  const handlePointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (longPressRef.current?.pointerId === event.pointerId) {
+        clearLineSelectionLongPress();
+      }
+      dragRef.current = null;
+    },
+    [clearLineSelectionLongPress]
+  );
+
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (longPressRef.current?.fired) event.preventDefault();
+    },
+    []
   );
 
   const handleWheel = useCallback(
@@ -846,10 +1082,47 @@ const LyricsGrid: React.FC = () => {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onDoubleClick={handleDoubleClick}
+          onContextMenu={handleContextMenu}
           onWheel={handleWheel}
           aria-label="Lyrics editor canvas"
         />
-        {!hideLineActions && (
+        {lineSelectionMode && !hideLineActions && (
+          <div className="pointer-events-none absolute inset-0 z-30">
+            {lyricsData.map((_, lineIndex) => {
+              const checked = selectedLineIndices.includes(lineIndex);
+              const isAnchor =
+                lineShiftArmed && lineSelectionAnchor === lineIndex;
+              return (
+                <button
+                  key={`line-select-${lineIndex}`}
+                  type="button"
+                  className={`pointer-events-auto absolute left-1 flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-semibold transition ${
+                    isAnchor
+                      ? "border-warn bg-warn/15 text-warn ring-2 ring-warn/30"
+                      : checked
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-line-strong bg-panel text-muted-foreground hover:border-primary hover:text-primary"
+                  }`}
+                  style={{
+                    top: lineIndex * ROW_HEIGHT + ROW_HEIGHT / 2,
+                    transform: "translateY(-50%)",
+                  }}
+                  aria-label={`${checked ? "ยกเลิกเลือก" : "เลือก"} บรรทัด ${lineIndex + 1}`}
+                  aria-pressed={checked}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    actions.toggleLineSelection(lineIndex);
+                  }}
+                >
+                  {lineIndex + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {!hideLineActions && !lineSelectionMode && (
           <div className="pointer-events-none absolute inset-0 z-20">
             {lyricsData.map((_, lineIndex) => (
               <div

@@ -8,6 +8,7 @@ import { createModalActions } from "./actions/modal.actions";
 import { createPlaybackActions } from "./actions/playback.actions";
 import { createProjectActions } from "./actions/project.actions";
 import { createSoundfontActions } from "./actions/soundfont.actions";
+import { createLineSelectionActions } from "./actions/line-selection.actions";
 import { KaraokeState } from "./types";
 
 export const useKaraokeStore = create<KaraokeState>()((set, get) => ({
@@ -30,6 +31,9 @@ export const useKaraokeStore = create<KaraokeState>()((set, get) => ({
 
     // Modal actions
     ...createModalActions(set, get, undefined as any).actions,
+
+    // Multi-line selection actions
+    ...createLineSelectionActions(set, get, undefined as any).actions,
 
     // Chord panel actions
     ...createChordPanelActions(set, get, undefined as any).actions,
