@@ -1,4 +1,4 @@
-import { CircleArrowLeft, Plus, Save, Sparkles } from "lucide-react";
+import { CircleArrowLeft, Plus, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ModalCommon from "../../common/modal";
 import { useKaraokeStore } from "@/stores/karaoke-store";
@@ -75,7 +75,13 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
           >
             ตัดคำ
           </ButtonCommon>
-          <ButtonCommon color="primary" size="sm" icon={<Plus></Plus>}>
+          <ButtonCommon
+            color="primary"
+            size="sm"
+            icon={<Plus />}
+            disabled={!inputText.trim() || lineIndexToInsertAfter === null}
+            onClick={handleSave}
+          >
             Add
           </ButtonCommon>
         </div>

@@ -122,7 +122,10 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         setGlobalIsPlaying(playing);
         if (playing) {
           applyTimingCompensation();
-          timer().scheduleStartAt(transport.audioAnchor);
+          timer().scheduleStartAt(
+            transport.audioAnchor,
+            transport.audioAnchorPosition
+          );
         }
         else if (state === "stopped") timer().stopTimer();
       });
@@ -219,14 +222,14 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       const midi = midiInfoRef.current;
       if (!midi) return Promise.resolve();
       const seconds = midiTickToSeconds(tick, midi.ticksPerBeat, midi.tempos);
-      const pending = transport.seek(seconds);
-      if (transport.playing) {
-        return pending.then(() => {
-          timer().seekTicksAt(tick, transport.audioAnchor);
-        });
-      }
+      const wasPlaying = transport.playing;
+      // Freeze the UI clock at the requested tick immediately. The transport
+      // now silences its old schedule and prepares a future audio boundary;
+      // the timer must not continue through the previous line while waiting.
+      if (wasPlaying) timer().stopTimer();
       timer().seekTicks(tick);
-      return Promise.resolve();
+      const pending = transport.seek(seconds);
+      return pending;
     }, []);
 
     useImperativeHandle(

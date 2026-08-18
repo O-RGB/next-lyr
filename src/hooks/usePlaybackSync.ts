@@ -87,6 +87,8 @@ export const usePlaybackSync = (playerControls: PlayerRef | null) => {
 
     const syncPlaybackIndex = (presentationTime: number) => {
       const state = useKaraokeStore.getState();
+      const presentationRunning =
+        useTimerStore.getState().presentationRunning;
       // Keep a keyboard line-jump override alive through transport.loading.
       // The player briefly reports `isPlaying === false` while it prepares the
       // engine; clearing here makes the previous line's last box flash before
@@ -110,16 +112,23 @@ export const usePlaybackSync = (playerControls: PlayerRef | null) => {
         releasedPlaybackUntilWallTime = 0;
       }
 
-      // A keyboard line jump intentionally leads the visual highlight until
-      // the compensated presentation clock reaches that line. This hides the
-      // known one-box startup phase without moving audio or timer position.
+      // Keep an explicit navigation target selected while the engine waits
+      // for its future audio boundary. The transport itself starts at this
+      // exact timestamp; this state no longer represents an earlier pre-roll.
       const visualOverride = state.playbackVisualOverride;
-      if (visualOverride && presentationTime < visualOverride.until) {
+      if (
+        visualOverride &&
+        (!presentationRunning || presentationTime < visualOverride.until)
+      ) {
         if (state.playbackIndex !== visualOverride.index) {
           state.actions.setPlaybackIndex(visualOverride.index);
         }
         return;
       }
+      // The source has been armed, but its first sample is still inside the
+      // render/output buffer. Keep the selected visual fixed until the same
+      // boundary reaches the listener.
+      if (!presentationRunning) return;
       if (visualOverride) {
         releasedPlaybackIndex = visualOverride.index;
         releasedPlaybackUntilWallTime =
@@ -151,7 +160,10 @@ export const usePlaybackSync = (playerControls: PlayerRef | null) => {
     };
 
     const unsubscribeTimer = useTimerStore.subscribe((next, previous) => {
-      if (next.presentationValue !== previous.presentationValue) {
+      if (
+        next.presentationValue !== previous.presentationValue ||
+        next.presentationRunning !== previous.presentationRunning
+      ) {
         syncPlaybackIndex(next.presentationValue);
       }
     });

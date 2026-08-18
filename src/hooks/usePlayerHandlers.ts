@@ -1,10 +1,6 @@
 import { create } from "zustand";
-import {
-  calculatePlaybackSeekTime,
-  calculateSeekTime,
-} from "@/modules/lyrics-editor";
+import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { midiSynths } from "@/lib/karaoke-engine/midi-synth";
 import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
 
@@ -84,14 +80,8 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
 
         const targetTime = calculateSeekTime(word, flatLyrics);
         const mode = useKaraokeStore.getState().mode;
-        const midi = useKaraokeStore.getState().playerState.midi;
-        const seekTo = calculatePlaybackSeekTime(
-          targetTime,
-          mode,
-          midi,
-          mode === "midi" ? midiSynths.playbackStartLeadSeconds : undefined
-        );
 
+        useKaraokeStore.getState().actions.setPlayFromScrolledPosition(false);
         useKaraokeStore.getState().actions.setIsChordPanelAutoScrolling(true);
         useKaraokeStore.getState().actions.selectLine(word.lineIndex);
         const wasPlaying = playerControls.isPlaying();
@@ -100,8 +90,8 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           .getState()
           .actions.setPlaybackVisualOverride({
             index,
-            // The transport leads in, but the visual must not activate until
-            // the clicked lyric's original timestamp.
+            // Keep the clicked box selected while the exact target waits for
+            // the engine's future audio boundary.
             until: targetTime,
           });
         useKaraokeStore.getState().actions.setPlaybackIndex(index);
@@ -113,7 +103,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         if (wasPlaying) {
           await Promise.resolve(stopTiming);
           if (request !== navigationRequest) return;
-          await Promise.resolve(playerControls.seek(seekTo));
+          await Promise.resolve(playerControls.seek(targetTime));
           return;
         }
 
@@ -121,14 +111,17 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         // continuation. Otherwise the first click can start the timer after
         // the browser has suspended AudioContext, leaving a silent playhead.
         if (mode === "midi" && !wasPlaying) {
-          const seek = playerControls.seek(seekTo);
+          // A stopped MIDI seek is synchronous at the transport level. Arm
+          // the exact lyric timestamp before starting; the engine's future
+          // boundary provides buffer lead without replaying earlier notes.
+          const seek = playerControls.seek(targetTime);
           playerControls.play();
           await Promise.resolve(stopTiming);
           await Promise.resolve(seek);
         } else {
           await Promise.resolve(stopTiming);
           if (request !== navigationRequest) return;
-          await Promise.resolve(playerControls.seek(seekTo));
+          await Promise.resolve(playerControls.seek(targetTime));
         }
 
         if (request !== navigationRequest) return;

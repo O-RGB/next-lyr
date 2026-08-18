@@ -10,9 +10,12 @@ import MobileActionButton from "@/components/panel/actions";
 import { LyricsMobileControls } from "./mobile-controls";
 import LyricsGrid from "./lyrics-grid";
 import LyricsPreview from "./lyrics-preview";
-import ChordsPanel from "./chords-panel";
 import Timestamp from "./timestamp";
 import LineSelectionToolbar from "@/components/lyrics/line-selection-toolbar";
+import MidiNotesPreview from "@/components/panel/midi-notes-preview";
+import ChordOverviewPreview from "@/components/panel/chord-overview-preview";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import ChordsPanel from "./chords-panel";
 
 type LyricsPanelProps = {
   onPreviewChange?: (visible: boolean) => void;
@@ -21,18 +24,42 @@ type LyricsPanelProps = {
 export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const isMobile = useIsMobile();
   const locale = useSettingsStore((state) => state.uiLocale);
+  const setPlayFromScrolledPosition = useKaraokeStore(
+    (state) => state.actions.setPlayFromScrolledPosition
+  );
   const [preview, setPreview] = useState(false);
+  const [chordPreview, setChordPreview] = useState(false);
 
   const setPreviewVisible = (visible: boolean) => {
     setPreview(visible);
     onPreviewChange?.(visible);
   };
 
+  const closeChordPreview = () => {
+    setPlayFromScrolledPosition(false);
+    setChordPreview(false);
+  };
+
+  const handleEditorViewChange = (view: "lyrics" | "chords") => {
+    if (view === "chords") {
+      setChordPreview(true);
+      return;
+    }
+    closeChordPreview();
+  };
+
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-2 border-0 bg-panel p-2 lg:p-4">
+    <Card className="flex h-full min-h-0 flex-col gap-2 border-0 bg-panel pt-2 lg:pt-4 pr-2 lg:pr-4 pb-2 lg:pb-4 pl-2 lg:pl-4">
       <header className="flex shrink-0 items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground">{text(locale, "เนื้อเพลง", "Lyrics")}</h1>
-        <Timestamp />
+        <h1 className="text-lg font-semibold text-foreground">
+          {chordPreview
+            ? text(locale, "คอร์ด", "Chords")
+            : text(locale, "เนื้อเพลง", "Lyrics")}
+        </h1>
+        <Timestamp
+          editorView={chordPreview ? "chords" : "lyrics"}
+          onEditorViewChange={handleEditorViewChange}
+        />
       </header>
 
       {isMobile ? (
@@ -43,11 +70,25 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
             </div>
           )}
 
-          <div className="z-10 flex h-[100px] shrink-0 gap-2">
-            <div className="min-w-0 flex-1"><ChordsPanel /></div>
+          <div className="z-10 flex h-[170px] shrink-0 gap-2">
+            {chordPreview ? (
+              <div className="min-w-0 flex-1">
+                <ChordOverviewPreview compact />
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1">
+                <ChordsPanel compact />
+              </div>
+            )}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
+          <div className="min-h-0 flex-1 overflow-hidden overscroll-none">
+            {chordPreview ? (
+              <MidiNotesPreview onClose={closeChordPreview} />
+            ) : (
+              <LyricsGrid />
+            )}
+          </div>
 
           <div className="flex shrink-0 justify-end gap-1.5">
             <MobileActionButton
@@ -60,12 +101,28 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
       ) : (
         <>
           <div className="flex min-h-0 flex-1 gap-2 overflow-hidden">
-            <div className="min-w-0 flex-1 overflow-auto overscroll-none"><LyricsGrid /></div>
-            <div className="h-full w-[150px] shrink-0"><ChordsPanel /></div>
+            <div className="min-w-0 flex-1 overflow-hidden overscroll-none">
+              {chordPreview ? (
+                <MidiNotesPreview onClose={closeChordPreview} />
+              ) : (
+                <LyricsGrid />
+              )}
+            </div>
+            {chordPreview ? (
+              <div className="h-full w-[150px] shrink-0">
+                <ChordOverviewPreview compact />
+              </div>
+            ) : (
+              <div className="h-full w-[150px] shrink-0">
+                <ChordsPanel compact />
+              </div>
+            )}
           </div>
-          <div className="hidden shrink-0 justify-start pt-1 lg:flex">
-            <LineSelectionToolbar />
-          </div>
+          {!chordPreview && (
+            <div className="hidden shrink-0 justify-start lg:flex">
+              <LineSelectionToolbar />
+            </div>
+          )}
         </>
       )}
     </Card>

@@ -133,7 +133,10 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
         setGlobalIsPlaying(playing);
         if (playing) {
           applyTimingCompensation();
-          timer().scheduleStartAt(transport.audioAnchor);
+          timer().scheduleStartAt(
+            transport.audioAnchor,
+            transport.audioAnchorPosition
+          );
         }
         else if (state === "stopped") timer().stopTimer();
       });

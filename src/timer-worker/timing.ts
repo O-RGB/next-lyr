@@ -32,6 +32,13 @@ let anchor: Anchor = {
   playing: false,
 };
 
+// A direct seek starts the source at the requested position, then waits for
+// the render/output pipeline to deliver that sample. During that fill there
+// is silence, not audio from before the target, so the presentation cursor
+// must stay on the requested position instead of subtracting latency into the
+// previous beat/line.
+let presentationFloorSeconds: number | null = null;
+
 export let mode: TimingMode = "Tick";
 export let ppq = 480;
 export let latency = 0;
@@ -173,8 +180,16 @@ export function setTimeSignatures(signatures: TimeSignature[]): void {
 
 /* ── Anchor control ───────────────────────────────────────────────────────── */
 
-export function startAnchor(clockTime: number, rate: number): void {
-  anchor = { clockTime, seconds: anchor.seconds, rate, playing: true };
+export function startAnchor(
+  clockTime: number,
+  rate: number,
+  seconds = anchor.seconds,
+  holdPresentation = false
+): void {
+  anchor = { clockTime, seconds, rate, playing: true };
+  if (holdPresentation) {
+    presentationFloorSeconds = Math.max(0, seconds);
+  }
 }
 
 export function stopAnchor(clockTime: number): void {
@@ -186,8 +201,15 @@ export function stopAnchor(clockTime: number): void {
   };
 }
 
-export function seekAnchor(clockTime: number, seconds: number): void {
+export function seekAnchor(
+  clockTime: number,
+  seconds: number,
+  holdPresentation = false
+): void {
   anchor = { clockTime, seconds, rate: anchor.rate, playing: anchor.playing };
+  if (holdPresentation) {
+    presentationFloorSeconds = Math.max(0, seconds);
+  }
 }
 
 /** Re-anchor at the current position, so a rate change applies from here on. */
@@ -202,10 +224,25 @@ export function reanchor(clockTime: number, rate: number): void {
 
 export function resetAnchor(): void {
   anchor = { clockTime: 0, seconds: 0, rate: anchor.rate, playing: false };
+  presentationFloorSeconds = null;
 }
 
 export function isPlaying(): boolean {
   return anchor.playing;
+}
+
+/**
+ * The source is armed at `anchor.clockTime`, but the listener receives its
+ * first sample only after the render/output latency has elapsed.
+ */
+export function isPresentationPlaying(clockTime: number): boolean {
+  return anchor.playing && clockTime >= anchor.clockTime + latency;
+}
+
+/** Time remaining until the first scheduled sample reaches the listener. */
+export function getPresentationDelaySeconds(clockTime: number): number {
+  if (!anchor.playing) return 0;
+  return Math.max(0, anchor.clockTime + latency - clockTime);
 }
 
 export function getRate(): number {
@@ -286,7 +323,15 @@ export function getRawValue(clockTime: number): number {
  * time with the sound rather than ahead of it.
  */
 export function getElapsedSeconds(clockTime: number): number {
-  return Math.max(0, computeSeconds(clockTime) - latency);
+  const presentationSeconds = Math.max(0, computeSeconds(clockTime) - latency);
+  const floor = presentationFloorSeconds;
+  if (floor === null) return presentationSeconds;
+
+  if (presentationSeconds >= floor) {
+    presentationFloorSeconds = null;
+    return presentationSeconds;
+  }
+  return floor;
 }
 
 /** Position in the active mode's unit — ticks or seconds. */

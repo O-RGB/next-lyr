@@ -8,6 +8,7 @@ import {
   parsedDataToLyricsDocument,
 } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
+import { normalizeChordEvents } from "@/lib/karaoke/chords/normalize";
 import {
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
@@ -51,33 +52,34 @@ export const processLyricsForPlayer = (
     const generator = new TimestampLyricSegmentGenerator();
     timestamps = generator.generateSegment(timedWords);
   }
-  const lyrInline: string[] = [];
-  const vocalInline: string[] = [];
-
-  const grouped: Record<number, typeof lyricsData> = {};
-  lyricsData.forEach((data) => {
-    if (!grouped[data.lineIndex]) grouped[data.lineIndex] = [];
-    grouped[data.lineIndex].push(data);
-  });
-
-  Object.keys(grouped).forEach((line) => {
-    const items = grouped[Number(line)];
-    lyrInline[Number(line)] = items.map((i) => i.text).join("");
-    vocalInline[Number(line)] = items
-      .map((i, idx) => {
-        if (!i.vocal) return "";
-
-        const isLastWithVocal = items.slice(idx + 1).every((j) => !j.vocal);
-        return i.vocal + (isLastWithVocal ? "" : "-");
-      })
-      .join("");
+  // Playback timing is defined only by words that already have timestamps.
+  // Newly inserted words are intentionally allowed to remain untimed; they
+  // must not consume characters from the generated cursor and shift every
+  // timed line that follows them.
+  const timedLines = new Map<number, typeof lyricsData>();
+  timedWords.forEach((word) => {
+    const line = timedLines.get(word.lineIndex);
+    if (line) line.push(word);
+    else timedLines.set(word.lineIndex, [word]);
   });
 
   const arrayRange = new ArrayRange<ISentence>();
   let cursorIndex = 0;
 
-  lyrInline
-    .map((line, index) => {
+  [...timedLines.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, items]) => {
+      const line = items.map((item) => item.text).join("");
+      const vocal = items
+        .map((item, index) => {
+          if (!item.vocal) return "";
+
+          const isLastWithVocal = items
+            .slice(index + 1)
+            .every((next) => !next.vocal);
+          return item.vocal + (isLastWithVocal ? "" : "-");
+        })
+        .join("");
       const lineLength = line.length;
       if (lineLength === 0) return undefined;
 
@@ -95,7 +97,7 @@ export const processLyricsForPlayer = (
         start,
         valueName,
         end,
-        vocal: vocalInline[index],
+        vocal,
       };
       arrayRange.push([start, end], value);
       return value;
@@ -139,13 +141,15 @@ export const convertParsedDataForImport = (
 
   const finalWords = lyricsDocumentToWordData(document, songPpq);
 
-  const convertedChords =
+  const convertedChords = normalizeChordEvents(
     data.chords
       ?.map((chord) => ({
         ...chord,
         tick: isMidi ? chord.tick : chord.tick / 1000,
       }))
-      .sort((a, b) => a.tick - b.tick) || [];
+      .sort((a, b) => a.tick - b.tick) || [],
+    isMidi ? (data as IMidiParseResult) : null
+  );
 
   return {
     finalWords: finalWords.flat(),

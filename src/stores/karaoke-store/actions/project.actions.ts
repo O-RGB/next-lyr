@@ -11,6 +11,7 @@ import {
 import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
 import { initHistory } from "../history";
 import { normalizeSoundfontLibrary } from "@/lib/soundfonts";
+import { normalizeChordEvents } from "@/lib/karaoke/chords/normalize";
 
 export const createProjectActions: StateCreator<
   KaraokeState,
@@ -58,6 +59,10 @@ export const createProjectActions: StateCreator<
 
     loadProject: (project: Project) => {
       const { playerState, lyricsData, chordsData, metadata } = project.data;
+      const normalizedChordsData = normalizeChordEvents(
+        chordsData ?? [],
+        playerState.midi
+      );
       const { soundfonts, activeSoundfontId } = normalizeSoundfontLibrary(
         project.data
       );
@@ -102,7 +107,7 @@ export const createProjectActions: StateCreator<
         lyricsData: restoredLyricsData,
         lyricsDocument,
         lyricsXml,
-        chordsData,
+        chordsData: normalizedChordsData,
         metadata,
         projectId: project.id,
         mode: project.mode,
@@ -120,7 +125,7 @@ export const createProjectActions: StateCreator<
             lyricsData: restoredLyricsData,
             lyricsDocument,
             lyricsXml,
-            chordsData,
+            chordsData: normalizedChordsData,
             metadata,
           },
           "เปิดโปรเจกต์"

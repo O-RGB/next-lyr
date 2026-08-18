@@ -5,11 +5,7 @@ import { create } from "zustand";
 
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
-import { midiSynths } from "@/lib/karaoke-engine/midi-synth";
-import {
-  calculatePlaybackSeekTime,
-  calculateSeekTime,
-} from "@/modules/lyrics-editor";
+import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/timer-worker/store";
 
@@ -133,6 +129,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       timingBuffer,
       editingEndLineIndex,
       isPlaying,
+      playFromScrolledPosition,
     } = store;
 
     const isStampingMode = isTimingActive || editingLineIndex !== null;
@@ -178,36 +175,36 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
         return;
       }
 
-      // Space always starts at box 1 of the selected line. Never resume from
-      // the last paused box or from a manually scrolled chord position.
+      // A chord-ruler/notes click is an explicit playback target. Do not let
+      // the lyrics line selection overwrite it when Space starts playback.
+      if (playFromScrolledPosition) {
+        actions.setPlaybackVisualOverride(null);
+        player.play();
+        return;
+      }
+
+      // In lyrics mode Space starts at box 1 of the selected line.
       const firstWord =
         selectedLineIndex === null
           ? undefined
           : lyricsData[selectedLineIndex]?.[0];
       if (firstWord) {
         const targetTime = calculateSeekTime(firstWord, flatLyrics);
-        const seekTime = calculatePlaybackSeekTime(
-          targetTime,
-          store.mode,
-          store.playerState.midi,
-          store.mode === "midi"
-            ? midiSynths.playbackStartLeadSeconds
-            : undefined
-        );
         actions.setPlayFromScrolledPosition(false);
         actions.setIsChordPanelAutoScrolling(true);
-        actions.setCurrentTime(seekTime);
+        actions.setCurrentTime(targetTime);
         actions.setCurrentIndex(firstWord.index);
         actions.setPlaybackIndex(firstWord.index);
         actions.setPlaybackVisualOverride({
           index: firstWord.index,
-          // Keep the visual active boundary at the lyric timestamp even
-          // though the transport starts slightly earlier for the onset.
+          // Keep the selected box stable while the exact target waits for the
+          // engine's future audio boundary.
           until: targetTime,
         });
-        // Start in the same key gesture. Do not await seek before play or a
-        // browser may no longer consider this an activation for AudioContext.
-        const seek = player.seek(seekTime);
+        // Seek to the exact line timestamp. The MIDI transport schedules a
+        // future boundary for its buffer, so no earlier lyric/audio is used as
+        // a synthetic lead-in.
+        const seek = player.seek(targetTime);
         player.play();
         await Promise.resolve(seek);
         return;

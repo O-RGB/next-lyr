@@ -47,6 +47,7 @@
   --lyric-active: #2878e8;
   --lyric-timed: #0a9b78;
   --lyric-pending: #7b8796;
+  --lyric-playing: #f0d14b;
   --chord: #b36b00;
 
   /* shadcn surface tokens → studio palette */
@@ -121,6 +122,7 @@
   --lyric-active: #78aaff;
   --lyric-timed: #4bd3ae;
   --lyric-pending: #8795a8;
+  --lyric-playing: #f6dc67;
   --chord: #f4bd68;
 
   --primary-foreground: #08111e;
@@ -152,6 +154,7 @@
   --color-lyric-active: var(--lyric-active);
   --color-lyric-timed: var(--lyric-timed);
   --color-lyric-pending: var(--lyric-pending);
+  --color-lyric-playing: var(--lyric-playing);
   --color-chord: var(--chord);
 
   --font-sans: var(--font-noto-sans-thai);

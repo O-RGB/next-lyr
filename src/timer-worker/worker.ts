@@ -13,12 +13,14 @@ import {
   getBpm,
   getCountdown,
   getElapsedSeconds,
+  getPresentationDelaySeconds,
   getRawSeconds,
   getRawValue,
   getTotalSeconds,
   getValue,
   isFinished,
   isPlaying,
+  isPresentationPlaying,
   mode,
   msToTick,
   ppq,
@@ -80,6 +82,7 @@ function snapshot(clockTime: number): TimingSnapshot {
     presentationValue: getValue(clockTime),
     elapsedSeconds,
     rawSeconds: getRawSeconds(clockTime),
+    presentationRunning: isPresentationPlaying(clockTime),
     totalSeconds: getTotalSeconds(),
     countdown: getCountdown(clockTime),
     bpm: getBpm(clockTime),
@@ -120,7 +123,15 @@ function startLoop(): void {
 
     post({ type: "tick", mode, ...snapshot(clockTime) } satisfies TickMessage);
     // setTimeout, not setInterval: a slow post must not queue up a backlog.
-    timerId = setTimeout(run, TICK_INTERVAL_MS);
+    const presentationDelayMs = getPresentationDelaySeconds(clockTime) * 1000;
+    // Keep the normal cheap cadence, but wake exactly at the audible boundary
+    // when it falls inside the next interval. That avoids adding another 50ms
+    // of visual delay after a large audio buffer finishes filling.
+    const nextDelayMs =
+      presentationDelayMs > 0
+        ? Math.max(1, Math.min(TICK_INTERVAL_MS, presentationDelayMs))
+        : TICK_INTERVAL_MS;
+    timerId = setTimeout(run, nextDelayMs);
   };
 
   timerId = setTimeout(run, TICK_INTERVAL_MS);
@@ -146,9 +157,9 @@ self.onmessage = (event: MessageEvent<WorkerCommand>): void => {
     case "scheduleStart": {
       // Keep clock extrapolation anchored to now, but do not advance the
       // playback position until the future audio boundary is reached.
-      const { currentClockTime, boundaryClockTime } = message.value;
+      const { currentClockTime, boundaryClockTime, seconds } = message.value;
       markClock(currentClockTime);
-      startAnchor(boundaryClockTime, rate);
+      startAnchor(boundaryClockTime, rate, seconds, true);
       startLoop();
       break;
     }
@@ -176,7 +187,11 @@ self.onmessage = (event: MessageEvent<WorkerCommand>): void => {
           : message.value.seconds;
 
       markClock(clockTime);
-      seekAnchor(clockTime, seconds);
+      seekAnchor(
+        clockTime,
+        seconds,
+        message.value.holdPresentation ?? false
+      );
       post({
         type: "seekResponse",
         mode,

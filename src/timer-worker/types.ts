@@ -50,6 +50,8 @@ export interface StartPayload {
 export interface ScheduleStartPayload {
   currentClockTime: number;
   boundaryClockTime: number;
+  /** Exact source position armed at the boundary. */
+  seconds?: number;
 }
 
 export interface StopPayload {
@@ -66,7 +68,12 @@ export interface SyncPayload {
  * everything else by second; the worker owns the tempo map, so it is the right
  * place to convert between them.
  */
-export type SeekPayload = { clockTime: number; requestId?: number } & (
+export type SeekPayload = {
+  clockTime: number;
+  requestId?: number;
+  /** Hold the audible/presentation cursor at this target while latency fills. */
+  holdPresentation?: boolean;
+} & (
   | { seconds: number; ticks?: never }
   | { ticks: number; seconds?: never }
 );
@@ -143,6 +150,8 @@ export interface TimingSnapshot {
   elapsedSeconds: number;
   /** Position in seconds as the source sees it, without latency compensation. */
   rawSeconds: number;
+  /** True only after the scheduled sample has reached the listener. */
+  presentationRunning: boolean;
   totalSeconds: number;
   countdown: number;
   bpm: number;

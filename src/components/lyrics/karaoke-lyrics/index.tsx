@@ -217,7 +217,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
     const unsubscribe = useTimerStore.subscribe((next, previous) => {
       if (
         next.presentationValue !== previous.presentationValue ||
-        next.isRunning !== previous.isRunning
+        next.presentationRunning !== previous.presentationRunning
       ) {
         markDirty();
       }

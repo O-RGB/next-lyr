@@ -43,6 +43,13 @@ class Transport {
   private timerAnchorCtx = 0;
   private anchorPos = 0;
   private pausedAt = 0;
+  /**
+   * The position requested while the first play operation is still loading.
+   * A canvas/keyboard seek can arrive during SF2/WASM preparation; keeping it
+   * separate from pausedAt prevents the pending play from starting from the
+   * stale position captured before that seek.
+   */
+  private loadingStart: number | null = null;
   private holdingPosition = false;
   private playbackRate = 1;
   private operationGeneration = 0;
@@ -75,6 +82,11 @@ class Transport {
   /** Raw AudioContext boundary shared with the karaoke-web-online timer. */
   get audioAnchor(): number {
     return this.timerAnchorCtx;
+  }
+
+  /** Exact song position armed at {@link audioAnchor}. */
+  get audioAnchorPosition(): number {
+    return this.anchorPos;
   }
 
   get position(): number {
@@ -174,6 +186,14 @@ class Transport {
   async play(from?: number): Promise<void> {
     if (this.state === "loading" || this.state === "playing") return;
 
+    // Capture the selected position before any engine-loading await. A later
+    // UI/store update must not make this Play command fall back to an older
+    // paused position while a large SoundFont is being prepared.
+    const requestedStart = from ?? this.pausedAt;
+    const start = requestedStart >= this.duration ? 0 : requestedStart;
+    this.pausedAt = start;
+    this.loadingStart = start;
+
     const operation = ++this.operationGeneration;
     this.seekController.invalidate();
     this.stopTimer();
@@ -193,17 +213,15 @@ class Transport {
         throw new Error("Audio engine was suspended before playback started");
       }
 
-      const requestedStart = from ?? this.pausedAt;
-      const start = requestedStart >= this.duration ? 0 : requestedStart;
-      this.pausedAt = start;
-      await clipPlayer.prepare(this.clips, start);
+      const preparedStart = this.loadingStart ?? start;
+      await clipPlayer.prepare(this.clips, preparedStart);
       if (operation !== this.operationGeneration) return;
 
       const boundary = await midiSynths.createPlaybackBoundary();
       if (operation !== this.operationGeneration) return;
       await clipPlayer.playAt(
         this.clips,
-        start,
+        preparedStart,
         boundary.audioContextTime
       );
       if (operation !== this.operationGeneration) {
@@ -211,14 +229,15 @@ class Transport {
         return;
       }
 
-      if (!midiSynths.playAt(start, boundary)) {
+      if (!midiSynths.playAt(preparedStart, boundary)) {
         throw new Error("MIDI engine did not schedule any audio events");
       }
-      this.anchorPos = start;
+      this.anchorPos = preparedStart;
       this.anchorCtx = boundary.presentationAudioTime;
       this.timerAnchorCtx = boundary.audioContextTime;
-      this.pausedAt = start;
-      this.nextClickBeat = Math.ceil((start * this.bpm) / 60);
+      this.pausedAt = preparedStart;
+      this.loadingStart = null;
+      this.nextClickBeat = Math.ceil((preparedStart * this.bpm) / 60);
       this.holdingPosition = false;
       this.state = "playing";
       this.startTimer();
@@ -245,6 +264,7 @@ class Transport {
     this.operationGeneration += 1;
     this.seekController.invalidate();
     this.state = "stopped";
+    this.loadingStart = null;
     this.holdingPosition = false;
     this.stopTimer();
     pauseAudioKeepAlive();
@@ -259,6 +279,7 @@ class Transport {
     const clamped = Math.max(0, Math.min(positionSec, this.duration));
     if (this.state !== "playing") {
       this.pausedAt = clamped;
+      if (this.state === "loading") this.loadingStart = clamped;
       return Promise.resolve();
     }
 

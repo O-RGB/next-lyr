@@ -2,18 +2,31 @@
 
 import React, { useCallback, useEffect, useRef } from "react";
 
-import { resizeCanvas, roundedRect, clamp } from "@/lib/canvas/runtime";
+import { resizeCanvas, clamp } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import LineAction from "./line/actions";
+import {
+  drawLyricWordBox,
+  LYRICS_LEFT_GUTTER,
+  LYRICS_RIGHT_GUTTER,
+  LYRICS_ROW_HEIGHT,
+  LYRICS_WORD_GAP,
+  LYRICS_WORD_HEIGHT,
+  measureLyricWords,
+} from "../lyrics-word-renderer";
+import {
+  LYRICS_PREVIEW_SCROLL_REQUEST_EVENT,
+  publishLyricsPreviewViewport,
+} from "../lyrics-preview-sync";
 
 // Keep the editor boxes readable without making each lyric row oversized.
-const ROW_HEIGHT = 70;
-const LEFT_GUTTER = 36;
-const RIGHT_GUTTER = 34;
-const WORD_GAP = 7;
-const WORD_HEIGHT = 40;
+const ROW_HEIGHT = LYRICS_ROW_HEIGHT;
+const LEFT_GUTTER = LYRICS_LEFT_GUTTER;
+const RIGHT_GUTTER = LYRICS_RIGHT_GUTTER;
+const WORD_GAP = LYRICS_WORD_GAP;
+const WORD_HEIGHT = LYRICS_WORD_HEIGHT;
 const WORD_FONT_SIZE = 15;
 const VOCAL_FONT_SIZE = 8;
 const HORIZONTAL_RESET_DURATION_MS = 220;
@@ -123,6 +136,7 @@ const LyricsGrid: React.FC = () => {
     canvas.style.height = `${Math.max(1, scroll.clientHeight)}px`;
     canvas.style.width = `${Math.max(1, scroll.clientWidth)}px`;
     sizeRef.current = resizeCanvas(canvas);
+    publishLyricsPreviewViewport(scroll);
     markDirty();
   }, [markDirty]);
 
@@ -341,6 +355,10 @@ const LyricsGrid: React.FC = () => {
       // is held as the orange target.
       const isPreparationLine =
         isRetimingMode && lineIndex === state.editingLineIndex! - 1;
+      const isBackwardRetiming =
+        isRetimingMode && state.correctionIndex !== null;
+      const canShowPlaybackHighlight =
+        !isRetimingMode || isPreparationLine || isBackwardRetiming;
       const isDisabledLine = isRetimingMode
         ? !isActiveTimingGroupLine &&
           !isPreparationLine &&
@@ -416,7 +434,8 @@ const LyricsGrid: React.FC = () => {
         const boxWidth = wordWidths[wordIndex];
         const boxY = y + (ROW_HEIGHT - WORD_HEIGHT) / 2;
         const boxX = x;
-        const isPlaybackActive = state.playbackIndex === word.index;
+        const isPlaybackActive =
+          canShowPlaybackHighlight && state.playbackIndex === word.index;
         const isPlaybackPending =
           isPlaybackActive &&
           (!state.isPlaying ||
@@ -444,33 +463,14 @@ const LyricsGrid: React.FC = () => {
             bufferEntry !== undefined &&
             word.index < state.currentIndex);
 
-        ctx.fillStyle = isDisabledLine
-          ? colors.disabledBox
-          : isRetimingTarget
-          ? colors.warnSoft
-          : isPlaybackPending
-          ? colors.selected
-          : isPlaybackReady
-          ? colors.playing
-          : colors.box;
-        roundedRect(ctx, boxX, boxY, boxWidth, WORD_HEIGHT, 5);
-        ctx.fill();
-
-        // Draw timing markers before the selection outline. The warn outline
-        // must remain the top layer when it shares the box with the green
-        // marker for the latest stamped word.
-        if (isTimed) {
-          ctx.fillStyle = isDisabledLine
-            ? colors.disabledMuted
-            : colors.timed;
-          ctx.fillRect(boxX, boxY, 3, WORD_HEIGHT);
-        }
-        if (showCorrectionVisual && !isDisabledLine) {
-          ctx.fillStyle = colors.pending;
-          ctx.fillRect(boxX, boxY, 3, WORD_HEIGHT);
-        }
-
-        ctx.strokeStyle = isDisabledLine
+        const markerColor = showCorrectionVisual && !isDisabledLine
+          ? colors.pending
+          : isTimed
+            ? isDisabledLine
+              ? colors.disabledMuted
+              : colors.timed
+            : undefined;
+        const borderColor = isDisabledLine
           ? colors.disabledBoxBorder
           : isRetimingTarget
           ? colors.warn
@@ -481,21 +481,37 @@ const LyricsGrid: React.FC = () => {
           : showCorrectionVisual
           ? colors.pending
           : colors.boxBorder;
-        ctx.lineWidth =
-          isRetimingTarget || isActive || showCorrectionVisual ? 2 : 1;
-        ctx.stroke();
-
-        ctx.save();
-        roundedRect(ctx, boxX, boxY, boxWidth, WORD_HEIGHT, 5);
-        ctx.clip();
-        ctx.fillStyle = isDisabledLine ? colors.disabledText : colors.text;
-        ctx.fillText(word.text, boxX + boxWidth / 2, boxY + WORD_HEIGHT / 2);
-        if (word.vocal) {
-          ctx.font = `500 ${VOCAL_FONT_SIZE}px ${fontFamily}`;
-          ctx.fillStyle = isDisabledLine ? colors.disabledMuted : colors.muted;
-          ctx.fillText(word.vocal, boxX + boxWidth / 2, boxY + WORD_HEIGHT - 6);
-        }
-        ctx.restore();
+        drawLyricWordBox(
+          ctx,
+          word,
+          boxX,
+          boxY,
+          boxWidth,
+          WORD_HEIGHT,
+          {
+            fill: isDisabledLine
+              ? colors.disabledBox
+              : isRetimingTarget
+              ? colors.warnSoft
+              : isPlaybackPending
+              ? colors.selected
+              : isPlaybackReady
+              ? colors.playing
+              : colors.box,
+            border: borderColor,
+            text: isDisabledLine ? colors.disabledText : colors.text,
+            muted: isDisabledLine ? colors.disabledMuted : colors.muted,
+            marker: markerColor,
+          },
+          {
+            fontFamily,
+            fontSize: WORD_FONT_SIZE,
+            vocalFontSize: VOCAL_FONT_SIZE,
+            radius: 5,
+            lineWidth:
+              isRetimingTarget || isActive || showCorrectionVisual ? 2 : 1,
+          }
+        );
 
         if (boxX < startX + availableWidth && boxX + boxWidth > startX) {
           hitBoxesRef.current.push({
@@ -530,6 +546,7 @@ const LyricsGrid: React.FC = () => {
     observer.observe(scroll);
     const handleScroll = () => {
       resetHiddenLineScrolls();
+      publishLyricsPreviewViewport(scroll);
       markDirty();
     };
     scroll.addEventListener("scroll", handleScroll, { passive: true });
@@ -538,6 +555,31 @@ const LyricsGrid: React.FC = () => {
       scroll.removeEventListener("scroll", handleScroll);
     };
   }, [markDirty, resetHiddenLineScrolls, resize]);
+
+  useEffect(() => {
+    const handleScrollRequest = (event: Event) => {
+      const request = (event as CustomEvent<{ start: number }>).detail;
+      const scroll = scrollRef.current;
+      if (!scroll || !request) return;
+
+      const maxScroll = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+      const nextScrollTop = Math.max(0, Math.min(1, request.start)) * maxScroll;
+      if (Math.abs(scroll.scrollTop - nextScrollTop) > 0.5) {
+        scroll.scrollTop = nextScrollTop;
+        publishLyricsPreviewViewport(scroll);
+      }
+    };
+
+    window.addEventListener(
+      LYRICS_PREVIEW_SCROLL_REQUEST_EVENT,
+      handleScrollRequest
+    );
+    return () =>
+      window.removeEventListener(
+        LYRICS_PREVIEW_SCROLL_REQUEST_EVENT,
+        handleScrollRequest
+      );
+  }, []);
 
   useEffect(() => {
     linesRef.current = lyricsData;
@@ -927,6 +969,7 @@ const LyricsGrid: React.FC = () => {
       if (isDoubleActivation) {
         doubleActivationRef.current = null;
         event.preventDefault();
+        actions.setPlayFromScrolledPosition(false);
         actions.selectLine(lineIndex);
         actions.openEditModal();
         return;
@@ -947,9 +990,11 @@ const LyricsGrid: React.FC = () => {
       }
 
       if (x >= rect.width - RIGHT_GUTTER) {
+        actions.setPlayFromScrolledPosition(false);
         actions.selectLine(lineIndex);
         actions.openEditModal();
       } else {
+        actions.setPlayFromScrolledPosition(false);
         actions.selectLine(lineIndex);
       }
     },
@@ -980,6 +1025,7 @@ const LyricsGrid: React.FC = () => {
       );
 
       event.preventDefault();
+      actions.setPlayFromScrolledPosition(false);
       actions.selectLine(lineIndex);
       actions.openEditModal();
     },
@@ -1164,9 +1210,7 @@ function measureWords(
   ctx: CanvasRenderingContext2D,
   line: LyricWordData[],
 ): number[] {
-  return line.map((word) =>
-    Math.max(52, ctx.measureText(word.text).width + 24)
-  );
+  return measureLyricWords(ctx, line);
 }
 
 function getLineScrollLeft(

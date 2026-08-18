@@ -1,1 +1,1 @@
-export { default } from "@/components/panel/chords-block";
+export { default } from "@/components/panel/chords-block/beat-grid";

@@ -66,7 +66,7 @@ interface TimerState extends TimingSnapshot {
   startTimer: () => void;
   /** Start against a future source-clock boundary (sample-accurate audio start). */
   startTimerAt: (clockTime: number) => void;
-  scheduleStartAt: (boundaryClockTime: number) => void;
+  scheduleStartAt: (boundaryClockTime: number, seconds?: number) => void;
   stopTimer: () => void;
   /** Seek by seconds — for `<audio>`, `<video>` and YouTube. */
   seekTimer: (seconds: number) => void;
@@ -107,6 +107,7 @@ const EMPTY_SNAPSHOT: TimingSnapshot = {
   presentationValue: 0,
   elapsedSeconds: 0,
   rawSeconds: 0,
+  presentationRunning: false,
   totalSeconds: 0,
   countdown: 0,
   bpm: 120,
@@ -218,6 +219,11 @@ export const useTimerStore = create<TimerState>((set, get) => {
         const message = event.data;
         switch (message.type) {
           case "tick":
+            // A worker tick may already be in the postMessage queue when the
+            // transport is paused. Do not let that stale frame turn
+            // presentationRunning back on after stopTimer() has synchronously
+            // frozen the UI.
+            if (!get().isRunning) break;
             applySnapshot(message);
             break;
           case "seekResponse": {
@@ -231,6 +237,9 @@ export const useTimerStore = create<TimerState>((set, get) => {
             break;
           }
           case "finished": {
+            // The same queue race applies to the terminal message: an old
+            // playback must not move a newly paused UI to the song's end.
+            if (!get().isRunning) break;
             set({ isRunning: false });
             applySnapshot(message, true);
             useKaraokeStore.getState().actions.setIsPlaying(false);
@@ -253,18 +262,18 @@ export const useTimerStore = create<TimerState>((set, get) => {
       if (!worker) return;
       worker.onmessage = null;
       worker.terminate();
-      set({ worker: null, isRunning: false });
+      set({ worker: null, isRunning: false, presentationRunning: false });
     },
 
     startTimer: () => {
-      set({ isRunning: true });
+      set({ isRunning: true, presentationRunning: false });
       send({ command: "start", value: { clockTime: clock() } });
       startSyncLoop();
     },
 
     startTimerAt: (clockTime) => {
       const currentClockTime = clock();
-      set({ isRunning: true });
+      set({ isRunning: true, presentationRunning: false });
       send({
         command: "scheduleStart",
         value: { currentClockTime, boundaryClockTime: clockTime },
@@ -272,29 +281,35 @@ export const useTimerStore = create<TimerState>((set, get) => {
       startSyncLoop();
     },
 
-    scheduleStartAt: (boundaryClockTime) => {
+    scheduleStartAt: (boundaryClockTime, seconds) => {
       const currentClockTime = clock();
-      set({ isRunning: true });
+      set({ isRunning: true, presentationRunning: false });
       send({
         command: "scheduleStart",
-        value: { currentClockTime, boundaryClockTime },
+        value: { currentClockTime, boundaryClockTime, seconds },
       });
       startSyncLoop();
     },
 
     stopTimer: () => {
-      set({ isRunning: false });
+      set({ isRunning: false, presentationRunning: false });
       mirrorSnapshotToEditor(get(), true);
       stopSyncLoop();
       send({ command: "stop", value: { clockTime: clock() } });
     },
 
     seekTimer: (seconds) => {
-      send({ command: "seek", value: { clockTime: clock(), seconds } });
+      send({
+        command: "seek",
+        value: { clockTime: clock(), seconds, holdPresentation: true },
+      });
     },
 
     seekTicks: (ticks) => {
-      send({ command: "seek", value: { clockTime: clock(), ticks } });
+      send({
+        command: "seek",
+        value: { clockTime: clock(), ticks, holdPresentation: true },
+      });
     },
 
     seekTimerAt: (seconds, clockTime) => {
@@ -304,7 +319,11 @@ export const useTimerStore = create<TimerState>((set, get) => {
       // makes it extrapolate immediately and recreates the early-start bug.
       send({
         command: "seek",
-        value: { clockTime: currentClockTime, seconds },
+        value: {
+          clockTime: currentClockTime,
+          seconds,
+          holdPresentation: true,
+        },
       });
       send({
         command: "scheduleStart",
@@ -316,7 +335,11 @@ export const useTimerStore = create<TimerState>((set, get) => {
       const currentClockTime = clock();
       send({
         command: "seek",
-        value: { clockTime: currentClockTime, ticks },
+        value: {
+          clockTime: currentClockTime,
+          ticks,
+          holdPresentation: true,
+        },
       });
       send({
         command: "scheduleStart",
