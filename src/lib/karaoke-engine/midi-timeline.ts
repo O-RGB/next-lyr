@@ -42,6 +42,8 @@ export interface MidiTimeline {
   events: MidiTimelineEvent[];
   durationMs: number;
   activeChannels: Set<number>;
+  /** The same tempo conversion used to schedule the production MIDI events. */
+  tickToMs: (tick: number) => number;
 }
 
 type WithTick<T> = T extends MidiTimelineEvent
@@ -382,6 +384,5 @@ export function parseMidiTimeline(buffer: ArrayBuffer): MidiTimeline {
   const activeChannels = new Set<number>();
   for (const event of events) activeChannels.add(event.channel);
 
-  return { events, durationMs, activeChannels };
+  return { events, durationMs, activeChannels, tickToMs: toMs };
 }
-

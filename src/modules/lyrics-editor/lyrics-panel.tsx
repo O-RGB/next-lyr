@@ -49,7 +49,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   };
 
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-2 border-0 bg-panel pt-2 lg:pt-4 pr-2 lg:pr-4 pb-2 lg:pb-4 pl-2 lg:pl-4">
+    <Card className="relative flex h-full min-h-0 flex-col gap-2 border-0 bg-panel pt-2 lg:pt-4 pr-2 lg:pr-4 pb-2 lg:pb-4 pl-2 lg:pl-4">
       <header className="flex shrink-0 items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">
           {chordPreview
@@ -118,6 +118,13 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
               </div>
             )}
           </div>
+          <div className="flex shrink-0 justify-end gap-1.5">
+            <MobileActionButton
+              preview={preview}
+              setPreview={setPreviewVisible}
+              showLineSelection={false}
+            />
+          </div>
           {!chordPreview && (
             <div className="hidden shrink-0 justify-start lg:flex">
               <LineSelectionToolbar />
@@ -125,6 +132,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
           )}
         </>
       )}
+
     </Card>
   );
 }

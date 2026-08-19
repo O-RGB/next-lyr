@@ -13,12 +13,14 @@ export function ProjectWorkspace() {
     <AllowSound>
       <div className="flex h-full min-h-0 w-full flex-col overflow-hidden lg:flex-row">
         <section className="order-2 min-h-0 flex-1 overflow-hidden lg:order-1">
-          <div className="h-full lg:h-[70%]">
+          <div className={preview ? "h-full lg:h-[70%]" : "h-full"}>
             <LyricsEditorPanel onPreviewChange={setPreview} />
           </div>
-          <div className="hidden h-[30%] items-center justify-center overflow-auto bg-lane ring-1 ring-line-soft lg:flex">
-            <LyricsPreview />
-          </div>
+          {preview ? (
+            <div className="hidden h-[30%] items-center justify-center overflow-auto bg-lane ring-1 ring-line-soft lg:flex">
+              <LyricsPreview />
+            </div>
+          ) : null}
         </section>
         <ProjectSidebar preview={preview} />
       </div>

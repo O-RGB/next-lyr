@@ -211,12 +211,42 @@ export const createContentActions: StateCreator<
         commit("แก้คำ");
       },
       addChord: async (chord: ChordEvent) => {
-        set((state) => ({
-          chordsData: [...state.chordsData, chord].sort(
+        const current = get().chordsData;
+        const next = [
+          ...current.filter((item) => item.tick !== chord.tick),
+          chord,
+        ].sort((a, b) => a.tick - b.tick);
+        if (
+          next.length === current.length &&
+          next.every(
+            (item, index) =>
+              item.tick === current[index]?.tick &&
+              item.chord === current[index]?.chord
+          )
+        ) {
+          return;
+        }
+        set({ chordsData: next });
+        commit("เพิ่มคอร์ด");
+      },
+      addChords: async (chords: ChordEvent[]) => {
+        if (chords.length === 0) return;
+
+        const current = get().chordsData;
+        const ticks = new Set(current.map((item) => item.tick));
+        const additions = chords.filter((chord) => {
+          if (ticks.has(chord.tick)) return false;
+          ticks.add(chord.tick);
+          return true;
+        });
+        if (additions.length === 0) return;
+
+        set({
+          chordsData: [...current, ...additions].sort(
             (a, b) => a.tick - b.tick
           ),
-        }));
-        commit("เพิ่มคอร์ด");
+        });
+        commit("รับคอร์ดแนะนำทั้งหมด");
       },
       updateChord: async (oldTick: number, newChord: ChordEvent) => {
         set((state) => ({

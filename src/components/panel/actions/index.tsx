@@ -8,19 +8,23 @@ import React, { useEffect, useState } from "react";
 interface MobileActionButtonProps {
   preview?: boolean;
   setPreview?: (bool: boolean) => void;
+  showLineSelection?: boolean;
 }
 
 const MobileActionButton: React.FC<MobileActionButtonProps> = ({
   preview,
   setPreview,
+  showLineSelection = true,
 }) => {
   const [metadata, setMetadata] = useState<boolean>(false);
   useEffect(() => {}, []);
   return (
     <>
-      <div className="mr-auto">
-        <LineSelectionToolbar compact />
-      </div>
+      {showLineSelection ? (
+        <div className="mr-auto">
+          <LineSelectionToolbar compact />
+        </div>
+      ) : null}
       <ButtonCommon
         onClick={() => {
           setPreview?.(!preview);

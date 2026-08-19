@@ -1,5 +1,6 @@
 import type {
   ISequencer,
+  SequencerClientCallback,
   Synthesizer as FluidSynthesizer,
 } from "js-synthesizer";
 
@@ -9,6 +10,7 @@ import type { Track } from "./types";
 import { audioEngine } from "./engine";
 import { LegacyMidiRenderClock } from "./legacy-midi-render-clock";
 import { MidiSequencerScheduler } from "./midi-sequencer-scheduler";
+import { chordToMidiNotes } from "@/lib/karaoke/chords/parse";
 import {
   parseMidiTimeline,
   type MidiTimeline,
@@ -33,6 +35,12 @@ const START_LEAD_MIN_SECONDS = 0.3;
 // this voice limit, while runaway sustain can no longer consume 256 voices.
 const LOW_POWER_POLYPHONY = 64;
 const NO_INTERPOLATION = 0;
+const AUDITION_CHANNELS = [14, 15] as const;
+// GM is zero-based in js-synthesizer: 80 = Lead 1 (square). It is bright and
+// easy to hear over a dense MIDI arrangement without raising the whole mix.
+export const DEFAULT_PREVIEW_PROGRAM = 80;
+export const DEFAULT_PREVIEW_VOLUME = 127;
+const PREVIEW_EXPRESSION = 127;
 
 /** ScriptProcessor frame sizes accepted by the browser audio graph. */
 export const MIDI_BUFFER_SIZE_OPTIONS = [
@@ -60,6 +68,17 @@ export interface MidiPlaybackBoundary {
   presentationAudioTime: number;
   performanceTime: number;
   tickSnapshot: number;
+}
+
+export interface MidiPreviewChord {
+  tick: number;
+  chord: string;
+}
+
+export interface MidiPreviewProgram {
+  bank: number;
+  program: number;
+  name: string;
 }
 
 declare global {
@@ -133,6 +152,8 @@ async function loadFluidSynth(
 export class MidiSynthPool {
   private synth: FluidSynthesizer | null = null;
   private sequencer: ISequencer | null = null;
+  /** Preview events live in the production sequencer, on a removable client. */
+  private auditionClientId: number | null = null;
   private scheduler: MidiSequencerScheduler | null = null;
   private renderClock: LegacyMidiRenderClock | null = null;
   private audioNode: AudioNode | null = null;
@@ -152,6 +173,20 @@ export class MidiSynthPool {
   private playbackRate = 1;
   private playbackGeneration = 0;
   private userLatencyOffsetSeconds = 0;
+  private previewChords: MidiPreviewChord[] = [];
+  private previewRouting: "stereo" | "split" = "stereo";
+  private previewProgram = {
+    bank: 0,
+    program: DEFAULT_PREVIEW_PROGRAM,
+  };
+  private previewVolume = DEFAULT_PREVIEW_VOLUME;
+  private previewPrograms: MidiPreviewProgram[] = [];
+  private previewGeneration = 0;
+  private scheduleAnchorTick: number | null = null;
+  private scheduleTargetMs = 0;
+  private schedulePlaybackRate = 1;
+  private auditionNotes = new Map<number, number[]>();
+  private auditionTimer: ReturnType<typeof setTimeout> | null = null;
 
   get loaded(): boolean {
     return (
@@ -246,8 +281,11 @@ export class MidiSynthPool {
         this.midiTimeline = midiBuffer ? parseMidiTimeline(midiBuffer) : null;
         this.soundfontBlob = soundfont ?? null;
         this.loadedGeneration = -1;
+        this.previewPrograms = [];
+        this.scheduleAnchorTick = null;
         this.scheduler?.load(this.midiTimeline);
         this.scheduler?.clear();
+        this.clearAuditionQueue();
         this.synth?.midiAllSoundsOff();
         this.applySynchronizationDelay();
       }
@@ -330,8 +368,32 @@ export class MidiSynthPool {
       const synthClientId = await sequencer.registerSynthesizer(synth);
       renderClock.attachSequencer(sequencer);
 
+      // Preview events use the exact same sequencer clock and render block as
+      // the song. A user client forwards its events to FluidSynth at the
+      // scheduled sequencer time, while keeping the preview queue removable
+      // without touching the production MIDI client.
+      const auditionClientId = jsSynthesizer.Synthesizer.registerSequencerClient(
+        sequencer,
+        "next-lyr-preview",
+        ((_time, _eventType, event, eventSequencer, param) => {
+          jsSynthesizer.Synthesizer.sendEventNow(
+            eventSequencer,
+            param,
+            event
+          );
+        }) satisfies SequencerClientCallback,
+        synthClientId
+      );
+      if (auditionClientId < 0) {
+        sequencer.close();
+        renderClock.dispose();
+        synth.close();
+        throw new Error("Could not register the MIDI preview client");
+      }
+
       this.synth = synth;
       this.sequencer = sequencer;
+      this.auditionClientId = auditionClientId;
       this.scheduler = new MidiSequencerScheduler(
         sequencer,
         synthClientId,
@@ -417,23 +479,421 @@ export class MidiSynthPool {
     if (!this.midiTimeline) return true;
     if (!this.synth || !this.scheduler) return false;
 
+    this.stopAudition();
     this.scheduler.clear();
     this.synth.midiAllSoundsOff();
     this.synth.midiAllNotesOff();
     this.resetSynthState();
+    this.scheduleAnchorTick = boundary.tickSnapshot;
+    this.scheduleTargetMs = Math.max(0, fromSeconds) * 1000;
+    this.schedulePlaybackRate = this.playbackRate;
     const scheduled = this.scheduler.scheduleFrom(
-      Math.max(0, fromSeconds) * 1000,
+      this.scheduleTargetMs,
       boundary.tickSnapshot,
       this.playbackRate
     );
+    if (scheduled) {
+      this.schedulePreviewEvents(boundary.tickSnapshot);
+    }
     this.applyMasterVolume();
     this.applyTrackMix(this.tracks);
     return scheduled;
   }
 
+  /**
+   * Replace the runtime-only MIDI overlay used by the Chord/Detect listen
+   * buttons. The complete preview list is scheduled from MIDI ticks, not from
+   * a React/timer callback, so the preview follows the song's sequencer clock
+   * even when the ScriptProcessor buffer is large.
+   */
+  setPreviewChords(
+    chords: MidiPreviewChord[],
+    routing: "stereo" | "split" = "stereo"
+  ): void {
+    this.previewChords = chords
+      .filter(
+        (event) => Number.isFinite(event.tick) && typeof event.chord === "string"
+      )
+      .sort((left, right) => left.tick - right.tick);
+    this.previewRouting = routing;
+    this.stopAudition();
+    this.queuePreviewFromCurrent();
+  }
+
+  setPreviewProgram(bank: number, program: number): void {
+    this.previewProgram = {
+      bank: Math.max(0, Math.min(16383, Math.round(bank))),
+      program: Math.max(0, Math.min(127, Math.round(program))),
+    };
+    this.stopAudition();
+    this.queuePreviewFromCurrent();
+  }
+
+  setPreviewVolume(value: number): void {
+    this.previewVolume = Math.max(0, Math.min(127, Math.round(value)));
+    this.stopAudition();
+    this.queuePreviewFromCurrent();
+  }
+
+  async getPreviewPrograms(): Promise<MidiPreviewProgram[]> {
+    await this.ensureLoaded();
+    if (this.previewPrograms.length > 0) return this.previewPrograms;
+    if (!this.synth || this.soundfontId === null) return [];
+
+    const soundfont = this.synth.getSFontObject(this.soundfontId);
+    if (!soundfont) return [];
+
+    this.previewPrograms = [...soundfont.getPresetIterable()]
+      .filter(
+        (preset) =>
+          preset.bankNum !== 128 &&
+          !/(drum|drums|percussion|kit)/i.test(preset.name)
+      )
+      .map((preset) => ({
+        bank: preset.bankNum,
+        program: preset.num,
+        name: preset.name,
+      }))
+      .sort(
+        (left, right) =>
+          left.bank - right.bank ||
+          left.program - right.program ||
+          left.name.localeCompare(right.name)
+      );
+    return this.previewPrograms;
+  }
+
+  private queuePreviewFromCurrent(): void {
+    const generation = this.previewGeneration;
+    if (
+      this.previewChords.length === 0 ||
+      this.scheduleAnchorTick === null ||
+      !this.sequencer
+    ) {
+      return;
+    }
+
+    void this.sequencer.getTick().then((currentTick) => {
+      if (generation !== this.previewGeneration) return;
+      this.schedulePreviewEvents(currentTick);
+    });
+  }
+
+  private schedulePreviewEvents(minTick: number): void {
+    const timeline = this.midiTimeline;
+    const sequencer = this.sequencer;
+    const clientId = this.auditionClientId;
+    const anchorTick = this.scheduleAnchorTick;
+    if (
+      !timeline ||
+      !sequencer ||
+      clientId === null ||
+      anchorTick === null
+    ) {
+      return;
+    }
+
+    const channels =
+      this.previewRouting === "split" ? AUDITION_CHANNELS : [AUDITION_CHANNELS[0]];
+    const playbackRate = Math.max(0.01, this.schedulePlaybackRate);
+    const previewEvents = this.previewChords;
+
+    for (let index = 0; index < previewEvents.length; index += 1) {
+      const event = previewEvents[index];
+      const eventMs = timeline.tickToMs(event.tick);
+      const targetTick =
+        anchorTick + (eventMs - this.scheduleTargetMs) / playbackRate;
+      if (!Number.isFinite(targetTick) || targetTick < minTick) continue;
+
+      const nextEvent = previewEvents[index + 1];
+      const nextMs = nextEvent
+        ? timeline.tickToMs(nextEvent.tick)
+        : eventMs + 2400;
+      const durationMs = Math.max(
+        120,
+        Math.min(10000, (nextMs - eventMs) / playbackRate)
+      );
+      const endTick = targetTick + durationMs;
+
+      channels.forEach((channel, channelIndex) => {
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "control-change",
+            channel,
+            control: 0,
+            value: (this.previewProgram.bank >> 7) & 0x7f,
+          },
+          targetTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "control-change",
+            channel,
+            control: 32,
+            value: this.previewProgram.bank & 0x7f,
+          },
+          targetTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "program-change",
+            channel,
+            preset: this.previewProgram.program,
+          },
+          targetTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "control-change",
+            channel,
+            control: 7,
+            value: this.previewVolume,
+          },
+          targetTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "control-change",
+            channel,
+            control: 11,
+            value: PREVIEW_EXPRESSION,
+          },
+          targetTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          {
+            type: "control-change",
+            channel,
+            control: 10,
+            value:
+              this.previewRouting === "split"
+                ? channelIndex === 0
+                  ? 20
+                  : 108
+                : 64,
+          },
+          targetTick,
+          true
+        );
+
+        const channelNotes =
+          this.previewRouting === "split"
+            ? chordToMidiNotes(event.chord)?.filter(
+                (_, noteIndex) => noteIndex % channels.length === channelIndex
+              ) ?? []
+            : chordToMidiNotes(event.chord) ?? [];
+        for (const note of channelNotes) {
+          sequencer.sendEventToClientAt(
+            clientId,
+            { type: "note-on", channel, key: note, vel: 92 },
+            targetTick,
+            true
+          );
+          sequencer.sendEventToClientAt(
+            clientId,
+            { type: "note-off", channel, key: note },
+            endTick,
+            true
+          );
+          const previousNotes = this.auditionNotes.get(channel) ?? [];
+          if (!previousNotes.includes(note)) {
+            this.auditionNotes.set(channel, [...previousNotes, note]);
+          }
+        }
+      });
+    }
+  }
+
   setMidiVolume(value: number): void {
     this.masterVolume = value;
     this.applyMasterVolume();
+  }
+
+  /**
+   * Schedule an editor chord on the preview client of the main sequencer. `delayMs` is measured
+   * from the current presentation position (the position the listener hears),
+   * not from the UI callback. The caller can therefore look ahead by the
+   * render buffer and still land on the exact chord boundary.
+   */
+  async auditionChordAtPresentationDelay(
+    chordName: string,
+    delayMs: number,
+    routing: "stereo" | "split" = "stereo",
+    durationMs = 1200,
+    replace = true
+  ): Promise<boolean> {
+    const notes = chordToMidiNotes(chordName);
+    if (!notes) return false;
+
+    await this.ensureLoaded();
+    const sequencer = this.sequencer;
+    const clientId = this.auditionClientId;
+    if (!sequencer || clientId === null) {
+      // Do not fall back to a realtime noteOn here. That would reintroduce
+      // the buffer-size-dependent phase error this queue is meant to remove.
+      return false;
+    }
+
+    if (replace) this.stopAudition();
+    const channels =
+      routing === "split" ? AUDITION_CHANNELS : [AUDITION_CHANNELS[0]];
+    const startTick =
+      (await sequencer.getTick()) + Math.max(0, Number.isFinite(delayMs) ? delayMs : 0);
+    const endTick = startTick + Math.max(120, durationMs);
+
+    channels.forEach((channel, channelIndex) => {
+      sequencer.sendEventToClientAt(
+        clientId,
+        {
+          type: "control-change",
+          channel,
+          control: 0,
+          value: (this.previewProgram.bank >> 7) & 0x7f,
+        },
+        startTick,
+        true
+      );
+      sequencer.sendEventToClientAt(
+        clientId,
+        {
+          type: "control-change",
+          channel,
+          control: 32,
+          value: this.previewProgram.bank & 0x7f,
+        },
+        startTick,
+        true
+      );
+      sequencer.sendEventToClientAt(
+        clientId,
+        { type: "program-change", channel, preset: this.previewProgram.program },
+        startTick,
+        true
+      );
+      sequencer.sendEventToClientAt(
+        clientId,
+        { type: "control-change", channel, control: 7, value: this.previewVolume },
+        startTick,
+        true
+      );
+      sequencer.sendEventToClientAt(
+        clientId,
+        {
+          type: "control-change",
+          channel,
+          control: 11,
+          value: PREVIEW_EXPRESSION,
+        },
+        startTick,
+        true
+      );
+      sequencer.sendEventToClientAt(
+        clientId,
+        {
+          type: "control-change",
+          channel,
+          control: 10,
+          value:
+            routing === "split"
+              ? channelIndex === 0
+                ? 20
+                : 108
+              : 64,
+        },
+        startTick,
+        true
+      );
+
+      const channelNotes =
+        routing === "split"
+          ? notes.filter((_, index) => index % channels.length === channelIndex)
+          : notes;
+      for (const note of channelNotes) {
+        sequencer.sendEventToClientAt(
+          clientId,
+          { type: "note-on", channel, key: note, vel: 92 },
+          startTick,
+          true
+        );
+        sequencer.sendEventToClientAt(
+          clientId,
+          { type: "note-off", channel, key: note },
+          endTick,
+          true
+        );
+      }
+      const previousNotes = this.auditionNotes.get(channel) ?? [];
+      this.auditionNotes.set(
+        channel,
+        [...new Set([...previousNotes, ...channelNotes])]
+      );
+    });
+
+    if (this.auditionTimer) clearTimeout(this.auditionTimer);
+    this.auditionTimer = setTimeout(() => {
+      this.auditionTimer = null;
+      this.auditionNotes.clear();
+      this.restoreAuditionMix();
+    }, Math.max(120, delayMs) + Math.max(120, durationMs) + 80);
+
+    return true;
+  }
+
+  stopAudition(): void {
+    this.previewGeneration += 1;
+    this.clearAuditionQueue();
+    if (this.auditionTimer) {
+      clearTimeout(this.auditionTimer);
+      this.auditionTimer = null;
+    }
+    if (!this.synth && this.auditionNotes.size === 0) {
+      this.auditionNotes.clear();
+      return;
+    }
+    for (const [channel, notes] of this.auditionNotes) {
+      notes.forEach((note) => this.synth?.midiNoteOff(channel, note));
+    }
+    this.auditionNotes.clear();
+
+    this.restoreAuditionMix();
+  }
+
+  private clearAuditionQueue(): void {
+    if (this.sequencer && this.auditionClientId !== null) {
+      this.sequencer.removeAllEventsFromClient(this.auditionClientId);
+    }
+  }
+
+  /** Return the temporary audition channel routing to the project's mixer. */
+  private restoreAuditionMix(): void {
+    if (!this.synth) return;
+
+    // Without this a split L/R preview would leave a real song channel panned
+    // after the preview ended.
+    const usedChannels = new Set(
+      this.tracks
+        .filter((track) => track.kind === "midi")
+        .map((track) => track.midiChannel ?? 0)
+    );
+    for (const channel of AUDITION_CHANNELS) {
+      if (!usedChannels.has(channel)) {
+        this.synth.midiControl(channel, 7, 0);
+        this.synth.midiControl(channel, 11, PREVIEW_EXPRESSION);
+        this.synth.midiControl(channel, 10, 64);
+      }
+    }
+    this.applyTrackMix(this.tracks);
   }
 
   setPlaybackRate(value: number): void {
@@ -516,6 +976,8 @@ export class MidiSynthPool {
 
   panic(): void {
     this.playbackGeneration += 1;
+    this.stopAudition();
+    this.scheduleAnchorTick = null;
     this.scheduler?.clear();
     this.synth?.midiAllSoundsOff();
     this.synth?.midiAllNotesOff();
@@ -523,6 +985,7 @@ export class MidiSynthPool {
 
   dispose(): void {
     this.playbackGeneration += 1;
+    this.stopAudition();
     this.panic();
     this.disposeRenderer();
     this.midiTimeline = null;
@@ -554,11 +1017,28 @@ export class MidiSynthPool {
         0
       );
     }
+    for (const channel of AUDITION_CHANNELS) {
+      synth.midiProgramSelect(
+        channel,
+        soundfontId,
+        this.previewProgram.bank,
+        this.previewProgram.program
+      );
+      synth.midiControl(channel, 7, this.previewVolume);
+      synth.midiControl(channel, 11, PREVIEW_EXPRESSION);
+      synth.midiControl(channel, 10, 64);
+    }
   }
 
   private disposeRenderer(): void {
+    this.stopAudition();
+    this.scheduleAnchorTick = null;
     this.scheduler?.clear();
     this.scheduler = null;
+    if (this.sequencer && this.auditionClientId !== null) {
+      this.sequencer.unregisterClient(this.auditionClientId);
+    }
+    this.auditionClientId = null;
     this.renderClock?.dispose();
     this.renderClock = null;
     this.sequencer?.close();

@@ -20,7 +20,7 @@ export default function ChordEditModal({}: Props) {
   const [tickValue, setTickValue] = useState("0");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isEditing = selectedChord !== undefined;
+  const isEditing = selectedChord !== null;
 
   const onSave = (chord: ChordEvent) => {
     if (selectedChord) {
@@ -43,7 +43,7 @@ export default function ChordEditModal({}: Props) {
       if (selectedChord) {
         setChordText(selectedChord.chord);
         setTickValue(selectedChord.tick.toString());
-      } else if (suggestedTick !== undefined) {
+      } else if (suggestedTick !== null) {
         setChordText("");
         setTickValue(suggestedTick.toString());
       } else {
@@ -52,7 +52,7 @@ export default function ChordEditModal({}: Props) {
       }
       inputRef.current?.focus();
     }
-  }, [open, selectedChord, suggestedTick]);
+  }, [isChordModalOpen, selectedChord, suggestedTick]);
 
   const handleSave = () => {
     const tick = parseFloat(tickValue);
