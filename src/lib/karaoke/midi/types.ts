@@ -255,6 +255,7 @@ export interface BuildOptions {
   newLyricsData: LyricEvent[][];
   newChordsData: ChordEvent[];
   headerToUse: string;
+  textEncoding?: "tis-620" | "utf-8";
 }
 
 interface BaseMidiEvent {

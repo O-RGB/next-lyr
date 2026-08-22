@@ -2,6 +2,16 @@ import { LyricEvent, SongInfo } from "../midi/types";
 import { buildKlyrXml } from "../lyrics-core/xml";
 import type { LyricsDocument } from "../lyrics-core/types";
 
+export type KlyrTextEncoding = "tis-620" | "utf-8";
+
+export function isTIS620Compatible(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value.charCodeAt(i);
+    if (char > 127 && (char < 0x0e01 || char > 0x0e5b)) return false;
+  }
+  return true;
+}
+
 export function stringToTIS620(str: string): Uint8Array {
   const bytes = [];
   for (let i = 0; i < str.length; i++) {
@@ -15,6 +25,47 @@ export function stringToTIS620(str: string): Uint8Array {
     }
   }
   return new Uint8Array(bytes);
+}
+
+export function encodeKlyrXml(
+  xml: string,
+  encoding: KlyrTextEncoding
+): Uint8Array {
+  return encoding === "utf-8"
+    ? new TextEncoder().encode(xml)
+    : stringToTIS620(xml);
+}
+
+export function decodeKlyrXmlBytes(bytes: Uint8Array): {
+  xml: string;
+  encoding: KlyrTextEncoding;
+} {
+  // CHARSET is written with ASCII characters, so it can be inspected from
+  // either legacy TIS-620 bytes or UTF-8 bytes before decoding the lyrics.
+  const utf8Probe = new TextDecoder().decode(bytes);
+  const charset = utf8Probe.match(
+    /<CHARSET>\s*(UTF-8|TIS-620)\s*<\/CHARSET>/i
+  )?.[1]?.toUpperCase();
+  let isValidUtf8 = true;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    isValidUtf8 = false;
+  }
+
+  const encoding: KlyrTextEncoding =
+    charset === "UTF-8" ||
+    (charset === undefined && isValidUtf8 && !isTIS620Compatible(utf8Probe))
+      ? "utf-8"
+      : "tis-620";
+
+  return {
+    encoding,
+    xml:
+      encoding === "utf-8"
+        ? utf8Probe
+        : TIS620ToString(bytes),
+  };
 }
 
 export function TIS620ToString(bytes: Uint8Array): string {

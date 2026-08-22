@@ -2,7 +2,9 @@ import pako from "pako";
 import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
-  stringToTIS620,
+  decodeKlyrXmlBytes,
+  encodeKlyrXml,
+  isTIS620Compatible,
   TIS620ToString,
 } from "../shared/lib";
 import { LyricEvent, SongInfo } from "../midi/types";
@@ -12,20 +14,16 @@ export function encodeLyricsBase64(
   xmlText: string,
   header = "LyrHdr1"
 ): string {
-  let xmlBytes: Uint8Array;
-  let useTIS = true;
-  for (let i = 0; i < xmlText.length; i++) {
-    const char = xmlText.charCodeAt(i);
-    if (char > 127 && (char < 0x0e01 || char > 0x0e5b)) {
-      useTIS = false;
-      break;
-    }
-  }
-  if (useTIS) {
-    xmlBytes = stringToTIS620(xmlText);
-  } else {
-    xmlBytes = new TextEncoder().encode(xmlText); // UTF-8 fallback
-  }
+  const declaredCharset = xmlText
+    .match(/<CHARSET>\s*(UTF-8|TIS-620)\s*<\/CHARSET>/i)?.[1]
+    ?.toUpperCase();
+  const textEncoding =
+    declaredCharset === "UTF-8"
+      ? "utf-8"
+      : declaredCharset === "TIS-620" || isTIS620Compatible(xmlText)
+        ? "tis-620"
+        : "utf-8";
+  const xmlBytes = encodeKlyrXml(xmlText, textEncoding);
   const compressed = pako.deflate(xmlBytes, { level: 6 });
   return header + arrayBufferToBase64(compressed);
 }
@@ -56,7 +54,7 @@ export function decodeLyricsBase64(encoded: string): string {
     const clean = encoded.replace(/^LyrHdr\d*/, "");
     const compressed = base64ToArrayBuffer(clean);
     const decompressed = pako.inflate(compressed);
-    return TIS620ToString(decompressed);
+    return decodeKlyrXmlBytes(decompressed).xml;
   } catch (e) {
     console.error("Failed to decompress lyrics data:", e);
     return "";

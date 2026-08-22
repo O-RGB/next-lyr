@@ -26,18 +26,36 @@ function stripID3v2(audio: ArrayBuffer): Uint8Array {
 function createTextFrame(
   frameID: string,
   text: string,
-  useTIS620: boolean = false
+  encoding: "legacy" | "utf16" | "utf8" = "utf8"
 ): Uint8Array {
   const encoder = new TextEncoder();
+  let textBytes: Uint8Array;
+  let encodingByte = 0x03;
 
-  const textBytes = useTIS620 ? stringToTIS620(text) : encoder.encode(text);
+  if (encoding === "legacy") {
+    textBytes = stringToTIS620(text);
+    encodingByte = 0x00;
+  } else if (encoding === "utf16") {
+    textBytes = new Uint8Array(2 + text.length * 2);
+    textBytes[0] = 0xff;
+    textBytes[1] = 0xfe;
+    for (let i = 0; i < text.length; i += 1) {
+      const code = text.charCodeAt(i);
+      textBytes[2 + i * 2] = code & 0xff;
+      textBytes[3 + i * 2] = code >> 8;
+    }
+    encodingByte = 0x01;
+  } else {
+    textBytes = encoder.encode(text);
+  }
+
   const frameData = new Uint8Array(1 + textBytes.length);
-  frameData[0] = 0x00;
+  frameData[0] = encodingByte;
   frameData.set(textBytes, 1);
 
   const header = new Uint8Array(10);
   header.set(encoder.encode(frameID), 0);
-  header.set(toSynchsafe(frameData.length), 4);
+  header.set(toUint32(frameData.length), 4);
 
   return concat([header, frameData]);
 }
@@ -48,6 +66,15 @@ function toSynchsafe(size: number): [number, number, number, number] {
     (size >> 14) & 0x7f,
     (size >> 7) & 0x7f,
     size & 0x7f,
+  ];
+}
+
+function toUint32(size: number): [number, number, number, number] {
+  return [
+    (size >> 24) & 0xff,
+    (size >> 16) & 0xff,
+    (size >> 8) & 0xff,
+    size & 0xff,
   ];
 }
 
@@ -62,6 +89,7 @@ function buildID3v2(tags: {
   LyricsTagKey?: string;
   LyricsBase64?: string;
   ChordsBase64?: string;
+  legacyTextEncoding?: boolean;
 }): Uint8Array {
   const frames: Uint8Array[] = [];
 
@@ -80,7 +108,7 @@ function buildID3v2(tags: {
 
     const header = new Uint8Array(10);
     header.set(encoder.encode("TXXX"), 0);
-    header.set(toSynchsafe(frameData.length), 4);
+    header.set(toUint32(frameData.length), 4);
 
     return concat([header, frameData]);
   }
@@ -98,13 +126,31 @@ function buildID3v2(tags: {
     frames.push(createTextFrame("TSSE", tags.EncoderSettings));
   }
   if (tags.Title) {
-    frames.push(createTextFrame("TIT2", tags.Title, true));
+    frames.push(
+      createTextFrame(
+        "TIT2",
+        tags.Title,
+        tags.legacyTextEncoding === false ? "utf16" : "legacy"
+      )
+    );
   }
   if (tags.Artist) {
-    frames.push(createTextFrame("TPE1", tags.Artist, true));
+    frames.push(
+      createTextFrame(
+        "TPE1",
+        tags.Artist,
+        tags.legacyTextEncoding === false ? "utf16" : "legacy"
+      )
+    );
   }
   if (tags.Album) {
-    frames.push(createTextFrame("TALB", tags.Album, true));
+    frames.push(
+      createTextFrame(
+        "TALB",
+        tags.Album,
+        tags.legacyTextEncoding === false ? "utf16" : "legacy"
+      )
+    );
   }
 
   if (tags.LyricsBase64) {
@@ -142,6 +188,7 @@ export function buildMp3(
   newTags.Title = parsedData.title;
   newTags.Artist = parsedData.artist;
   newTags.Album = parsedData.album;
+  newTags.legacyTextEncoding = parsedData.info?.CHARSET !== "UTF-8";
 
   if (parsedData.miscTags) {
     newTags.MajorBrand = parsedData.miscTags.MajorBrand;

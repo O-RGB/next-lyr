@@ -9,7 +9,12 @@ import {
   TempoEvent,
   TimeSignatureEvent,
 } from "./types";
-import { base64ToArrayBuffer, TIS620ToString } from "../shared/lib";
+import {
+  base64ToArrayBuffer,
+  decodeKlyrXmlBytes,
+  TIS620ToString,
+  type KlyrTextEncoding,
+} from "../shared/lib";
 import { tempoToArrayRange } from "../lyrics/tempo-list";
 import { parseKlyrXml } from "../lyrics-core/xml";
 import type { LyricsDocument } from "../lyrics-core/types";
@@ -131,6 +136,34 @@ function _parseMidiFile(buffer: ArrayBuffer): MidiFile {
   return { format, trackCount, ticksPerBeat, tracks };
 }
 
+function detectKlyrTextEncoding(midiData: MidiFile): KlyrTextEncoding {
+  for (const track of midiData.tracks) {
+    for (const event of track) {
+      if (
+        event.type !== "meta" ||
+        event.metaType !== 0x01 ||
+        !event.text ||
+        !event.text.includes("LyrHdr")
+      ) {
+        continue;
+      }
+
+      const match = event.text.match(/(K?LyrHdr\d*)(.*)/i);
+      if (!match?.[2]) continue;
+
+      try {
+        const compressed = base64ToArrayBuffer(match[2].trim());
+        const decompressed = pako.inflate(compressed);
+        return decodeKlyrXmlBytes(decompressed).encoding;
+      } catch {
+        return "tis-620";
+      }
+    }
+  }
+
+  return "tis-620";
+}
+
 function _extractDataFromEvents(
   midiData: MidiFile
 ): Omit<
@@ -148,6 +181,7 @@ function _extractDataFromEvents(
   let foundLyrics = false;
   let firstNote: number | null = null;
   let duration = 0;
+  const textEncoding = detectKlyrTextEncoding(midiData);
 
   midiData.tracks.forEach((track) => {
     track.forEach((event) => {
@@ -186,7 +220,11 @@ function _extractDataFromEvents(
       }
 
       if (event.metaType === 0x06 && event.text) {
-        chords.push({ chord: event.text, tick: event.absoluteTime });
+        const chord =
+          textEncoding === "utf-8"
+            ? new TextDecoder().decode(event.data)
+            : TIS620ToString(event.data);
+        chords.push({ chord, tick: event.absoluteTime });
       }
       if (
         !foundLyrics &&
@@ -202,7 +240,7 @@ function _extractDataFromEvents(
           try {
             const compressed = base64ToArrayBuffer(encodedPayload);
             const decompressed = pako.inflate(compressed);
-            const xmlText = TIS620ToString(decompressed);
+            const xmlText = decodeKlyrXmlBytes(decompressed).xml;
             if (typeof window !== "undefined") {
               const document = parseKlyrXml(xmlText, {
                 source: "KMID",

@@ -33,6 +33,7 @@ import {
   PreviewSoundControls,
   useChordDetectionEditor,
 } from "./chord-editor-rows";
+import { isPreviewHorizontal } from "@/components/panel/preview-orientation";
 
 interface MidiNote {
   id: string;
@@ -108,6 +109,8 @@ interface BeatHit {
 interface ChordHit {
   chord: ChordEvent;
   node: BeatLayout;
+  mode?: ChordDragMode;
+  boundaryChord?: ChordEvent;
 }
 
 interface DetectionHit {
@@ -129,15 +132,30 @@ interface DetectionPlacement extends DetectionGridPlacement {
 
 interface ChordDragState {
   chord: ChordEvent;
+  mode: ChordDragMode;
+  boundaryChord?: ChordEvent;
   pointerId: number;
   startX: number;
   startY: number;
   moved: boolean;
+  previewTick: number | null;
+  minimumSpanTicks: number;
 }
 
-interface ChordChangePoint {
+type ChordDragMode = "move" | "trim-start" | "trim-end";
+
+interface ChordBlockPoint {
   tick: number;
   chord: string;
+  endTick?: number;
+  confidence?: number;
+}
+
+interface ChordBlockPreview {
+  sourceTick: number;
+  targetTick: number;
+  mode: ChordDragMode;
+  boundaryTick?: number;
 }
 
 interface BeatVisualOverride {
@@ -184,8 +202,6 @@ interface PreviewLayout {
   height: number;
   headerHeight: number;
   noteWidth: number;
-  changeStart: number;
-  changeWidth: number;
   chordStart: number;
   chordWidth: number;
   detectStart: number;
@@ -206,6 +222,7 @@ interface CanvasTheme {
   brand: string;
   brand2: string;
   info: string;
+  predict: string;
   warn: string;
   danger: string;
   chord: string;
@@ -242,8 +259,13 @@ let latestMidiPreviewExpandedKeys: ReadonlySet<string> = new Set();
 
 const MAX_AUTO_DETECTION_DEPTH = 3;
 const DETECTION_SNAP_TOLERANCE_TICKS = 10;
-const CHORD_CHANGE_WIDTH = 36;
-
+const CHORD_BLOCK_CHANGE_GAP = 3;
+const CHORD_BLOCK_HEADER_HEIGHT = 16;
+const CHORD_BLOCK_HEADER_PADDING = 4;
+const CHORD_BLOCK_HEADER_INSET = 8;
+const CHORD_BLOCK_MAX_WIDTH = 180;
+const CHORD_TOUCH_HOLD_MS = 360;
+const CHORD_TOUCH_CANCEL_DISTANCE = 10;
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -309,6 +331,8 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
   const openChordModal = useKaraokeStore(
     (state) => state.actions.openChordModal
   );
+  const addChord = useKaraokeStore((state) => state.actions.addChord);
+  const deleteChord = useKaraokeStore((state) => state.actions.deleteChord);
   const playerControls = usePlayerSetupStore(
     (state) => state.playerControls
   );
@@ -333,7 +357,12 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
   const beatNavigationRef = useRef(0);
   const hoveredNodeKeyRef = useRef<string | null>(null);
   const chordDragRef = useRef<ChordDragState | null>(null);
+  const touchTrimReadyRef = useRef<number | null>(null);
+  const touchResizeCancelRef = useRef<(() => void) | null>(null);
   const suppressNextCanvasClickRef = useRef(false);
+  const [selectedChordTick, setSelectedChordTick] = useState<number | null>(
+    null
+  );
   const expansionAnimationRef = useRef<BeatExpansionAnimation | null>(null);
   const expansionFrameRef = useRef<number | null>(null);
   const drawFrameRef = useRef<number | null>(null);
@@ -364,6 +393,15 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
     [midi, notes]
   );
   const pitchRange = useMemo(() => getPitchRange(notes), [notes]);
+  const totalTicks = useMemo(
+    () =>
+      Math.max(
+        1,
+        midi?.duration ?? 0,
+        notes[notes.length - 1]?.end ?? 0
+      ),
+    [midi, notes]
+  );
 
   const resolveDetectionTick = React.useCallback(
     (suggestion: SuggestedChord) =>
@@ -375,16 +413,45 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
     resolveSuggestionTick: resolveDetectionTick,
   });
   const detectSnapshot = detectionController.snapshot;
-  const chordChanges = useMemo(() => {
-    // Prediction is the source of truth for the compact change rail. Keep
-    // accepted/manual chords as a temporary fallback while WASM is still
-    // calculating so the lane does not blink empty during startup.
-    const source =
-      detectSnapshot.suggestions.length > 0
-        ? detectSnapshot.suggestions
-        : chordsData;
-    return getChordChangePoints(source);
-  }, [chordsData, detectSnapshot.suggestions]);
+  const userChordBlocks = useMemo(
+    () => getChordBlockPoints(chordsData),
+    [chordsData]
+  );
+  const predictedChordBlocks = useMemo(
+    () => getChordBlockPoints(detectSnapshot.suggestions),
+    [detectSnapshot.suggestions]
+  );
+  const selectedChord = useMemo(
+    () =>
+      selectedChordTick === null
+        ? null
+        : chordsData.find((chord) => chord.tick === selectedChordTick) ?? null,
+    [chordsData, selectedChordTick]
+  );
+
+  useEffect(() => {
+    if (selectedChordTick !== null && !selectedChord) {
+      setSelectedChordTick(null);
+    }
+  }, [selectedChord, selectedChordTick]);
+
+  useEffect(() => {
+    if (selectedChordTick === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSelectedChordTick(null);
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteChord(selectedChordTick);
+        setSelectedChordTick(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteChord, selectedChordTick]);
 
   useEffect(() => {
     if (
@@ -533,6 +600,9 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
     setExpandedBeatKeys((previous) => {
       const next = new Set(previous);
       const opening = !next.has(node.key);
+      if (!opening && hasChordInDescendants(node, chordsData)) {
+        return previous;
+      }
       // Keep hit-testing and the next playback click on the same tree even
       // before React has committed the following render. This is especially
       // important when a user expands a beat and immediately clicks a child.
@@ -551,7 +621,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       expandedBeatKeysRef.current = next;
       return next;
     });
-  }, []);
+  }, [chordsData]);
 
   const handleBeatClick = React.useCallback(
     async (node: BeatLayout) => {
@@ -670,8 +740,19 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
           visualOverride,
           pitchRange,
           chordsData,
-          chordChanges,
-          detectSnapshot.suggestions,
+          userChordBlocks,
+          predictedChordBlocks,
+          totalTicks,
+          selectedChordTick,
+          touchTrimReadyRef.current,
+          chordDragRef.current && chordDragRef.current.previewTick !== null
+            ? {
+                sourceTick: chordDragRef.current.chord.tick,
+                targetTick: chordDragRef.current.previewTick,
+                mode: chordDragRef.current.mode,
+                boundaryTick: chordDragRef.current.boundaryChord?.tick,
+              }
+            : null,
           theme
         );
       } else {
@@ -711,13 +792,17 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       }
     },
     [
-      chordChanges,
       chordsData,
       detectSnapshot.suggestions,
       detectVisible,
       measures,
       orientation,
       pitchRange,
+      predictedChordBlocks,
+      userChordBlocks,
+      totalTicks,
+      selectedChordTick,
+      touchTrimReadyRef.current,
     ]
   );
 
@@ -896,17 +981,15 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       }
 
       const rect = canvas.getBoundingClientRect();
-      const context = canvas.getContext("2d");
-      if (!context) return null;
       return findDetectionHit(
-        context,
         layout,
         orientation,
         scroll.scrollTop,
         event.clientX - rect.left,
         event.clientY - rect.top,
         detectSnapshot.suggestions,
-        chordsData
+        chordsData,
+        totalTicks
       );
     },
     [
@@ -915,6 +998,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       detectVisible,
       measures,
       orientation,
+      totalTicks,
     ]
   );
 
@@ -936,6 +1020,33 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
         }
         return;
       }
+
+      // A chord block is a track-edit surface. A plain click only selects
+      // the block; it must not fall through to beat navigation and move the
+      // editor viewport. Dragging and double-clicking have their own handlers.
+      if (orientation === "vertical") {
+        const canvas = canvasRef.current;
+        const scroll = scrollRef.current;
+        const layout = layoutRef.current;
+        if (canvas && scroll && layout) {
+          const rect = canvas.getBoundingClientRect();
+          const localX = event.clientX - rect.left;
+          const localY = event.clientY - rect.top;
+          const chordHit = findChordBlockAtPoint(
+            layout,
+            localY + scroll.scrollTop,
+            localX,
+            localY,
+            chordsData
+          );
+          if (chordHit) {
+            setSelectedChordTick(chordHit.chord.tick);
+            markDirty();
+            return;
+          }
+        }
+      }
+
       const hit = getBeatAtPoint(event);
       if (!hit) return;
 
@@ -947,18 +1058,11 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       getBeatAtPoint,
       getDetectionAtPoint,
       handleBeatClick,
+      chordsData,
+      markDirty,
+      orientation,
       toggleBeatExpanded,
     ]
-  );
-
-  const handleCanvasDoubleClick = React.useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (getDetectionAtPoint(event)) return;
-      const hit = getBeatAtPoint(event);
-      if (!hit || hit.action !== "play") return;
-      openChordModal(undefined, Math.max(0, Math.round(hit.node.start)));
-    },
-    [getBeatAtPoint, getDetectionAtPoint, openChordModal]
   );
 
   const getChordAtPoint = React.useCallback(
@@ -977,6 +1081,17 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
         orientation === "vertical"
           ? localY + scroll.scrollTop
           : localX + scroll.scrollLeft;
+
+      if (orientation === "vertical") {
+        const blockHit = findChordBlockAtPoint(
+          layout,
+          position,
+          localX,
+          localY,
+          chordsData
+        );
+        if (blockHit) return blockHit;
+      }
 
       const rows = layout.rows.filter((row) =>
         orientation === "vertical"
@@ -1000,45 +1115,224 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
     [chordsData, orientation]
   );
 
+  const handleCanvasDoubleClick = React.useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (getDetectionAtPoint(event)) return;
+      const chordHit = getChordAtPoint(
+        event as unknown as React.PointerEvent<HTMLCanvasElement>
+      );
+      if (chordHit) {
+        setSelectedChordTick(chordHit.chord.tick);
+        openChordModal(chordHit.chord);
+        return;
+      }
+      const hit = getBeatAtPoint(event);
+      if (!hit || hit.action !== "play") return;
+      openChordModal(undefined, Math.max(0, Math.round(hit.node.start)));
+    },
+    [getBeatAtPoint, getChordAtPoint, getDetectionAtPoint, openChordModal]
+  );
+
+  const handlePlaySelectedChord = React.useCallback(() => {
+    if (!selectedChord || !playerControls) return;
+    useKaraokeStore.getState().actions.setPlayFromScrolledPosition(true);
+    void Promise.resolve(playerControls.seek(selectedChord.tick)).then(() => {
+      void Promise.resolve(playerControls.play());
+    });
+  }, [playerControls, selectedChord]);
+
+  const handleAddChordAfterSelected = React.useCallback(() => {
+    if (!selectedChord) return;
+    const occupied = new Set(chordsData.map((chord) => chord.tick));
+    const step = Math.max(1, midi?.ticksPerBeat ?? 480);
+    let tick = selectedChord.tick + step;
+    while (occupied.has(tick)) tick += step;
+    openChordModal(undefined, Math.min(totalTicks, tick));
+  }, [chordsData, midi?.ticksPerBeat, openChordModal, selectedChord, totalTicks]);
+
+  const handleDeleteSelectedChord = React.useCallback(() => {
+    if (!selectedChord) return;
+    deleteChord(selectedChord.tick);
+    setSelectedChordTick(null);
+  }, [deleteChord, selectedChord]);
+
   const handleCanvasPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       const hit = getChordAtPoint(event);
       if (!hit) return;
+      const isTrim =
+        hit.mode === "trim-start" || hit.mode === "trim-end";
+      const minimumNode = hit.node.children[0] ?? hit.node;
+      const minimumSpanTicks = Math.max(
+        1,
+        Math.round(minimumNode.end - minimumNode.start)
+      );
+      setSelectedChordTick(hit.chord.tick);
+      markDirty();
+
+      if (event.pointerType === "touch" && isTrim) {
+        const canvas = event.currentTarget;
+        const pointerId = event.pointerId;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        let active = true;
+
+        touchResizeCancelRef.current?.();
+        chordDragRef.current = null;
+        touchTrimReadyRef.current = null;
+        canvas.style.touchAction = "";
+        canvas.style.cursor = "pointer";
+
+        const cleanup = () => {
+          if (!active) return;
+          active = false;
+          window.clearTimeout(timer);
+          window.removeEventListener("pointermove", handleHoldMove);
+          window.removeEventListener("pointerup", handleHoldEnd);
+          window.removeEventListener("pointercancel", handleHoldEnd);
+          if (touchResizeCancelRef.current === cancelHold) {
+            touchResizeCancelRef.current = null;
+          }
+        };
+        const cancelHold = () => {
+          cleanup();
+          touchTrimReadyRef.current = null;
+          chordDragRef.current = null;
+          canvas.style.touchAction = "";
+          canvas.style.cursor = "pointer";
+          markDirty();
+        };
+        const handleHoldMove = (next: PointerEvent) => {
+          if (!active || next.pointerId !== pointerId) return;
+          if (
+            Math.hypot(next.clientX - startX, next.clientY - startY) >
+            CHORD_TOUCH_CANCEL_DISTANCE
+          ) {
+            cancelHold();
+          }
+        };
+        const handleHoldEnd = (next: PointerEvent) => {
+          if (!active || next.pointerId !== pointerId) return;
+          cleanup();
+          touchTrimReadyRef.current = null;
+          chordDragRef.current = null;
+          canvas.style.touchAction = "";
+          canvas.style.cursor = "pointer";
+          markDirty();
+        };
+        const timer = window.setTimeout(() => {
+          if (!active) return;
+          cleanup();
+          touchTrimReadyRef.current = hit.chord.tick;
+          chordDragRef.current = {
+            chord: hit.chord,
+            mode: hit.mode ?? "move",
+            boundaryChord: hit.boundaryChord,
+            pointerId,
+            startX,
+            startY,
+            moved: false,
+            previewTick: null,
+            minimumSpanTicks,
+          };
+          canvas.style.touchAction = "none";
+          canvas.style.cursor = "ns-resize";
+          try {
+            canvas.setPointerCapture(pointerId);
+          } catch {
+            touchTrimReadyRef.current = null;
+            chordDragRef.current = null;
+            canvas.style.touchAction = "";
+            canvas.style.cursor = "pointer";
+          }
+          markDirty();
+        }, CHORD_TOUCH_HOLD_MS);
+
+        touchResizeCancelRef.current = cancelHold;
+        window.addEventListener("pointermove", handleHoldMove);
+        window.addEventListener("pointerup", handleHoldEnd);
+        window.addEventListener("pointercancel", handleHoldEnd);
+        return;
+      }
+
+      // Touch taps select only. Moving a chord is intentionally disabled on
+      // touch; long-press is reserved for trim handles below.
+      if (event.pointerType === "touch") {
+        event.currentTarget.style.touchAction = "";
+        event.currentTarget.style.cursor = "pointer";
+        return;
+      }
+
       chordDragRef.current = {
         chord: hit.chord,
+        mode: hit.mode ?? "move",
+        boundaryChord: hit.boundaryChord,
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
         moved: false,
+        previewTick: null,
+        minimumSpanTicks,
       };
+
+      event.currentTarget.style.touchAction = "none";
+      event.currentTarget.style.cursor =
+        isTrim
+          ? "ns-resize"
+          : "grabbing";
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [getChordAtPoint]
+    [getChordAtPoint, markDirty]
   );
 
   const handleCanvasPointerMove = React.useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       const drag = chordDragRef.current;
       if (!drag) return;
+      if (event.pointerType === "touch") event.preventDefault();
       if (
         Math.abs(event.clientX - drag.startX) > 3 ||
         Math.abs(event.clientY - drag.startY) > 3
       ) {
         drag.moved = true;
       }
-      if (drag.moved) markDirty();
+      if (drag.moved) {
+        const hit = getBeatAtPoint(
+          event as unknown as React.MouseEvent<HTMLCanvasElement>
+        );
+        drag.previewTick =
+          hit?.action === "play"
+            ? clampChordDragTick(
+                drag.mode,
+                drag.chord,
+                drag.boundaryChord,
+                Math.max(0, Math.round(hit.node.start)),
+                chordsData,
+                totalTicks,
+                drag.minimumSpanTicks
+              )
+            : null;
+        markDirty();
+      }
     },
-    [markDirty]
+    [chordsData, getBeatAtPoint, markDirty, totalTicks]
   );
 
   const handleCanvasPointerUp = React.useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       const drag = chordDragRef.current;
       chordDragRef.current = null;
-      if (!drag) return;
+      const wasTrimReady = touchTrimReadyRef.current !== null;
+      touchTrimReadyRef.current = null;
+      if (!drag) {
+        if (wasTrimReady) markDirty();
+        return;
+      }
       if (event.currentTarget.hasPointerCapture(drag.pointerId)) {
         event.currentTarget.releasePointerCapture(drag.pointerId);
       }
+      event.currentTarget.style.touchAction = "";
+      event.currentTarget.style.cursor = "pointer";
       if (!drag.moved) return;
 
       suppressNextCanvasClickRef.current = true;
@@ -1046,21 +1340,59 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
         suppressNextCanvasClickRef.current = false;
       }, 0);
 
-      const hit = getBeatAtPoint(event as unknown as React.MouseEvent<HTMLCanvasElement>);
+      const hit = getBeatAtPoint(
+        event as unknown as React.MouseEvent<HTMLCanvasElement>
+      );
       if (hit?.action === "play") {
-        const targetTick = Math.max(0, Math.round(hit.node.start));
-        useKaraokeStore.getState().actions.updateChord(drag.chord.tick, {
-          ...drag.chord,
-          tick: targetTick,
-        });
+        const targetTick = Math.max(
+          0,
+          Math.round(
+            drag.previewTick ??
+              clampChordDragTick(
+                drag.mode,
+                drag.chord,
+                drag.boundaryChord,
+                hit.node.start,
+                chordsData,
+                totalTicks,
+                drag.minimumSpanTicks
+              )
+          )
+        );
+        if (drag.mode === "trim-end" && drag.boundaryChord) {
+          useKaraokeStore.getState().actions.updateChord(
+            drag.boundaryChord.tick,
+            {
+              ...drag.boundaryChord,
+              tick: targetTick,
+            }
+          );
+        } else {
+          useKaraokeStore.getState().actions.updateChord(drag.chord.tick, {
+            ...drag.chord,
+            tick: targetTick,
+          });
+          setSelectedChordTick(targetTick);
+        }
       }
       markDirty();
     },
-    [getBeatAtPoint, markDirty]
+    [chordsData, getBeatAtPoint, markDirty, totalTicks]
   );
 
   const handleCanvasMouseMove = React.useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!chordDragRef.current) {
+        const chordHit = getChordAtPoint(
+          event as unknown as React.PointerEvent<HTMLCanvasElement>
+        );
+        event.currentTarget.style.cursor = chordHit
+          ? chordHit.mode === "trim-start" || chordHit.mode === "trim-end"
+            ? "ns-resize"
+            : "grab"
+          : "pointer";
+      }
+
       const hit = getBeatAtPoint(event);
       const next = hit?.node.key ?? null;
       const previous = hoveredNodeKeyRef.current;
@@ -1071,10 +1403,11 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       hoveredNodeKeyRef.current = next;
       markDirty();
     },
-    [getBeatAtPoint, markDirty]
+    [getBeatAtPoint, getChordAtPoint, markDirty]
   );
 
   const handleCanvasMouseLeave = React.useCallback(() => {
+    if (canvasRef.current) canvasRef.current.style.cursor = "pointer";
     if (hoveredNodeKeyRef.current === null) return;
     hoveredNodeKeyRef.current = null;
     markDirty();
@@ -1280,21 +1613,15 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
         className={`grid shrink-0 border-b border-line bg-lane text-center text-[11px] font-semibold text-foreground ${
           detectVisible
             ? ""
-            : "grid-cols-[44fr_36px_56fr_36px] lg:grid-cols-[34fr_36px_66fr_36px]"
+            : "grid-cols-[44fr_56fr_36px] lg:grid-cols-[34fr_66fr_36px]"
         }`}
         style={
           detectVisible
-            ? { gridTemplateColumns: "30fr 36px 47.6fr 22.4fr 36px" }
+            ? { gridTemplateColumns: "30fr 47.6fr 22.4fr 36px" }
             : undefined
         }
       >
         <span className="border-r border-line px-3 py-2">MIDI Notes</span>
-        <span
-          className="flex items-center justify-center border-r border-line px-1 text-[10px] text-muted-foreground"
-          title="จุดเปลี่ยนคอร์ด"
-        >
-          ↔
-        </span>
         <div className="flex min-w-0 items-center justify-center gap-1 border-r border-line px-2 py-1.5">
           <span>Chord</span>
           <HeaderListenButton
@@ -1407,6 +1734,57 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
         </button>
       </div>
 
+      {selectedChord ? (
+        <div
+          data-track-tools="true"
+          className="flex shrink-0 items-center gap-1 border-t border-line bg-panel/95 px-2 py-1.5 shadow-[0_-8px_24px_rgba(0,0,0,0.12)]"
+        >
+          <span className="mr-auto min-w-0 truncate px-1 text-[11px] font-semibold text-foreground">
+            Track · {selectedChord.chord}
+          </span>
+          <button
+            type="button"
+            className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
+            onClick={handlePlaySelectedChord}
+            title="เล่นจากคอร์ดนี้"
+          >
+            เล่น
+          </button>
+          <button
+            type="button"
+            className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
+            onClick={handleAddChordAfterSelected}
+            title="เพิ่มคอร์ดถัดไป"
+          >
+            เพิ่ม
+          </button>
+          <button
+            type="button"
+            className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
+            onClick={() => openChordModal(selectedChord)}
+            title="แก้ไขคอร์ด"
+          >
+            แก้ไข
+          </button>
+          <button
+            type="button"
+            className="rounded border border-danger/40 px-2 py-1 text-[11px] text-danger transition-colors hover:bg-danger/10"
+            onClick={handleDeleteSelectedChord}
+            title="ลบคอร์ด"
+          >
+            ลบ
+          </button>
+          <button
+            type="button"
+            className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
+            onClick={() => setSelectedChordTick(null)}
+            title="ยกเลิกการเลือก"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+
       {midi && detectVisible && detectionController.requested ? (
         <ChordDetectionFooter controller={detectionController} />
       ) : null}
@@ -1512,7 +1890,10 @@ const MidiNotesOverview: React.FC = () => {
       const canvas = canvasRef.current;
       if (!canvas) return 0;
       const rect = canvas.getBoundingClientRect();
-      const horizontal = false;
+      const horizontal = isPreviewHorizontal(
+        sizeRef.current.width,
+        sizeRef.current.height
+      );
       const point = horizontal
         ? event.clientX - rect.left
         : event.clientY - rect.top;
@@ -1560,7 +1941,7 @@ const MidiNotesOverview: React.FC = () => {
     if (!ctx) return;
 
     const { width, height, dpr } = sizeRef.current;
-    const horizontal = false;
+    const horizontal = isPreviewHorizontal(width, height);
     const theme = readCanvasTheme();
     const currentTick = Math.max(
       0,
@@ -2031,8 +2412,6 @@ function getPreviewLayout(
       height: safeHeight,
       headerHeight: 0,
       noteWidth: 0,
-      changeStart: 0,
-      changeWidth: 0,
       chordStart: 0,
       chordWidth: 0,
       detectStart: 0,
@@ -2058,19 +2437,10 @@ function getPreviewLayout(
     : safeWidth >= 1024
       ? 0.34
       : 0.44;
-  // Keep the change rail at the same compact width as the collapsed Detect
-  // tab. The header uses the same fixed column, so the canvas and header stay
-  // aligned even when the flexible note/chord columns resize.
-  const changeWidth = Math.min(
-    CHORD_CHANGE_WIDTH,
-    Math.max(1, safeWidth - 2)
-  );
-  const flexibleWidth = Math.max(1, safeWidth - changeWidth);
-  const noteWidth = flexibleWidth * noteRatio;
-  const changeStart = noteWidth;
-  const remainingWidth = Math.max(1, flexibleWidth - noteWidth);
+  const noteWidth = safeWidth * noteRatio;
+  const remainingWidth = Math.max(1, safeWidth - noteWidth);
   const detectWidth = detectVisible ? remainingWidth * 0.32 : 0;
-  const chordStart = changeStart + changeWidth;
+  const chordStart = noteWidth;
   const chordWidth = Math.max(1, remainingWidth - detectWidth);
   const detectStart = chordStart + chordWidth;
   let top = headerHeight;
@@ -2130,8 +2500,6 @@ function getPreviewLayout(
     height: safeHeight,
     headerHeight,
     noteWidth,
-    changeStart,
-    changeWidth,
     chordStart,
     chordWidth,
     detectStart,
@@ -2303,6 +2671,21 @@ function findBeatNodeByKey(
     if (child) return child;
   }
   return null;
+}
+
+function hasChordInDescendants(
+  node: BeatLayout,
+  chords: readonly ChordEvent[]
+): boolean {
+  return node.children.some((child) =>
+    chords.some(
+      (event) =>
+        event.chord.trim().length > 0 &&
+        event.tick > node.start &&
+        event.tick >= child.start &&
+        event.tick < child.end
+    )
+  );
 }
 
 function getLocalBeatLabel(node: BeatLayout): string {
@@ -2554,34 +2937,9 @@ function drawBeatNode(
     drawVerticalTreeBranches(ctx, layout, node, scrollOffset, theme);
   }
 
-  const chord = findChordForRange(chords, node.start, node.end)?.chord.trim();
-  const chordEvent = findChordForRange(chords, node.start, node.end);
-  const chordStartsAtNode = chordEvent?.tick === node.start;
-  const isFirstChild = node.depth > 0 && getLocalBeatLabel(node) === "1";
-  // A marker owns the first visible node whose start matches its real tick.
-  // Keep that card on the parent when the parent is expanded; otherwise a
-  // marker at 0 would incorrectly drift from `1` to `1.1` to `1.1.1`.
-  const ownsChord =
-    chord &&
-    (node.children.length === 0 || chordStartsAtNode) &&
-    !(isFirstChild && chordStartsAtNode);
-  if (ownsChord) {
-    drawMidiChordCard(
-      ctx,
-      chord,
-      x + width / 2,
-      y + height / 2,
-      width,
-      height,
-      active ? theme.playing : hovered ? theme.brand : theme.chord,
-      theme.panel2,
-      active ? theme.playing : hovered ? theme.brand : theme.chord
-    );
-  }
-
-  // Chord and Predict are one table cell. The Chord card occupies the left
-  // lane and the prediction card occupies the right lane, but their frame is
-  // drawn from this same BeatLayout node so expansion can never desync them.
+  // The beat tree supplies the timing grid. Chord blocks are painted in one
+  // pass after the grid so one chord can occupy the full interval until the
+  // next chord, including expanded subdivisions.
   ctx.strokeStyle = node.children.length > 0 ? theme.lineStrong : theme.lineSoft;
   ctx.globalAlpha = node.children.length > 0 ? 0.7 : 0.9;
   ctx.strokeRect(
@@ -2639,6 +2997,101 @@ function getChordOwnerForNode(
   if (node.children.length > 0 && !startsAtNode) return null;
   if (firstChild && startsAtNode) return null;
   return event;
+}
+
+function getVerticalTickAtPosition(
+  nodes: BeatLayout[],
+  position: number
+): number | null {
+  const node = nodes.find(
+    (candidate) =>
+      position >= candidate.top &&
+      position < getNodeAxisEnd(candidate, "vertical")
+  );
+  if (!node) return null;
+
+  const child = node.children.length
+    ? node.children.find(
+        (candidate) =>
+          position >= candidate.top &&
+          position < getNodeAxisEnd(candidate, "vertical")
+      )
+    : null;
+  if (child) return getVerticalTickAtPosition(node.children, position);
+
+  const fraction = clamp01((position - node.top) / Math.max(1, node.height));
+  return node.start + (node.end - node.start) * fraction;
+}
+
+function findChordBlockAtPoint(
+  layout: PreviewLayout,
+  position: number,
+  x: number,
+  y: number,
+  chords: readonly ChordEvent[]
+): ChordHit | null {
+  const lane = getChordBlockBounds(layout, "user");
+  if (
+    lane.width < 10 ||
+    x < lane.left ||
+    x > lane.left + lane.width
+  ) {
+    return null;
+  }
+
+  const row = layout.rows.find(
+    (candidate) =>
+      position >= candidate.top &&
+      position < candidate.top + candidate.height
+  );
+  if (!row) return null;
+
+  const tick = getVerticalTickAtPosition(row.beats, position);
+  if (tick === null) return null;
+  const sortedChords = [...chords]
+    .filter((event) => event.chord.trim())
+    .sort((a, b) => a.tick - b.tick);
+  const chord = sortedChords
+    .filter((event) => event.chord.trim() && event.tick <= tick)
+    .at(-1);
+  if (!chord) return null;
+
+  const node = findDeepestBeat(row.beats, position, "vertical");
+  if (!node) return null;
+
+  const points = getChordBlockPoints(sortedChords);
+  const blockIndex = points.findIndex(
+    (block) => block.tick === chord.tick && block.chord === chord.chord.trim()
+  );
+  const block = points[blockIndex];
+  if (!block) return { chord, node, mode: "move" };
+  const nextPoint = points[blockIndex + 1];
+  const nextChord = nextPoint
+    ? sortedChords.find((event) => event.tick === nextPoint.tick)
+    : undefined;
+  const endTick = nextPoint?.tick ?? Number.MAX_SAFE_INTEGER;
+  const scrollTop = position - y;
+  const rowTop = row.top - scrollTop;
+  const rowBottom = row.top - scrollTop + row.height;
+  const blockTop = Math.max(
+    rowTop,
+    Math.min(rowBottom, getVerticalChordBlockY(row, block.tick, scrollTop))
+  );
+  const blockBottom = Math.min(
+    rowBottom,
+    Math.max(
+      blockTop + 5,
+      Math.min(rowBottom, getVerticalChordBlockY(row, endTick, scrollTop))
+    )
+  );
+  const trimZone = Math.min(16, Math.max(7, (blockBottom - blockTop) / 3));
+  const mode: ChordDragMode =
+    block.tick >= row.row.start && y <= blockTop + trimZone
+      ? "trim-start"
+      : nextChord && endTick <= row.row.end && y >= blockBottom - trimZone
+        ? "trim-end"
+        : "move";
+  return { chord, node, mode, boundaryChord: nextChord };
 }
 
 function getNodeCanvasRect(
@@ -2816,6 +3269,7 @@ function readCanvasTheme(): CanvasTheme {
     brand: read("--brand", "#78aaff"),
     brand2: read("--brand-2", "#4bd3ae"),
     info: read("--info", "#67d5ff"),
+    predict: read("--predict", "#cbd5e1"),
     warn: read("--warn", "#f4bd68"),
     danger: read("--danger", "#ff7892"),
     chord: read("--chord", "#f4bd68"),
@@ -2836,6 +3290,18 @@ function fitMidiCanvasText(
   return `${result}…`;
 }
 
+function lightenCanvasColor(color: string, amount = 0.16): string {
+  const match = color.trim().match(/^#([\da-f]{6})$/i);
+  if (!match) return color;
+  const value = Number.parseInt(match[1], 16);
+  const mix = (channel: number) =>
+    Math.round(channel + (255 - channel) * amount);
+  const red = mix((value >> 16) & 0xff);
+  const green = mix((value >> 8) & 0xff);
+  const blue = mix(value & 0xff);
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
 function isChordAccepted(
   suggestion: SuggestedChord,
   chords: readonly ChordEvent[],
@@ -2844,50 +3310,6 @@ function isChordAccepted(
   return chords.some(
     (chord) => chord.tick === suggestion.tick || chord.tick === snappedTick
   );
-}
-
-function getDetectionCardRect(
-  ctx: CanvasRenderingContext2D,
-  layout: PreviewLayout,
-  rowLayout: PreviewRowLayout,
-  suggestion: SuggestedChord,
-  scrollTop: number,
-  chords: readonly ChordEvent[]
-): { left: number; top: number; width: number; height: number } | null {
-  if (!layout.detectVisible || layout.detectWidth < 12) return null;
-  const placement = getDetectionPlacement(rowLayout, suggestion);
-  if (!placement) return null;
-  const nodeRect = getNodeCanvasRect(
-    layout,
-    placement.node,
-    "vertical",
-    scrollTop
-  );
-  const center = nodeRect.top + nodeRect.height / 2;
-  const label = getDetectionLabel(suggestion, chords, placement.tick);
-  const bounds = getMidiChordCardBounds(
-    ctx,
-    label,
-    layout.detectStart + layout.detectWidth / 2,
-    center,
-    Math.max(8, layout.detectWidth - 8),
-    nodeRect.height
-  );
-  return {
-    left: bounds.cardX,
-    top: bounds.cardY,
-    width: bounds.cardWidth,
-    height: bounds.cardHeight,
-  };
-}
-
-function getDetectionLabel(
-  suggestion: SuggestedChord,
-  chords: readonly ChordEvent[],
-  snappedTick: number
-): string {
-  const percent = `${Math.round(clamp01(suggestion.confidence) * 100)}%`;
-  return `${suggestion.chord} ${percent}${isChordAccepted(suggestion, chords, snappedTick) ? " ✓" : " +"}`;
 }
 
 function getSuggestedDetectionTick(
@@ -3087,94 +3509,93 @@ function drawDetectionBlocks(
   rowLayout: PreviewRowLayout,
   scrollTop: number,
   cursorTick: number,
-  chords: readonly ChordEvent[],
-  suggestions: readonly SuggestedChord[],
+  suggestions: readonly ChordBlockPoint[],
+  totalTicks: number,
   theme: CanvasTheme
 ): void {
   if (!layout.detectVisible || suggestions.length === 0) return;
 
-  const rowSuggestions = suggestions.filter(
-    (suggestion) =>
-      suggestion.tick >= rowLayout.row.start &&
-      suggestion.tick < rowLayout.row.end
+  drawChordBlocks(
+    ctx,
+    layout,
+    rowLayout,
+    scrollTop,
+    cursorTick,
+    suggestions,
+    totalTicks,
+    "predict",
+    theme,
+    null,
+    null,
+    null
   );
-  if (rowSuggestions.length === 0) return;
-
-  for (const suggestion of rowSuggestions) {
-    const rect = getDetectionCardRect(
-      ctx,
-      layout,
-      rowLayout,
-      suggestion,
-      scrollTop,
-      chords
-    );
-    if (!rect || rect.top + rect.height < 0 || rect.top > layout.height) {
-      continue;
-    }
-
-    const placement = getDetectionPlacement(rowLayout, suggestion);
-    const suggestionEnd = suggestion.endTick ?? rowLayout.row.end;
-    const active =
-      cursorTick >= suggestion.tick &&
-      cursorTick < Math.max(suggestion.tick + 1, suggestionEnd);
-    const accent = active ? theme.playing : theme.brand;
-    const node = placement?.node;
-    if (!node) continue;
-    const nodeRect = getNodeCanvasRect(layout, node, "vertical", scrollTop);
-    drawMidiChordCard(
-      ctx,
-      getDetectionLabel(suggestion, chords, placement.tick),
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-      Math.max(8, layout.detectWidth - 8),
-      nodeRect.height,
-      accent,
-      theme.panel2,
-      accent
-    );
-  }
 }
 
-function getChordChangePoints(
+function getChordBlockPoints(
   chords: readonly { tick: number; chord: string }[]
-): ChordChangePoint[] {
+): ChordBlockPoint[] {
   const sorted = [...chords]
     .map((event) => ({
       tick: Math.max(0, Math.round(event.tick)),
       chord: event.chord.trim(),
+      endTick:
+        "endTick" in event && typeof event.endTick === "number"
+          ? Math.max(0, Math.round(event.endTick))
+          : undefined,
+      confidence:
+        "confidence" in event && typeof event.confidence === "number"
+          ? event.confidence
+          : undefined,
     }))
     .filter((event) => event.chord.length > 0)
     .sort((a, b) => a.tick - b.tick);
-  const changes: ChordChangePoint[] = [];
+  const blocks: ChordBlockPoint[] = [];
   let previousChord = "";
 
   for (const event of sorted) {
     if (event.chord === previousChord) continue;
-    changes.push(event);
+    blocks.push(event);
     previousChord = event.chord;
   }
 
-  return changes;
+  return blocks;
 }
 
-function getChordChangeColor(chord: string, theme: CanvasTheme): string {
-  const palette = [
-    theme.brand,
-    theme.brand2,
-    theme.info,
-    theme.warn,
-    theme.danger,
-    theme.playing,
-  ];
-  let hash = 0;
-  for (let index = 0; index < chord.length; index += 1) {
-    hash = (hash * 31 + chord.charCodeAt(index)) | 0;
+function clampChordDragTick(
+  mode: ChordDragMode,
+  chord: ChordEvent,
+  boundaryChord: ChordEvent | undefined,
+  requestedTick: number,
+  chords: readonly ChordEvent[],
+  totalTicks: number,
+  minimumSpanTicks: number
+): number {
+  const sorted = [...chords].sort((left, right) => left.tick - right.tick);
+  if (mode === "move") {
+    return Math.max(0, Math.min(totalTicks, requestedTick));
   }
-  return palette[Math.abs(hash) % palette.length];
+
+  if (mode === "trim-start") {
+    const previous = [...sorted]
+      .reverse()
+      .find((candidate) => candidate.tick < chord.tick);
+    const lower = previous ? previous.tick + 1 : 0;
+    const upper = boundaryChord
+      ? Math.max(lower, boundaryChord.tick - minimumSpanTicks)
+      : totalTicks;
+    return Math.max(lower, Math.min(upper, requestedTick));
+  }
+
+  if (!boundaryChord) return chord.tick;
+  const next = sorted.find((candidate) => candidate.tick > boundaryChord.tick);
+  const lower = chord.tick + minimumSpanTicks;
+  const upper = next
+    ? Math.max(lower, next.tick - minimumSpanTicks)
+    : totalTicks;
+  return Math.max(lower, Math.min(upper, requestedTick));
 }
 
-function getVerticalChordChangeY(
+function getVerticalChordBlockY(
   rowLayout: PreviewRowLayout,
   tick: number,
   scrollTop: number
@@ -3197,132 +3618,342 @@ function getVerticalChordChangeY(
   );
 }
 
-function drawChordChangeRail(
+function getChordBlockLaneBounds(
+  layout: PreviewLayout,
+  source: "user" | "predict"
+): { left: number; width: number } {
+  const columnStart = source === "user" ? layout.chordStart : layout.detectStart;
+  const columnWidth = source === "user" ? layout.chordWidth : layout.detectWidth;
+  if (columnWidth <= 0) return { left: columnStart, width: 0 };
+
+  // Keep the +/- tree gutter visible in the user column. Prediction has no
+  // tree controls, so its block can use almost the entire Detect column.
+  const gutter = source === "user"
+    ? Math.min(52, Math.max(22, columnWidth * 0.22))
+    : 4;
+  return {
+    left: columnStart + gutter,
+    width: Math.max(1, columnWidth - gutter - 4),
+  };
+}
+
+function getChordBlockBounds(
+  layout: PreviewLayout,
+  source: "user" | "predict"
+): { left: number; width: number } {
+  const lane = getChordBlockLaneBounds(layout, source);
+  return {
+    left: lane.left + 2,
+    width: Math.min(CHORD_BLOCK_MAX_WIDTH, Math.max(1, lane.width - 4)),
+  };
+}
+
+function chordBlockPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  roundTop: boolean,
+  roundBottom: boolean
+): void {
+  // Chord blocks intentionally stay square. The booleans are still passed
+  // through so the same helpers can preserve connected block edges across
+  // measure rows without bringing back rounded corners.
+  void radius;
+  void roundTop;
+  void roundBottom;
+  ctx.beginPath();
+  ctx.rect(x, y, width, height);
+  ctx.closePath();
+}
+
+function strokeChordBlockOutline(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  roundTop: boolean,
+  roundBottom: boolean
+): void {
+  // Keep the outline square while retaining open edges between vertically
+  // connected pieces of the same chord.
+  void radius;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + height);
+  ctx.moveTo(x + width, y);
+  ctx.lineTo(x + width, y + height);
+  if (roundTop) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y);
+  }
+  if (roundBottom) {
+    ctx.moveTo(x, y + height);
+    ctx.lineTo(x + width, y + height);
+  }
+  ctx.stroke();
+}
+
+function drawVerticalTrimGrip(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+  emphasized = false
+): void {
+  if (width < 10 || height < 5) return;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+
+  // Keep the grip area transparent. Its hit area follows the header height,
+  // while the small icon alone communicates that the edge can be dragged.
+  ctx.save();
+  const lineWidth = Math.min(
+    16,
+    Math.max(4, width * 0.14) * (emphasized ? 1.25 : 1)
+  );
+  const lineGap = Math.min(
+    3,
+    Math.max(1, height * 0.06) * (emphasized ? 1.25 : 1)
+  );
+  ctx.strokeStyle = "#ffffff";
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth = 1;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(centerX - lineWidth / 2, centerY - lineGap);
+  ctx.lineTo(centerX + lineWidth / 2, centerY - lineGap);
+  ctx.moveTo(centerX - lineWidth / 2, centerY + lineGap);
+  ctx.lineTo(centerX + lineWidth / 2, centerY + lineGap);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawChordBlocks(
   ctx: CanvasRenderingContext2D,
   layout: PreviewLayout,
   rowLayout: PreviewRowLayout,
   scrollTop: number,
   cursorTick: number,
-  changes: readonly ChordChangePoint[],
-  theme: CanvasTheme
+  blocks: readonly ChordBlockPoint[],
+  totalTicks: number,
+  source: "user" | "predict",
+  theme: CanvasTheme,
+  selectedChordTick: number | null,
+  touchTrimReadyTick: number | null,
+  chordPreview: ChordBlockPreview | null
 ): void {
-  if (layout.changeWidth < 8) return;
+  const lane = getChordBlockLaneBounds(layout, source);
+  const blockBounds = getChordBlockBounds(layout, source);
+  if (lane.width < 10 || blockBounds.width < 10 || blocks.length === 0) return;
 
-  const row = rowLayout.row;
-  const y = rowLayout.top - scrollTop;
-  const top = y + 8;
-  const bottom = y + rowLayout.height - 8;
-  const railX = layout.changeStart + layout.changeWidth / 2;
+  const visualBlocks =
+    source === "user" && chordPreview
+      ? blocks
+          .map((block) =>
+            chordPreview.mode === "trim-end" &&
+            chordPreview.boundaryTick !== undefined &&
+            block.tick === chordPreview.boundaryTick
+              ? { ...block, tick: chordPreview.targetTick, endTick: undefined }
+              : chordPreview.mode !== "trim-end" &&
+                  block.tick === chordPreview.sourceTick
+                ? { ...block, tick: chordPreview.targetTick, endTick: undefined }
+                : block
+          )
+          .sort((left, right) => left.tick - right.tick)
+      : blocks;
 
-  ctx.fillStyle = theme.panel2;
-  ctx.globalAlpha = 0.2;
-  ctx.fillRect(layout.changeStart, y, layout.changeWidth, rowLayout.height);
-  ctx.globalAlpha = 1;
+  const rowStartY = rowLayout.top - scrollTop;
+  const rowTop = rowStartY;
+  const rowBottom = rowStartY + rowLayout.height;
+  if (rowBottom <= rowTop) return;
 
-  if (bottom <= top) return;
-
-  const rowChanges = changes.filter(
-    (change) =>
-      change.tick >= row.start &&
-      (change.tick < row.end ||
-        (row === (layout.rows[layout.rows.length - 1]?.row ?? row) &&
-          change.tick <= row.end))
-  );
-  const previousChange =
-    [...changes].reverse().find((change) => change.tick < row.start) ?? null;
-
-  // A neutral rail keeps empty measures readable. Colored segments make the
-  // lane behave like a compact git history of chord changes.
-  ctx.strokeStyle = theme.lineSoft;
-  ctx.globalAlpha = 0.9;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(Math.round(railX) + 0.5, Math.round(top) + 0.5);
-  ctx.lineTo(Math.round(railX) + 0.5, Math.round(bottom) + 0.5);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 1;
-
-  let segmentStart = top;
-  let segmentColor = previousChange
-    ? getChordChangeColor(previousChange.chord, theme)
-    : theme.lineSoft;
-  for (const [index, change] of rowChanges.entries()) {
-    const pointY = Math.max(
-      top,
-      Math.min(bottom, getVerticalChordChangeY(rowLayout, change.tick, scrollTop))
+  for (let index = 0; index < visualBlocks.length; index += 1) {
+    const block = visualBlocks[index];
+    const nextTick = visualBlocks[index + 1]?.tick ?? totalTicks;
+    const endTick = Math.min(
+      totalTicks,
+      Math.max(block.tick + 1, Math.min(block.endTick ?? nextTick, nextTick))
     );
-    ctx.strokeStyle = segmentColor;
-    ctx.globalAlpha = 0.85;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(Math.round(railX) + 0.5, Math.round(segmentStart) + 0.5);
-    ctx.lineTo(Math.round(railX) + 0.5, Math.round(pointY) + 0.5);
-    ctx.stroke();
-    ctx.lineWidth = 1;
+    if (endTick <= rowLayout.row.start || block.tick >= rowLayout.row.end) {
+      continue;
+    }
+
+    const startY = getVerticalChordBlockY(rowLayout, block.tick, scrollTop);
+    const endY = getVerticalChordBlockY(rowLayout, endTick, scrollTop);
+    const startsInThisRow = block.tick >= rowLayout.row.start;
+    const endsInThisRow = endTick <= rowLayout.row.end;
+    const top = Math.max(
+      rowTop,
+      Math.min(
+        rowBottom,
+        startY + (startsInThisRow ? CHORD_BLOCK_CHANGE_GAP : 0)
+      )
+    );
+    const bottom = Math.min(
+      rowBottom,
+      Math.max(
+        top + 5,
+        Math.min(
+          rowBottom,
+          endY - (endsInThisRow ? CHORD_BLOCK_CHANGE_GAP : 0)
+        )
+      )
+    );
+    if (bottom <= rowTop || top >= rowBottom) continue;
+
+    const accepted = source === "user";
+    const active = cursorTick >= block.tick && cursorTick < endTick;
+    const selected =
+      source === "user" &&
+      (block.tick === selectedChordTick ||
+        (chordPreview?.mode !== "trim-end" &&
+          chordPreview?.sourceTick === selectedChordTick &&
+          block.tick === chordPreview.targetTick));
+    const baseColor = accepted ? theme.info : theme.predict;
+    const accent = active ? theme.playing : baseColor;
+    const headerColor = accepted
+      ? lightenCanvasColor(accent)
+      : accent;
+    const x = blockBounds.left;
+    const width = blockBounds.width;
+    const blockHeight = Math.max(5, bottom - top);
+    const roundTop = block.tick >= rowLayout.row.start;
+    const roundBottom = endTick <= rowLayout.row.end;
+    const canTrimEnd = source === "user" && visualBlocks[index + 1] !== undefined;
+    // Use the actual beat-node height for the chord header. This keeps a
+    // chord label such as Fm aligned with the beat line it belongs to instead
+    // of forcing every chord into the same arbitrary 16px strip.
+    const beatNode = findVerticalNoteNodeAtTick(rowLayout.beats, block.tick);
+    const headerHeight = Math.min(
+      blockHeight,
+      Math.max(
+        CHORD_BLOCK_HEADER_HEIGHT - CHORD_BLOCK_HEADER_INSET,
+        (beatNode?.height ?? CHORD_BLOCK_HEADER_HEIGHT) -
+          CHORD_BLOCK_HEADER_INSET
+      )
+    );
+    const trimReady =
+      source === "user" && touchTrimReadyTick === block.tick;
+    const headerTop = top;
+    const gripHeight = Math.min(
+      blockHeight,
+      headerHeight + (trimReady ? 4 : 0)
+    );
+    const label = source === "predict" && block.confidence !== undefined
+      ? `${block.chord} ${Math.round(clamp01(block.confidence) * 100)}%`
+      : block.chord;
+    ctx.font = "650 10px sans-serif";
+    const headerLabel = fitMidiCanvasText(
+      ctx,
+      label,
+      Math.max(8, width - CHORD_BLOCK_HEADER_PADDING * 2)
+    );
+    const headerWidth = width;
+
+    if (selected) {
+      ctx.save();
+      chordBlockPath(ctx, x, top, width, blockHeight, 5, roundTop, roundBottom);
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.32;
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();
+    chordBlockPath(ctx, x, top, width, blockHeight, 5, roundTop, roundBottom);
+    ctx.clip();
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = active ? 0.32 : selected ? 0.26 : accepted ? 0.18 : 0.14;
+    ctx.fillRect(x, top, width, blockHeight);
+    if (roundTop) {
+      ctx.fillStyle = headerColor;
+      ctx.globalAlpha = active ? 0.9 : selected ? 0.82 : 0.62;
+      ctx.fillRect(x, headerTop, headerWidth, headerHeight);
+    }
+    ctx.globalAlpha = active ? 0.9 : selected ? 0.95 : 0.48;
+    ctx.fillRect(x, top, 3, blockHeight);
+    ctx.restore();
     ctx.globalAlpha = 1;
 
-    const nextChange = changes.find(
-      (candidate) => candidate.tick > change.tick
-    );
-    const active =
-      cursorTick >= change.tick &&
-      (nextChange === undefined || cursorTick < nextChange.tick);
-    const color = getChordChangeColor(change.chord, theme);
-    ctx.fillStyle = color;
-    ctx.globalAlpha = active ? 0.24 : 0.12;
-    ctx.beginPath();
-    ctx.arc(railX, pointY, active ? 7 : 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(railX, pointY, active ? 4 : 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    segmentStart = pointY;
-    segmentColor = color;
-
-    // Keep a short horizontal branch at every change, like a git graph, so
-    // the marker remains clear inside this deliberately narrow column.
-    if (index < rowChanges.length - 1) {
-      ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.72;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(Math.round(railX) + 0.5, Math.round(pointY) + 0.5);
-      ctx.lineTo(
-        Math.round(railX + Math.min(8, layout.changeWidth / 4)) + 0.5,
-        Math.round(pointY) + 0.5
+    if (source === "user" && roundTop) {
+      drawVerticalTrimGrip(
+        ctx,
+        x,
+        headerTop,
+        width,
+        gripHeight,
+        active ? theme.panel : theme.textMuted,
+        trimReady
       );
-      ctx.stroke();
+    }
+    if (canTrimEnd && roundBottom) {
+      drawVerticalTrimGrip(
+        ctx,
+        x,
+        bottom - gripHeight,
+        width,
+        gripHeight,
+        active ? theme.panel : theme.textMuted,
+        trimReady
+      );
+    }
+
+    {
+      ctx.strokeStyle = accent;
+      ctx.globalAlpha = selected ? 1 : active ? 0.95 : 0.34;
+      ctx.lineWidth = selected ? 1.8 : 1.5;
+      strokeChordBlockOutline(
+        ctx,
+        x,
+        top,
+        width,
+        blockHeight,
+        4,
+        roundTop,
+        roundBottom
+      );
+      ctx.lineWidth = 1;
       ctx.globalAlpha = 1;
     }
-  }
 
-  if (rowChanges.length > 0) {
-    ctx.strokeStyle = segmentColor;
-    ctx.globalAlpha = 0.85;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(Math.round(railX) + 0.5, Math.round(segmentStart) + 0.5);
-    ctx.lineTo(Math.round(railX) + 0.5, Math.round(bottom) + 0.5);
-    ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 1;
+    if (roundTop && blockHeight >= 22) {
+      ctx.fillStyle = "#111827";
+      ctx.textAlign = "left";
+      ctx.fillText(
+        headerLabel,
+        x + CHORD_BLOCK_HEADER_PADDING,
+        headerTop + Math.min(headerHeight - 2, 12)
+      );
+      ctx.textAlign = "start";
+    }
   }
 }
 
 function findDetectionHit(
-  ctx: CanvasRenderingContext2D,
   layout: PreviewLayout,
   orientation: PreviewOrientation,
   scrollTop: number,
   x: number,
   y: number,
   suggestions: readonly SuggestedChord[],
-  chords: readonly ChordEvent[]
+  chords: readonly ChordEvent[],
+  totalTicks: number
 ): DetectionHit | null {
   if (orientation !== "vertical" || !layout.detectVisible) return null;
+
+  const blocks = getChordBlockPoints(suggestions);
+  const lane = getChordBlockBounds(layout, "predict");
+  if (lane.width < 10) return null;
 
   for (const rowLayout of layout.rows) {
     const rowPosition = y + scrollTop;
@@ -3339,15 +3970,47 @@ function findDetectionHit(
       ) {
         continue;
       }
-      const rect = getDetectionCardRect(
-        ctx,
-        layout,
-        rowLayout,
-        suggestion,
-        scrollTop,
-        chords
+      const blockIndex = blocks.findIndex(
+        (block) =>
+          block.tick === Math.round(suggestion.tick) &&
+          block.chord === suggestion.chord.trim()
       );
-      if (!rect) continue;
+      const block = blocks[blockIndex];
+      if (!block) continue;
+      const nextTick = blocks[blockIndex + 1]?.tick ?? totalTicks;
+      const endTick = Math.min(
+        totalTicks,
+        Math.max(block.tick + 1, Math.min(block.endTick ?? nextTick, nextTick))
+      );
+      const rowTop = rowLayout.top - scrollTop;
+      const rowBottom = rowLayout.top - scrollTop + rowLayout.height;
+      const startsInThisRow = block.tick >= rowLayout.row.start;
+      const endsInThisRow = endTick <= rowLayout.row.end;
+      const blockTop = Math.max(
+        rowTop,
+        Math.min(
+          rowBottom,
+          getVerticalChordBlockY(rowLayout, block.tick, scrollTop) +
+            (startsInThisRow ? CHORD_BLOCK_CHANGE_GAP : 0)
+        )
+      );
+      const blockBottom = Math.min(
+        rowBottom,
+        Math.max(
+          blockTop + 5,
+          Math.min(
+            rowBottom,
+            getVerticalChordBlockY(rowLayout, endTick, scrollTop) -
+              (endsInThisRow ? CHORD_BLOCK_CHANGE_GAP : 0)
+          )
+        )
+      );
+      const rect = {
+        left: lane.left,
+        top: blockTop,
+        width: lane.width,
+        height: Math.max(8, blockBottom - blockTop),
+      };
       if (
         x < rect.left ||
         x > rect.left + rect.width ||
@@ -3356,16 +4019,15 @@ function findDetectionHit(
       ) {
         continue;
       }
-      const placement = getDetectionPlacement(rowLayout, suggestion);
       const accepted = isChordAccepted(
         suggestion,
         chords,
-        placement?.tick ?? suggestion.tick
+        block.tick
       );
       return {
         suggestion,
         accept: !accepted && x >= rect.left + rect.width - 24,
-        tick: placement?.tick ?? suggestion.tick,
+        tick: block.tick,
       };
     }
   }
@@ -3383,8 +4045,12 @@ function drawVerticalPreview(
   visualOverride: BeatVisualOverride | null,
   pitchRange: PitchRange,
   chords: readonly ChordEvent[],
-  changes: readonly ChordChangePoint[],
-  suggestions: readonly SuggestedChord[],
+  userChordBlocks: readonly ChordBlockPoint[],
+  predictedChordBlocks: readonly ChordBlockPoint[],
+  totalTicks: number,
+  selectedChordTick: number | null,
+  touchTrimReadyTick: number | null,
+  chordPreview: ChordBlockPreview | null,
   theme: CanvasTheme
 ): void {
   const resolvedActiveBeat = getPreviewActiveBeat(
@@ -3428,16 +4094,6 @@ function drawVerticalPreview(
     }
     ctx.globalAlpha = 1;
 
-    drawChordChangeRail(
-      ctx,
-      layout,
-      rowLayout,
-      scrollTop,
-      cursorTick,
-      changes,
-      theme
-    );
-
     drawVerticalNoteRoll(
       ctx,
       row,
@@ -3465,6 +4121,7 @@ function drawVerticalPreview(
       layout.noteWidth,
       theme
     );
+
     drawBeatTree(
       ctx,
       layout,
@@ -3476,17 +4133,6 @@ function drawVerticalPreview(
       chords,
       theme
     );
-    drawDetectionBlocks(
-      ctx,
-      layout,
-      rowLayout,
-      scrollTop,
-      cursorTick,
-      chords,
-      suggestions,
-      theme
-    );
-
     // Paint one subtle stripe last so every lane keeps the same hover state.
     // The low alpha preserves chord cards, notes, and +/- controls underneath.
     if (hoveredNode) {
@@ -3510,8 +4156,6 @@ function drawVerticalPreview(
     ctx.beginPath();
     ctx.moveTo(Math.round(layout.noteWidth) + 0.5, y);
     ctx.lineTo(Math.round(layout.noteWidth) + 0.5, y + rowLayout.height);
-    ctx.moveTo(Math.round(layout.changeStart) + 0.5, y);
-    ctx.lineTo(Math.round(layout.changeStart) + 0.5, y + rowLayout.height);
     ctx.moveTo(Math.round(layout.chordStart) + 0.5, y);
     ctx.lineTo(Math.round(layout.chordStart) + 0.5, y + rowLayout.height);
     if (layout.detectVisible) {
@@ -3522,6 +4166,34 @@ function drawVerticalPreview(
     ctx.lineTo(layout.width, Math.round(y + rowLayout.height) + 0.5);
     ctx.stroke();
     ctx.globalAlpha = 1;
+
+    // Paint chord tracks after the table separators. A chord that spans a
+    // measure boundary must look like one continuous block, not four room
+    // cells with a line cutting through the middle.
+    drawChordBlocks(
+      ctx,
+      layout,
+      rowLayout,
+      scrollTop,
+      cursorTick,
+      userChordBlocks,
+      totalTicks,
+      "user",
+      theme,
+      selectedChordTick,
+      touchTrimReadyTick,
+      chordPreview
+    );
+    drawDetectionBlocks(
+      ctx,
+      layout,
+      rowLayout,
+      scrollTop,
+      cursorTick,
+      predictedChordBlocks,
+      totalTicks,
+      theme
+    );
   }
 }
 

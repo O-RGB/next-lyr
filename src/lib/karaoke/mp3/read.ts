@@ -47,13 +47,28 @@ function readID3Tags(buffer: ArrayBuffer): {
     let offset = 10;
 
     const readTextFrame = (start: number, size: number) => {
-      let text = "";
-      for (let i = start + 1; i < start + size; i++) {
-        const char = view.getUint8(i);
-        if (char === 0) break;
-        text += String.fromCharCode(char);
+      if (size <= 1) return "";
+
+      const encoding = view.getUint8(start);
+      const payload = new Uint8Array(buffer, start + 1, size - 1);
+
+      if (encoding === 0x01) {
+        return new TextDecoder("utf-16le")
+          .decode(payload)
+          .replace(/^\uFEFF/, "")
+          .replace(/\u0000+$/, "");
       }
-      return text;
+
+      if (encoding === 0x03) {
+        return new TextDecoder().decode(payload).replace(/\u0000+$/, "");
+      }
+
+      let legacyText = "";
+      for (const char of payload) {
+        if (char === 0) break;
+        legacyText += String.fromCharCode(char);
+      }
+      return decodeTIS620Text(legacyText);
     };
 
     while (offset < id3Size + 10) {
@@ -130,15 +145,15 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
   };
 
   if (miscTags.TIT2) {
-    result.title = decodeTIS620Text(miscTags.TIT2);
+    result.title = miscTags.TIT2;
     delete miscTags.TIT2;
   }
   if (miscTags.TPE1) {
-    result.artist = decodeTIS620Text(miscTags.TPE1);
+    result.artist = miscTags.TPE1;
     delete miscTags.TPE1;
   }
   if (miscTags.TALB) {
-    result.album = decodeTIS620Text(miscTags.TALB);
+    result.album = miscTags.TALB;
     delete miscTags.TALB;
   }
 
@@ -199,13 +214,16 @@ export async function readMp3(file: File): Promise<IReadMp3Result> {
     delete miscTags[result.lyricsTagKey];
   }
 
-  if (miscTags.TXXX_CHORD) {
+  const chordTag = miscTags.TXXX_CHORD ?? miscTags.CHORD;
+  if (chordTag) {
     try {
-      result.chords = JSON.parse(miscTags.TXXX_CHORD);
+      result.chords = JSON.parse(chordTag);
     } catch (err) {
       console.error("Failed to parse chords:", err);
     }
   }
+  delete miscTags.TXXX_CHORD;
+  delete miscTags.CHORD;
 
   if (miscTags.TXXX_LYRICS) delete miscTags.TXXX_LYRICS;
   result.miscTags = miscTags as any;

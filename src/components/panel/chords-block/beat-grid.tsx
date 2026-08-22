@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import { resizeCanvas, roundedRect } from "@/lib/canvas/runtime";
+import { isPreviewHorizontal } from "@/components/panel/preview-orientation";
 import { findChordForRange } from "@/lib/karaoke/chords/lookup";
 import type { ChordEvent } from "@/lib/karaoke/midi/types";
 import type { IMidiParseResult } from "@/lib/karaoke/midi/types";
@@ -691,12 +692,11 @@ function drawCompactMeasureRows(
   }
 
   const rowHeight = Math.max(1, height / 2);
-  const labelWidth = Math.min(42, Math.max(30, width * 0.2));
-  const laneStart = labelWidth;
-  const laneWidth = Math.max(1, width - laneStart - 6);
+  const laneStart = 2;
+  const laneWidth = Math.max(1, width - laneStart - 2);
   const rows = getCompactMeasureRows(currentRange, nextRange);
 
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
 
@@ -707,6 +707,8 @@ function drawCompactMeasureRows(
     const rowActive =
       range.key === currentRange.key &&
       isPositionInRange(currentPosition, range.start, range.end, true);
+
+    ctx.textBaseline = "top";
 
     if (rowIndex > 0) {
       ctx.strokeStyle = line;
@@ -720,7 +722,7 @@ function drawCompactMeasureRows(
     }
 
     ctx.fillStyle = rowActive ? active : muted;
-    ctx.fillText(`M${range.measure}`, 8, top + rowHeight / 2);
+    ctx.fillText(`M${range.measure}`, 2, top + 2);
 
     ctx.fillStyle = panelAlt;
     ctx.globalAlpha = rowActive ? 0.18 : 0.1;
@@ -888,12 +890,7 @@ function drawCompactVerticalMeasureRows(
 }
 
 function isCompactVertical(width: number, height: number): boolean {
-  // Chord blocks use one stable vertical reading direction. The surrounding
-  // editor may change orientation, but the chord lane itself should not jump
-  // between horizontal and vertical layouts.
-  void width;
-  void height;
-  return true;
+  return !isPreviewHorizontal(width, height);
 }
 
 function getCompactMeasureRows(
@@ -926,11 +923,26 @@ function drawCompactBlockText(
   if (!label || width < 12 || height < 14) return;
 
   ctx.font = "700 11px sans-serif";
-  const cardHeight = Math.min(24, Math.max(16, height - 4));
+  const availableCardHeight = Math.max(1, height - 4);
+  const maxLines = Math.max(
+    1,
+    Math.min(3, Math.floor((availableCardHeight - 6) / 12))
+  );
+  const maxTextWidth = Math.max(1, width - 8);
+  const lines = wrapCanvasText(ctx, label, maxTextWidth, maxLines);
+  const lineHeight = 12;
+  const cardHeight = Math.min(
+    42,
+    availableCardHeight,
+    Math.max(16, lines.length * lineHeight + 6)
+  );
   const maxCardWidth = Math.max(1, width - 6);
+  const longestLineWidth = Math.max(
+    ...lines.map((line) => ctx.measureText(line).width)
+  );
   const cardWidth = Math.min(
     maxCardWidth,
-    Math.max(18, ctx.measureText(label).width + 12)
+    Math.max(18, longestLineWidth + 12)
   );
   const cardX = x + (width - cardWidth) / 2;
   const cardY = y + (height - cardHeight) / 2;
@@ -950,25 +962,55 @@ function drawCompactBlockText(
   ctx.globalAlpha = 1;
   ctx.font = "700 11px sans-serif";
   ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   ctx.fillStyle = accent;
-  ctx.fillText(
-    fitCanvasText(ctx, label, Math.max(1, width - 8)),
-    x + width / 2,
-    y + height / 2 + 4
-  );
+  const firstLineY = y + height / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x + width / 2, firstLineY + index * lineHeight);
+  });
 }
 
-function fitCanvasText(
+function wrapCanvasText(
   ctx: CanvasRenderingContext2D,
   value: string,
-  maxWidth: number
-): string {
-  if (ctx.measureText(value).width <= maxWidth) return value;
-  let result = value;
-  while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth) {
-    result = result.slice(0, -1);
+  maxWidth: number,
+  maxLines: number
+): string[] {
+  let remaining = Array.from(value);
+  const lines: string[] = [];
+
+  for (let lineIndex = 0; lineIndex < maxLines; lineIndex += 1) {
+    const remainingText = remaining.join("");
+    if (ctx.measureText(remainingText).width <= maxWidth) {
+      lines.push(remainingText);
+      break;
+    }
+
+    let cut = remaining.length;
+    while (
+      cut > 1 &&
+      ctx.measureText(remaining.slice(0, cut).join("")).width > maxWidth
+    ) {
+      cut -= 1;
+    }
+
+    if (lineIndex === maxLines - 1) {
+      let lastLine = remaining.slice(0, cut).join("");
+      while (
+        lastLine.length > 1 &&
+        ctx.measureText(`${lastLine}…`).width > maxWidth
+      ) {
+        lastLine = lastLine.slice(0, -1);
+      }
+      lines.push(`${lastLine}…`);
+      break;
+    }
+
+    lines.push(remaining.slice(0, cut).join(""));
+    remaining = remaining.slice(cut);
   }
-  return `${result}…`;
+
+  return lines.length > 0 ? lines : [value];
 }
 
 function getSlotIndex(

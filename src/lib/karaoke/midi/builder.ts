@@ -1,6 +1,7 @@
 import {
   arrayBufferToBase64,
   buildKLyrXML,
+  encodeKlyrXml,
   stringToTIS620,
 } from "../shared/lib";
 import { MidiFile, MidiTrack, MidiEvent, BuildOptions } from "./types";
@@ -20,8 +21,11 @@ function writeVariableLength(value: number): number[] {
   return reversedBuffer;
 }
 
-function _encodeKLyrPayload(xml: string): string {
-  const xmlBytes = stringToTIS620(xml);
+function _encodeKLyrPayload(
+  xml: string,
+  textEncoding: "tis-620" | "utf-8"
+): string {
+  const xmlBytes = encodeKlyrXml(xml, textEncoding);
   const compressed = pako.deflate(xmlBytes, { level: 9 });
   return arrayBufferToBase64(compressed);
 }
@@ -35,6 +39,7 @@ function _createModifiedMidi(
     newLyricsData,
     newChordsData,
     headerToUse,
+    textEncoding = "tis-620",
   } = options;
   const { format, ticksPerBeat } = originalMidiData;
 
@@ -81,7 +86,7 @@ function _createModifiedMidi(
     (newLyricsData && newLyricsData.length > 0)
   ) {
     const klyrXml = buildKLyrXML(newSongInfo, newLyricsData, "midi", ticksPerBeat);
-    const encodedKLyr = _encodeKLyrPayload(klyrXml);
+    const encodedKLyr = _encodeKLyrPayload(klyrXml, textEncoding);
     const newLyricTrack: MidiTrack = [
       {
         type: "meta",
@@ -104,7 +109,10 @@ function _createModifiedMidi(
   return { format, ticksPerBeat, tracks: finalTracks };
 }
 
-function _buildTrackData(track: MidiTrack): Uint8Array {
+function _buildTrackData(
+  track: MidiTrack,
+  textEncoding: "tis-620" | "utf-8"
+): Uint8Array {
   const chunks: number[] = [];
   let currentTime = 0;
   let lastStatus: number | null = null;
@@ -118,7 +126,9 @@ function _buildTrackData(track: MidiTrack): Uint8Array {
       chunks.push(0xff, event.metaType);
       const data =
         event.text !== undefined
-          ? stringToTIS620(event.text)
+          ? textEncoding === "utf-8"
+            ? new TextEncoder().encode(event.text)
+            : stringToTIS620(event.text)
           : event.data || new Uint8Array(0);
       chunks.push(...writeVariableLength(data.length));
       chunks.push(...Array.from(data));
@@ -145,10 +155,13 @@ function _buildTrackData(track: MidiTrack): Uint8Array {
 }
 
 function _buildMidiFile(
-  midiStructure: Omit<MidiFile, "trackCount">
+  midiStructure: Omit<MidiFile, "trackCount">,
+  textEncoding: "tis-620" | "utf-8"
 ): Uint8Array {
   const { format, ticksPerBeat, tracks } = midiStructure;
-  const trackBuffers: Uint8Array[] = tracks.map(_buildTrackData);
+  const trackBuffers: Uint8Array[] = tracks.map((track) =>
+    _buildTrackData(track, textEncoding)
+  );
   const totalLength =
     14 + trackBuffers.reduce((sum, buf) => sum + 8 + buf.length, 0);
   const output = new Uint8Array(totalLength);
@@ -182,5 +195,5 @@ function _buildMidiFile(
 
 export function buildModifiedMidi(options: BuildOptions): Uint8Array {
   const modified = _createModifiedMidi(options);
-  return _buildMidiFile(modified);
+  return _buildMidiFile(modified, options.textEncoding ?? "tis-620");
 }

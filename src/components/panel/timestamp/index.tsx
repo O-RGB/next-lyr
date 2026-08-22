@@ -10,11 +10,13 @@ type EditorView = "lyrics" | "chords";
 interface TimestampProps {
   editorView?: EditorView;
   onEditorViewChange?: (view: EditorView) => void;
+  showEditorViewToggle?: boolean;
 }
 
 const TimeStampe: React.FC<TimestampProps> = ({
   editorView = "lyrics",
   onEditorViewChange,
+  showEditorViewToggle = true,
 }) => {
   const mode = useKaraokeStore((state) => state.mode);
   const timeRef = useRef<HTMLSpanElement>(null);
@@ -58,7 +60,7 @@ const TimeStampe: React.FC<TimestampProps> = ({
         <span className="label-xs">BPM:</span>
         <span ref={tempoRef} />
       </div>
-      {onEditorViewChange && (
+      {onEditorViewChange && showEditorViewToggle && (
         <ButtonCommon
           type="button"
           size="xs"

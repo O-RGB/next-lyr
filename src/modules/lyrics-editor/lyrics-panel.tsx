@@ -59,6 +59,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
         <Timestamp
           editorView={chordPreview ? "chords" : "lyrics"}
           onEditorViewChange={handleEditorViewChange}
+          showEditorViewToggle={false}
         />
       </header>
 
@@ -70,7 +71,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
             </div>
           )}
 
-          <div className="z-10 flex h-[170px] shrink-0 gap-2">
+          <div className="z-10 flex h-[120px] shrink-0 gap-2">
             {chordPreview ? (
               <div className="min-w-0 flex-1">
                 <ChordOverviewPreview compact />

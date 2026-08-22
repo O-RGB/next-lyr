@@ -1,5 +1,5 @@
-import { Download } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { AlertTriangle, Download } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "@/components/common/button";
 import Donate from "../donate/donate";
@@ -16,6 +16,7 @@ import {
   DEFAULT_PRE_ROLL_OFFSET_MIDI,
   DEFAULT_PRE_ROLL_OFFSET_MP3,
 } from "@/stores/karaoke-store/configs";
+import { isTIS620Compatible } from "@/lib/karaoke/shared/lib";
 import pako from "pako";
 
 interface BuildNcnModalProps {
@@ -32,6 +33,22 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const metadata = useKaraokeStore((state) => state.metadata);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const lyricsDocument = useKaraokeStore((state) => state.lyricsDocument);
+  const legacyEncodingSupported = useMemo(() => {
+    const metadataText = Object.values(metadata ?? {}).filter(
+      (value): value is string => typeof value === "string"
+    );
+    const lyricText = lyricsData.flatMap((line) =>
+      line.flatMap((word) => [word.text, word.vocal ?? ""])
+    );
+    const chordText = chordsData.map((chord) => chord.chord);
+
+    return [...metadataText, ...lyricText, ...chordText].every(
+      isTIS620Compatible
+    );
+  }, [chordsData, lyricsData, metadata]);
+
+  const utf8CompatibilityMessage =
+    "มีภาษาอื่น จึงใช้ UTF-8 และไม่รองรับโปรแกรมคาราโอเกะไทย";
 
   const [openModal, setOpenModal] = useState<boolean>(false);
   const handleCloseModal = () => {
@@ -109,15 +126,18 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           : Math.floor((x.tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000),
       }));
 
-      metadata.TIME_FORMAT = "TIME_MS";
-      metadata.CHARSET = undefined;
+      const mp3Info: SongInfo = {
+        ...metadata,
+        TIME_FORMAT: "TIME_MS",
+        CHARSET: legacyEncodingSupported ? "TIS-620" : "UTF-8",
+      };
       const buffer = buildMp3(
         {
-          title: metadata.TITLE,
-          album: metadata.ALBUM,
-          artist: metadata.ARTIST,
+          title: mp3Info.TITLE,
+          album: mp3Info.ALBUM,
+          artist: mp3Info.ARTIST,
           chords: newChordsData,
-          info: metadata,
+          info: mp3Info,
           lyrics: newLyricsData,
         },
         storedFile.buffer
@@ -153,7 +173,10 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
             return Math.round(tick + offsetTicks);
           });
 
-      const newSongInfo: SongInfo = metadata;
+      const newSongInfo: SongInfo = {
+        ...metadata,
+        CHARSET: legacyEncodingSupported ? "TIS-620" : "UTF-8",
+      };
       const newChordsData: ChordEvent[] = chordsData;
 
       newSongInfo.TIME_FORMAT = newSongInfo.TIME_FORMAT
@@ -173,6 +196,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         newLyricsData,
         newChordsData,
         headerToUse: midiInfo.lyrHeader,
+        textEncoding: legacyEncodingSupported ? "tis-620" : "utf-8",
       });
 
       const blob = new Blob([newMidiBuffer as BlobPart], {
@@ -193,6 +217,10 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildLyr = () => {
+    if (!legacyEncodingSupported) {
+      alert(utf8CompatibilityMessage);
+      return;
+    }
     if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
     if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
     if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
@@ -212,6 +240,10 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildCur = () => {
+    if (!legacyEncodingSupported) {
+      alert(utf8CompatibilityMessage);
+      return;
+    }
     validation();
     if (mode === "midi" && midiInfo) {
       const flatLyrics = lyricsData.flat();
@@ -256,6 +288,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                 <>
                   <ButtonCommon
                     onClick={buildCur}
+                    disabled={!legacyEncodingSupported}
                     color="primary"
                     icon={<Download className="text-lg" />}
                   >
@@ -264,6 +297,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
                   <ButtonCommon
                     onClick={buildLyr}
+                    disabled={!legacyEncodingSupported}
                     color="success"
                     icon={<Download className="text-lg" />}
                   >
@@ -279,16 +313,30 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   >
                     บันทึก <span className="font-bold">.mid</span>
                   </ButtonCommon>
+                  {!legacyEncodingSupported && (
+                    <p className="flex items-center gap-2 text-xs text-warn">
+                      <AlertTriangle className="size-4 shrink-0" />
+                      <span>{utf8CompatibilityMessage}</span>
+                    </p>
+                  )}
                 </>
               )}
               {mode === "mp3" && (
-                <ButtonCommon
-                  onClick={handleSaveMp3}
-                  color="secondary"
-                  icon={<Download className="text-lg" />}
-                >
-                  บันทึก <span className="font-bold">.mp3</span>
-                </ButtonCommon>
+                <>
+                  <ButtonCommon
+                    onClick={handleSaveMp3}
+                    color="secondary"
+                    icon={<Download className="text-lg" />}
+                  >
+                    บันทึก <span className="font-bold">.mp3</span>
+                  </ButtonCommon>
+                  {!legacyEncodingSupported && (
+                    <p className="flex items-center gap-2 text-xs text-warn">
+                      <AlertTriangle className="size-4 shrink-0" />
+                      <span>{utf8CompatibilityMessage}</span>
+                    </p>
+                  )}
+                </>
               )}
               {mode === "youtube" && (
                 <ButtonCommon
