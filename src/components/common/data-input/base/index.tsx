@@ -49,7 +49,8 @@ export const BaseInputWrapper: React.FC<BaseInputWrapperProps> = ({
         htmlFor={htmlFor}
         className={cn(
           LABEL_SIZE[inputSize],
-          "font-medium whitespace-nowrap text-muted-foreground"
+          "font-medium whitespace-nowrap text-muted-foreground",
+          error && "text-destructive"
         )}
       >
         {label}

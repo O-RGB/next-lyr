@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import ProjectListModal from "@/components/modals/project/project-list";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useUiStore } from "@/features/ui/ui-store";
@@ -203,13 +204,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-dvh bg-base text-foreground selection:bg-primary/10">
+    <div className="root-light min-h-dvh bg-base text-foreground selection:bg-primary/10">
       <header className="border-b border-[#d7dee9] bg-white text-[#1c2430] backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
-              <Waves className="size-5" />
-            </span>
+            <Image
+              src="/images/icon-app.png"
+              alt="NextLyricsEditor"
+              width={512}
+              height={512}
+              priority
+              className="size-10 shrink-0 rounded-lg object-cover shadow-sm"
+            />
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold text-[#1c2430]">
                 NextLyricsEditor
@@ -221,21 +227,36 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <label className="flex h-8 items-center gap-1.5 rounded-md border border-[#d7dee9] bg-white px-2 text-[#6b7280]">
+            <div className="flex h-8 items-center gap-1.5 rounded-md border border-[#d7dee9] bg-white px-2 text-[#6b7280]">
               <Globe className="size-3.5 shrink-0 text-primary" />
               <span className="sr-only">Language</span>
-              <select
+              <Switch
                 aria-label="Language"
-                value={locale}
-                onChange={(event) =>
-                  updateSettings("uiLocale", event.target.value as "th" | "en")
+                checked={locale === "en"}
+                onCheckedChange={(checked) =>
+                  updateSettings("uiLocale", checked ? "en" : "th")
                 }
-                className="h-7 w-20 cursor-pointer border-0 bg-transparent text-[11px] font-semibold text-[#1c2430] outline-none sm:w-28"
+                className="!h-[22px] !w-[48px] !bg-[#d7dee9] data-[checked=true]:!bg-[#2878e8]"
               >
-                <option value="th">TH · ไทย</option>
-                <option value="en">EN · English</option>
-              </select>
-            </label>
+                <span className="invisible whitespace-nowrap px-3 text-[9px] font-bold leading-none">
+                  TH
+                </span>
+                <span
+                  className={`absolute inset-y-0 right-1 items-center text-[9px] font-bold leading-none text-[#1c2430] ${
+                    locale === "th" ? "flex" : "hidden"
+                  }`}
+                >
+                  TH
+                </span>
+                <span
+                  className={`absolute inset-y-0 left-1 items-center text-[9px] font-bold leading-none text-white ${
+                    locale === "en" ? "flex" : "hidden"
+                  }`}
+                >
+                  EN
+                </span>
+              </Switch>
+            </div>
             <span className="hidden rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-mono text-primary sm:inline-block">
               v0.1.0
             </span>
@@ -261,14 +282,14 @@ export default function Home() {
                 <h1 className="text-2xl font-extrabold leading-tight text-[#1c2430] sm:text-3xl">
                   NextLyricsEditor
                 </h1>
-                <p className="mt-1 text-sm font-semibold text-primary sm:text-base">
+                <p className="mt-1 text-sm font-semibold !text-[#2878e8] sm:text-base">
                   {text(
                     locale,
                     "สร้างและแก้ไขเนื้อเพลงคาราโอเกะบนเว็บ",
                     "Create and edit karaoke lyrics in your browser"
                   )}
                 </p>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                <p className="mt-3 max-w-2xl text-sm leading-6 !text-[#5f6b7a] sm:text-base">
                   {text(
                     locale,
                     "พื้นที่ทำงานสำหรับนำเข้าเพลง แก้คำร้อง แยกซับ จัดจังหวะ ตรวจ Preview และส่งออกไฟล์ โดยเริ่มจาก Project ของคุณเอง",
@@ -326,10 +347,10 @@ export default function Home() {
 
             <section className="overflow-hidden rounded-lg border border-line bg-slate-950 shadow-sm">
               <Image
-                src="/cover.png"
+                src="/images/cover.png"
                 alt="NextLyricsEditor lyrics editing preview"
-                width={1200}
-                height={630}
+                width={1671}
+                height={941}
                 priority
                 className="h-auto w-full object-cover"
               />

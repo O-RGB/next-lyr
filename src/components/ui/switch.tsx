@@ -23,6 +23,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       size = "default",
       disabled,
       onClick,
+      children,
       ...props
     },
     ref
@@ -46,6 +47,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         role="switch"
         aria-checked={isChecked}
         disabled={disabled}
+        onClick={handleClick}
         data-slot="switch"
         data-size={size}
         data-checked={isChecked ? "true" : "false"}
@@ -56,16 +58,17 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
           className
         )}
       >
+        {children}
         <span
           data-slot="switch-thumb"
           className={cn(
-            "pointer-events-none block rounded-full bg-background transition-transform",
+            "pointer-events-none absolute top-1/2 left-0 -translate-y-1/2 rounded-full bg-background transition-[left]",
             size === "sm" ? "size-3" : "size-4",
             isChecked
               ? size === "sm"
-                ? "translate-x-[calc(100%-2px)]"
-                : "translate-x-[calc(100%-2px)]"
-              : "translate-x-0",
+                ? "left-[calc(100%-14px)]"
+                : "left-[calc(100%-18px)]"
+              : "left-0",
             isChecked && "dark:bg-primary-foreground"
           )}
         />

@@ -5,6 +5,8 @@ import React, { useCallback, useEffect, useRef } from "react";
 
 import ButtonCommon from "@/components/common/button";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { resizeCanvas, clamp } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
@@ -57,6 +59,7 @@ interface WordHitBox {
  */
 const LyricsGrid: React.FC = () => {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const actions = useKaraokeStore((state) => state.actions);
   const openDialog = useUiStore((state) => state.openDialog);
@@ -545,6 +548,13 @@ const LyricsGrid: React.FC = () => {
     drawRef.current = draw;
     markDirty();
   }, [draw, markDirty]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => markDirty());
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [markDirty]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1166,7 +1176,7 @@ const LyricsGrid: React.FC = () => {
   return (
     <div
       ref={scrollRef}
-      className="relative h-full rounded-md border border-line bg-base overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
+      className="relative h-full rounded-md border border-line border-l-0 bg-base overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
       onWheelCapture={handlePanelWheelCapture}
     >
       <div
@@ -1249,18 +1259,22 @@ const LyricsGrid: React.FC = () => {
               <FilePlus2 className="size-6" />
             </span>
             <h2 className="text-base font-semibold text-foreground">
-              ยังไม่มีเนื้อร้อง
+              {text(locale, "ยังไม่มีเนื้อร้อง", "No lyrics yet")}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              เพิ่มบรรทัดแรกเพื่อเริ่มแก้ไขเนื้อเพลง
+              {text(
+                locale,
+                "เพิ่มบรรทัดแรกเพื่อเริ่มแก้ไขเนื้อเพลง",
+                "Add the first line to start editing lyrics"
+              )}
             </p>
             <ButtonCommon
               className="mt-4"
               color="primary"
               icon={<Plus />}
-                onClick={() => openDialog("lyrics")}
+              onClick={() => openDialog("lyrics")}
             >
-              เพิ่มเนื้อร้อง
+              {text(locale, "เพิ่มเนื้อร้อง", "Add lyrics")}
             </ButtonCommon>
           </div>
         </div>

@@ -2,17 +2,17 @@
 
 import {
   FolderOpen,
+  Globe,
   Menu,
   MicVocal,
   History as HistoryIcon,
-  Keyboard,
   Moon,
   Redo2,
   Save,
   Settings2,
   Sun,
-  Waves,
 } from "lucide-react";
+import Image from "next/image";
 import { useTheme } from "next-themes";
 import React from "react";
 
@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUiStore } from "@/features/ui/ui-store";
 import { text } from "@/features/settings/locale";
@@ -104,13 +105,19 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   const { resolvedTheme, setTheme } = useTheme();
   const openDialog = useUiStore((state) => state.openDialog);
   const locale = useSettingsStore((state) => state.uiLocale);
+  const updateSettings = useSettingsStore((state) => state.set);
 
   return (
     <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:px-5">
       <div className="flex shrink-0 items-center gap-2 pr-1">
-        <span className="grid size-9 place-items-center bg-primary/15 text-primary">
-          <Waves className="size-5" />
-        </span>
+        <Image
+          src="/images/icon-app.png"
+          alt=""
+          aria-hidden="true"
+          width={512}
+          height={512}
+          className="size-9 shrink-0 rounded-xl object-cover"
+        />
         <span className="hidden text-sm font-semibold tracking-tight sm:block">
           {text(locale, "Lyrics Editor", "Lyrics Editor")}
         </span>
@@ -163,22 +170,73 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
               <Settings2 />
               {text(locale, "ตั้งค่า", "Settings")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog("shortcuts")}>
-              <Keyboard />
-              {text(locale, "ปุ่มลัด", "Shortcuts")}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog("history")}>
               <HistoryIcon />
               {text(locale, "ประวัติการแก้ไข", "Edit history")}
             </DropdownMenuItem>
             <DropdownMenuItem
+              closeOnClick={false}
+              onClick={() => updateSettings("uiLocale", locale === "en" ? "th" : "en")}
+              className="justify-between"
+            >
+              <Globe />
+              <span className="flex-1">{text(locale, "ภาษา", "Language")}</span>
+              <Switch
+                checked={locale === "en"}
+                tabIndex={-1}
+                aria-hidden="true"
+                className="pointer-events-none !h-[22px] !w-auto"
+              >
+                <span className="invisible whitespace-nowrap px-3 text-[8px] font-bold leading-none">
+                  TH
+                </span>
+                <span
+                  className={`absolute inset-y-0 right-1 items-center text-[8px] font-bold leading-none text-foreground/70 ${
+                    locale === "en" ? "hidden" : "flex"
+                  }`}
+                >
+                  TH
+                </span>
+                <span
+                  className={`absolute inset-y-0 left-1 items-center text-[8px] font-bold leading-none text-primary-foreground ${
+                    locale === "en" ? "flex" : "hidden"
+                  }`}
+                >
+                  EN
+                </span>
+              </Switch>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              closeOnClick={false}
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="justify-between"
             >
               {resolvedTheme === "dark" ? <Sun /> : <Moon />}
-              {text(locale, "ธีม", "Theme")}
-              <span className="ml-auto text-xs text-muted-foreground">
-                {resolvedTheme === "dark" ? text(locale, "สว่าง", "Light") : text(locale, "มืด", "Dark")}
-              </span>
+              <span className="flex-1">{text(locale, "ธีม", "Theme")}</span>
+              <Switch
+                checked={resolvedTheme === "dark"}
+                tabIndex={-1}
+                aria-hidden="true"
+                className="pointer-events-none !h-[22px] !w-auto"
+              >
+                <span className="invisible whitespace-nowrap px-3 text-[8px] font-bold leading-none">
+                  {text(locale, "สว่าง", "Light")}
+                </span>
+                <span
+                  className={`absolute inset-y-0 right-1 items-center text-[8px] font-bold leading-none text-foreground/70 ${
+                    resolvedTheme === "dark" ? "hidden" : "flex"
+                  }`}
+                >
+                  {text(locale, "สว่าง", "Light")}
+                </span>
+                <span
+                  className={`absolute inset-y-0 left-1 items-center text-[8px] font-bold leading-none text-primary-foreground ${
+                    resolvedTheme === "dark" ? "flex" : "hidden"
+                  }`}
+                >
+                  {text(locale, "มืด", "Dark")}
+                </span>
+              </Switch>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

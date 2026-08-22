@@ -56,7 +56,9 @@ interface Layout {
 }
 
 /**
- * Fixed four-way ruler for chord entry.
+ * Time-signature-aware ruler for chord entry. The root measure follows its
+ * numerator (for example, 1–2–3 in 3/4); deeper subdivisions use four-way
+ * splits for precise chord placement.
  *
  * The first level is the current measure. Clicking a block drills into that
  * exact tick range and splits it into four more blocks, up to three levels:
@@ -208,6 +210,13 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
     drawRef.current = draw;
     markDirty();
   }, [draw, markDirty]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => markDirty());
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [markDirty]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -401,7 +410,7 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
         className="block h-full w-full cursor-pointer"
         style={{ fontFamily: "var(--font-lyrics)" }}
         tabIndex={0}
-        aria-label={compact ? "Two-measure chord overview" : "Fixed four-level chord ruler"}
+        aria-label={compact ? "Two-measure chord overview" : "Chord beat ruler"}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
       />

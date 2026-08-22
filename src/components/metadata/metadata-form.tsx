@@ -1,7 +1,7 @@
 import Form from "../common/data-input/form";
 import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
-import React, { useEffect, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -19,6 +19,12 @@ import {
 } from "@/lib/karaoke/midi/types";
 import InputCommon from "../common/data-input/input";
 
+const REQUIRED_METADATA_KEYS = [
+  "TITLE",
+  "TEMPO",
+  "ARTIST",
+] as const;
+
 type Props = {
   adding?: boolean;
   card?: boolean;
@@ -28,6 +34,12 @@ type Props = {
   inputSize?: "sm" | "md" | "lg" | undefined;
   className?: string;
   disabled?: boolean;
+  autoSave?: boolean;
+  formId?: string;
+  onSave?: (metadata: Partial<SongInfo>) => void;
+  requiredErrors?: Partial<Record<keyof SongInfo, string>>;
+  showRequiredErrors?: boolean;
+  validateRequiredOnSave?: boolean;
 };
 
 function MetadataForm({
@@ -39,11 +51,38 @@ function MetadataForm({
   inputSize = "sm",
   className = "flex flex-col gap-2 lg:p-4",
   disabled = false,
+  autoSave = true,
+  formId,
+  onSave,
+  requiredErrors,
+  showRequiredErrors = false,
+  validateRequiredOnSave = false,
 }: Props) {
   const mode = useKaraokeStore((s) => s.mode);
   const midiData = useKaraokeStore((s) => s.playerState.midi);
+  const storeMetadata = useKaraokeStore((s) => s.metadata);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
   const locale = useSettingsStore((state) => state.uiLocale);
+  const [localRequiredErrors, setLocalRequiredErrors] = useState<
+    Partial<Record<keyof SongInfo, string>>
+  >({});
+
+  const getRequiredErrors = (value: Partial<SongInfo> | null | undefined) => {
+    const errors: Partial<Record<keyof SongInfo, string>> = {};
+    for (const key of REQUIRED_METADATA_KEYS) {
+      if (!String(value?.[key] ?? "").trim()) {
+        errors[key] = text(locale, "จำเป็นต้องกรอก", "Required");
+      }
+    }
+    return errors;
+  };
+
+  const visibleRequiredErrors = {
+    ...(showRequiredErrors ? getRequiredErrors(storeMetadata) : {}),
+    ...localRequiredErrors,
+    ...requiredErrors,
+  };
+  const fieldError = (key: keyof SongInfo) => visibleRequiredErrors[key];
 
   const midiInfo = mode === "midi" ? midiData : true;
   const midi = mode === "midi" ? midiData : true;
@@ -54,7 +93,7 @@ function MetadataForm({
     },
   });
 
-  const handleBlurUpdate = () => {
+  const saveMetadata = () => {
     const currentValues = initName.getValues();
     const typedValues: Partial<SongInfo> = {
       ...currentValues,
@@ -64,6 +103,15 @@ function MetadataForm({
       VOCAL_CHANNEL: currentValues.VOCAL_CHANNEL as VOCAL_CHANNEL,
     };
 
+    if (validateRequiredOnSave) {
+      const validationErrors = getRequiredErrors(typedValues);
+      if (Object.keys(validationErrors).length > 0) {
+        setLocalRequiredErrors(validationErrors);
+        return;
+      }
+      setLocalRequiredErrors({});
+    }
+
     // Moving focus between fields must not be treated as an edit. In
     // particular, setMetadata also rebuilds the lyrics document and history,
     // which makes unrelated parts of the editor (including its header) react
@@ -72,10 +120,16 @@ function MetadataForm({
     const changed = (Object.keys(typedValues) as (keyof SongInfo)[]).some(
       (key) => previousMetadata?.[key] !== typedValues[key]
     );
-    if (!changed) return;
-
-    setMetadata(typedValues);
+    if (changed) {
+      setMetadata(typedValues);
+    }
     onFieldChange?.(typedValues);
+    onSave?.(typedValues);
+  };
+
+  const handleBlurUpdate = () => {
+    if (!autoSave) return;
+    saveMetadata();
   };
 
   // useEffect(() => {
@@ -115,15 +169,21 @@ function MetadataForm({
   }, [initMetadata]);
 
   const form = (
-    <Form form={initName} onFinish={() => {}} className={className}>
+    <Form
+      form={initName}
+      id={formId}
+      onFinish={saveMetadata}
+      className={className}
+    >
         <Form.Item<SongInfo>
-          required
+          required={requiredFirst}
           name="TITLE"
           className={`w-full h-full ${requiredFirst ? "order-1" : ""}`}
         >
             {(field) => (
               <InputCommon
                 {...field}
+                error={fieldError("TITLE")}
                 onBlur={(e) => {
                   field.onBlur();
                   handleBlurUpdate();
@@ -134,15 +194,15 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <div
-            className={`grid grid-cols-3 gap-2 ${
-              requiredFirst ? "order-3" : ""
-            }`}
-          >
-            <Form.Item<SongInfo> required name="KEY" className="w-full h-full">
+          <div className={requiredFirst ? "contents" : "grid grid-cols-3 gap-2"}>
+            <Form.Item<SongInfo>
+              name="KEY"
+              className={`w-full h-full ${requiredFirst ? "order-11" : ""}`}
+            >
               {(field) => (
                 <SelectCommon
                   {...field}
+                  error={fieldError("KEY")}
                   onBlur={(e) => {
                     field.onBlur();
                     handleBlurUpdate();
@@ -157,13 +217,14 @@ function MetadataForm({
               )}
             </Form.Item>
             <Form.Item<SongInfo>
-              required
+              required={requiredFirst}
               name="TEMPO"
-              className="w-full h-full"
+              className={`w-full h-full ${requiredFirst ? "order-2" : ""}`}
             >
               {(field) => (
                 <InputNumberCommon
                   {...field}
+                  error={fieldError("TEMPO")}
                   onBlur={(e) => {
                     field.onBlur();
                     handleBlurUpdate();
@@ -177,13 +238,13 @@ function MetadataForm({
               )}
             </Form.Item>
             <Form.Item<SongInfo>
-              required
               name="ARTIST_TYPE"
-              className="w-full h-full"
+              className={`w-full h-full ${requiredFirst ? "order-12" : ""}`}
             >
               {(field) => (
                 <SelectCommon
                   {...field}
+                  error={fieldError("ARTIST_TYPE")}
                   onBlur={(e) => {
                     field.onBlur();
                     handleBlurUpdate();
@@ -204,9 +265,8 @@ function MetadataForm({
             </div>
           )}
           <Form.Item
-            required={!requiredFirst}
             name="ALBUM"
-            className={`w-full h-full ${requiredFirst ? "order-11" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-15" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -222,13 +282,14 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required
+            required={requiredFirst}
             name="ARTIST"
-            className={`w-full h-full ${requiredFirst ? "order-2" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-3" : ""}`}
           >
             {(field) => (
               <InputCommon
                 {...field}
+                error={fieldError("ARTIST")}
                 onBlur={(e) => {
                   field.onBlur();
                   handleBlurUpdate();
@@ -240,9 +301,8 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item
-            required={!requiredFirst}
             name="AUTHOR"
-            className={`w-full h-full ${requiredFirst ? "order-12" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-16" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -258,9 +318,8 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item
-            required={!requiredFirst}
             name="GENRE"
-            className={`w-full h-full ${requiredFirst ? "order-13" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-17" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -276,9 +335,8 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required={!requiredFirst}
             name="CREATOR"
-            className={`w-full h-full ${requiredFirst ? "order-14" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-18" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -294,9 +352,8 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required={!requiredFirst}
             name="COMPANY"
-            className={`w-full h-full ${requiredFirst ? "order-15" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-19" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -312,13 +369,13 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required
             name="LANGUAGE"
-            className={`w-full h-full ${requiredFirst ? "order-4" : ""}`}
+            className={`w-full h-full ${requiredFirst ? "order-13" : ""}`}
           >
             {(field) => (
               <SelectCommon
                 {...field}
+                error={fieldError("LANGUAGE")}
                 onBlur={(e) => {
                   field.onBlur();
                   handleBlurUpdate();
@@ -332,9 +389,8 @@ function MetadataForm({
           </Form.Item>
           <div className={requiredFirst ? "contents" : "flex gap-2"}>
             <Form.Item
-              required={!requiredFirst}
               name="YEAR"
-              className={`w-full h-full ${requiredFirst ? "order-16" : ""}`}
+              className={`w-full h-full ${requiredFirst ? "order-20" : ""}`}
             >
               {(field) => (
                 <InputNumberCommon
@@ -353,12 +409,12 @@ function MetadataForm({
             </Form.Item>
             <Form.Item<SongInfo>
               name="VOCAL_CHANNEL"
-              required
-              className={`w-full h-full ${requiredFirst ? "order-5" : ""}`}
+              className={`w-full h-full ${requiredFirst ? "order-14" : ""}`}
             >
               {(field) => (
                 <SelectCommon
                   {...field}
+                  error={fieldError("VOCAL_CHANNEL")}
                   onBlur={(e) => {
                     field.onBlur();
                     handleBlurUpdate();

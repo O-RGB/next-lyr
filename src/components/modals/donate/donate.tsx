@@ -2,8 +2,8 @@ import {
   ExternalLink,
   Heart,
   HeartHandshake,
-  Music2,
 } from "lucide-react";
+import Image from "next/image";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 
@@ -71,7 +71,14 @@ const Donate = ({ show = true }: DonateProps) => {
           <section className="order-2 flex min-w-0 flex-col rounded-lg border border-line bg-panel p-4 sm:p-5 lg:order-1">
             <div className="flex items-center gap-3">
               <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-                <Music2 className="size-6" />
+                <Image
+                  src="/images/icon-app.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={512}
+                  height={512}
+                  className="size-11 rounded-xl object-cover"
+                />
               </div>
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">

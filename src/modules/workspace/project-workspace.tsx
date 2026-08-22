@@ -7,7 +7,7 @@ import AllowSound from "@/components/providers/allow-sound";
 import { ProjectSidebar } from "./project-sidebar";
 
 export function ProjectWorkspace() {
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(true);
 
   return (
     <AllowSound>

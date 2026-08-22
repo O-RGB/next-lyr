@@ -274,6 +274,13 @@ const ChordsBlock: React.FC = () => {
   }, [draw, markDirty]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => markDirty());
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [markDirty]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const scroll = scrollContainerRef.current;

@@ -21,16 +21,50 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 });
 
+const metadataBase = new URL(
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000"
+);
+
 export const metadata: Metadata = {
-  title: "Next Lyrics Editor",
+  metadataBase,
+  applicationName: "NextLyricsEditor",
+  title: "NextLyricsEditor — Karaoke Lyrics Editor",
   description: "สร้างและแก้ไขเนื้อเพลง Karaoke Next Lyrics Editor รองรับ NCN",
+  keywords: ["karaoke", "lyrics editor", "NextLyricsEditor", "NCN"],
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/images/favicon.ico", type: "image/x-icon", sizes: "48x48" },
+      { url: "/images/icon-app.png", type: "image/png", sizes: "512x512" },
+      { url: "/images/lyr192.png", type: "image/png", sizes: "192x192" },
+      { url: "/images/lyr512.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: { url: "/images/favicon.ico", type: "image/x-icon", sizes: "48x48" },
+    apple: { url: "/images/lyr1000.png", type: "image/png", sizes: "1000x1000" },
   },
   openGraph: {
-    title: "Next Lyrics Editor",
+    title: "NextLyricsEditor — Karaoke Lyrics Editor",
     description: "สร้างและแก้ไขเนื้อเพลง Karaoke Next Lyrics Editor รองรับ NCN",
-    images: [{ url: "/cover.png", width: 1200, height: 630 }],
+    type: "website",
+    images: [
+      {
+        url: "/images/cover.png",
+        width: 1671,
+        height: 941,
+        type: "image/png",
+        alt: "NextLyricsEditor karaoke lyrics editor",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NextLyricsEditor — Karaoke Lyrics Editor",
+    description: "สร้างและแก้ไขเนื้อเพลง Karaoke Next Lyrics Editor รองรับ NCN",
+    images: ["/images/cover.png"],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "NextLyricsEditor",
+    statusBarStyle: "black-translucent",
   },
 };
 
@@ -46,7 +80,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="th"
+      lang="en"
       className={`${notoSansThai.variable} ${geistMono.variable} antialiased`}
       suppressHydrationWarning
     >

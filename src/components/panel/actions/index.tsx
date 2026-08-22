@@ -3,21 +3,25 @@ import ButtonCommon from "@/components/common/button";
 import ModalCommon from "@/components/common/modal";
 import MetadataForm from "@/components/metadata/metadata-form";
 import LineSelectionToolbar from "@/components/lyrics/line-selection-toolbar";
-import React, { useEffect, useState } from "react";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import React, { useState } from "react";
 
 interface MobileActionButtonProps {
   preview?: boolean;
   setPreview?: (bool: boolean) => void;
   showLineSelection?: boolean;
+  showMetadata?: boolean;
 }
 
 const MobileActionButton: React.FC<MobileActionButtonProps> = ({
   preview,
   setPreview,
   showLineSelection = true,
+  showMetadata = true,
 }) => {
   const [metadata, setMetadata] = useState<boolean>(false);
-  useEffect(() => {}, []);
+  const locale = useSettingsStore((state) => state.uiLocale);
   return (
     <>
       {showLineSelection ? (
@@ -35,23 +39,41 @@ const MobileActionButton: React.FC<MobileActionButtonProps> = ({
       >
         Preview
       </ButtonCommon>
-      <ModalCommon
-        title={"Music Metadata"}
-        open={metadata}
-        cancelButtonProps={{ children: "Close" }}
-        okButtonProps={{ hidden: true }}
-        onClose={() => setMetadata(false)}
-      >
-        <MetadataForm inputSize="md" />
-      </ModalCommon>
-      <ButtonCommon
-        onClick={() => setMetadata(true)}
-        color="white"
-        size="xs"
-        icon={<StickyNote></StickyNote>}
-      >
-        Metadata
-      </ButtonCommon>
+      {showMetadata ? (
+        <>
+          <ModalCommon
+            title={text(locale, "ข้อมูลเพลง", "Music metadata")}
+            open={metadata}
+            cancelButtonProps={null}
+            okButtonProps={{
+              children: text(locale, "บันทึก", "Save"),
+              form: "mobile-metadata-form",
+              type: "submit",
+            }}
+            onClose={() => setMetadata(false)}
+          >
+            <MetadataForm
+              card={false}
+              requiredFirst
+              inputSize="md"
+              className="flex flex-col gap-2"
+              autoSave={false}
+              formId="mobile-metadata-form"
+              onSave={() => setMetadata(false)}
+              showRequiredErrors
+              validateRequiredOnSave
+            />
+          </ModalCommon>
+          <ButtonCommon
+            onClick={() => setMetadata(true)}
+            color="white"
+            size="xs"
+            icon={<StickyNote />}
+          >
+            {text(locale, "ข้อมูลเพลง", "Metadata")}
+          </ButtonCommon>
+        </>
+      ) : null}
     </>
   );
 };

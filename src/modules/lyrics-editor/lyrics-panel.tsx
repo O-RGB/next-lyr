@@ -24,12 +24,14 @@ type LyricsPanelProps = {
 
 export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const isMobile = useIsMobile();
+  const mode = useKaraokeStore((state) => state.mode);
   const locale = useSettingsStore((state) => state.uiLocale);
   const setPlayFromScrolledPosition = useKaraokeStore(
     (state) => state.actions.setPlayFromScrolledPosition
   );
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(true);
   const [chordPreview, setChordPreview] = useState(false);
+  const showingChords = mode === "midi" && chordPreview;
 
   const setPreviewVisible = (visible: boolean) => {
     setPreview(visible);
@@ -42,7 +44,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   };
 
   const handleEditorViewChange = (view: "lyrics" | "chords") => {
-    if (view === "chords") {
+    if (view === "chords" && mode === "midi") {
       setChordPreview(true);
       return;
     }
@@ -53,12 +55,12 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
     <Card className="relative flex h-full min-h-0 flex-col gap-2 border-0 bg-panel p-2 lg:p-0">
       <header className="flex shrink-0 items-center justify-between lg:px-4 lg:pt-4">
         <h1 className="text-lg font-semibold text-foreground">
-          {chordPreview
+          {showingChords
             ? text(locale, "คอร์ด", "Chords")
             : text(locale, "เนื้อเพลง", "Lyrics")}
         </h1>
         <Timestamp
-          editorView={chordPreview ? "chords" : "lyrics"}
+          editorView={showingChords ? "chords" : "lyrics"}
           onEditorViewChange={handleEditorViewChange}
           showEditorViewToggle={false}
         />
@@ -72,20 +74,22 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
             </div>
           )}
 
-          <div className="z-10 flex h-[120px] shrink-0 gap-2">
-            {chordPreview ? (
-              <div className="min-w-0 flex-1">
-                <ChordOverviewPreview compact />
-              </div>
-            ) : (
-              <div className="min-w-0 flex-1">
-                <ChordsPanel compact />
-              </div>
-            )}
-          </div>
+          {mode === "midi" ? (
+            <div className="z-10 flex h-[120px] shrink-0 gap-2">
+              {showingChords ? (
+                <div className="min-w-0 flex-1">
+                  <ChordOverviewPreview compact />
+                </div>
+              ) : (
+                <div className="min-w-0 flex-1">
+                  <ChordsPanel compact />
+                </div>
+              )}
+            </div>
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden overscroll-none">
-            {chordPreview ? (
+            {showingChords ? (
               <MidiNotesPreview onClose={closeChordPreview} />
             ) : (
               <LyricsGrid />
@@ -97,7 +101,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
               preview={preview}
               setPreview={setPreviewVisible}
             />
-            {!chordPreview && <RetimingAllButton />}
+            {!showingChords && <RetimingAllButton />}
           </div>
           <LyricsMobileControls />
         </div>
@@ -105,30 +109,33 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
         <>
           <div className="flex min-h-0 flex-1 gap-2 overflow-hidden">
             <div className="min-w-0 flex-1 overflow-hidden overscroll-none">
-              {chordPreview ? (
+              {showingChords ? (
                 <MidiNotesPreview onClose={closeChordPreview} />
               ) : (
                 <LyricsGrid />
               )}
             </div>
-            {chordPreview ? (
-              <div className="h-full w-[150px] shrink-0 pr-2">
-                <ChordOverviewPreview compact />
-              </div>
-            ) : (
-              <div className="h-full w-[150px] shrink-0 pr-2">
-                <ChordsPanel compact />
-              </div>
-            )}
+            {mode === "midi" ? (
+              showingChords ? (
+                <div className="h-full w-[150px] shrink-0 pr-2">
+                  <ChordOverviewPreview compact />
+                </div>
+              ) : (
+                <div className="h-full w-[150px] shrink-0 pr-2">
+                  <ChordsPanel compact />
+                </div>
+              )
+            ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 lg:h-11 lg:pr-2 lg:pb-2">
-            {!chordPreview && <LineSelectionToolbar />}
+          <div className="flex shrink-0 items-center gap-1.5 lg:h-11 lg:pl-2 lg:pr-2 lg:pb-2">
+            {!showingChords && <LineSelectionToolbar />}
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
-              {!chordPreview && <RetimingAllButton />}
+              {!showingChords && <RetimingAllButton />}
               <MobileActionButton
                 preview={preview}
                 setPreview={setPreviewVisible}
                 showLineSelection={false}
+                showMetadata={false}
               />
             </div>
           </div>

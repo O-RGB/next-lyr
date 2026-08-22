@@ -133,6 +133,60 @@
   --sidebar-primary-foreground: #08111e;
 }
 
+/* The startup page is intentionally light, even when the editor theme is dark. */
+.root-light {
+  color-scheme: light;
+
+  --base: #f4f6fa;
+  --panel: #ffffff;
+  --panel-2: #f8f9fc;
+  --raised: #e9edf4;
+  --raised-2: #dde3ed;
+  --line: #d7dee9;
+  --line-soft: #e7ebf2;
+  --line-strong: #bcc6d4;
+
+  --text: #1c2430;
+  --text-muted: #5f6b7a;
+  --text-dim: #7b8796;
+
+  --brand: #2878e8;
+  --brand-soft: #2878e833;
+  --brand-2: #0a9b78;
+  --info: #1687c7;
+  --predict: #cbd5e1;
+  --warn: #b36b00;
+  --danger: #d94862;
+
+  --background: #f4f6fa;
+  --foreground: #1c2430;
+  --card: #ffffff;
+  --card-foreground: #1c2430;
+  --popover: #f8f9fc;
+  --popover-foreground: #1c2430;
+  --primary: #2878e8;
+  --primary-foreground: #ffffff;
+  --secondary: #e9edf4;
+  --secondary-foreground: #1c2430;
+  --muted: #e9edf4;
+  --muted-foreground: #5f6b7a;
+  --accent: #dde3ed;
+  --accent-foreground: #1c2430;
+  --destructive: #d94862;
+  --border: #d7dee9;
+  --input: #bcc6d4;
+  --ring: #2878e8;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c2430;
+  --sidebar-primary: #2878e8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9edf4;
+  --sidebar-accent-foreground: #1c2430;
+  --sidebar-border: #d7dee9;
+  --sidebar-ring: #2878e8;
+}
+
 @theme inline {
   --color-base: var(--base);
   --color-panel: var(--panel);
@@ -334,6 +388,33 @@
   }
 }
 
+/* Draw attention to the one-time whole-song timing action until it is used. */
+@keyframes retiming-onboarding-pulse {
+  0%,
+  49.999% {
+    background-color: transparent;
+    border-color: var(--brand-2);
+    color: var(--brand-2);
+  }
+
+  50%,
+  100% {
+    background-color: var(--brand-2);
+    border-color: var(--brand-2);
+    color: #ffffff;
+  }
+}
+
+.retiming-onboarding-pulse {
+  animation: retiming-onboarding-pulse 2s steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retiming-onboarding-pulse {
+    animation: none;
+  }
+}
+
 @utility drag-none {
   user-select: none;
   -webkit-user-select: none;
@@ -371,4 +452,24 @@
   [data-slot="dialog-content"] {
     max-width: none;
   }
+}
+
+/* Modal titles must keep readable contrast in both color schemes. */
+[data-slot="dialog-title"],
+[data-slot="alert-dialog-title"],
+[data-slot="sheet-title"] {
+  color: #1c2430 !important;
+}
+
+.dark [data-slot="dialog-title"],
+.dark [data-slot="alert-dialog-title"],
+.dark [data-slot="sheet-title"] {
+  color: #f4f7fb !important;
+}
+
+/* Root stays light, including dialogs rendered through a body-level portal. */
+body:has(.root-light) [data-slot="dialog-title"],
+body:has(.root-light) [data-slot="alert-dialog-title"],
+body:has(.root-light) [data-slot="sheet-title"] {
+  color: #1c2430 !important;
 }

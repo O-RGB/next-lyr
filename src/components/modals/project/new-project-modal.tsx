@@ -1,10 +1,9 @@
-import { FileMusic, FileVideo, Piano } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { FileMusic, Piano } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import ModalCommon from "@/components/common/modal";
 import SelectCommon from "@/components/common/data-input/select";
 import Upload from "@/components/common/data-input/upload";
 import MetadataForm from "@/components/metadata/metadata-form";
-import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
@@ -30,11 +29,26 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
   const [musicFile, setMusicFile] = useState<File>();
   const [youtubeUrl, setYoutubeUrl] = useState<string>();
-  const [metadata, setMetadataTemp] = useState<SongInfo>();
+  const [metadata, setMetadataState] = useState<SongInfo>(DEFAULT_SONG_INFO);
+  const metadataRef = useRef<SongInfo>(DEFAULT_SONG_INFO);
+  const [showMetadataErrors, setShowMetadataErrors] = useState(false);
+
+  const updateMetadata = (next: SongInfo) => {
+    metadataRef.current = next;
+    setMetadataState(next);
+  };
 
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
   const requestAlert = useUiStore((state) => state.requestAlert);
   const locale = useSettingsStore((state) => state.uiLocale);
+  const requiredMetadata = [
+    { key: "TITLE", label: text(locale, "ชื่อเพลง", "Song title") },
+    { key: "TEMPO", label: text(locale, "ความเร็ว", "Tempo") },
+    { key: "ARTIST", label: text(locale, "นักร้อง", "Artist") },
+  ] as const;
+
+  const getMissingMetadata = (value: SongInfo) =>
+    requiredMetadata.filter(({ key }) => !String(value[key] ?? "").trim());
 
   const getYouTubeId = (url: string): string | null => {
     const regExp =
@@ -70,26 +84,13 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         readInfo.TITLE = file.name.replace(/\.[^/.]+$/, "");
       }
 
-      setMetadataTemp(readInfo);
+      updateMetadata({ ...DEFAULT_SONG_INFO, ...readInfo });
     } catch (error) {
       console.error("Error reading metadata from file:", error);
     }
   };
 
   const handleCreateProject = async () => {
-    if (!metadata) {
-      await requestAlert({
-        title: text(locale, "ข้อมูลเพลงยังไม่พร้อม", "Song data is not ready"),
-        description: text(
-          locale,
-          "ยังไม่ได้เตรียมข้อมูลเพลง",
-          "Song data has not been prepared yet"
-        ),
-        tone: "info",
-      });
-      return;
-    }
-
     if (projectMode !== "youtube" && !musicFile) {
       await requestAlert({
         title: text(locale, "ยังไม่ได้เลือกไฟล์เพลง", "No song file selected"),
@@ -102,7 +103,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       });
       return;
     }
-    if (projectMode === "youtube" && youtubeUrl ? !youtubeUrl.trim() : false) {
+    if (projectMode === "youtube" && !youtubeUrl?.trim()) {
       await requestAlert({
         title: text(locale, "ยังไม่ได้ใส่ URL", "URL is missing"),
         description: text(
@@ -114,18 +115,14 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       });
       return;
     }
-    if (!metadata.TITLE?.trim()) {
-      await requestAlert({
-        title: text(locale, "ยังไม่ได้ตั้งชื่อโปรเจกต์", "Project name is missing"),
-        description: text(
-          locale,
-          "กรุณาใส่ชื่อเพลงก่อนสร้างโปรเจกต์",
-          "Enter a song name before creating the project"
-        ),
-        tone: "info",
-      });
+    const currentMetadata = metadataRef.current;
+    const missingMetadata = getMissingMetadata(currentMetadata);
+
+    if (missingMetadata.length > 0) {
+      setShowMetadataErrors(true);
       return;
     }
+    setShowMetadataErrors(false);
 
     try {
       let initialData: ProjectData = {
@@ -135,7 +132,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           duration: null,
           youtubeId: null,
         },
-        metadata: metadata,
+        metadata: currentMetadata,
         lyricsData: [],
         lyricsDocument: null,
         lyricsXml: "",
@@ -150,11 +147,10 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             const parsedMidi = await parseMidi(musicFile);
             initialData.playerState.midi = parsedMidi;
             initialData.playerState.duration = parsedMidi.duration;
-            setMetadataTemp(parsedMidi.info);
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
               ...parsedMidi.info,
-              ...metadata,
+              ...currentMetadata,
             };
 
             const {
@@ -181,7 +177,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
               ...parsedData.info,
-              ...metadata,
+              ...currentMetadata,
             };
 
             const {
@@ -216,7 +212,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       }
 
       const newProjectId = await createProject(
-        metadata.TITLE,
+        currentMetadata.TITLE,
         projectMode,
         initialData,
         musicFile
@@ -248,8 +244,6 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         return ".mid,.midi";
       case "mp3":
         return "";
-      case "mp4":
-        return ".mp4";
       default:
         return "";
     }
@@ -257,16 +251,24 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   const onProjectTypeChange = (value: MusicMode) => {
     setProjectMode(value);
-    setMetadataTemp(DEFAULT_SONG_INFO);
+    updateMetadata(DEFAULT_SONG_INFO);
+    setShowMetadataErrors(false);
     setMusicFile(undefined);
     setYoutubeUrl(undefined);
   };
 
   useEffect(() => {
-    setMetadataTemp(DEFAULT_SONG_INFO);
+    updateMetadata(DEFAULT_SONG_INFO);
+    setShowMetadataErrors(false);
   }, [open]);
 
   const disabled = projectMode === "youtube" ? !youtubeUrl : !musicFile;
+  const requiredErrors: Partial<Record<keyof SongInfo, string>> = {};
+  if (showMetadataErrors) {
+    for (const { key } of getMissingMetadata(metadata)) {
+      requiredErrors[key] = text(locale, "จำเป็นต้องกรอก", "Required");
+    }
+  }
 
   return (
     <ModalCommon
@@ -291,44 +293,23 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           options={[
             { label: "MIDI (.mid)", value: "midi" },
             { label: "MP3 (.mp3)", value: "mp3" },
-            { label: "MP4 (.mp4)", value: "mp4" },
-            { label: "YouTube", value: "youtube" },
           ]}
           value={projectMode}
           onChange={(e) => onProjectTypeChange(e.target.value as MusicMode)}
         />
 
-        {projectMode !== "youtube" ? (
-          <Upload
-            accept={getAcceptType()}
-            preview={true}
-            icon={
-              projectMode === "midi" ? (
-                <Piano className="text-4xl text-amber-500" />
-              ) : projectMode === "mp3" ? (
-                <FileMusic className="text-4xl text-primary"></FileMusic>
-              ) : projectMode === "mp4" ? (
-                <FileVideo className="text-4xl text-primary"></FileVideo>
-              ) : (
-                ""
-              )
-            }
-            onChange={handleFileSelect}
-          />
-        ) : (
-          <InputCommon
-            label="YouTube URL"
-            value={youtubeUrl}
-            onChange={(e) => {
-              setYoutubeUrl(e.target.value);
-            }}
-            placeholder={text(
-              locale,
-              "ใส่ YouTube URL ของเพลง",
-              "Enter the YouTube video URL"
-            )}
-          />
-        )}
+        <Upload
+          accept={getAcceptType()}
+          preview={true}
+          icon={
+            projectMode === "midi" ? (
+              <Piano className="text-4xl text-amber-500" />
+            ) : (
+              <FileMusic className="text-4xl text-primary" />
+            )
+          }
+          onChange={handleFileSelect}
+        />
 
         <div className="">
           <MetadataForm
@@ -339,9 +320,10 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             adding
             disabled={disabled}
             onFieldChange={(data) => {
-              setMetadataTemp({ ...DEFAULT_SONG_INFO, ...data });
+              updateMetadata({ ...DEFAULT_SONG_INFO, ...data });
             }}
             initMetadata={metadata}
+            requiredErrors={requiredErrors}
           />
         </div>
       </div>

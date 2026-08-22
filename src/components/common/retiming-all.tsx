@@ -48,6 +48,7 @@ export default function RetimingAllButton() {
       onClick={handleClick}
       title={label}
       aria-label={label}
+      className={isDisabled ? undefined : "retiming-onboarding-pulse"}
     >
       {label}
     </ButtonCommon>

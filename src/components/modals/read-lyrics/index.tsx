@@ -1,5 +1,5 @@
 import { CircleArrowLeft, File, Import, Sparkles } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ModalCommon from "../../common/modal";
 import ButtonCommon from "../../common/button";
 import Upload from "@/components/common/data-input/upload";
@@ -16,19 +16,30 @@ interface ReadLyricsModalProps {
   onClose?: () => void;
 }
 
+const THAI_EXAMPLE = "ตัว|อย่าง|เนื้อ|เพลง\nของ|คุณ";
+const ENGLISH_EXAMPLE = "Example|lyrics\nfor|you";
+
 const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
-  const exText = "ตัว|อย่าง|เนื้อ|เพลง\nของ|คุณ";
   const actions = useKaraokeStore((state) => state.actions);
   const locale = useSettingsStore((state) => state.uiLocale);
-  const [lyricsText, setLyricsText] = useState<string>(exText);
+  const exampleLyrics = text(locale, THAI_EXAMPLE, ENGLISH_EXAMPLE);
+  const previousExampleRef = useRef(exampleLyrics);
+  const [lyricsText, setLyricsText] = useState<string>(exampleLyrics);
 
   const [isOpenSub, setOpenSub] = useState<boolean>(false);
   const [openModal, setOpenModal] = useState<boolean>(false);
 
+  useEffect(() => {
+    setLyricsText((current) =>
+      current === previousExampleRef.current ? exampleLyrics : current
+    );
+    previousExampleRef.current = exampleLyrics;
+  }, [exampleLyrics]);
+
   const handleCloseModal = () => {
     setOpenModal(false);
     onClose?.();
-    setLyricsText(exText);
+    setLyricsText(exampleLyrics);
   };
 
   const handleAutoCut = async () => {
@@ -73,7 +84,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
           <div className="flex gap-2 flex-wrap lg:flex-row items-center justify-end">
             <ButtonCommon
               size="sm"
-              onClick={onClose}
+              onClick={handleCloseModal}
               icon={<CircleArrowLeft />}
               color="gray"
               className="text-nowrap"

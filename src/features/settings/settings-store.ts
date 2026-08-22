@@ -54,7 +54,7 @@ export interface EditorSettings {
 }
 
 const DEFAULTS = {
-  uiLocale: "th",
+  uiLocale: "en",
   uiFontId: "noto-thai",
   lyricsFontId: "noto-thai",
   latencyMs: 0,
