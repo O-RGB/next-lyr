@@ -50,6 +50,7 @@
   --lyric-pending: #7b8796;
   --lyric-playing: #f0d14b;
   --chord: #b36b00;
+  --chord-room: #9b6f3d;
 
   /* shadcn surface tokens → studio palette */
   --background: var(--base);
@@ -126,6 +127,7 @@
   --lyric-pending: #8795a8;
   --lyric-playing: #f6dc67;
   --chord: #f4bd68;
+  --chord-room: #d3a55b;
 
   --primary-foreground: #08111e;
   --sidebar-primary-foreground: #08111e;

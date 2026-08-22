@@ -21,6 +21,7 @@ import {
 } from "@/lib/soundfonts";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { useTimerStore } from "@/timer-worker/store";
 import type { IMidiParseResult } from "@/lib/karaoke/midi/types";
 
@@ -78,6 +79,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     const activeSoundfontId = useKaraokeStore(
       (state) => state.activeSoundfontId
     );
+    const requestAlert = useUiStore((state) => state.requestAlert);
     const soundfontLibraryKey = useKaraokeStore((state) =>
       state.soundfonts
         .map((entry) => `${entry.id}:${entry.fileName}:${entry.revision ?? ""}`)
@@ -194,14 +196,19 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         .catch((error: unknown) => {
           if (!cancelled) {
             console.error("Error preparing MIDI engine:", error);
-            alert(error instanceof Error ? error.message : "Could not prepare MIDI");
+            void requestAlert({
+              title: "เตรียมเสียง MIDI ไม่สำเร็จ",
+              description:
+                error instanceof Error ? error.message : "Could not prepare MIDI",
+              tone: "danger",
+            });
           }
         });
 
       return () => {
         cancelled = true;
       };
-    }, [activeSoundfontId, applyTimingCompensation, file, midiInfo, projectId, soundfontLibraryKey]);
+    }, [activeSoundfontId, applyTimingCompensation, file, midiInfo, projectId, requestAlert, soundfontLibraryKey]);
 
     useEffect(() => {
       midiBufferSizeRef.current = midiBufferSize;

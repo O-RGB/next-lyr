@@ -19,6 +19,8 @@ import InputCommon from "../common/data-input/input";
 
 type Props = {
   adding?: boolean;
+  card?: boolean;
+  requiredFirst?: boolean;
   initMetadata?: SongInfo;
   onFieldChange?: (metadata: Partial<SongInfo>) => void;
   inputSize?: "sm" | "md" | "lg" | undefined;
@@ -28,6 +30,8 @@ type Props = {
 
 function MetadataForm({
   adding = false,
+  card = true,
+  requiredFirst = false,
   onFieldChange,
   initMetadata,
   inputSize = "sm",
@@ -107,11 +111,13 @@ function MetadataForm({
     }
   }, [initMetadata]);
 
-  return (
-    <div>
-      <Card className="bg-panel/50 rounded-lg">
-        <Form form={initName} onFinish={() => {}} className={className}>
-          <Form.Item<SongInfo> required name="TITLE" className="w-full h-full">
+  const form = (
+    <Form form={initName} onFinish={() => {}} className={className}>
+        <Form.Item<SongInfo>
+          required
+          name="TITLE"
+          className={`w-full h-full ${requiredFirst ? "order-1" : ""}`}
+        >
             {(field) => (
               <InputCommon
                 {...field}
@@ -125,7 +131,11 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            className={`grid grid-cols-3 gap-2 ${
+              requiredFirst ? "order-3" : ""
+            }`}
+          >
             <Form.Item<SongInfo> required name="KEY" className="w-full h-full">
               {(field) => (
                 <SelectCommon
@@ -185,7 +195,16 @@ function MetadataForm({
               )}
             </Form.Item>
           </div>
-          <Form.Item<SongInfo> required name="ALBUM" className="w-full h-full">
+          {requiredFirst && (
+            <div className="order-10 border-t border-line pt-3 text-xs font-semibold text-muted-foreground">
+              ข้อมูลเพิ่มเติม
+            </div>
+          )}
+          <Form.Item
+            required={!requiredFirst}
+            name="ALBUM"
+            className={`w-full h-full ${requiredFirst ? "order-11" : ""}`}
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -199,7 +218,11 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="ARTIST" className="w-full h-full">
+          <Form.Item<SongInfo>
+            required
+            name="ARTIST"
+            className={`w-full h-full ${requiredFirst ? "order-2" : ""}`}
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -213,7 +236,11 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="AUTHOR" className="w-full h-full">
+          <Form.Item
+            required={!requiredFirst}
+            name="AUTHOR"
+            className={`w-full h-full ${requiredFirst ? "order-12" : ""}`}
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -227,7 +254,11 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <Form.Item<SongInfo> required name="GENRE" className="w-full h-full">
+          <Form.Item
+            required={!requiredFirst}
+            name="GENRE"
+            className={`w-full h-full ${requiredFirst ? "order-13" : ""}`}
+          >
             {(field) => (
               <InputCommon
                 {...field}
@@ -242,9 +273,9 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required
+            required={!requiredFirst}
             name="CREATOR"
-            className="w-full h-full"
+            className={`w-full h-full ${requiredFirst ? "order-14" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -260,9 +291,9 @@ function MetadataForm({
             )}
           </Form.Item>
           <Form.Item<SongInfo>
-            required
+            required={!requiredFirst}
             name="COMPANY"
-            className="w-full h-full"
+            className={`w-full h-full ${requiredFirst ? "order-15" : ""}`}
           >
             {(field) => (
               <InputCommon
@@ -280,7 +311,7 @@ function MetadataForm({
           <Form.Item<SongInfo>
             required
             name="LANGUAGE"
-            className="w-full h-full"
+            className={`w-full h-full ${requiredFirst ? "order-4" : ""}`}
           >
             {(field) => (
               <SelectCommon
@@ -296,8 +327,12 @@ function MetadataForm({
               />
             )}
           </Form.Item>
-          <div className="flex gap-2">
-            <Form.Item<SongInfo> required name="YEAR" className="w-full h-full">
+          <div className={requiredFirst ? "contents" : "flex gap-2"}>
+            <Form.Item
+              required={!requiredFirst}
+              name="YEAR"
+              className={`w-full h-full ${requiredFirst ? "order-16" : ""}`}
+            >
               {(field) => (
                 <InputNumberCommon
                   {...field}
@@ -314,9 +349,9 @@ function MetadataForm({
               )}
             </Form.Item>
             <Form.Item<SongInfo>
-              required
               name="VOCAL_CHANNEL"
-              className="w-full h-full"
+              required
+              className={`w-full h-full ${requiredFirst ? "order-5" : ""}`}
             >
               {(field) => (
                 <SelectCommon
@@ -335,10 +370,10 @@ function MetadataForm({
               )}
             </Form.Item>
           </div>
-        </Form>
-      </Card>
-    </div>
+    </Form>
   );
+
+  return <div>{card ? <Card className="rounded-lg bg-panel/50">{form}</Card> : form}</div>;
 }
 
 export default React.memo(MetadataForm);

@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { KaraokeState, ContentActions, HistoryState } from "../types";
+import { KaraokeState, ContentActions } from "../types";
 import { LyricWordData } from "@/types/common.type";
 import { processRawLyrics, splitLyricLine } from "@/lib/karaoke/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
@@ -209,6 +209,74 @@ export const createContentActions: StateCreator<
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
         commit("แก้คำ");
+      },
+      addWord: async (lineIndex: number, text: string, vocal = "") => {
+        const trimmedText = text.trim();
+        if (!trimmedText) return;
+
+        set((state) => {
+          const newLyricsData = state.lyricsData.map((line) => [...line]);
+          const line = newLyricsData[lineIndex];
+          if (!line) return {};
+
+          line.push({
+            text: trimmedText,
+            vocal,
+            at: null,
+            index: 0,
+            lineIndex,
+          });
+
+          const reIndexedFlat = newLyricsData
+            .map((currentLine, currentLineIndex) =>
+              currentLine.map((word) => ({
+                ...word,
+                lineIndex: currentLineIndex,
+              }))
+            )
+            .flat();
+
+          reIndexedFlat.forEach((word, wordIndex) => {
+            word.index = wordIndex;
+          });
+
+          return { lyricsData: groupLyricsByLine(reIndexedFlat) };
+        });
+        syncLyricsDocument();
+        get().actions.processLyricsForPlayer();
+        commit("เพิ่มคำ");
+      },
+      deleteWord: async (index: number) => {
+        let deleted = false;
+
+        set((state) => {
+          const newLyricsData = state.lyricsData.map((line) =>
+            line.filter((word) => {
+              const keep = word.index !== index;
+              if (!keep) deleted = true;
+              return keep;
+            })
+          );
+
+          if (!deleted) return {};
+
+          let globalIndex = 0;
+          const reIndexedLyrics = newLyricsData.map(
+            (line, lineIndex) =>
+              line.map((word) => ({
+                ...word,
+                index: globalIndex++,
+                lineIndex,
+              }))
+          );
+
+          return { lyricsData: reIndexedLyrics };
+        });
+
+        if (!deleted) return;
+        syncLyricsDocument();
+        get().actions.processLyricsForPlayer();
+        commit("ลบคำ");
       },
       addChord: async (chord: ChordEvent) => {
         const current = get().chordsData;

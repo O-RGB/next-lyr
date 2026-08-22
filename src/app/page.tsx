@@ -1,31 +1,21 @@
 "use client";
 
 import { AlertTriangle, MicVocal } from "lucide-react";
-import React, { useState } from "react";
+import React from "react";
 import { toast } from "sonner";
 
 import NavBar from "@/components/navbar";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { deleteAllProjects } from "@/lib/database/db";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { text } from "@/features/settings/locale";
+import { useUiStore } from "@/features/ui/ui-store";
 
 export default function Home() {
-  const [confirmReset, setConfirmReset] = useState(false);
   const locale = useSettingsStore((state) => state.uiLocale);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
 
   const handleReset = async () => {
-    setConfirmReset(false);
     try {
       await deleteAllProjects();
       toast.success("ล้างข้อมูลเรียบร้อย", {
@@ -34,6 +24,20 @@ export default function Home() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     }
+  };
+
+  const handleRequestReset = async () => {
+    const confirmed = await requestConfirm({
+      title: text(locale, "ล้างข้อมูลทั้งหมดหรือไม่?", "Clear all data?"),
+      description: text(
+        locale,
+        "โปรเจกต์ทุกอันที่เก็บอยู่ในเครื่องจะถูกลบและกู้คืนไม่ได้",
+        "Every project stored on this device will be deleted and cannot be recovered"
+      ),
+      tone: "danger",
+      confirmLabel: text(locale, "ล้างข้อมูล", "Clear data"),
+    });
+    if (confirmed) await handleReset();
   };
 
   return (
@@ -63,7 +67,7 @@ export default function Home() {
               variant="destructive"
               size="sm"
               className="mt-3"
-              onClick={() => setConfirmReset(true)}
+              onClick={() => void handleRequestReset()}
             >
               <AlertTriangle />
               {text(locale, "ล้างข้อมูลทั้งหมด", "Clear all data")}
@@ -72,22 +76,6 @@ export default function Home() {
         </div>
       </main>
 
-      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-          <AlertDialogTitle>{text(locale, "ล้างข้อมูลทั้งหมด?", "Clear all data?")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {text(locale, "โปรเจกต์ทุกอันที่เก็บอยู่ในเครื่องจะถูกลบและกู้คืนไม่ได้", "Every project stored on this device will be deleted and cannot be recovered")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{text(locale, "ยกเลิก", "Cancel")}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleReset}>
-              {text(locale, "ล้างข้อมูล", "Clear data")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

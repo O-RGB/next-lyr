@@ -117,6 +117,8 @@ export interface ContentActions {
   ) => void;
   insertLineAfter: (lineIndex: number, newText: string) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
+  addWord: (lineIndex: number, text: string, vocal?: string) => void;
+  deleteWord: (index: number) => void;
   addChord: (chord: ChordEvent) => void;
   addChords: (chords: ChordEvent[]) => void;
   updateChord: (oldTick: number, newChord: ChordEvent) => void;

@@ -5,6 +5,7 @@ import ButtonCommon from "../../common/button";
 import InputCommon from "@/components/common/data-input/input";
 import InputNumberCommon from "@/components/common/data-input/input-number";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { ChordEvent } from "@/lib/karaoke/midi/types";
 
 type Props = {};
@@ -13,6 +14,8 @@ export default function ChordEditModal({}: Props) {
   const isChordModalOpen = useKaraokeStore((state) => state.isChordModalOpen);
   const selectedChord = useKaraokeStore((state) => state.selectedChord);
   const actions = useKaraokeStore((state) => state.actions);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
+  const requestAlert = useUiStore((state) => state.requestAlert);
   const suggestedTick =
     useKaraokeStore((state) => state.suggestedChordTick) ?? 0;
 
@@ -58,7 +61,11 @@ export default function ChordEditModal({}: Props) {
     const tick = parseFloat(tickValue);
 
     if (isNaN(tick) || !chordText.trim()) {
-      alert("Please enter a valid chord text and tick value.");
+      void requestAlert({
+        title: "ข้อมูลคอร์ดไม่ถูกต้อง",
+        description: "กรุณากรอกชื่อคอร์ดและ tick ให้ถูกต้อง",
+        tone: "danger",
+      });
       return;
     }
 
@@ -71,13 +78,16 @@ export default function ChordEditModal({}: Props) {
     setTickValue(num.toString());
   };
 
-  const handleDelete = () => {
-    if (
-      selectedChord &&
-      confirm("Are you sure you want to delete this chord?")
-    ) {
-      onDelete(selectedChord.tick);
-    }
+  const handleDelete = async () => {
+    if (!selectedChord) return;
+
+    const confirmed = await requestConfirm({
+      title: "ลบคอร์ดนี้หรือไม่?",
+      description: "คอร์ดนี้จะถูกลบออกจากตำแหน่งจังหวะนี้",
+      tone: "danger",
+      confirmLabel: "ลบคอร์ด",
+    });
+    if (confirmed) onDelete(selectedChord.tick);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

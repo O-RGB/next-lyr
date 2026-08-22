@@ -11,6 +11,7 @@ import ContextMenuCommon, {
   IContextMenuGroup,
 } from "@/components/common/data-input/menu";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import React from "react";
 
@@ -21,6 +22,7 @@ interface LineActionProps {
 const LineAction: React.FC<LineActionProps> = React.memo(
   ({ lineIndex }) => {
     const actions = useKaraokeStore((state) => state.actions);
+    const requestConfirm = useUiStore((state) => state.requestConfirm);
     const { handleRetiming } = usePlayerHandlersStore();
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
 
@@ -58,24 +60,28 @@ const LineAction: React.FC<LineActionProps> = React.memo(
             type: "Re Time",
             text: "ปาดใหม่",
             icon: <Clock />,
-            onClick: () => {
-              if (
-                confirm(
-                  "ปาดเนื้อร้องบรรทัดที่ " + (lineIndex + 1) + " ใหม่?"
-                )
-              ) {
-                handleRetiming(lineIndex, lineIndex);
-              }
+            onClick: async () => {
+              const confirmed = await requestConfirm({
+                title: "ปาดเนื้อร้องใหม่หรือไม่?",
+                description: `เวลาและการแบ่งคำของบรรทัดที่ ${lineIndex + 1} จะถูกสร้างใหม่`,
+                tone: "danger",
+                confirmLabel: "ปาดใหม่",
+              });
+              if (confirmed) handleRetiming(lineIndex, lineIndex);
             },
           },
           {
             type: "delete",
             text: "ลบ",
             icon: <Trash2 />,
-            onClick: () => {
-              if (confirm("ลบบรรทัดที่ " + (lineIndex + 1) + " ออกไป?")) {
-                actions.deleteLine?.(lineIndex);
-              }
+            onClick: async () => {
+              const confirmed = await requestConfirm({
+                title: "ลบบรรทัดนี้หรือไม่?",
+                description: `บรรทัดที่ ${lineIndex + 1} จะถูกลบออก`,
+                tone: "danger",
+                confirmLabel: "ลบบรรทัด",
+              });
+              if (confirmed) actions.deleteLine?.(lineIndex);
             },
           },
         ],

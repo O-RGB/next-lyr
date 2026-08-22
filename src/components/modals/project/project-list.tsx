@@ -3,6 +3,7 @@ import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { deleteProject, getAllProjects, Project } from "@/lib/database/db";
 import NewProjectModal from "./new-project-modal";
 
@@ -18,6 +19,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   const [projects, setProjects] = useState<Project[]>([]);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const clearProject = useKaraokeStore((state) => state.actions.clearProject);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
 
   const fetchProjects = async () => {
     const allProjects = await getAllProjects();
@@ -35,12 +37,18 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      await deleteProject(id);
-      fetchProjects();
-      if (useKaraokeStore.getState().projectId === id) {
-        clearProject();
-      }
+    const confirmed = await requestConfirm({
+      title: "ลบโปรเจกต์หรือไม่?",
+      description: "โปรเจกต์นี้จะถูกลบออกจากเครื่องและไม่สามารถกู้คืนได้",
+      tone: "danger",
+      confirmLabel: "ลบโปรเจกต์",
+    });
+    if (!confirmed) return;
+
+    await deleteProject(id);
+    fetchProjects();
+    if (useKaraokeStore.getState().projectId === id) {
+      clearProject();
     }
   };
 
@@ -50,6 +58,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
         title="My Projects"
         open={open}
         onClose={onClose}
+        modalClassName="flex flex-col"
         cancelButtonProps={{ hidden: true }}
         okButtonProps={{
           icon: <Plus />,

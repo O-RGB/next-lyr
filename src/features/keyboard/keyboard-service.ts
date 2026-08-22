@@ -7,7 +7,6 @@ import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { useTimerStore } from "@/timer-worker/store";
 
 /**
  * Editor keyboard service.
@@ -116,7 +115,8 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
 
     const store = useKaraokeStore.getState();
     const { playerControls: player } = usePlayerSetupStore.getState();
-    const { handleRetiming } = usePlayerHandlersStore.getState();
+    const { handleRetiming, handleTimingForward } =
+      usePlayerHandlersStore.getState();
     if (!player) return;
 
     const {
@@ -127,7 +127,6 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       currentIndex,
       editingLineIndex,
       timingBuffer,
-      editingEndLineIndex,
       isPlaying,
       playFromScrolledPosition,
     } = store;
@@ -235,50 +234,10 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       return;
     }
 
-    if (player.isPlaying() && event.code === "ArrowRight") {
-      const timer = useTimerStore.getState();
-      const currentTime = timer.worker
-        ? (await timer.getCurrentTiming()).presentationValue
-        : player.getCurrentTime();
-
-      const currentWord = currentIndex > -1 ? flatLyrics[currentIndex] : null;
-      const canRecord =
-        isStampingMode ||
-        (editingLineIndex === null && currentWord && currentWord.at === null);
-      if (!canRecord) return;
-
-      if (isTimingActive) {
-        const { isLineEnd } = actions.recordTiming(currentTime);
-        if (isLineEnd) {
-          player.pause();
-          const nextGroup = actions.finishTimingGroup();
-          if (nextGroup.done) {
-            await actions.stopTiming();
-          } else {
-            // The current group is complete, but the session is not. Seek to
-            // the line before the next group so every disconnected group gets
-            // its own audible preparation line.
-            const seek = player.seek(nextGroup.preRollTime);
-            player.play();
-            await Promise.resolve(seek);
-          }
-        } else {
-          actions.goToNextWord();
-        }
-      } else {
-        actions.startTiming(currentTime);
-
-        // There is no preselected box when retiming starts. The first
-        // right-arrow stamps box 0, then advances so the orange state means
-        // "the next box to stamp".
-        const timingIndex = useKaraokeStore.getState().currentIndex;
-        const nextWord = flatLyrics[timingIndex + 1];
-        const canAdvanceWithinEdit =
-          nextWord &&
-          (editingEndLineIndex === null ||
-            nextWord.lineIndex <= editingEndLineIndex);
-        if (canAdvanceWithinEdit) actions.goToNextWord();
-      }
+    if (event.code === "ArrowRight") {
+      // Keyboard and touch controls share the same timing transaction. This
+      // keeps the active word and the grid's horizontal centering in sync.
+      await handleTimingForward();
     }
   };
 

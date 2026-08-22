@@ -10,6 +10,7 @@ import {
 
 import CommonPlayerStyle from "@/components/common/player";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { clipPlayer } from "@/lib/karaoke-engine/clip-player";
 import { audioEngine } from "@/lib/karaoke-engine/engine";
 import { transport } from "@/lib/karaoke-engine/transport";
@@ -67,6 +68,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       (state) => state.actions.setIsPlaying
     );
     const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
+    const requestAlert = useUiStore((state) => state.requestAlert);
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
     const [duration, setDuration] = useState(sourceDuration ?? 0);
@@ -210,13 +212,18 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       void prepare().catch((error: unknown) => {
         if (!cancelled) {
           console.error("Error preparing audio engine:", error);
-          alert(error instanceof Error ? error.message : "Could not prepare audio");
+          void requestAlert({
+            title: "เตรียมไฟล์เสียงไม่สำเร็จ",
+            description:
+              error instanceof Error ? error.message : "Could not prepare audio",
+            tone: "danger",
+          });
         }
       });
       return () => {
         cancelled = true;
       };
-    }, [file, sourceDuration, src]);
+    }, [file, requestAlert, sourceDuration, src]);
 
     useImperativeHandle(ref, () => ({
       play: () => {

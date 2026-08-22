@@ -47,6 +47,14 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   const lastTickRef = useRef(0);
   const dirtyRef = useRef(true);
   const dprRef = useRef(1);
+  const layoutRef = useRef<{
+    topIndex: number;
+    bottomIndex: number;
+    topY: number;
+    bottomY: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const frameRef = useRef<number | null>(null);
   const drawFrameRef = useRef<() => void>(() => undefined);
 
@@ -76,6 +84,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       canvas.width = pixelWidth;
       canvas.height = pixelHeight;
     }
+    layoutRef.current = null;
     markDirty();
   }, [markDirty]);
 
@@ -99,6 +108,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       topSlotRef.current = makeCanvasSlot();
       bottomSlotRef.current = makeCanvasSlot();
       lastTickRef.current = 0;
+      layoutRef.current = null;
       markDirty();
     };
 
@@ -112,6 +122,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
 
   useEffect(() => {
     styleRef.current = textStyle;
+    layoutRef.current = null;
     markDirty();
   }, [markDirty, textStyle]);
 
@@ -186,19 +197,78 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
 
     const mainSize = getFontSize(styleRef.current, width, height);
     const vocalSize = Math.max(10, mainSize * 0.42);
-    const lineBlock = mainSize * 1.45 + vocalSize;
-    const lineGap = mainSize * 0.55;
-    const totalHeight = lineBlock * 2 + lineGap;
-    const firstY = Math.max(
-      mainSize,
-      height / 2 - totalHeight / 2 + mainSize / 2
-    );
-    const secondY = firstY + lineBlock + lineGap;
     const style = getTextStyle(
       styleRef.current,
       mainSize,
       getComputedStyle(canvas).fontFamily || "sans-serif"
     );
+    const fontFamily = style.fontFamily;
+    const mainMetrics = measureCanvasTextVertical(
+      ctx,
+      style.fontWeight,
+      mainSize,
+      fontFamily,
+      style.strokeWidth
+    );
+    const vocalMetrics = measureCanvasTextVertical(
+      ctx,
+      style.fontWeight,
+      vocalSize,
+      fontFamily,
+      Math.max(vocalSize * 0.1, 1.5)
+    );
+    const topLineBlock =
+      mainMetrics.ascent +
+      (topSentence?.vocal.trim()
+        ? mainSize * 0.72 + vocalMetrics.descent
+        : mainMetrics.descent);
+    const bottomLineBlock =
+      mainMetrics.ascent +
+      (bottomSentence?.vocal.trim()
+        ? mainSize * 0.72 + vocalMetrics.descent
+        : mainMetrics.descent);
+    const lineGap = mainSize * 0.55;
+    const totalHeight = topLineBlock + bottomLineBlock + lineGap;
+    const centeredTop = (height - totalHeight) / 2;
+    const centeredFirstY = centeredTop + mainMetrics.ascent;
+    const centeredSecondY = centeredFirstY + topLineBlock + lineGap;
+
+    const previousLayout = layoutRef.current;
+    const sizeChanged =
+      !previousLayout ||
+      Math.abs(previousLayout.width - width) > 0.5 ||
+      Math.abs(previousLayout.height - height) > 0.5;
+    const topChanged = !previousLayout || previousLayout.topIndex !== topIndex;
+    const bottomChanged =
+      !previousLayout || previousLayout.bottomIndex !== bottomIndex;
+
+    let firstY = centeredFirstY;
+    let secondY = centeredSecondY;
+
+    if (previousLayout && !sizeChanged) {
+      if (topChanged && !bottomChanged) {
+        // Keep the unchanged bottom line fixed while the top lyric changes.
+        secondY = previousLayout.bottomY;
+        firstY = secondY - topLineBlock - lineGap;
+      } else if (bottomChanged && !topChanged) {
+        // Keep the unchanged top line fixed while the bottom lyric changes.
+        firstY = previousLayout.topY;
+        secondY = firstY + topLineBlock + lineGap;
+      } else if (!topChanged && !bottomChanged) {
+        // Subtitles/progress can change without moving either lyric line.
+        firstY = previousLayout.topY;
+        secondY = previousLayout.bottomY;
+      }
+    }
+
+    layoutRef.current = {
+      topIndex,
+      bottomIndex,
+      topY: firstY,
+      bottomY: secondY,
+      width,
+      height,
+    };
 
     drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize);
     drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize);
@@ -323,13 +393,31 @@ function drawSentence(
     {
       ...style,
       fontSize: vocalSize,
-      unsungFill: "#0000ff",
-      unsungStroke: "#ffffff",
-      sungFill: "#df692e",
-      sungStroke: "#000000",
+      unsungFill: "#df692e",
+      unsungStroke: "#000000",
+      sungFill: "#0000ff",
+      sungStroke: "#ffffff",
       strokeWidth: Math.max(vocalSize * 0.1, 1.5),
     }
   );
+}
+
+function measureCanvasTextVertical(
+  ctx: CanvasRenderingContext2D,
+  fontWeight: number | string,
+  fontSize: number,
+  fontFamily: string,
+  strokeWidth: number
+): { ascent: number; descent: number } {
+  ctx.save();
+  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  const metrics = ctx.measureText("Ag");
+  const ascent =
+    (metrics.actualBoundingBoxAscent || fontSize * 0.8) + strokeWidth / 2;
+  const descent =
+    (metrics.actualBoundingBoxDescent || fontSize * 0.2) + strokeWidth / 2;
+  ctx.restore();
+  return { ascent, descent };
 }
 
 function clearCanvas(canvas: HTMLCanvasElement | null): void {

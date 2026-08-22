@@ -16,6 +16,7 @@ import MidiNotesPreview from "@/components/panel/midi-notes-preview";
 import ChordOverviewPreview from "@/components/panel/chord-overview-preview";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import ChordsPanel from "./chords-panel";
+import RetimingAllButton from "@/components/common/retiming-all";
 
 type LyricsPanelProps = {
   onPreviewChange?: (visible: boolean) => void;
@@ -49,8 +50,8 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   };
 
   return (
-    <Card className="relative flex h-full min-h-0 flex-col gap-2 border-0 bg-panel pt-2 lg:pt-4 pr-2 lg:pr-4 pb-2 lg:pb-4 pl-2 lg:pl-4">
-      <header className="flex shrink-0 items-center justify-between">
+    <Card className="relative flex h-full min-h-0 flex-col gap-2 border-0 bg-panel p-2 lg:p-0">
+      <header className="flex shrink-0 items-center justify-between lg:px-4 lg:pt-4">
         <h1 className="text-lg font-semibold text-foreground">
           {chordPreview
             ? text(locale, "คอร์ด", "Chords")
@@ -96,6 +97,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
               preview={preview}
               setPreview={setPreviewVisible}
             />
+            {!chordPreview && <RetimingAllButton />}
           </div>
           <LyricsMobileControls />
         </div>
@@ -110,27 +112,26 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
               )}
             </div>
             {chordPreview ? (
-              <div className="h-full w-[150px] shrink-0">
+              <div className="h-full w-[150px] shrink-0 pr-2">
                 <ChordOverviewPreview compact />
               </div>
             ) : (
-              <div className="h-full w-[150px] shrink-0">
+              <div className="h-full w-[150px] shrink-0 pr-2">
                 <ChordsPanel compact />
               </div>
             )}
           </div>
-          <div className="flex shrink-0 justify-end gap-1.5">
-            <MobileActionButton
-              preview={preview}
-              setPreview={setPreviewVisible}
-              showLineSelection={false}
-            />
-          </div>
-          {!chordPreview && (
-            <div className="hidden shrink-0 justify-start lg:flex">
-              <LineSelectionToolbar />
+          <div className="flex shrink-0 items-center gap-1.5 lg:h-11 lg:pr-2 lg:pb-2">
+            {!chordPreview && <LineSelectionToolbar />}
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              {!chordPreview && <RetimingAllButton />}
+              <MobileActionButton
+                preview={preview}
+                setPreview={setPreviewVisible}
+                showLineSelection={false}
+              />
             </div>
-          )}
+          </div>
         </>
       )}
 

@@ -7,6 +7,7 @@ import MetadataForm from "@/components/metadata/metadata-form";
 import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
@@ -30,6 +31,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const [metadata, setMetadataTemp] = useState<SongInfo>();
 
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
+  const requestAlert = useUiStore((state) => state.requestAlert);
 
   const getYouTubeId = (url: string): string | null => {
     const regExp =
@@ -73,20 +75,36 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   const handleCreateProject = async () => {
     if (!metadata) {
-      alert("Metadata has not been initialized.");
+      await requestAlert({
+        title: "ข้อมูลเพลงยังไม่พร้อม",
+        description: "ยังไม่ได้เตรียมข้อมูลเพลง",
+        tone: "info",
+      });
       return;
     }
 
     if (projectMode !== "youtube" && !musicFile) {
-      alert("Please select a music file.");
+      await requestAlert({
+        title: "ยังไม่ได้เลือกไฟล์เพลง",
+        description: "กรุณาเลือกไฟล์เพลงก่อนสร้างโปรเจกต์",
+        tone: "info",
+      });
       return;
     }
     if (projectMode === "youtube" && youtubeUrl ? !youtubeUrl.trim() : false) {
-      alert("Please enter a YouTube URL.");
+      await requestAlert({
+        title: "ยังไม่ได้ใส่ URL",
+        description: "กรุณาใส่ YouTube URL ก่อนสร้างโปรเจกต์",
+        tone: "info",
+      });
       return;
     }
     if (!metadata.TITLE?.trim()) {
-      alert("Please enter a project name (song title).");
+      await requestAlert({
+        title: "ยังไม่ได้ตั้งชื่อโปรเจกต์",
+        description: "กรุณาใส่ชื่อเพลงก่อนสร้างโปรเจกต์",
+        tone: "info",
+      });
       return;
     }
 
@@ -164,7 +182,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       } else if (projectMode === "youtube" && youtubeUrl) {
         const videoId = getYouTubeId(youtubeUrl);
         if (!videoId) {
-          alert("Invalid YouTube URL.");
+          await requestAlert({
+            title: "YouTube URL ไม่ถูกต้อง",
+            description: "กรุณาตรวจสอบ URL แล้วลองใหม่อีกครั้ง",
+            tone: "danger",
+          });
           return;
         }
         initialData.playerState.youtubeId = videoId;
@@ -185,7 +207,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       onClose();
     } catch (error) {
       console.error("Failed to create project:", error);
-      alert("Could not create the project. Please try again.");
+      await requestAlert({
+        title: "สร้างโปรเจกต์ไม่สำเร็จ",
+        description: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+        tone: "danger",
+      });
     }
   };
 
@@ -220,6 +246,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       title="Create New Project"
       open={open}
       onClose={onClose}
+      modalClassName="flex flex-col"
       okButtonProps={{
         onClick: handleCreateProject,
         disabled,
@@ -229,7 +256,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         disabled,
       }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-col gap-4">
         <SelectCommon
           label="Project Mode"
           options={[
@@ -272,7 +299,9 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
         <div className="">
           <MetadataForm
-            className="flex flex-col gap-4"
+            card={false}
+            requiredFirst
+            className="flex flex-col gap-3"
             inputSize="md"
             adding
             disabled={disabled}

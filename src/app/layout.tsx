@@ -4,6 +4,7 @@ import { Noto_Sans_Thai_Looped } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import { Toaster } from "@/components/ui/sonner";
+import ConfirmModal from "@/components/common/confirm-modal";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PreferencesBridge } from "@/features/settings/preferences-bridge";
 
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <TooltipProvider delay={350} closeDelay={120}>
             {children}
           </TooltipProvider>
+          <ConfirmModal />
           <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>
       </body>

@@ -138,6 +138,11 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
     const computed = getComputedStyle(document.documentElement);
     const panel = computed.getPropertyValue("--panel").trim() || "#131a23";
     const panelAlt = computed.getPropertyValue("--panel-2").trim() || "#18212d";
+    // The compact chord grid gets its own surface hierarchy. Lyrics use the
+    // deeper lane/lane-alt pair; chords stay on the panel/panel-2 pair so the
+    // two editors remain visually related without becoming indistinguishable.
+    const lane = panel;
+    const laneAlt = panelAlt;
     const line = computed.getPropertyValue("--line").trim() || "#3b4a5d";
     const strongLine =
       computed.getPropertyValue("--line-strong").trim() || "#667991";
@@ -147,12 +152,14 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
       computed.getPropertyValue("--muted-foreground").trim() || "#8795a8";
     const active =
       computed.getPropertyValue("--lyric-playing").trim() || "#f6dc67";
+    const selection =
+      computed.getPropertyValue("--chord-room").trim() || "#d3a55b";
     const chordColor =
       computed.getPropertyValue("--chord").trim() || "#f4bd68";
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = panel;
+    ctx.fillStyle = compact ? lane : panel;
     ctx.fillRect(0, 0, width, height);
     ctx.textBaseline = "middle";
 
@@ -165,9 +172,14 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
         nextRootRef.current,
         currentPosition,
         panelAlt,
+        lane,
+        laneAlt,
         active,
+        text,
+        selection,
         muted,
         line,
+        strongLine,
         chordsData,
         chordColor
       );
@@ -281,8 +293,8 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
             Math.max(0, Math.floor(((y - laneTop) / laneHeight) * count))
           );
         } else {
-          const laneStart = Math.min(42, Math.max(30, width * 0.2));
-          const laneWidth = Math.max(1, width - laneStart - 6);
+          const laneStart = Math.min(36, Math.max(28, width * 0.16));
+          const laneWidth = Math.max(1, width - laneStart);
           if (x < laneStart || x > laneStart + laneWidth) return;
           index = Math.min(
             count - 1,
@@ -380,8 +392,8 @@ const BeatGrid: React.FC<BeatGridProps> = ({ compact = false }) => {
 
   return (
     <div
-      className={`relative h-full w-full overflow-hidden bg-panel ${
-        compact ? "" : "rounded-lg border border-line"
+      className={`relative h-full w-full overflow-hidden bg-panel border border-line ${
+        compact ? "" : "rounded-lg"
       }`}
     >
       <canvas
@@ -667,9 +679,14 @@ function drawCompactMeasureRows(
   nextRange: TimelineRange,
   currentPosition: number,
   panelAlt: string,
+  lane: string,
+  laneAlt: string,
   active: string,
+  activeText: string,
+  selection: string,
   muted: string,
   line: string,
+  strongLine: string,
   chords: readonly ChordEvent[],
   chordColor: string
 ): void {
@@ -682,9 +699,14 @@ function drawCompactMeasureRows(
       nextRange,
       currentPosition,
       panelAlt,
+      lane,
+      laneAlt,
       active,
+      activeText,
+      selection,
       muted,
       line,
+      strongLine,
       chords,
       chordColor
     );
@@ -692,13 +714,10 @@ function drawCompactMeasureRows(
   }
 
   const rowHeight = Math.max(1, height / 2);
-  const laneStart = 2;
-  const laneWidth = Math.max(1, width - laneStart - 2);
+  const labelWidth = Math.min(36, Math.max(28, width * 0.16));
+  const contentStart = labelWidth;
+  const contentWidth = Math.max(1, width - contentStart);
   const rows = getCompactMeasureRows(currentRange, nextRange);
-
-  ctx.textBaseline = "top";
-  ctx.textAlign = "left";
-  ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
 
   rows.forEach((range, rowIndex) => {
     const top = rowIndex * rowHeight;
@@ -708,31 +727,44 @@ function drawCompactMeasureRows(
       range.key === currentRange.key &&
       isPositionInRange(currentPosition, range.start, range.end, true);
 
-    ctx.textBaseline = "top";
-
-    if (rowIndex > 0) {
-      ctx.strokeStyle = line;
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(0, top);
-      ctx.lineTo(width, top);
-      ctx.stroke();
+    ctx.fillStyle = rowIndex % 2 === 0 ? lane : laneAlt;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, top, width, rowHeight);
+    if (rowActive) {
+      ctx.fillStyle = selection;
+      ctx.globalAlpha = 0.06;
+      ctx.fillRect(0, top, width, rowHeight);
       ctx.globalAlpha = 1;
     }
 
-    ctx.fillStyle = rowActive ? active : muted;
-    ctx.fillText(`M${range.measure}`, 2, top + 2);
-
-    ctx.fillStyle = panelAlt;
-    ctx.globalAlpha = rowActive ? 0.18 : 0.1;
-    ctx.fillRect(laneStart, top + 5, laneWidth, Math.max(1, rowHeight - 10));
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.65;
+    ctx.beginPath();
+    if (rowIndex < rows.length - 1) {
+      ctx.moveTo(0, top + rowHeight - 1);
+      ctx.lineTo(width, top + rowHeight - 1);
+    }
+    ctx.moveTo(contentStart, top);
+    ctx.lineTo(contentStart, top + rowHeight);
+    ctx.stroke();
     ctx.globalAlpha = 1;
+
+    ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = rowActive ? selection : muted;
+    ctx.fillText(`M${range.measure}`, 4, top + 3);
+
+    const slotTop = top + 7;
+    const slotHeight = Math.max(1, rowHeight - 14);
+    ctx.strokeStyle = line;
 
     for (let index = 0; index < children.length; index += 1) {
       const child = children[index];
-      const x = laneStart + (laneWidth * index) / children.length;
-      const nextX = laneStart + (laneWidth * (index + 1)) / children.length;
+      const x = contentStart + (contentWidth * index) / children.length;
+      const nextX =
+        contentStart + (contentWidth * (index + 1)) / children.length;
       const slotWidth = Math.max(1, nextX - x);
       const childActive =
         rowActive &&
@@ -743,40 +775,34 @@ function drawCompactMeasureRows(
           index === children.length - 1
         );
 
-      if (index % 2 === 0 && !childActive) {
-        ctx.fillStyle = panelAlt;
-        ctx.globalAlpha = 0.14;
-        ctx.fillRect(x, top + 5, slotWidth, Math.max(1, rowHeight - 10));
-        ctx.globalAlpha = 1;
-      }
+      drawCompactBeatSlot(
+        ctx,
+        x,
+        slotTop,
+        slotWidth,
+        slotHeight,
+        line,
+        strongLine,
+        active,
+        childActive,
+        true
+      );
 
-      if (childActive) {
-        ctx.fillStyle = active;
-        ctx.globalAlpha = 0.2;
-        ctx.fillRect(x, top + 5, slotWidth, Math.max(1, rowHeight - 10));
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = active;
-        ctx.fillRect(x, top + 5, Math.min(3, slotWidth), Math.max(1, rowHeight - 10));
-      }
-
-      if (index > 0) {
-        ctx.strokeStyle = line;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, top + 5);
-        ctx.lineTo(x, top + rowHeight - 5);
-        ctx.stroke();
-      }
+      ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = childActive ? activeText : muted;
+      ctx.fillText(String(index + 1), x + 6, slotTop + 3);
 
       drawCompactBlockText(
         ctx,
         findChordForRange(chords, child.start, child.end)?.chord,
-        x,
-        top + 5,
-        slotWidth,
-        Math.max(1, rowHeight - 10),
+        x + 2,
+        slotTop + 12,
+        Math.max(1, slotWidth - 4),
+        Math.max(1, slotHeight - 12),
         panelAlt,
-        childActive ? active : chordColor
+        childActive ? activeText : chordColor
       );
     }
 
@@ -792,16 +818,23 @@ function drawCompactVerticalMeasureRows(
   nextRange: TimelineRange,
   currentPosition: number,
   panelAlt: string,
+  lane: string,
+  laneAlt: string,
   active: string,
+  activeText: string,
+  selection: string,
   muted: string,
   line: string,
+  strongLine: string,
   chords: readonly ChordEvent[],
   chordColor: string
 ): void {
   const measureHeight = Math.max(1, height / 2);
   const labelHeight = Math.min(22, Math.max(17, measureHeight * 0.18));
-  const laneStart = 6;
-  const laneWidth = Math.max(1, width - laneStart * 2);
+  const labelStart = 6;
+  const beatGutter = Math.min(24, Math.max(20, width * 0.18));
+  const contentStart = labelStart + beatGutter;
+  const contentWidth = Math.max(1, width - contentStart - 6);
   const rows = getCompactMeasureRows(currentRange, nextRange);
 
   rows.forEach((range, rowIndex) => {
@@ -814,33 +847,42 @@ function drawCompactVerticalMeasureRows(
       range.key === currentRange.key &&
       isPositionInRange(currentPosition, range.start, range.end, true);
 
-    if (rowIndex > 0) {
-      ctx.strokeStyle = line;
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(0, top);
-      ctx.lineTo(width, top);
-      ctx.stroke();
+    ctx.fillStyle = rowIndex % 2 === 0 ? lane : laneAlt;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, top, width, measureHeight);
+    if (rowActive) {
+      ctx.fillStyle = selection;
+      ctx.globalAlpha = 0.06;
+      ctx.fillRect(0, top, width, measureHeight);
       ctx.globalAlpha = 1;
     }
+
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.65;
+    ctx.beginPath();
+    ctx.moveTo(contentStart, top);
+    ctx.lineTo(contentStart, top + measureHeight);
+    ctx.stroke();
+    ctx.beginPath();
+    if (rowIndex < rows.length - 1) {
+      ctx.moveTo(0, top + measureHeight - 1);
+      ctx.lineTo(width, top + measureHeight - 1);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.fillStyle = rowActive ? active : muted;
-    ctx.fillText(`M${range.measure}`, laneStart, top + labelHeight / 2);
+    ctx.fillStyle = rowActive ? selection : muted;
+    ctx.fillText(`M${range.measure}`, labelStart, top + labelHeight / 2);
 
-    ctx.fillStyle = panelAlt;
-    ctx.globalAlpha = rowActive ? 0.18 : 0.1;
-    ctx.fillRect(laneStart, laneTop, laneWidth, laneHeight);
-    ctx.globalAlpha = 1;
+    const slotHeight = Math.max(1, (laneHeight - 6) / children.length);
 
     for (let index = 0; index < children.length; index += 1) {
       const child = children[index];
-      const y = laneTop + (laneHeight * index) / children.length;
-      const nextY = laneTop + (laneHeight * (index + 1)) / children.length;
-      const slotHeight = Math.max(1, nextY - y);
+      const y = laneTop + 3 + slotHeight * index;
       const childActive =
         rowActive &&
         isPositionInRange(
@@ -850,43 +892,99 @@ function drawCompactVerticalMeasureRows(
           index === children.length - 1
         );
 
-      if (index % 2 === 0 && !childActive) {
-        ctx.fillStyle = panelAlt;
-        ctx.globalAlpha = 0.14;
-        ctx.fillRect(laneStart, y, laneWidth, slotHeight);
-        ctx.globalAlpha = 1;
-      }
+      drawCompactBeatSlot(
+        ctx,
+        contentStart,
+        y,
+        contentWidth,
+        slotHeight,
+        line,
+        strongLine,
+        active,
+        childActive,
+        false
+      );
 
-      if (childActive) {
-        ctx.fillStyle = active;
-        ctx.globalAlpha = 0.2;
-        ctx.fillRect(laneStart, y, laneWidth, slotHeight);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = active;
-        ctx.fillRect(laneStart, y, laneWidth, Math.min(3, slotHeight));
-      }
-
-      if (index > 0) {
-        ctx.strokeStyle = line;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(laneStart, y);
-        ctx.lineTo(laneStart + laneWidth, y);
-        ctx.stroke();
-      }
+      ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = childActive ? activeText : muted;
+      ctx.fillText(String(index + 1), labelStart + beatGutter / 2, y + slotHeight / 2);
 
       drawCompactBlockText(
         ctx,
         findChordForRange(chords, child.start, child.end)?.chord,
-        laneStart,
+        contentStart + 2,
         y,
-        laneWidth,
+        Math.max(1, contentWidth - 4),
         slotHeight,
         panelAlt,
-        childActive ? active : chordColor
+        childActive ? activeText : chordColor
       );
     }
   });
+}
+
+function drawCompactBeatSlot(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  line: string,
+  strongLine: string,
+  active: string,
+  isActive: boolean,
+  horizontal: boolean
+): void {
+  if (isActive) {
+    const inset = Math.min(1, Math.max(0, Math.min(width, height) / 8));
+    const blockX = x + inset;
+    const blockY = y + inset;
+    const blockWidth = Math.max(1, width - inset * 2);
+    const blockHeight = Math.max(1, height - inset * 2);
+
+    // The whole beat becomes the active object. Keep the chord text card
+    // above this surface, but do not reduce the state to a leading stripe.
+    ctx.fillStyle = active;
+    ctx.globalAlpha = 0.16;
+    ctx.fillRect(blockX, blockY, blockWidth, blockHeight);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = active;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(blockX, blockY, blockWidth, blockHeight);
+    return;
+  }
+
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.55;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  if (horizontal) {
+    ctx.moveTo(x, y - 3);
+    ctx.lineTo(x, y + height + 3);
+  } else {
+    ctx.moveTo(x - 5, y);
+    ctx.lineTo(x + width, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = strongLine;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  if (horizontal) {
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x, y);
+  } else {
+    ctx.moveTo(x - 7, y);
+    ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 function isCompactVertical(width: number, height: number): boolean {

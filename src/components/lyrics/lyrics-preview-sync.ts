@@ -9,6 +9,8 @@ export const LYRICS_PREVIEW_VIEWPORT_EVENT =
   "next-lyr:lyrics-preview-viewport";
 export const LYRICS_PREVIEW_SCROLL_REQUEST_EVENT =
   "next-lyr:lyrics-preview-scroll-request";
+export const LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT =
+  "next-lyr:lyrics-grid-center-active-word";
 
 let latestLyricsPreviewViewport: LyricsPreviewViewport = {
   start: 0,
@@ -54,4 +56,10 @@ export function requestLyricsPreviewScroll(start: number): void {
       { detail: { start: clampLyricsPreviewValue(start) } }
     )
   );
+}
+
+/** Ask the editor canvas to recalculate the active word's horizontal offset. */
+export function requestLyricsGridCenterActiveWord(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT));
 }

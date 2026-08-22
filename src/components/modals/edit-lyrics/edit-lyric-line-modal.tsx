@@ -1,11 +1,22 @@
-import { Check, Clock3, Save, WandSparkles } from "lucide-react";
+import {
+  Check,
+  Clock3,
+  Plus,
+  Redo2,
+  Save,
+  Trash2,
+  Undo2,
+  WandSparkles,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import ButtonCommon from "@/components/common/button";
 import InputCommon from "@/components/common/data-input/input";
 import ModalCommon from "../../common/modal";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { canRedo, canUndo } from "@/stores/karaoke-store/history";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import type { LyricWordData } from "@/types/common.type";
 
@@ -18,13 +29,20 @@ interface WordDraft {
   vocal: string;
 }
 
+interface NewWordDraft extends WordDraft {
+  id: string;
+}
+
 export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const { handleRetiming } = usePlayerHandlersStore();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const history = useKaraokeStore((state) => state.history);
   const actions = useKaraokeStore((state) => state.actions);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
 
   const [drafts, setDrafts] = useState<Record<number, WordDraft>>({});
+  const [newWordDrafts, setNewWordDrafts] = useState<NewWordDraft[]>([]);
   const [savedWordIndex, setSavedWordIndex] = useState<number | null>(null);
   const sessionKeyRef = useRef<string | null>(null);
 
@@ -49,6 +67,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
         ])
       )
     );
+    setNewWordDrafts([]);
     setSavedWordIndex(null);
   }, [open, selectedLineIndex, currentLine]);
 
@@ -81,6 +100,105 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     setSavedWordIndex(word.index);
   };
 
+  const handleAddWordDraft = () => {
+    setNewWordDrafts((previous) => [
+      ...previous,
+      {
+        id: `new-${Date.now()}-${previous.length}`,
+        text: "",
+        vocal: "",
+      },
+    ]);
+  };
+
+  const updateNewWordDraft = (
+    draftId: string,
+    field: keyof WordDraft,
+    value: string
+  ) => {
+    setNewWordDrafts((previous) =>
+      previous.map((draft) =>
+        draft.id === draftId ? { ...draft, [field]: value } : draft
+      )
+    );
+  };
+
+  const handleSaveNewWord = (draft: NewWordDraft) => {
+    if (selectedLineIndex === null || !draft.text.trim()) return;
+
+    actions.addWord(selectedLineIndex, draft.text, draft.vocal);
+    setNewWordDrafts((previous) =>
+      previous.filter((item) => item.id !== draft.id)
+    );
+  };
+
+  const handleDeleteWord = async (word: LyricWordData) => {
+    const confirmed = await requestConfirm({
+      title: "ลบคำนี้หรือไม่?",
+      description: `คำว่า "${word.text}" จะถูกลบออกจากบรรทัดนี้`,
+      tone: "danger",
+      confirmLabel: "ลบคำ",
+    });
+    if (!confirmed) return;
+
+    actions.deleteWord(word.index);
+
+    const nextLine =
+      selectedLineIndex === null
+        ? []
+        : useKaraokeStore.getState().lyricsData[selectedLineIndex] ?? [];
+    setDrafts(
+      Object.fromEntries(
+        nextLine.map((nextWord) => [
+          nextWord.index,
+          { text: nextWord.text, vocal: nextWord.vocal ?? "" },
+        ])
+      )
+    );
+    setSavedWordIndex(null);
+  };
+
+  const handleDeleteNewWord = async (draftId: string) => {
+    const confirmed = await requestConfirm({
+      title: "ลบแถวคำใหม่นี้หรือไม่?",
+      description: "ข้อมูลที่กรอกไว้ในแถวนี้จะหายไป",
+      tone: "danger",
+      confirmLabel: "ลบแถว",
+    });
+    if (!confirmed) return;
+
+    setNewWordDrafts((previous) =>
+      previous.filter((draft) => draft.id !== draftId)
+    );
+  };
+
+  const syncDraftsFromStore = () => {
+    const nextLine =
+      selectedLineIndex === null
+        ? []
+        : useKaraokeStore.getState().lyricsData[selectedLineIndex] ?? [];
+    setDrafts(
+      Object.fromEntries(
+        nextLine.map((word) => [
+          word.index,
+          { text: word.text, vocal: word.vocal ?? "" },
+        ])
+      )
+    );
+    setNewWordDrafts([]);
+    setSavedWordIndex(null);
+  };
+
+  const handleUndo = () => {
+    actions.undo();
+    syncDraftsFromStore();
+  };
+
+  const handleRedo = () => {
+    actions.redo();
+    syncDraftsFromStore();
+  };
+
   const handleAutoSub = () => {
     if (!currentLine?.length) return;
 
@@ -111,11 +229,24 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     handleSaveWord(word);
   };
 
-  const handleRetimingLine = () => {
+  const handleNewWordKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    draft: NewWordDraft
+  ) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    handleSaveNewWord(draft);
+  };
+
+  const handleRetimingLine = async () => {
     if (selectedLineIndex === null) return;
-    if (!confirm(`ปาดเนื้อร้องบรรทัดที่ ${selectedLineIndex + 1} ใหม่?`)) {
-      return;
-    }
+    const confirmed = await requestConfirm({
+      title: "ปาดเนื้อร้องใหม่หรือไม่?",
+      description: `เวลาและการแบ่งคำของบรรทัดที่ ${selectedLineIndex + 1} จะถูกสร้างใหม่`,
+      tone: "danger",
+      confirmLabel: "ปาดใหม่",
+    });
+    if (!confirmed) return;
 
     actions.closeEditModal();
     handleRetiming(selectedLineIndex, selectedLineIndex);
@@ -125,6 +256,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     <ModalCommon
       title="แก้ไขคำร้อง"
       description="แก้เฉพาะคำที่ต้องการ เวลาเดิมจะไม่เปลี่ยน"
+      modalClassName="flex flex-col"
       onClose={() => actions.closeEditModal()}
       open={(open ?? false) && selectedLineIndex !== null}
       footer={
@@ -139,36 +271,63 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
       }
     >
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-panel-2 px-2.5 py-1.5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span>บรรทัดที่ {(selectedLineIndex ?? 0) + 1}</span>
-            <span>{currentLine?.length ?? 0} คำ</span>
+        <div className="flex flex-col rounded-xl border border-line bg-panel p-2 shadow-sm">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-0.5 pb-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>บรรทัดที่ {(selectedLineIndex ?? 0) + 1}</span>
+              <span>{currentLine?.length ?? 0} คำ</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ButtonCommon
+                aria-label="ย้อนกลับ"
+                title="ย้อนกลับ"
+                circle
+                size="xs"
+                className="!size-7"
+                color="gray"
+                variant="ghost"
+                icon={<Undo2 />}
+                disabled={!canUndo(history)}
+                onClick={handleUndo}
+              />
+              <ButtonCommon
+                aria-label="ทำซ้ำ"
+                title="ทำซ้ำ"
+                circle
+                size="xs"
+                className="!size-7"
+                color="gray"
+                variant="ghost"
+                icon={<Redo2 />}
+                disabled={!canRedo(history)}
+                onClick={handleRedo}
+              />
+              <ButtonCommon
+                aria-label="สร้าง Auto Sub"
+                title="สร้าง Auto Sub"
+                circle
+                size="xs"
+                className="!size-7"
+                color="success"
+                icon={<WandSparkles />}
+                onClick={handleAutoSub}
+              />
+            </div>
           </div>
-          <ButtonCommon
-            aria-label="สร้าง Auto Sub"
-            title="สร้าง Auto Sub"
-            circle
-            size="xs"
-            color="success"
-            icon={<WandSparkles />}
-            onClick={handleAutoSub}
-          />
-        </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {currentLine?.map((word, index) => {
-            const draft = drafts[word.index] ?? {
-              text: word.text,
-              vocal: word.vocal ?? "",
-            };
-            const isSaved = savedWordIndex === word.index;
+          <div className="flex flex-col">
+            {currentLine?.map((word, index) => {
+              const draft = drafts[word.index] ?? {
+                text: word.text,
+                vocal: word.vocal ?? "",
+              };
+              const isSaved = savedWordIndex === word.index;
 
-            return (
-              <section
-                key={word.index}
-                className="rounded-xl border border-line bg-panel p-2 shadow-sm"
-              >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2">
+              return (
+                <div
+                  key={word.index}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
+                >
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-2/15 text-[11px] font-semibold text-brand-2">
                     {index + 1}
                   </span>
@@ -194,7 +353,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     aria-label={`บันทึกคำที่ ${index + 1}`}
                     title={isSaved ? "บันทึกแล้ว" : "บันทึกคำนี้"}
                     circle
-                    size="sm"
+                    size="xs"
+                    className="!size-7"
                     color={isSaved ? "success" : "primary"}
                     icon={isSaved ? <Check /> : <Save />}
                     disabled={
@@ -204,10 +364,85 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     }
                     onClick={() => handleSaveWord(word)}
                   />
+                  <ButtonCommon
+                    aria-label={`ลบคำที่ ${index + 1}`}
+                    title="ลบคำนี้"
+                    circle
+                    size="xs"
+                    className="!size-7"
+                    color="danger"
+                    variant="ghost"
+                    icon={<Trash2 />}
+                    onClick={() => void handleDeleteWord(word)}
+                  />
                 </div>
-              </section>
-            );
-          })}
+              );
+            })}
+            {newWordDrafts.map((draft, index) => (
+              <div
+                key={draft.id}
+                className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
+              >
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-2/15 text-[11px] font-semibold text-brand-2">
+                  {(currentLine?.length ?? 0) + index + 1}
+                </span>
+                <InputCommon
+                  autoFocus={index === newWordDrafts.length - 1}
+                  inputSize="sm"
+                  placeholder="คำร้อง"
+                  value={draft.text}
+                  onChange={(event) =>
+                    updateNewWordDraft(draft.id, "text", event.target.value)
+                  }
+                  onKeyDown={(event) => handleNewWordKeyDown(event, draft)}
+                />
+                <InputCommon
+                  inputSize="sm"
+                  placeholder="ซับ"
+                  value={draft.vocal}
+                  onChange={(event) =>
+                    updateNewWordDraft(draft.id, "vocal", event.target.value)
+                  }
+                  onKeyDown={(event) => handleNewWordKeyDown(event, draft)}
+                />
+                <ButtonCommon
+                  aria-label="บันทึกคำใหม่"
+                  title="บันทึกคำใหม่"
+                  circle
+                  size="xs"
+                  className="!size-7"
+                  color="primary"
+                  icon={<Save />}
+                  disabled={!draft.text.trim()}
+                  onClick={() => handleSaveNewWord(draft)}
+                />
+                <ButtonCommon
+                  aria-label="ลบแถวคำใหม่"
+                  title="ลบแถวคำใหม่"
+                  circle
+                  size="xs"
+                  className="!size-7"
+                  color="danger"
+                  variant="ghost"
+                  icon={<Trash2 />}
+                  onClick={() => void handleDeleteNewWord(draft.id)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end border-t border-line pt-2">
+            <ButtonCommon
+              aria-label="เพิ่มคำ"
+              title="เพิ่มคำ"
+              circle
+              size="xs"
+              color="secondary"
+              variant="outline"
+              icon={<Plus />}
+              onClick={handleAddWordDraft}
+            />
+          </div>
         </div>
       </div>
     </ModalCommon>

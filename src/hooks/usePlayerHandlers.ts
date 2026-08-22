@@ -3,18 +3,23 @@ import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
+import { useTimerStore } from "@/timer-worker/store";
+import { requestLyricsGridCenterActiveWord } from "@/components/lyrics/lyrics-preview-sync";
 
 interface PlayerHandlersState {
   handleStop: () => void;
   handleWordClick: (index: number) => void;
   handleRetiming: (lineIndex: number, endLineIndex?: number) => void;
   handleRetimingLines: (lineIndices: number[]) => void;
+  handleRetimingAll: () => void;
+  handleTimingForward: () => Promise<void>;
   handleCancelRetiming: () => void;
 }
 
 export const usePlayerHandlersStore = create<PlayerHandlersState>(
   () => {
     let navigationRequest = 0;
+    let timingStepInFlight = false;
 
     const handleRetimingLines = async (lineIndices: number[]) => {
       const request = ++navigationRequest;
@@ -41,6 +46,72 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       if (request !== navigationRequest) return;
       if (!wasPlaying && !playerControls.isPlaying()) {
         playerControls.play();
+      }
+    };
+
+    const handleTimingForward = async () => {
+      if (timingStepInFlight) return;
+
+      const { playerControls } = usePlayerSetupStore.getState();
+      const initialState = useKaraokeStore.getState();
+      const isStampingMode =
+        initialState.isTimingActive || initialState.editingLineIndex !== null;
+      if (!playerControls || !isStampingMode || !playerControls.isPlaying()) {
+        return;
+      }
+
+      timingStepInFlight = true;
+      try {
+        const timer = useTimerStore.getState();
+        const currentTime = timer.worker
+          ? (await timer.getCurrentTiming()).presentationValue
+          : playerControls.getCurrentTime();
+        const state = useKaraokeStore.getState();
+        const { actions } = state;
+
+        if (!state.isTimingActive && state.editingLineIndex === null) return;
+
+        if (state.isTimingActive) {
+          const { isLineEnd } = actions.recordTiming(currentTime);
+          if (isLineEnd) {
+            playerControls.pause();
+            const nextGroup = actions.finishTimingGroup();
+            if (nextGroup.done) {
+              await actions.stopTiming();
+            } else {
+              // Move to the next disconnected group with the same pre-roll
+              // behavior as the keyboard workflow.
+              const seek = playerControls.seek(nextGroup.preRollTime);
+              playerControls.play();
+              await Promise.resolve(seek);
+            }
+          } else {
+            actions.goToNextWord();
+          }
+        } else {
+          actions.startTiming(currentTime);
+
+          // The first tap stamps the first word, then advances to the next
+          // word so the grid can center the next target immediately.
+          const timingState = useKaraokeStore.getState();
+          const flatLyrics = timingState.lyricsData.flat();
+          const timingIndex = timingState.currentIndex;
+          const nextWord = flatLyrics[timingIndex + 1];
+          const canAdvanceWithinEdit =
+            nextWord &&
+            (timingState.editingEndLineIndex === null ||
+              nextWord.lineIndex <= timingState.editingEndLineIndex);
+          if (canAdvanceWithinEdit) actions.goToNextWord();
+        }
+
+        if (useKaraokeStore.getState().editingLineIndex !== null) {
+          // The canvas owns its horizontal offset outside React. Recalculate
+          // it after the timing transaction so touch and keyboard input land
+          // on the same visual frame.
+          requestLyricsGridCenterActiveWord();
+        }
+      } finally {
+        timingStepInFlight = false;
       }
     };
 
@@ -138,6 +209,13 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           )
         ),
       handleRetimingLines,
+      handleRetimingAll: () =>
+        handleRetimingLines(
+          useKaraokeStore
+            .getState()
+            .lyricsData.map((_, lineIndex) => lineIndex)
+        ),
+      handleTimingForward,
       handleCancelRetiming: async () => {
         ++navigationRequest;
         const { playerControls } = usePlayerSetupStore.getState();

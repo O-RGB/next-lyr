@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import RetimingCancelButton from "@/components/common/retiming-cancel";
 
 function dispatchKey(code: string) {
@@ -14,6 +15,9 @@ export function LyricsMobileControls() {
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
   const timingMode = isTimingActive || editingLineIndex !== null;
+  const handleTimingForward = usePlayerHandlersStore(
+    (state) => state.handleTimingForward
+  );
 
   const buttonClass =
     "h-10 w-10 rounded-lg border border-line bg-panel text-foreground shadow-sm transition active:scale-95 touch-manipulation";
@@ -43,7 +47,12 @@ export function LyricsMobileControls() {
         <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowLeft")} aria-label="Previous word">
           <ArrowLeft className="mx-auto" />
         </button>
-        <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowRight")} aria-label="Next word">
+        <button
+          type="button"
+          className={`${buttonClass} ${timingClass}`}
+          onClick={() => void handleTimingForward()}
+          aria-label="Next word"
+        >
           <ArrowRight className="mx-auto" />
         </button>
         <RetimingCancelButton compact />

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
 interface LineSelectionToolbarProps {
@@ -35,6 +36,7 @@ export default function LineSelectionToolbar({
     (state) => state.isTimingActive || state.editingLineIndex !== null
   );
   const actions = useKaraokeStore((state) => state.actions);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
   const handleRetimingLines = usePlayerHandlersStore(
     (state) => state.handleRetimingLines
   );
@@ -44,15 +46,15 @@ export default function LineSelectionToolbar({
   const selectedCount = selectedLineIndices.length;
   const canOperate = selectedCount > 0;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!canOperate) return;
-    if (
-      !confirm(
-        `ลบบรรทัดที่เลือก ${selectedCount} บรรทัดออกไป?`
-      )
-    ) {
-      return;
-    }
+    const confirmed = await requestConfirm({
+      title: "ลบบรรทัดที่เลือกหรือไม่?",
+      description: `บรรทัดที่เลือก ${selectedCount} บรรทัดจะถูกลบออก`,
+      tone: "danger",
+      confirmLabel: "ลบบรรทัด",
+    });
+    if (!confirmed) return;
 
     void actions.deleteLines(selectedLineIndices);
     actions.setLineSelectionMode(false);

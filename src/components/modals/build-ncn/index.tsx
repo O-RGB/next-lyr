@@ -17,6 +17,7 @@ import {
   DEFAULT_PRE_ROLL_OFFSET_MP3,
 } from "@/stores/karaoke-store/configs";
 import { isTIS620Compatible } from "@/lib/karaoke/shared/lib";
+import { useUiStore } from "@/features/ui/ui-store";
 import pako from "pako";
 
 interface BuildNcnModalProps {
@@ -33,6 +34,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const metadata = useKaraokeStore((state) => state.metadata);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const lyricsDocument = useKaraokeStore((state) => state.lyricsDocument);
+  const requestAlert = useUiStore((state) => state.requestAlert);
   const legacyEncodingSupported = useMemo(() => {
     const metadataText = Object.values(metadata ?? {}).filter(
       (value): value is string => typeof value === "string"
@@ -56,15 +58,36 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     onClose?.();
   };
 
-  const validation = () => {
-    if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
-    if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
-    if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
+  const validation = async () => {
+    if (!metadata?.TITLE) {
+      await requestAlert({
+        title: "ข้อมูลเพลงยังไม่ครบ",
+        description: "ยังไม่ได้ตั้งชื่อเพลง",
+        tone: "info",
+      });
+      return false;
+    }
+    if (!metadata?.ARTIST) {
+      await requestAlert({
+        title: "ข้อมูลเพลงยังไม่ครบ",
+        description: "ยังไม่ได้ตั้งชื่อนักร้อง",
+        tone: "info",
+      });
+      return false;
+    }
+    if (!metadata?.KEY) {
+      await requestAlert({
+        title: "ข้อมูลเพลงยังไม่ครบ",
+        description: "ยังไม่ได้ใส่ Key",
+        tone: "info",
+      });
+      return false;
+    }
+    return true;
   };
 
   const handleBuildYoutube = async () => {
-    if (!metadata) return;
-    validation();
+    if (!(await validation()) || !metadata) return;
     if (!projectId) return;
     const project = await getProject(projectId);
     if (!project) return;
@@ -107,7 +130,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const handleSaveMp3 = async () => {
-    validation();
+    if (!(await validation())) return;
     if (!metadata || !storedFile) return;
     try {
       const flatLyrics = lyricsData.flat();
@@ -157,8 +180,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     }
   };
 
-  const handleSaveMidi = () => {
-    validation();
+  const handleSaveMidi = async () => {
+    if (!(await validation())) return;
     if (!metadata || !midiInfo) return;
     try {
       const flatLyrics = lyricsData.flat();
@@ -216,14 +239,16 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     }
   };
 
-  const buildLyr = () => {
+  const buildLyr = async () => {
     if (!legacyEncodingSupported) {
-      alert(utf8CompatibilityMessage);
+      await requestAlert({
+        title: "ไม่รองรับการส่งออกแบบเก่า",
+        description: utf8CompatibilityMessage,
+        tone: "info",
+      });
       return;
     }
-    if (!metadata?.TITLE) return alert("ยังไม่ได้ตั้งชื่อเพลง");
-    if (!metadata?.ARTIST) return alert("ยังไม่ได้ตั้งชื่อนักร้อง");
-    if (!metadata?.KEY) return alert("ยังไม่ได้ใส่ Key");
+    if (!(await validation()) || !metadata) return;
     const lyrInline: string[] = lyricsData.map((line) =>
       line.map((word) => word.text).join("")
     );
@@ -231,7 +256,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     const lyr = new LyrBuilder({
       name: metadata.TITLE,
       artist: metadata.ARTIST,
-      key: metadata.KEY,
+      key: metadata.KEY ?? "",
       lyrics: lyrInline,
     });
 
@@ -239,12 +264,16 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     lyr.downloadFile(`${storedFile?.name.split(".")[0]}.lyr`);
   };
 
-  const buildCur = () => {
+  const buildCur = async () => {
     if (!legacyEncodingSupported) {
-      alert(utf8CompatibilityMessage);
+      await requestAlert({
+        title: "ไม่รองรับการส่งออกแบบเก่า",
+        description: utf8CompatibilityMessage,
+        tone: "info",
+      });
       return;
     }
-    validation();
+    if (!(await validation())) return;
     if (mode === "midi" && midiInfo) {
       const flatLyrics = lyricsData.flat();
       const generator = new TickLyricSegmentGenerator(midiInfo.ticksPerBeat);
@@ -257,7 +286,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       });
 
       if (timestamps.length === 0) {
-        alert("ยังไม่มี Timestamps");
+        await requestAlert({
+          title: "ยังไม่มี Timestamps",
+          description: "กรุณาปาดเวลาเนื้อร้องก่อนส่งออกไฟล์ CUR",
+          tone: "info",
+        });
         return;
       }
       generator.export();

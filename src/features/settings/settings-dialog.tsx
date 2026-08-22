@@ -64,6 +64,7 @@ export function SettingsDialog() {
     MIDI_BUFFER_SIZE_OPTIONS.indexOf(normalizeMidiBufferSize(midiBufferSize) as (typeof MIDI_BUFFER_SIZE_OPTIONS)[number])
   );
   const projectId = useKaraokeStore((state) => state.projectId);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
   const soundfonts = useKaraokeStore((state) => state.soundfonts);
   const activeSoundfontId = useKaraokeStore(
     (state) => state.activeSoundfontId
@@ -115,7 +116,13 @@ export function SettingsDialog() {
   };
 
   const handleRemoveSoundfont = async (soundfontId: string) => {
-    if (!window.confirm("ลบ SoundFont นี้ออกจากโปรเจกต์หรือไม่?")) return;
+    const confirmed = await requestConfirm({
+      title: "ลบ SoundFont หรือไม่?",
+      description: "SoundFont นี้จะถูกนำออกจากโปรเจกต์",
+      tone: "danger",
+      confirmLabel: "ลบ SoundFont",
+    });
+    if (!confirmed) return;
     setSoundfontBusy(true);
     try {
       await removeSoundfont(soundfontId);
@@ -147,7 +154,13 @@ export function SettingsDialog() {
   };
 
   const handleRemoveEditorFont = async (fontId: string) => {
-    if (!window.confirm("ลบฟอนต์นี้ออกจากเครื่องหรือไม่?")) return;
+    const confirmed = await requestConfirm({
+      title: "ลบฟอนต์หรือไม่?",
+      description: "ฟอนต์นี้จะถูกนำออกจากเครื่อง",
+      tone: "danger",
+      confirmLabel: "ลบฟอนต์",
+    });
+    if (!confirmed) return;
     setFontBusy(true);
     try {
       await removeFont(fontId);

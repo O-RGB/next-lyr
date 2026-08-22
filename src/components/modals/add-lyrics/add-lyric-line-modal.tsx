@@ -50,9 +50,15 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
 
   return (
     <ModalCommon
-      title={`Add Lyric Line After Line ${
-        lineIndexToInsertAfter !== null ? lineIndexToInsertAfter + 1 : ""
-      }`}
+      title={
+        lineIndexToInsertAfter === -1
+          ? "Add Lyrics"
+          : `Add Lyric Line After Line ${
+              lineIndexToInsertAfter !== null
+                ? lineIndexToInsertAfter + 1
+                : ""
+            }`
+      }
       onClose={handleClose}
       open={open || lineIndexToInsertAfter !== null}
       footer={

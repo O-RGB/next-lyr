@@ -1,7 +1,10 @@
 "use client";
 
+import { FilePlus2, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
 
+import ButtonCommon from "@/components/common/button";
+import { useUiStore } from "@/features/ui/ui-store";
 import { resizeCanvas, clamp } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
@@ -17,6 +20,7 @@ import {
   measureLyricWords,
 } from "../lyrics-word-renderer";
 import {
+  LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT,
   LYRICS_PREVIEW_SCROLL_REQUEST_EVENT,
   publishLyricsPreviewViewport,
 } from "../lyrics-preview-sync";
@@ -55,6 +59,7 @@ const LyricsGrid: React.FC = () => {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const actions = useKaraokeStore((state) => state.actions);
+  const openDialog = useUiStore((state) => state.openDialog);
   const lineSelectionMode = useKaraokeStore(
     (state) => state.lineSelectionMode
   );
@@ -396,8 +401,12 @@ const LyricsGrid: React.FC = () => {
         ctx.fillStyle = colors.selected;
         ctx.fillRect(0, y, size.width, ROW_HEIGHT);
       }
-      ctx.fillStyle = colors.border;
-      ctx.fillRect(0, y + ROW_HEIGHT - 1, size.width, 1);
+      // Row rules separate lyric lines; do not paint one at the viewport edge
+      // because the scroll container already owns that boundary.
+      if (y + ROW_HEIGHT < size.height - 0.5) {
+        ctx.fillStyle = colors.border;
+        ctx.fillRect(0, y + ROW_HEIGHT - 1, size.width, 1);
+      }
 
       ctx.fillStyle = colors.muted;
       ctx.font = `600 10px ${monoFamily}`;
@@ -628,10 +637,11 @@ const LyricsGrid: React.FC = () => {
         reviewCenterLine === null ||
         Math.abs(lineIndex - reviewCenterLine) > 1
       ) {
-        // The selected/playback line may remain unchanged while the user
-        // browses elsewhere. Do not push that hidden line back to the right
-        // after the range logic has reset it.
-        return;
+        // During retiming, the active line owns the viewport even while its
+        // vertical smooth-scroll is still settling. This is what keeps a
+        // touch-driven step from leaving the active word beyond the right
+        // edge. Normal playback still ignores hidden lines.
+        if (state.editingLineIndex === null) return;
       }
 
       const ctx = canvas.getContext("2d");
@@ -661,9 +671,10 @@ const LyricsGrid: React.FC = () => {
         manualScrollLinesRef.current.has(lineIndex) ||
         horizontalResetAnimationsRef.current.has(lineIndex)
       ) {
-        if (isRetimingPreparation) {
-          // The preparation line belongs to playback now, so let its active
-          // box take ownership of the horizontal scroll again.
+        if (state.editingLineIndex !== null) {
+          // Retiming owns the horizontal viewport. This is especially
+          // important for touch input: a previous finger movement must not
+          // leave the next word drifting off the right side of the line.
           manualScrollLinesRef.current.delete(lineIndex);
           horizontalResetAnimationsRef.current.delete(lineIndex);
         } else {
@@ -775,6 +786,26 @@ const LyricsGrid: React.FC = () => {
   }, [autoScroll, markDirty, resetLineScroll, syncActiveLineScroll]);
 
   useEffect(() => {
+    const handleCenterActiveWord = () => {
+      const state = useKaraokeStore.getState();
+      if (state.editingLineIndex === null) return;
+      syncActiveLineScroll(state);
+    };
+
+    window.addEventListener(
+      LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT,
+      handleCenterActiveWord
+    );
+    return () =>
+      window.removeEventListener(
+        LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT,
+        handleCenterActiveWord
+      );
+  }, [syncActiveLineScroll]);
+
+  useEffect(() => {
+    const horizontalResetAnimations = horizontalResetAnimationsRef.current;
+
     return () => {
       if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current);
@@ -785,7 +816,7 @@ const LyricsGrid: React.FC = () => {
         horizontalResetFrameRef.current = null;
       }
       clearLineSelectionLongPress();
-      horizontalResetAnimationsRef.current.clear();
+      horizontalResetAnimations.clear();
     };
   }, [clearLineSelectionLongPress]);
 
@@ -1109,7 +1140,7 @@ const LyricsGrid: React.FC = () => {
   return (
     <div
       ref={scrollRef}
-      className="relative h-full rounded-md border border-line bg-panel overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
+      className="relative h-full rounded-md border border-line bg-base overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
       onWheelCapture={handlePanelWheelCapture}
     >
       <div
@@ -1185,6 +1216,29 @@ const LyricsGrid: React.FC = () => {
           </div>
         )}
       </div>
+      {lyricsData.length === 0 && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-base/95 p-6">
+          <div className="flex max-w-sm flex-col items-center text-center">
+            <span className="mb-3 grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
+              <FilePlus2 className="size-6" />
+            </span>
+            <h2 className="text-base font-semibold text-foreground">
+              ยังไม่มีเนื้อร้อง
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              เพิ่มบรรทัดแรกเพื่อเริ่มแก้ไขเนื้อเพลง
+            </p>
+            <ButtonCommon
+              className="mt-4"
+              color="primary"
+              icon={<Plus />}
+                onClick={() => openDialog("lyrics")}
+            >
+              เพิ่มเนื้อร้อง
+            </ButtonCommon>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
