@@ -115,7 +115,11 @@ export interface ContentActions {
     newText: string,
     vocal: string[]
   ) => void;
-  insertLineAfter: (lineIndex: number, newText: string) => void;
+  insertLineAfter: (
+    lineIndex: number,
+    newText: string,
+    vocals?: string[]
+  ) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addWord: (lineIndex: number, text: string, vocal?: string) => void;
   deleteWord: (index: number) => void;
@@ -130,13 +134,6 @@ export interface ContentActions {
 export interface PlaybackActions {
   setIsPlaying: (playing: boolean) => void;
   startTiming: (currentTime: number) => void;
-  startTimingFromLine: (
-    lineIndex: number,
-    endLineIndex?: number
-  ) => {
-    success: boolean;
-    preRollTime: number;
-  };
   startTimingFromLines: (lineIndices: number[]) => {
     success: boolean;
     preRollTime: number;

@@ -1,4 +1,5 @@
 import {
+  Captions,
   Check,
   Clock3,
   Plus,
@@ -6,7 +7,6 @@ import {
   Save,
   Trash2,
   Undo2,
-  WandSparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -303,13 +303,13 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 onClick={handleRedo}
               />
               <ButtonCommon
-                aria-label="สร้าง Auto Sub"
-                title="สร้าง Auto Sub"
+                aria-label="สร้างซับอัตโนมัติ"
+                title="สร้างซับอัตโนมัติ"
                 circle
                 size="xs"
                 className="!size-7"
                 color="success"
-                icon={<WandSparkles />}
+                icon={<Captions />}
                 onClick={handleAutoSub}
               />
             </div>

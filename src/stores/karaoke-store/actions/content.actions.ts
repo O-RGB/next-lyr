@@ -172,13 +172,20 @@ export const createContentActions: StateCreator<
         get().actions.processLyricsForPlayer();
         commit("แก้บรรทัด");
       },
-      insertLineAfter: async (lineIndex: number, newText: string) => {
+      insertLineAfter: async (
+        lineIndex: number,
+        newText: string,
+        vocals: string[] = []
+      ) => {
         set((state) => {
           const newLyricsData = [...state.lyricsData];
-          const newWords = processRawLyrics(newText, false).map((w) => ({
-            ...w,
-            lineIndex: lineIndex + 1,
-          }));
+          const newWords = processRawLyrics(newText, false).map(
+            (word, wordIndex) => ({
+              ...word,
+              vocal: vocals[wordIndex] ?? word.vocal ?? "",
+              lineIndex: lineIndex + 1,
+            })
+          );
           newLyricsData.splice(lineIndex + 1, 0, newWords);
 
           let globalIndex = 0;

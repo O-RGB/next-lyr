@@ -18,6 +18,9 @@ export function LyricsMobileControls() {
   const handleTimingForward = usePlayerHandlersStore(
     (state) => state.handleTimingForward
   );
+  const handleTimingBackward = usePlayerHandlersStore(
+    (state) => state.handleTimingBackward
+  );
 
   const buttonClass =
     "h-10 w-10 rounded-lg border border-line bg-panel text-foreground shadow-sm transition active:scale-95 touch-manipulation";
@@ -44,7 +47,12 @@ export function LyricsMobileControls() {
           <ArrowDown className="mx-auto" />
         </button>
         <span className="mx-1 h-6 w-px bg-raised-2" />
-        <button type="button" className={`${buttonClass} ${timingClass}`} onClick={() => dispatchKey("ArrowLeft")} aria-label="Previous word">
+        <button
+          type="button"
+          className={`${buttonClass} ${timingClass}`}
+          onClick={() => void handleTimingBackward()}
+          aria-label="Previous word"
+        >
           <ArrowLeft className="mx-auto" />
         </button>
         <button

@@ -109,14 +109,6 @@ export const createPlaybackActions: StateCreator<
       });
     },
 
-    startTimingFromLine: (lineIndex: number, endLineIndex?: number) =>
-      get().actions.startTimingFromLines(
-        Array.from(
-          { length: Math.max(0, (endLineIndex ?? lineIndex) - lineIndex + 1) },
-          (_, index) => lineIndex + index
-        )
-      ),
-
     startTimingFromLines: (lineIndices: number[]) => {
       const flatLyrics = get().lyricsData.flat();
       const groups = groupConsecutiveLineIndices(lineIndices).filter((group) =>

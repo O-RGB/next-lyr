@@ -115,7 +115,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
 
     const store = useKaraokeStore.getState();
     const { playerControls: player } = usePlayerSetupStore.getState();
-    const { handleRetiming, handleTimingForward } =
+    const { handleRetiming, handleTimingForward, handleTimingBackward } =
       usePlayerHandlersStore.getState();
     if (!player) return;
 
@@ -124,9 +124,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       selectedLineIndex,
       lyricsData,
       isTimingActive,
-      currentIndex,
       editingLineIndex,
-      timingBuffer,
       isPlaying,
       playFromScrolledPosition,
     } = store;
@@ -214,23 +212,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
     }
 
     if (isStampingMode && event.code === "ArrowLeft") {
-      if (currentIndex <= -1) return;
-
-      if (editingLineIndex !== null) {
-        const firstWord = flatLyrics.find(
-          (word) => word.lineIndex === editingLineIndex
-        );
-        if (firstWord && currentIndex === firstWord.index) return;
-      } else if (isTimingActive && timingBuffer) {
-        const firstWord = flatLyrics.find(
-          (word) => word.lineIndex === timingBuffer.lineIndex
-        );
-        if (firstWord && currentIndex <= firstWord.index) return;
-      }
-
-      const { lineStartTime } = actions.correctTimingStep(currentIndex - 1);
-      player.seek(lineStartTime);
-      if (!player.isPlaying()) player.play();
+      await handleTimingBackward();
       return;
     }
 

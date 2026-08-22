@@ -601,6 +601,85 @@ const LyricsGrid: React.FC = () => {
       if (!autoScroll) return;
       const canvas = canvasRef.current;
       const scroll = scrollRef.current;
+      if (!canvas || !scroll) return;
+
+      const syncLineOffset = (
+        lineIndex: number | null,
+        focusWordIndex: number | null,
+        allowUnselectedLine: boolean
+      ) => {
+        if (
+          lineIndex === null ||
+          focusWordIndex === null ||
+          focusWordIndex === -1
+        ) {
+          return;
+        }
+
+        const line = linesRef.current[lineIndex] ?? [];
+        if (!line.some((word) => word.index === focusWordIndex)) return;
+
+        const reviewCenterLine = getReviewCenterLine();
+        if (
+          (reviewCenterLine === null ||
+            Math.abs(lineIndex - reviewCenterLine) > 1) &&
+          state.editingLineIndex === null
+        ) {
+          // Normal playback ignores hidden lines. Retiming is different: the
+          // preparation line and edit target both need to stay readable while
+          // the transport moves between them.
+          return;
+        }
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
+        ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
+        const wordWidths = measureWords(ctx, line);
+        const totalWidth =
+          wordWidths.reduce((sum, width) => sum + width, 0) +
+          Math.max(0, line.length - 1) * WORD_GAP;
+        const availableWidth = Math.max(
+          1,
+          scroll.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
+        );
+        const lineOffset = getLineScrollLeft(
+          line,
+          wordWidths,
+          totalWidth,
+          availableWidth,
+          state,
+          lineIndex,
+          true,
+          focusWordIndex,
+          allowUnselectedLine
+        );
+
+        if (
+          manualScrollLinesRef.current.has(lineIndex) ||
+          horizontalResetAnimationsRef.current.has(lineIndex)
+        ) {
+          if (state.editingLineIndex !== null) {
+            // Retiming owns both visible timing lines. A previous touch
+            // movement must not leave either active word off-screen.
+            manualScrollLinesRef.current.delete(lineIndex);
+            horizontalResetAnimationsRef.current.delete(lineIndex);
+          } else {
+            return;
+          }
+        }
+
+        const currentOffset = lineScrollRef.current.get(lineIndex) ?? 0;
+        if (Math.abs(currentOffset - lineOffset) <= 0.5) return;
+
+        if (lineOffset === 0) {
+          lineScrollRef.current.delete(lineIndex);
+        } else {
+          lineScrollRef.current.set(lineIndex, lineOffset);
+        }
+        markDirty();
+      };
+
       const isRetimingPreparation =
         state.editingLineIndex !== null &&
         !state.isTimingActive &&
@@ -619,76 +698,23 @@ const LyricsGrid: React.FC = () => {
       const lineIndex = isRetimingPreparation
         ? preparationWord?.lineIndex ?? null
         : state.selectedLineIndex;
-      if (
-        !canvas ||
-        !scroll ||
-        lineIndex === null ||
-        focusWordIndex === null ||
-        focusWordIndex === -1
-      ) {
-        return;
-      }
 
-      const line = linesRef.current[lineIndex] ?? [];
-      if (!line.some((word) => word.index === focusWordIndex)) return;
+      syncLineOffset(lineIndex, focusWordIndex, isRetimingPreparation);
 
-      const reviewCenterLine = getReviewCenterLine();
+      // When correcting backwards, playback deliberately runs through the
+      // preceding line before returning to the edit target. Keep that yellow
+      // preparation word centred as well as the target line.
       if (
-        reviewCenterLine === null ||
-        Math.abs(lineIndex - reviewCenterLine) > 1
+        state.editingLineIndex !== null &&
+        state.isTimingActive &&
+        state.playbackIndex !== null
       ) {
-        // During retiming, the active line owns the viewport even while its
-        // vertical smooth-scroll is still settling. This is what keeps a
-        // touch-driven step from leaving the active word beyond the right
-        // edge. Normal playback still ignores hidden lines.
-        if (state.editingLineIndex === null) return;
-      }
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
-      ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
-      const wordWidths = measureWords(ctx, line);
-      const totalWidth =
-        wordWidths.reduce((sum, width) => sum + width, 0) +
-        Math.max(0, line.length - 1) * WORD_GAP;
-      const availableWidth = Math.max(
-        1,
-        scroll.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
-      );
-      const lineOffset = getLineScrollLeft(
-        line,
-        wordWidths,
-        totalWidth,
-        availableWidth,
-        state,
-        lineIndex,
-        true,
-        focusWordIndex,
-        isRetimingPreparation
-      );
-      if (
-        manualScrollLinesRef.current.has(lineIndex) ||
-        horizontalResetAnimationsRef.current.has(lineIndex)
-      ) {
-        if (state.editingLineIndex !== null) {
-          // Retiming owns the horizontal viewport. This is especially
-          // important for touch input: a previous finger movement must not
-          // leave the next word drifting off the right side of the line.
-          manualScrollLinesRef.current.delete(lineIndex);
-          horizontalResetAnimationsRef.current.delete(lineIndex);
-        } else {
-          return;
+        const playbackWord = linesRef.current
+          .flat()
+          .find((word) => word.index === state.playbackIndex);
+        if (playbackWord && playbackWord.lineIndex !== lineIndex) {
+          syncLineOffset(playbackWord.lineIndex, playbackWord.index, true);
         }
-      }
-      const currentOffset = lineScrollRef.current.get(lineIndex) ?? 0;
-      if (Math.abs(currentOffset - lineOffset) > 0.5) {
-        if (lineOffset === 0) {
-          lineScrollRef.current.delete(lineIndex);
-        } else {
-          lineScrollRef.current.set(lineIndex, lineOffset);
-        }
-        markDirty();
       }
     },
     [autoScroll, getReviewCenterLine, markDirty]
