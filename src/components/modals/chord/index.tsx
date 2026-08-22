@@ -7,6 +7,8 @@ import InputNumberCommon from "@/components/common/data-input/input-number";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
 import { ChordEvent } from "@/lib/karaoke/midi/types";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 type Props = {};
 
@@ -16,6 +18,7 @@ export default function ChordEditModal({}: Props) {
   const actions = useKaraokeStore((state) => state.actions);
   const requestConfirm = useUiStore((state) => state.requestConfirm);
   const requestAlert = useUiStore((state) => state.requestAlert);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const suggestedTick =
     useKaraokeStore((state) => state.suggestedChordTick) ?? 0;
 
@@ -62,8 +65,8 @@ export default function ChordEditModal({}: Props) {
 
     if (isNaN(tick) || !chordText.trim()) {
       void requestAlert({
-        title: "ข้อมูลคอร์ดไม่ถูกต้อง",
-        description: "กรุณากรอกชื่อคอร์ดและ tick ให้ถูกต้อง",
+        title: text(locale, "ข้อมูลคอร์ดไม่ถูกต้อง", "Invalid chord data"),
+        description: text(locale, "กรุณากรอกชื่อคอร์ดและ tick ให้ถูกต้อง", "Enter a valid chord name and tick"),
         tone: "danger",
       });
       return;
@@ -82,10 +85,10 @@ export default function ChordEditModal({}: Props) {
     if (!selectedChord) return;
 
     const confirmed = await requestConfirm({
-      title: "ลบคอร์ดนี้หรือไม่?",
-      description: "คอร์ดนี้จะถูกลบออกจากตำแหน่งจังหวะนี้",
+      title: text(locale, "ลบคอร์ดนี้หรือไม่?", "Delete this chord?"),
+      description: text(locale, "คอร์ดนี้จะถูกลบออกจากตำแหน่งจังหวะนี้", "This chord will be removed from this beat"),
       tone: "danger",
-      confirmLabel: "ลบคอร์ด",
+      confirmLabel: text(locale, "ลบคอร์ด", "Delete chord"),
     });
     if (confirmed) onDelete(selectedChord.tick);
   };
@@ -99,7 +102,7 @@ export default function ChordEditModal({}: Props) {
 
   return (
     <ModalCommon
-      title={isEditing ? "Edit Chord" : "Add New Chord"}
+      title={isEditing ? text(locale, "แก้ไขคอร์ด", "Edit chord") : text(locale, "เพิ่มคอร์ดใหม่", "Add new chord")}
       onClose={actions.closeChordModal}
       open={isChordModalOpen}
       footer={
@@ -110,7 +113,7 @@ export default function ChordEditModal({}: Props) {
               color="danger"
               icon={<Trash2></Trash2>}
             >
-              Delete
+              {text(locale, "ลบ", "Delete")}
             </ButtonCommon>
           )}
           <div className="flex gap-3 ml-auto">
@@ -119,14 +122,14 @@ export default function ChordEditModal({}: Props) {
               color="gray"
               icon={<CircleArrowLeft />}
             >
-              Cancel
+              {text(locale, "ยกเลิก", "Cancel")}
             </ButtonCommon>
             <ButtonCommon
               onClick={handleSave}
               color="primary"
               icon={<Save></Save>}
             >
-              Save Changes
+              {text(locale, "บันทึกการเปลี่ยนแปลง", "Save changes")}
             </ButtonCommon>
           </div>
         </div>
@@ -138,7 +141,7 @@ export default function ChordEditModal({}: Props) {
             htmlFor="chord-text-input"
             className="text-sm font-medium text-foreground mb-1 block"
           >
-            Chord Text:
+            {text(locale, "ชื่อคอร์ด:", "Chord text:")}
           </label>
           <InputCommon
             id="chord-text-input"
@@ -148,7 +151,7 @@ export default function ChordEditModal({}: Props) {
             onChange={(e) => setChordText(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full p-3 border border-line rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
-            placeholder="e.g., C, Am7, G/B"
+            placeholder={text(locale, "เช่น C, Am7, G/B", "e.g., C, Am7, G/B")}
           />
         </div>
         <div>
@@ -156,7 +159,7 @@ export default function ChordEditModal({}: Props) {
             htmlFor="tick-value-input"
             className="text-sm font-medium text-foreground mb-1 block"
           >
-            Tick Position:
+            {text(locale, "ตำแหน่ง Tick:", "Tick position:")}
           </label>
           <InputNumberCommon
             id="tick-value-input"
@@ -164,7 +167,7 @@ export default function ChordEditModal({}: Props) {
             min={0}
             onChange={handleTickChange}
             onKeyDown={handleKeyDown}
-            placeholder="e.g., 0, 480, 960"
+            placeholder={text(locale, "เช่น 0, 480, 960", "e.g., 0, 480, 960")}
           />
           {/* {(minTick !== undefined || maxTick !== undefined) && (
             <p className="text-xs text-muted-foreground mt-1">

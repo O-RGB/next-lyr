@@ -34,6 +34,8 @@ import {
   useChordDetectionEditor,
 } from "./chord-editor-rows";
 import { isPreviewHorizontal } from "@/components/panel/preview-orientation";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface MidiNote {
   id: string;
@@ -324,6 +326,7 @@ function publishMidiPreviewViewport(
 
 const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
   const midi = useKaraokeStore((state) => state.playerState.midi);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const midiBuffer = useKaraokeStore(
     (state) => state.playerState.storedFile?.buffer ?? null
   );
@@ -710,7 +713,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       if (measures.length === 0) {
         ctx.fillStyle = theme.textMuted;
         ctx.font = "500 13px sans-serif";
-        ctx.fillText("ไม่พบ MIDI note", 16, 28);
+        ctx.fillText(text(locale, "ไม่พบ MIDI note", "No MIDI notes"), 16, 28);
         return;
       }
 
@@ -795,6 +798,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       chordsData,
       detectSnapshot.suggestions,
       detectVisible,
+      locale,
       measures,
       orientation,
       pitchRange,
@@ -1629,8 +1633,8 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
             disabled={chordsData.length === 0}
             label={
               listenMode === "chord"
-                ? "หยุดฟังเสียงคอร์ด"
-                : "ฟังเสียงคอร์ด"
+                ? text(locale, "หยุดฟังเสียงคอร์ด", "Stop listening to chords")
+                : text(locale, "ฟังเสียงคอร์ด", "Listen to chords")
             }
             onClick={() => toggleListenMode("chord")}
           />
@@ -1673,7 +1677,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
       >
         {!midi ? (
           <div className="flex min-h-0 min-w-0 items-center justify-center p-4 text-sm text-muted-foreground">
-            โหลด MIDI เพื่อดูโน้ต
+            {text(locale, "โหลด MIDI เพื่อดูโน้ต", "Load MIDI to view notes")}
           </div>
         ) : (
           <div
@@ -1707,7 +1711,7 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
                 onMouseMove={handleCanvasMouseMove}
                 onMouseLeave={handleCanvasMouseLeave}
                 className="sticky left-0 top-0 z-10 block h-full w-full cursor-pointer"
-                aria-label="MIDI notes, chord, and detected chord preview"
+                aria-label={text(locale, "ตัวอย่าง MIDI โน้ต คอร์ด และคอร์ดที่ตรวจจับ", "MIDI notes, chord, and detected chord preview")}
               />
             </div>
           </div>
@@ -1723,13 +1727,13 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
               handleDetectionTabClick();
             }
           }}
-          title={detectVisible ? "ย่อคอลัมน์ตรวจจับคอร์ด" : "ตรวจจับคอร์ดอัตโนมัติ"}
+          title={detectVisible ? text(locale, "ย่อคอลัมน์ตรวจจับคอร์ด", "Collapse chord detection") : text(locale, "ตรวจจับคอร์ดอัตโนมัติ", "Auto-detect chords")}
           aria-label={
-            detectVisible ? "ย่อคอลัมน์ตรวจจับคอร์ด" : "ตรวจจับคอร์ดอัตโนมัติ"
+            detectVisible ? text(locale, "ย่อคอลัมน์ตรวจจับคอร์ด", "Collapse chord detection") : text(locale, "ตรวจจับคอร์ดอัตโนมัติ", "Auto-detect chords")
           }
         >
           <span className="rotate-90 whitespace-nowrap text-[11px] font-semibold tracking-wide">
-            {detectVisible ? "ย่อ Detect" : "ตรวจจับคอร์ดอัตโนมัติ"}
+            {detectVisible ? text(locale, "ย่อ Detect", "Collapse Detect") : text(locale, "ตรวจจับคอร์ดอัตโนมัติ", "Auto-detect chords")}
           </span>
         </button>
       </div>
@@ -1746,39 +1750,39 @@ const MidiNotesEditor: React.FC<MidiNotesPreviewProps> = ({ onClose }) => {
             type="button"
             className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
             onClick={handlePlaySelectedChord}
-            title="เล่นจากคอร์ดนี้"
+            title={text(locale, "เล่นจากคอร์ดนี้", "Play from this chord")}
           >
-            เล่น
+            {text(locale, "เล่น", "Play")}
           </button>
           <button
             type="button"
             className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
             onClick={handleAddChordAfterSelected}
-            title="เพิ่มคอร์ดถัดไป"
+            title={text(locale, "เพิ่มคอร์ดถัดไป", "Add next chord")}
           >
-            เพิ่ม
+            {text(locale, "เพิ่ม", "Add")}
           </button>
           <button
             type="button"
             className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
             onClick={() => openChordModal(selectedChord)}
-            title="แก้ไขคอร์ด"
+            title={text(locale, "แก้ไขคอร์ด", "Edit chord")}
           >
-            แก้ไข
+            {text(locale, "แก้ไข", "Edit")}
           </button>
           <button
             type="button"
             className="rounded border border-danger/40 px-2 py-1 text-[11px] text-danger transition-colors hover:bg-danger/10"
             onClick={handleDeleteSelectedChord}
-            title="ลบคอร์ด"
+            title={text(locale, "ลบคอร์ด", "Delete chord")}
           >
-            ลบ
+            {text(locale, "ลบ", "Delete")}
           </button>
           <button
             type="button"
             className="rounded border border-line px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-panel-2 hover:text-foreground"
             onClick={() => setSelectedChordTick(null)}
-            title="ยกเลิกการเลือก"
+            title={text(locale, "ยกเลิกการเลือก", "Clear selection")}
           >
             ×
           </button>

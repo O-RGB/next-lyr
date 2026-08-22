@@ -13,6 +13,8 @@ import ContextMenuCommon, {
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import React from "react";
 
 interface LineActionProps {
@@ -25,14 +27,15 @@ const LineAction: React.FC<LineActionProps> = React.memo(
     const requestConfirm = useUiStore((state) => state.requestConfirm);
     const { handleRetiming } = usePlayerHandlersStore();
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+    const locale = useSettingsStore((state) => state.uiLocale);
 
     const menuItems: IContextMenuGroup<string>[] = [
       {
-        name: "การทำงาน",
+        name: text(locale, "การทำงาน", "Actions"),
         contextMenus: [
           {
             type: "select",
-            text: "เลือก",
+            text: text(locale, "เลือก", "Select"),
             icon: <CheckSquare />,
             onClick: () => {
               actions.setLineSelectionMode(true);
@@ -41,7 +44,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           },
           {
             type: "add",
-            text: "แทรก",
+            text: text(locale, "แทรก", "Insert"),
             icon: <Plus />,
             onClick: () => {
               actions.openAddModal(lineIndex);
@@ -49,7 +52,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           },
           {
             type: "edit",
-            text: "แก้ไข",
+            text: text(locale, "แก้ไข", "Edit"),
             icon: <Pencil />,
             onClick: () => {
               actions.selectLine(lineIndex);
@@ -58,28 +61,32 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           },
           {
             type: "Re Time",
-            text: "ปาดใหม่",
+            text: text(locale, "ปาดใหม่", "Retiming"),
             icon: <Clock />,
             onClick: async () => {
               const confirmed = await requestConfirm({
-                title: "ปาดเนื้อร้องใหม่หรือไม่?",
-                description: `เวลาและการแบ่งคำของบรรทัดที่ ${lineIndex + 1} จะถูกสร้างใหม่`,
+                title: text(locale, "ปาดเนื้อร้องใหม่หรือไม่?", "Retiming this line?"),
+                description: text(
+                  locale,
+                  `เวลาและการแบ่งคำของบรรทัดที่ ${lineIndex + 1} จะถูกสร้างใหม่`,
+                  `Timing and word splits for line ${lineIndex + 1} will be rebuilt`
+                ),
                 tone: "danger",
-                confirmLabel: "ปาดใหม่",
+                confirmLabel: text(locale, "ปาดใหม่", "Retiming"),
               });
               if (confirmed) handleRetiming(lineIndex, lineIndex);
             },
           },
           {
             type: "delete",
-            text: "ลบ",
+            text: text(locale, "ลบ", "Delete"),
             icon: <Trash2 />,
             onClick: async () => {
               const confirmed = await requestConfirm({
-                title: "ลบบรรทัดนี้หรือไม่?",
-                description: `บรรทัดที่ ${lineIndex + 1} จะถูกลบออก`,
+                title: text(locale, "ลบบรรทัดนี้หรือไม่?", "Delete this line?"),
+                description: text(locale, `บรรทัดที่ ${lineIndex + 1} จะถูกลบออก`, `Line ${lineIndex + 1} will be deleted`),
                 tone: "danger",
-                confirmLabel: "ลบบรรทัด",
+                confirmLabel: text(locale, "ลบบรรทัด", "Delete line"),
               });
               if (confirmed) actions.deleteLine?.(lineIndex);
             },
@@ -93,7 +100,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
           menuButton={
             <ButtonCommon
               disabled={editingLineIndex !== null}
-              title="Edit Lyrics (Enter)"
+              title={text(locale, "แก้ไขเนื้อเพลง (Enter)", "Edit lyrics (Enter)")}
               color="white"
               circle
               variant="ghost"

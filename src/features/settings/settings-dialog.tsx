@@ -105,7 +105,9 @@ export function SettingsDialog() {
     try {
       await importSoundfont(file, replaceSoundfontId ?? undefined);
       toast.success(
-        replaceSoundfontId ? "เปลี่ยน SoundFont แล้ว" : "เพิ่ม SoundFont แล้ว"
+        replaceSoundfontId
+          ? text(uiLocale, "เปลี่ยน SoundFont แล้ว", "SoundFont replaced")
+          : text(uiLocale, "เพิ่ม SoundFont แล้ว", "SoundFont added")
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -117,16 +119,16 @@ export function SettingsDialog() {
 
   const handleRemoveSoundfont = async (soundfontId: string) => {
     const confirmed = await requestConfirm({
-      title: "ลบ SoundFont หรือไม่?",
-      description: "SoundFont นี้จะถูกนำออกจากโปรเจกต์",
+      title: text(uiLocale, "ลบ SoundFont หรือไม่?", "Delete SoundFont?"),
+      description: text(uiLocale, "SoundFont นี้จะถูกนำออกจากโปรเจกต์", "This SoundFont will be removed from the project"),
       tone: "danger",
-      confirmLabel: "ลบ SoundFont",
+      confirmLabel: text(uiLocale, "ลบ SoundFont", "Delete SoundFont"),
     });
     if (!confirmed) return;
     setSoundfontBusy(true);
     try {
       await removeSoundfont(soundfontId);
-      toast.success("ลบ SoundFont แล้ว");
+      toast.success(text(uiLocale, "ลบ SoundFont แล้ว", "SoundFont deleted"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -145,7 +147,7 @@ export function SettingsDialog() {
       const option = await importFont(file);
       update("uiFontId", `custom:${option.id}`);
       update("lyricsFontId", `custom:${option.id}`);
-      toast.success("เพิ่มฟอนต์แล้ว และใช้กับทั้งเว็บ");
+      toast.success(text(uiLocale, "เพิ่มฟอนต์แล้ว และใช้กับทั้งเว็บ", "Font added and applied across the app"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -155,10 +157,10 @@ export function SettingsDialog() {
 
   const handleRemoveEditorFont = async (fontId: string) => {
     const confirmed = await requestConfirm({
-      title: "ลบฟอนต์หรือไม่?",
-      description: "ฟอนต์นี้จะถูกนำออกจากเครื่อง",
+      title: text(uiLocale, "ลบฟอนต์หรือไม่?", "Delete font?"),
+      description: text(uiLocale, "ฟอนต์นี้จะถูกนำออกจากเครื่อง", "This font will be removed from this device"),
       tone: "danger",
-      confirmLabel: "ลบฟอนต์",
+      confirmLabel: text(uiLocale, "ลบฟอนต์", "Delete font"),
     });
     if (!confirmed) return;
     setFontBusy(true);
@@ -166,7 +168,7 @@ export function SettingsDialog() {
       await removeFont(fontId);
       if (uiFontId === `custom:${fontId}`) update("uiFontId", "noto-thai");
       if (lyricsFontId === `custom:${fontId}`) update("lyricsFontId", "noto-thai");
-      toast.success("ลบฟอนต์แล้ว");
+      toast.success(text(uiLocale, "ลบฟอนต์แล้ว", "Font deleted"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
@@ -190,7 +192,7 @@ export function SettingsDialog() {
         <div className="space-y-3">
           <Section icon={<Gauge className="size-4 text-primary" />} title={text(uiLocale, "เสียง", "Audio")}>
             <SettingSlider
-              label="ระดับเสียง"
+              label={text(uiLocale, "ระดับเสียง", "Master volume")}
               value={masterVolume}
               min={0}
               max={1}
@@ -202,8 +204,12 @@ export function SettingsDialog() {
             <Separator className="my-4" />
 
             <SettingSlider
-              label="บัฟเฟอร์ MIDI"
-              hint={`ค่าต่ำตอบสนองไวขึ้น แต่ใช้ CPU มากขึ้น ค่าสูงเบากว่า • ระบบชดเชยอัตโนมัติ ${Math.round(midiBufferDurationSeconds(normalizeMidiBufferSize(midiBufferSize), sampleRate) * 1000)} ms ที่ ${Math.round(sampleRate)} Hz`}
+              label={text(uiLocale, "บัฟเฟอร์ MIDI", "MIDI buffer")}
+              hint={text(
+                uiLocale,
+                `ค่าต่ำตอบสนองไวขึ้น แต่ใช้ CPU มากขึ้น ค่าสูงเบากว่า • ระบบชดเชยอัตโนมัติ ${Math.round(midiBufferDurationSeconds(normalizeMidiBufferSize(midiBufferSize), sampleRate) * 1000)} ms ที่ ${Math.round(sampleRate)} Hz`,
+                `Lower values respond faster but use more CPU; higher values are lighter • automatic compensation ${Math.round(midiBufferDurationSeconds(normalizeMidiBufferSize(midiBufferSize), sampleRate) * 1000)} ms at ${Math.round(sampleRate)} Hz`
+              )}
               value={midiBufferOptionIndex}
               min={0}
               max={MIDI_BUFFER_SIZE_OPTIONS.length - 1}
@@ -218,7 +224,7 @@ export function SettingsDialog() {
             />
           </Section>
 
-          <Section icon={<Music2 className="size-4 text-primary" />} title="SoundFont MIDI">
+          <Section icon={<Music2 className="size-4 text-primary" />} title={text(uiLocale, "SoundFont MIDI", "SoundFont MIDI")}>
             <input
               ref={soundfontInputRef}
               type="file"
@@ -229,7 +235,7 @@ export function SettingsDialog() {
 
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <span className="min-w-0 flex-1">ตัวที่ใช้งานอยู่</span>
+                <span className="min-w-0 flex-1">{text(uiLocale, "ตัวที่ใช้งานอยู่", "Active SoundFont")}</span>
                 <select
                   value={activeSoundfontId}
                   disabled={!projectId || soundfontBusy}
@@ -242,7 +248,7 @@ export function SettingsDialog() {
                     );
                   }}
                   className="h-8 min-w-0 max-w-[62%] rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  aria-label="SoundFont ที่ใช้งานอยู่"
+                  aria-label={text(uiLocale, "SoundFont ที่ใช้งานอยู่", "Active SoundFont")}
                 >
                   {soundfonts.map((soundfont) => (
                     <option key={soundfont.id} value={soundfont.id}>
@@ -262,12 +268,12 @@ export function SettingsDialog() {
                       <div className="truncate font-medium">
                         {soundfont.fileName}
                         {soundfont.id === activeSoundfontId ? (
-                          <span className="ml-2 text-xs text-primary">ใช้งานอยู่</span>
+                          <span className="ml-2 text-xs text-primary">{text(uiLocale, "ใช้งานอยู่", "Active")}</span>
                         ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {soundfont.id === DEFAULT_SOUNDFONT_ID
-                          ? "ติดตั้งมากับโปรแกรม"
+                          ? text(uiLocale, "ติดตั้งมากับโปรแกรม", "Built in")
                           : formatSoundfontBytes(soundfont.bytes)}
                       </div>
                     </div>
@@ -279,17 +285,17 @@ export function SettingsDialog() {
                           size="xs"
                           disabled={!projectId || soundfontBusy}
                           onClick={() => openSoundfontPicker(soundfont.id)}
-                          title="เปลี่ยนไฟล์ SoundFont"
+                          title={text(uiLocale, "เปลี่ยนไฟล์ SoundFont", "Replace SoundFont file")}
                         >
-                          เปลี่ยน
+                          {text(uiLocale, "เปลี่ยน", "Replace")}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon-xs"
                           disabled={!projectId || soundfontBusy}
                           onClick={() => void handleRemoveSoundfont(soundfont.id)}
-                          title="ลบ SoundFont"
-                          aria-label={`ลบ ${soundfont.fileName}`}
+                          title={text(uiLocale, "ลบ SoundFont", "Delete SoundFont")}
+                          aria-label={text(uiLocale, `ลบ ${soundfont.fileName}`, `Delete ${soundfont.fileName}`)}
                         >
                           <Trash2 />
                         </Button>
@@ -307,10 +313,10 @@ export function SettingsDialog() {
                   onClick={() => openSoundfontPicker()}
                 >
                   {soundfontBusy ? <Loader2 className="animate-spin" /> : <Plus />}
-                  เพิ่มไฟล์ .sf2
+                  {text(uiLocale, "เพิ่มไฟล์ .sf2", "Add .sf2 file")}
                 </Button>
                 <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-                  รองรับไฟล์ขนาดไม่เกิน 500 MB และจะถูกเก็บแยกตามโปรเจกต์
+                  {text(uiLocale, "รองรับไฟล์ขนาดไม่เกิน 500 MB และจะถูกเก็บแยกตามโปรเจกต์", "Files up to 500 MB are supported and stored per project")}
                 </p>
               </div>
             </div>
@@ -327,7 +333,7 @@ export function SettingsDialog() {
                   }
                   className="h-8 min-w-36 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  <option value="th">ไทย</option>
+                  <option value="th">{text(uiLocale, "ไทย", "Thai")}</option>
                   <option value="en">English</option>
                 </select>
               </div>
@@ -360,10 +366,10 @@ export function SettingsDialog() {
                   onClick={() => editorFontInputRef.current?.click()}
                 >
                   {fontBusy ? <Loader2 className="animate-spin" /> : <Plus />}
-                  เพิ่มฟอนต์ของฉัน
+                  {text(uiLocale, "เพิ่มฟอนต์ของฉัน", "Add my font")}
                 </Button>
                 <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-                  ใช้ฟอนต์นี้กับภาษา/อักษรที่เครื่องไม่มีได้
+                  {text(uiLocale, "ใช้ฟอนต์นี้กับภาษา/อักษรที่เครื่องไม่มีได้", "Use this font for scripts your system does not have")}
                 </p>
               </div>
 
@@ -377,8 +383,8 @@ export function SettingsDialog() {
                         size="icon-xs"
                         disabled={fontBusy}
                         onClick={() => void handleRemoveEditorFont(font.id)}
-                        title="ลบฟอนต์"
-                        aria-label={`ลบ ${font.name}`}
+                        title={text(uiLocale, "ลบฟอนต์", "Delete font")}
+                        aria-label={text(uiLocale, `ลบ ${font.name}`, `Delete ${font.name}`)}
                       >
                         <Trash2 />
                       </Button>
@@ -391,14 +397,16 @@ export function SettingsDialog() {
             <Separator className="my-4" />
 
             <div className="flex items-center gap-3 text-sm">
-              <span className="min-w-0 flex-1">ธีม</span>
+              <span className="min-w-0 flex-1">{text(uiLocale, "ธีม", "Theme")}</span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
               >
                 {resolvedTheme === "dark" ? <Sun /> : <Moon />}
-                {resolvedTheme === "dark" ? "สว่าง" : "มืด"}
+                {resolvedTheme === "dark"
+                  ? text(uiLocale, "สว่าง", "Light")
+                  : text(uiLocale, "มืด", "Dark")}
               </Button>
             </div>
           </Section>
@@ -406,7 +414,7 @@ export function SettingsDialog() {
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={reset}>
               <RotateCcw />
-              คืนค่าเริ่มต้น
+              {text(uiLocale, "คืนค่าเริ่มต้น", "Reset to defaults")}
             </Button>
           </div>
         </div>
@@ -512,20 +520,21 @@ function audioSampleRate(): number {
 }
 
 /** Keyboard reference — a timing tool lives on these. */
-const SHORTCUTS: { keys: string; description: string }[] = [
-  { keys: "Space", description: "เล่น / หยุด" },
-  { keys: "→", description: "ปาดคำถัดไป" },
-  { keys: "←", description: "ถอยกลับหนึ่งคำ" },
-  { keys: "↑ ↓", description: "เลือกบรรทัด" },
-  { keys: "Enter", description: "แก้ไขบรรทัดที่เลือก" },
-  { keys: "Ctrl+Enter", description: "ปาดบรรทัดนี้ใหม่" },
-  { keys: "Ctrl+Z", description: "ย้อนกลับ" },
-  { keys: "Ctrl+Y", description: "ทำซ้ำ" },
+const SHORTCUTS: { keys: string; thai: string; english: string }[] = [
+  { keys: "Space", thai: "เล่น / หยุด", english: "Play / pause" },
+  { keys: "→", thai: "ปาดคำถัดไป", english: "Time next word" },
+  { keys: "←", thai: "ถอยกลับหนึ่งคำ", english: "Go back one word" },
+  { keys: "↑ ↓", thai: "เลือกบรรทัด", english: "Select line" },
+  { keys: "Enter", thai: "แก้ไขบรรทัดที่เลือก", english: "Edit selected line" },
+  { keys: "Ctrl+Enter", thai: "ปาดบรรทัดนี้ใหม่", english: "Retime this line" },
+  { keys: "Ctrl+Z", thai: "ย้อนกลับ", english: "Undo" },
+  { keys: "Ctrl+Y", thai: "ทำซ้ำ", english: "Redo" },
 ];
 
 export function ShortcutsDialog() {
   const dialog = useUiStore((state) => state.dialog);
   const openDialog = useUiStore((state) => state.openDialog);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   return (
     <Dialog
@@ -534,10 +543,10 @@ export function ShortcutsDialog() {
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>ปุ่มลัด</DialogTitle>
+          <DialogTitle>{text(locale, "ปุ่มลัด", "Keyboard shortcuts")}</DialogTitle>
           <DialogDescription>
             <Timer className="mr-1 inline size-3.5" />
-            ใช้ขณะโฟกัสอยู่นอกช่องพิมพ์
+            {text(locale, "ใช้ขณะโฟกัสอยู่นอกช่องพิมพ์", "Use when focus is outside a text field")}
           </DialogDescription>
         </DialogHeader>
 
@@ -549,7 +558,7 @@ export function ShortcutsDialog() {
             >
               <kbd className="chip tabnum shrink-0">{shortcut.keys}</kbd>
               <span className="min-w-0 flex-1 text-muted-foreground">
-                {shortcut.description}
+                {text(locale, shortcut.thai, shortcut.english)}
               </span>
             </li>
           ))}

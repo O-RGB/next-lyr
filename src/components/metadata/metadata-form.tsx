@@ -3,6 +3,8 @@ import Card from "../common/card";
 import SelectCommon from "../common/data-input/select";
 import React, { useEffect, useLayoutEffect } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import InputNumberCommon from "../common/data-input/input-number";
 import {
   ARTIST_TYPE,
@@ -41,6 +43,7 @@ function MetadataForm({
   const mode = useKaraokeStore((s) => s.mode);
   const midiData = useKaraokeStore((s) => s.playerState.midi);
   const setMetadata = useKaraokeStore((state) => state.actions.setMetadata);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const midiInfo = mode === "midi" ? midiData : true;
   const midi = mode === "midi" ? midiData : true;
@@ -126,7 +129,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Song Title :"
+                label={text(locale, "ชื่อเพลง :", "Song Title :")}
                 inputSize={inputSize}
               />
             )}
@@ -148,7 +151,7 @@ function MetadataForm({
                     (!midiInfo && !midi && adding === false) || disabled
                   }
                   options={keyOption}
-                  label="Key :"
+                label={text(locale, "คีย์เพลง :", "Key :")}
                   inputSize={inputSize}
                 />
               )}
@@ -168,7 +171,7 @@ function MetadataForm({
                   disabled={
                     (!midiInfo && !midi && adding === false) || disabled
                   }
-                  label="Tempo :"
+                label={text(locale, "ความเร็ว :", "Tempo :")}
                   inputSize={inputSize}
                 />
               )}
@@ -189,7 +192,7 @@ function MetadataForm({
                     (!midiInfo && !midi && adding === false) || disabled
                   }
                   options={artistTypeOption}
-                  label="Gender :"
+                label={text(locale, "ประเภทเสียงร้อง :", "Gender :")}
                   inputSize={inputSize}
                 />
               )}
@@ -197,7 +200,7 @@ function MetadataForm({
           </div>
           {requiredFirst && (
             <div className="order-10 border-t border-line pt-3 text-xs font-semibold text-muted-foreground">
-              ข้อมูลเพิ่มเติม
+              {text(locale, "ข้อมูลเพิ่มเติม", "Additional information")}
             </div>
           )}
           <Form.Item
@@ -213,7 +216,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Album :"
+                label={text(locale, "อัลบั้ม :", "Album :")}
                 inputSize={inputSize}
               />
             )}
@@ -231,7 +234,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Artist :"
+                label={text(locale, "นักร้อง :", "Artist :")}
                 inputSize={inputSize}
               />
             )}
@@ -249,7 +252,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Composer :"
+                label={text(locale, "ผู้แต่ง :", "Composer :")}
                 inputSize={inputSize}
               />
             )}
@@ -267,7 +270,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Rhythm/Genre :"
+                label={text(locale, "จังหวะ/แนวเพลง :", "Rhythm/Genre :")}
                 inputSize={inputSize}
               />
             )}
@@ -285,7 +288,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Creator :"
+                label={text(locale, "ผู้สร้าง :", "Creator :")}
                 inputSize={inputSize}
               />
             )}
@@ -303,7 +306,7 @@ function MetadataForm({
                   handleBlurUpdate();
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
-                label="Music Label :"
+                label={text(locale, "ค่ายเพลง :", "Music Label :")}
                 inputSize={inputSize}
               />
             )}
@@ -322,7 +325,7 @@ function MetadataForm({
                 }}
                 disabled={(!midiInfo && !midi && adding === false) || disabled}
                 options={languageOption}
-                label="Language :"
+                label={text(locale, "ภาษา :", "Language :")}
                 inputSize={inputSize}
               />
             )}
@@ -343,7 +346,7 @@ function MetadataForm({
                   disabled={
                     (!midiInfo && !midi && adding === false) || disabled
                   }
-                  label="Year :"
+                  label={text(locale, "ปี :", "Year :")}
                   inputSize={inputSize}
                 />
               )}
@@ -364,7 +367,7 @@ function MetadataForm({
                     (!midiInfo && !midi && adding === false) || disabled
                   }
                   options={vocalChannelOption}
-                  label="Vocal Channel :"
+                  label={text(locale, "ช่องเสียงร้อง :", "Vocal Channel :")}
                   inputSize={inputSize}
                 />
               )}

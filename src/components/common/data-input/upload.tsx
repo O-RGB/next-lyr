@@ -1,5 +1,7 @@
 import { CloudUpload, FileText, Trash2 } from "lucide-react";
 import React, { useState, useRef, useCallback } from "react";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface UploadProps {
   onChange?: (files: File[]) => void;
@@ -74,6 +76,7 @@ const Upload: React.FC<UploadProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const handleFiles = useCallback(
     (newFiles: FileList) => {
@@ -81,11 +84,23 @@ const Upload: React.FC<UploadProps> = ({
 
       const validFiles = Array.from(newFiles).filter((file) => {
         if (maxSize && file.size > maxSize * 1024 * 1024) {
-          setError(`File size should not exceed ${maxSize}MB`);
+          setError(
+            text(
+              locale,
+              `ไฟล์ต้องมีขนาดไม่เกิน ${maxSize}MB`,
+              `File size should not exceed ${maxSize}MB`
+            )
+          );
           return false;
         }
         if (accept && !file.type.match(accept.replace(/,/g, "|"))) {
-          setError(`Invalid file type. Accepted: ${accept}`);
+          setError(
+            text(
+              locale,
+              `ชนิดไฟล์ไม่ถูกต้อง รองรับ: ${accept}`,
+              `Invalid file type. Accepted: ${accept}`
+            )
+          );
           return false;
         }
         return true;
@@ -97,7 +112,7 @@ const Upload: React.FC<UploadProps> = ({
         onChange?.(updatedFiles);
       }
     },
-    [accept, maxSize, multiple, files, onChange]
+    [accept, files, locale, maxSize, multiple, onChange]
   );
 
   const openFileDialog = () => {
@@ -145,14 +160,22 @@ const Upload: React.FC<UploadProps> = ({
         {icon || <CloudUpload className="text-4xl text-primary" />}
       </div>
       <p className="text-foreground font-medium ">
-        Drag and drop files or click to browse
+        {text(
+          locale,
+          "ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์",
+          "Drag and drop files or click to browse"
+        )}
       </p>
       <p className="text-sm text-muted-foreground">
-        {multiple ? "Upload multiple files" : "Upload single file"}
+        {multiple
+          ? text(locale, "อัปโหลดหลายไฟล์", "Upload multiple files")
+          : text(locale, "อัปโหลดไฟล์เดียว", "Upload single file")}
         {accept && ` (${accept})`}
       </p>
       {maxSize && (
-        <p className="text-sm text-muted-foreground">Maximum file size: {maxSize}MB</p>
+        <p className="text-sm text-muted-foreground">
+          {text(locale, "ขนาดไฟล์สูงสุด", "Maximum file size")}: {maxSize}MB
+        </p>
       )}
     </div>
   );
@@ -167,7 +190,7 @@ const Upload: React.FC<UploadProps> = ({
       `}
     >
       {icon || <CloudUpload className="inline-block mr-2" />}
-      Upload File
+      {text(locale, "อัปโหลดไฟล์", "Upload File")}
     </button>
   );
 

@@ -5,6 +5,8 @@ import { X } from "lucide-react";
 import ButtonCommon from "@/components/common/button";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface RetimingCancelButtonProps {
   compact?: boolean;
@@ -22,6 +24,7 @@ export default function RetimingCancelButton({
   const handleCancelRetiming = usePlayerHandlersStore(
     (state) => state.handleCancelRetiming
   );
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   if (!timingMode) return null;
 
@@ -35,10 +38,10 @@ export default function RetimingCancelButton({
       icon={<X />}
       className={className}
       onClick={() => void handleCancelRetiming()}
-      title="ยกเลิกการปาด และไม่บันทึก"
-      aria-label="ยกเลิกการปาด และไม่บันทึก"
+      title={text(locale, "ยกเลิกการปาด และไม่บันทึก", "Cancel timing without saving")}
+      aria-label={text(locale, "ยกเลิกการปาด และไม่บันทึก", "Cancel timing without saving")}
     >
-      {!compact ? "ยกเลิกปาด" : null}
+      {!compact ? text(locale, "ยกเลิกปาด", "Cancel timing") : null}
     </ButtonCommon>
   );
 }

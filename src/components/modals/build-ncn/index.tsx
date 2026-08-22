@@ -19,6 +19,8 @@ import {
 import { isTIS620Compatible } from "@/lib/karaoke/shared/lib";
 import { useUiStore } from "@/features/ui/ui-store";
 import pako from "pako";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -35,6 +37,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const lyricsDocument = useKaraokeStore((state) => state.lyricsDocument);
   const requestAlert = useUiStore((state) => state.requestAlert);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const legacyEncodingSupported = useMemo(() => {
     const metadataText = Object.values(metadata ?? {}).filter(
       (value): value is string => typeof value === "string"
@@ -50,7 +53,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   }, [chordsData, lyricsData, metadata]);
 
   const utf8CompatibilityMessage =
-    "มีภาษาอื่น จึงใช้ UTF-8 และไม่รองรับโปรแกรมคาราโอเกะไทย";
+    text(
+      locale,
+      "มีภาษาอื่น จึงใช้ UTF-8 และไม่รองรับโปรแกรมคาราโอเกะไทย",
+      "Other-language text requires UTF-8 and is not supported by Thai karaoke programs"
+    );
 
   const [openModal, setOpenModal] = useState<boolean>(false);
   const handleCloseModal = () => {
@@ -61,24 +68,24 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const validation = async () => {
     if (!metadata?.TITLE) {
       await requestAlert({
-        title: "ข้อมูลเพลงยังไม่ครบ",
-        description: "ยังไม่ได้ตั้งชื่อเพลง",
+        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
+        description: text(locale, "ยังไม่ได้ตั้งชื่อเพลง", "Song title is missing"),
         tone: "info",
       });
       return false;
     }
     if (!metadata?.ARTIST) {
       await requestAlert({
-        title: "ข้อมูลเพลงยังไม่ครบ",
-        description: "ยังไม่ได้ตั้งชื่อนักร้อง",
+        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
+        description: text(locale, "ยังไม่ได้ตั้งชื่อนักร้อง", "Artist name is missing"),
         tone: "info",
       });
       return false;
     }
     if (!metadata?.KEY) {
       await requestAlert({
-        title: "ข้อมูลเพลงยังไม่ครบ",
-        description: "ยังไม่ได้ใส่ Key",
+        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
+        description: text(locale, "ยังไม่ได้ใส่ Key", "Key is missing"),
         tone: "info",
       });
       return false;
@@ -242,7 +249,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const buildLyr = async () => {
     if (!legacyEncodingSupported) {
       await requestAlert({
-        title: "ไม่รองรับการส่งออกแบบเก่า",
+        title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
         description: utf8CompatibilityMessage,
         tone: "info",
       });
@@ -267,7 +274,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   const buildCur = async () => {
     if (!legacyEncodingSupported) {
       await requestAlert({
-        title: "ไม่รองรับการส่งออกแบบเก่า",
+        title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
         description: utf8CompatibilityMessage,
         tone: "info",
       });
@@ -287,8 +294,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       if (timestamps.length === 0) {
         await requestAlert({
-          title: "ยังไม่มี Timestamps",
-          description: "กรุณาปาดเวลาเนื้อร้องก่อนส่งออกไฟล์ CUR",
+          title: text(locale, "ยังไม่มี Timestamps", "No timestamps yet"),
+          description: text(locale, "กรุณาปาดเวลาเนื้อร้องก่อนส่งออกไฟล์ CUR", "Time the lyrics before exporting a CUR file"),
           tone: "info",
         });
         return;
@@ -305,18 +312,18 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   return (
     <>
       <ModalCommon
-        title="บันทึก"
+        title={text(locale, "บันทึก / ส่งออก", "Save / export")}
         open={openModal}
         onClose={handleCloseModal}
         okButtonProps={{ hidden: true }}
         cancelButtonProps={{
-          children: "Close",
+          children: text(locale, "ปิด", "Close"),
         }}
       >
         {(mode !== "youtube" ? storedFile : true) && lyricsData.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="flex flex-col gap-2 p-4 bg-panel-2 rounded-2xl shadow-sm">
-              <p className="text-sm text-foreground font-medium">ดาวน์โหลดไฟล์</p>
+              <p className="text-sm text-foreground font-medium">{text(locale, "ดาวน์โหลดไฟล์", "Download files")}</p>
               {mode === "midi" && (
                 <>
                   <ButtonCommon
@@ -325,7 +332,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                     color="primary"
                     icon={<Download className="text-lg" />}
                   >
-                    ดาวน์โหลดไฟล์ <span className="font-bold">.cur</span>
+                    {text(locale, "ดาวน์โหลดไฟล์", "Download")} <span className="font-bold">.cur</span>
                   </ButtonCommon>
 
                   <ButtonCommon
@@ -334,7 +341,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                     color="success"
                     icon={<Download className="text-lg" />}
                   >
-                    ดาวน์โหลดไฟล์ <span className="font-bold">.lyr</span>
+                    {text(locale, "ดาวน์โหลดไฟล์", "Download")} <span className="font-bold">.lyr</span>
                   </ButtonCommon>
 
                   <hr />
@@ -344,7 +351,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                     color="secondary"
                     icon={<Download className="text-lg" />}
                   >
-                    บันทึก <span className="font-bold">.mid</span>
+                    {text(locale, "บันทึก", "Save")} <span className="font-bold">.mid</span>
                   </ButtonCommon>
                   {!legacyEncodingSupported && (
                     <p className="flex items-center gap-2 text-xs text-warn">
@@ -361,7 +368,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                     color="secondary"
                     icon={<Download className="text-lg" />}
                   >
-                    บันทึก <span className="font-bold">.mp3</span>
+                    {text(locale, "บันทึก", "Save")} <span className="font-bold">.mp3</span>
                   </ButtonCommon>
                   {!legacyEncodingSupported && (
                     <p className="flex items-center gap-2 text-xs text-warn">
@@ -377,14 +384,14 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   color="secondary"
                   icon={<Download className="text-lg" />}
                 >
-                  บันทึก <span className="font-bold">.ykr</span>
+                  {text(locale, "บันทึก", "Save")} <span className="font-bold">.ykr</span>
                 </ButtonCommon>
               )}
             </div>
             <Donate show={false}></Donate>
           </div>
         ) : (
-          <>กรุณาเริ่มสร้างเนื้อร้องก่อน</>
+          <>{text(locale, "กรุณาเริ่มสร้างเนื้อร้องก่อน", "Add lyrics before exporting")}</>
         )}
       </ModalCommon>
     </>

@@ -4,6 +4,8 @@ import ButtonCommon from "@/components/common/button";
 import { FileText, Music2 } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import BeatIndicator from "./beat-indicator";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 type EditorView = "lyrics" | "chords";
 
@@ -19,6 +21,7 @@ const TimeStampe: React.FC<TimestampProps> = ({
   showEditorViewToggle = true,
 }) => {
   const mode = useKaraokeStore((state) => state.mode);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const timeRef = useRef<HTMLSpanElement>(null);
   const tempoRef = useRef<HTMLSpanElement>(null);
 
@@ -51,7 +54,7 @@ const TimeStampe: React.FC<TimestampProps> = ({
           <BeatIndicator />
         ) : (
           <div className="flex items-center">
-            <span className="label-xs mr-1">Time:</span>
+            <span className="label-xs mr-1">{text(locale, "เวลา:", "Time:")}</span>
             <span ref={timeRef} />
           </div>
         )}
@@ -70,7 +73,11 @@ const TimeStampe: React.FC<TimestampProps> = ({
             onEditorViewChange(editorView === "chords" ? "lyrics" : "chords")
           }
           aria-pressed={editorView === "chords"}
-          title={editorView === "chords" ? "กลับไปหน้า Lyrics" : "เปิดหน้า Chords"}
+          title={
+            editorView === "chords"
+              ? text(locale, "กลับไปหน้า Lyrics", "Back to Lyrics")
+              : text(locale, "เปิดหน้า Chords", "Open Chords")
+          }
         >
           {editorView === "chords" ? "Chords" : "Lyrics"}
         </ButtonCommon>

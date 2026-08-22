@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import ButtonCommon from "@/components/common/button";
 import InputCommon from "@/components/common/data-input/input";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import { tokenizeThai } from "@/lib/wordcut/utils";
 import { useKaraokeStore } from "@/stores/karaoke-store";
@@ -25,6 +27,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
   );
   const actions = useKaraokeStore((state) => state.actions);
   const requestConfirm = useUiStore((state) => state.requestConfirm);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const [freeText, setFreeText] = useState("");
   const [wordDrafts, setWordDrafts] = useState<WordDraft[]>([]);
   const draftIdRef = useRef(0);
@@ -91,10 +94,14 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
 
   const handleDeleteWord = async (draft: WordDraft) => {
     const confirmed = await requestConfirm({
-      title: "ลบคำนี้หรือไม่?",
-      description: `คำว่า "${draft.text || "ว่าง"}" จะถูกลบออกจากบรรทัดใหม่`,
+      title: text(locale, "ลบคำนี้หรือไม่?", "Delete this word?"),
+      description: text(
+        locale,
+        `คำว่า "${draft.text || "ว่าง"}" จะถูกลบออกจากบรรทัดใหม่`,
+        `"${draft.text || "empty"}" will be removed from the new line`
+      ),
       tone: "danger",
-      confirmLabel: "ลบคำ",
+      confirmLabel: text(locale, "ลบคำ", "Delete word"),
     });
     if (!confirmed) return;
 
@@ -144,12 +151,16 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
     <ModalCommon
       title={
         lineIndexToInsertAfter === -1
-          ? "Add Lyrics"
-          : `Add Lyric Line After Line ${
-              lineIndexToInsertAfter !== null
-                ? lineIndexToInsertAfter + 1
-                : ""
-            }`
+          ? text(locale, "เพิ่มเนื้อเพลง", "Add lyrics")
+          : text(
+              locale,
+              `เพิ่มบรรทัดหลังบรรทัดที่ ${
+                lineIndexToInsertAfter !== null ? lineIndexToInsertAfter + 1 : ""
+              }`,
+              `Add lyric line after line ${
+                lineIndexToInsertAfter !== null ? lineIndexToInsertAfter + 1 : ""
+              }`
+            )
       }
       onClose={handleClose}
       open={open || lineIndexToInsertAfter !== null}
@@ -161,7 +172,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
             icon={<CircleArrowLeft />}
             onClick={handleClose}
           >
-            Close
+            {text(locale, "ปิด", "Close")}
           </ButtonCommon>
           <ButtonCommon
             size="sm"
@@ -171,7 +182,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
             className="text-nowrap"
             onClick={() => void cutText()}
           >
-            ตัดคำ
+            {text(locale, "ตัดคำ", "Split words")}
           </ButtonCommon>
           <ButtonCommon
             color="primary"
@@ -180,7 +191,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
             disabled={!canAdd || lineIndexToInsertAfter === null}
             onClick={handleSave}
           >
-            Add
+            {text(locale, "เพิ่ม", "Add")}
           </ButtonCommon>
         </div>
       }
@@ -188,7 +199,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
       <div className="space-y-2">
         <div className="rounded-xl border border-line bg-panel p-2 shadow-sm">
           <label htmlFor="add-line-free-text" className="sr-only">
-            New line lyrics
+            {text(locale, "เนื้อเพลงบรรทัดใหม่", "New line lyrics")}
           </label>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -198,7 +209,11 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
                 type="text"
                 value={freeText}
                 onChange={(event) => handleFreeTextChange(event.target.value)}
-                placeholder="พิมพ์เนื้อร้อง แล้วใช้ | แบ่งคำ"
+                placeholder={text(
+                  locale,
+                  "พิมพ์เนื้อร้อง แล้วใช้ | แบ่งคำ",
+                  "Type lyrics and use | to split words"
+                )}
               />
             </div>
           </div>
@@ -215,7 +230,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
                   </span>
                   <InputCommon
                     inputSize="sm"
-                    placeholder="คำร้อง"
+                    placeholder={text(locale, "คำร้อง", "Lyrics")}
                     value={draft.text}
                     onChange={(event) =>
                       updateWordDraft(index, "text", event.target.value)
@@ -223,7 +238,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
                   />
                   <InputCommon
                     inputSize="sm"
-                    placeholder="ซับ"
+                    placeholder={text(locale, "ซับ", "Subtitle")}
                     value={draft.vocal}
                     onChange={(event) =>
                       updateWordDraft(index, "vocal", event.target.value)
@@ -231,7 +246,7 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
                   />
                   <ButtonCommon
                     aria-label={`ลบคำที่ ${index + 1}`}
-                    title="ลบคำนี้"
+                    title={text(locale, "ลบคำนี้", "Delete word")}
                     circle
                     size="xs"
                     className="!size-7"
@@ -244,15 +259,19 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
               ))
             ) : (
               <p className="px-1 py-2 text-xs text-muted-foreground">
-                พิมพ์เนื้อร้องด้านบน รายการคำจะแสดงตามเครื่องหมาย |
+                {text(
+                  locale,
+                  "พิมพ์เนื้อร้องด้านบน รายการคำจะแสดงตามเครื่องหมาย |",
+                  "Type lyrics above; words will appear according to the | separator"
+                )}
               </p>
             )}
           </div>
 
           <div className="flex justify-end border-t border-line/60 pt-2">
             <ButtonCommon
-              aria-label="เติมซับอัตโนมัติ"
-              title="เติมซับอัตโนมัติ"
+              aria-label={text(locale, "เติมซับอัตโนมัติ", "Auto-fill subtitles")}
+              title={text(locale, "เติมซับอัตโนมัติ", "Auto-fill subtitles")}
               size="sm"
               color="success"
               icon={<Captions />}
@@ -260,13 +279,17 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
               disabled={!wordDrafts.some((draft) => draft.text.trim())}
               onClick={handleAutoSub}
             >
-              เติมซับอัตโนมัติ
+              {text(locale, "เติมซับอัตโนมัติ", "Auto-fill subtitles")}
             </ButtonCommon>
           </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
-          แก้ไขช่องด้านบนหรือช่องคำได้ตลอด ระบบจะเพิ่มและลบแถวตาม <code>|</code> ทันที
+          {text(
+            locale,
+            "แก้ไขช่องด้านบนหรือช่องคำได้ตลอด ระบบจะเพิ่มและลบแถวตาม | ทันที",
+            "Edit the text above or individual words; rows update immediately as you add or remove | separators"
+          )}
         </p>
       </div>
     </ModalCommon>

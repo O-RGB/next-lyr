@@ -3,6 +3,8 @@ import { Loader2, Pause, Play, Square } from "lucide-react";
 import React from "react";
 import { TimerRange } from "./render-time";
 import RetimingCancelButton from "@/components/common/retiming-cancel";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface CommonPlayerStyleProps {
   fileName: string;
@@ -24,13 +26,22 @@ interface PlayerButtonsProps {
 }
 
 const PlayerButtons = React.memo<PlayerButtonsProps>(
-  ({ fileName, isPlaying, isLoading, onPlayPause, onStop }) => (
-    <div className="flex justify-center items-center gap-2">
+  ({ fileName, isPlaying, isLoading, onPlayPause, onStop }) => {
+    const locale = useSettingsStore((state) => state.uiLocale);
+
+    return (
+      <div className="flex justify-center items-center gap-2">
       <button
         onClick={onPlayPause}
         disabled={!fileName || isLoading}
         className="p-3 bg-panel rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
-        aria-label={isLoading ? "Loading audio engine" : isPlaying ? "Pause" : "Play"}
+        aria-label={
+          isLoading
+            ? text(locale, "กำลังโหลดระบบเสียง", "Loading audio engine")
+            : isPlaying
+              ? text(locale, "หยุดชั่วคราว", "Pause")
+              : text(locale, "เล่น", "Play")
+        }
       >
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin text-foreground" />
@@ -47,8 +58,9 @@ const PlayerButtons = React.memo<PlayerButtonsProps>(
       >
         <Square className="h-5 w-5 text-foreground" />
       </button>
-    </div>
-  )
+      </div>
+    );
+  }
 );
 
 PlayerButtons.displayName = "PlayerButtons";
@@ -63,6 +75,8 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
   onSeek,
   duration,
 }) => {
+  const locale = useSettingsStore((state) => state.uiLocale);
+
   return (
     <div className="bg-panel/50 p-4 rounded-lg flex items-center justify-center gap-4 w-full">
       <PlayerButtons
@@ -79,7 +93,12 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
           role="status"
           aria-live="polite"
         >
-          {loadingLabel ?? "Loading audio engine..."}
+          {loadingLabel ??
+            text(
+              locale,
+              "กำลังโหลดระบบเสียง...",
+              "Loading audio engine..."
+            )}
         </span>
       )}
       <TimerRange

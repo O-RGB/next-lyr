@@ -6,6 +6,8 @@ import ButtonCommon from "@/components/common/button";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 /** Explicit session-level action for timing every lyric line in the song. */
 export default function RetimingAllButton() {
@@ -17,6 +19,7 @@ export default function RetimingAllButton() {
   const handleRetimingAll = usePlayerHandlersStore(
     (state) => state.handleRetimingAll
   );
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const hasTiming = lyricsData.some((line) =>
     line.some((word) => word.at !== null)
@@ -25,7 +28,7 @@ export default function RetimingAllButton() {
   // timing exists, line-level retiming is the normal editing workflow.
   if (lyricsData.length === 0 || hasTiming || timingMode) return null;
 
-  const label = "เริ่มปาดทั้งเพลง";
+  const label = text(locale, "เริ่มปาดทั้งเพลง", "Time the whole song");
   const isDisabled = !playerControls;
 
   const handleClick = () => {

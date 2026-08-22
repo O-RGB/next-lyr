@@ -2,6 +2,8 @@
 
 import React, { useRef, useState } from "react";
 import { audioEngine } from "@/lib/karaoke-engine/engine";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface AllowSoundProps {
   children?: React.ReactNode;
@@ -11,6 +13,7 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
   const [ended, setEnded] = useState<boolean>(false);
   const [pressed, setPressed] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleClick = async () => {
@@ -72,7 +75,7 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Loading...
+                  {text(locale, "กำลังโหลด...", "Loading...")}
                 </div>
               </div>
             ) : (
@@ -88,7 +91,7 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
                     className="relative w-fit p-4 px-8 flex items-center justify-center rounded-full bg-panel border border-line shadow-md font-medium text-lg text-foreground hover:bg-raised transition-all duration-300 transform hover:scale-105"
                     onClick={handleClick}
                   >
-                    Allow Sound
+                    {text(locale, "เปิดใช้งานเสียง", "Allow sound")}
                   </button>
                 </div>
               </div>

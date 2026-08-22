@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { deleteProject, getAllProjects, Project } from "@/lib/database/db";
 import NewProjectModal from "./new-project-modal";
 
@@ -20,6 +22,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const clearProject = useKaraokeStore((state) => state.actions.clearProject);
   const requestConfirm = useUiStore((state) => state.requestConfirm);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const fetchProjects = async () => {
     const allProjects = await getAllProjects();
@@ -38,10 +41,14 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
 
   const handleDeleteProject = async (id: string) => {
     const confirmed = await requestConfirm({
-      title: "ลบโปรเจกต์หรือไม่?",
-      description: "โปรเจกต์นี้จะถูกลบออกจากเครื่องและไม่สามารถกู้คืนได้",
+      title: text(locale, "ลบโปรเจกต์หรือไม่?", "Delete project?"),
+      description: text(
+        locale,
+        "โปรเจกต์นี้จะถูกลบออกจากเครื่องและไม่สามารถกู้คืนได้",
+        "This project will be deleted from this device and cannot be recovered"
+      ),
       tone: "danger",
-      confirmLabel: "ลบโปรเจกต์",
+      confirmLabel: text(locale, "ลบโปรเจกต์", "Delete project"),
     });
     if (!confirmed) return;
 
@@ -55,7 +62,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   return (
     <>
       <ModalCommon
-        title="My Projects"
+        title={text(locale, "โปรเจกต์ของฉัน", "My Projects")}
         open={open}
         onClose={onClose}
         modalClassName="flex flex-col"
@@ -63,7 +70,7 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
         okButtonProps={{
           icon: <Plus />,
           onClick: () => setIsNewProjectModalOpen(true),
-          children: "New Project",
+          children: text(locale, "สร้าง Project ใหม่", "New Project"),
         }}
       >
         <div>
@@ -94,8 +101,10 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Updated:{" "}
-                        {new Date(project.updatedAt).toLocaleDateString()}
+                        {text(locale, "แก้ไขล่าสุด:", "Updated:")} {" "}
+                        {new Date(project.updatedAt).toLocaleDateString(
+                          locale === "th" ? "th-TH" : "en-US"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -126,17 +135,21 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
                 <Music className="text-muted-foreground text-2xl" />
               </div>
               <h3 className="text-lg font-medium text-foreground mb-2">
-                No projects yet
+                {text(locale, "ยังไม่มี Project", "No projects yet")}
               </h3>
               <p className="text-sm text-muted-foreground mb-6">
-                Create your first karaoke project to get started
+                {text(
+                  locale,
+                  "สร้าง Project แรกของคุณเพื่อเริ่มใช้งาน",
+                  "Create your first karaoke project to get started"
+                )}
               </p>
               <ButtonCommon
                 icon={<Plus />}
                 onClick={() => setIsNewProjectModalOpen(true)}
                 className="mx-auto"
               >
-                Create Project
+                {text(locale, "สร้าง Project", "Create Project")}
               </ButtonCommon>
             </div>
           )}

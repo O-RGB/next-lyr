@@ -10,6 +10,7 @@ import React, {
 } from "react";
 
 import CommonPlayerStyle from "@/components/common/player";
+import { text } from "@/features/settings/locale";
 import { midiDurationSeconds, midiTickToSeconds } from "@/lib/karaoke-engine/midi-clock";
 import { audioEngine } from "@/lib/karaoke-engine/engine";
 import { midiSynths } from "@/lib/karaoke-engine/midi-synth";
@@ -89,6 +90,8 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
       (state) => state.actions.setIsPlaying
     );
     const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
+    const locale = useSettingsStore((state) => state.uiLocale);
+    const localeRef = useRef(locale);
     const latencyMs = useSettingsStore((state) => state.latencyMs);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -109,6 +112,10 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
     useEffect(() => {
       onReadyRef.current = onReady;
     }, [onReady]);
+
+    useEffect(() => {
+      localeRef.current = locale;
+    }, [locale]);
 
     useEffect(() => {
       timer().initWorker({
@@ -185,7 +192,13 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
           (await readSoundfontBlob(soundfontProjectId, activeSoundfontId)) ??
           (await readSoundfontBlob(soundfontProjectId, DEFAULT_SOUNDFONT_ID));
         if (!soundfont) {
-          throw new Error("ไม่พบไฟล์ SoundFont ที่เลือก");
+          throw new Error(
+            text(
+              localeRef.current,
+              "ไม่พบไฟล์ SoundFont ที่เลือก",
+              "Selected SoundFont file was not found"
+            )
+          );
         }
         await midiSynths.setFiles(file, soundfont);
         applyTimingCompensation();
@@ -197,9 +210,11 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
           if (!cancelled) {
             console.error("Error preparing MIDI engine:", error);
             void requestAlert({
-              title: "เตรียมเสียง MIDI ไม่สำเร็จ",
+              title: text(localeRef.current, "เตรียมเสียง MIDI ไม่สำเร็จ", "Could not prepare MIDI audio"),
               description:
-                error instanceof Error ? error.message : "Could not prepare MIDI",
+                error instanceof Error
+                  ? error.message
+                  : text(localeRef.current, "เตรียมเสียง MIDI ไม่สำเร็จ", "Could not prepare MIDI"),
               tone: "danger",
             });
           }
@@ -277,7 +292,7 @@ const MidiPlayer = forwardRef<MidiPlayerRef, MidiPlayerProps>(
         fileName={fileName}
         isPlaying={isPlaying}
         isLoading={isLoading}
-        loadingLabel="กำลังเตรียม MIDI engine..."
+        loadingLabel={text(locale, "กำลังเตรียม MIDI engine...", "Preparing MIDI engine...")}
         onPlayPause={handlePlayPause}
         onStop={handleStop}
         onSeek={seek}

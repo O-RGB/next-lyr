@@ -15,6 +15,8 @@ import {
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface LineSelectionToolbarProps {
   compact?: boolean;
@@ -40,6 +42,7 @@ export default function LineSelectionToolbar({
   const handleRetimingLines = usePlayerHandlersStore(
     (state) => state.handleRetimingLines
   );
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   if (!selectionMode || isTiming) return null;
 
@@ -49,10 +52,14 @@ export default function LineSelectionToolbar({
   const handleDelete = async () => {
     if (!canOperate) return;
     const confirmed = await requestConfirm({
-      title: "ลบบรรทัดที่เลือกหรือไม่?",
-      description: `บรรทัดที่เลือก ${selectedCount} บรรทัดจะถูกลบออก`,
+      title: text(locale, "ลบบรรทัดที่เลือกหรือไม่?", "Delete selected lines?"),
+      description: text(
+        locale,
+        `บรรทัดที่เลือก ${selectedCount} บรรทัดจะถูกลบออก`,
+        `${selectedCount} selected line${selectedCount === 1 ? "" : "s"} will be deleted`
+      ),
       tone: "danger",
-      confirmLabel: "ลบบรรทัด",
+      confirmLabel: text(locale, "ลบบรรทัด", "Delete lines"),
     });
     if (!confirmed) return;
 
@@ -69,9 +76,9 @@ export default function LineSelectionToolbar({
         size={compact ? "xs" : "sm"}
         icon={<X />}
         onClick={() => actions.setLineSelectionMode(false)}
-        title="ยกเลิกการเลือก"
+        title={text(locale, "ยกเลิกการเลือก", "Clear selection")}
       >
-        {compact ? null : "ยกเลิกเลือก"}
+        {compact ? null : text(locale, "ยกเลิกเลือก", "Clear selection")}
       </ButtonCommon>
 
       <DropdownMenu>
@@ -84,9 +91,9 @@ export default function LineSelectionToolbar({
               size={compact ? "xs" : "sm"}
               icon={<Clock3 />}
               disabled={!canOperate}
-              title="การทำงานกับบรรทัดที่เลือก"
+              title={text(locale, "การทำงานกับบรรทัดที่เลือก", "Actions for selected lines")}
             >
-              {compact ? null : "การทำงาน"}
+              {compact ? null : text(locale, "การทำงาน", "Actions")}
             </ButtonCommon>
           }
         />
@@ -94,8 +101,12 @@ export default function LineSelectionToolbar({
           <DropdownMenuGroup>
             <DropdownMenuLabel>
               {selectedCount > 0
-                ? `เลือกแล้ว ${selectedCount} บรรทัด`
-                : "ยังไม่ได้เลือกบรรทัด"}
+                ? text(
+                    locale,
+                    `เลือกแล้ว ${selectedCount} บรรทัด`,
+                    `${selectedCount} line${selectedCount === 1 ? "" : "s"} selected`
+                  )
+                : text(locale, "ยังไม่ได้เลือกบรรทัด", "No lines selected")}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -103,11 +114,11 @@ export default function LineSelectionToolbar({
               onClick={() => handleRetimingLines(selectedLineIndices)}
             >
               <Clock3 />
-              <span>ปาดใหม่</span>
+              <span>{text(locale, "ปาดใหม่", "Retiming")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!canOperate} onClick={handleDelete}>
               <Trash2 />
-              <span>ลบ</span>
+              <span>{text(locale, "ลบ", "Delete")}</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -121,7 +132,7 @@ export default function LineSelectionToolbar({
         icon={<Keyboard />}
         disabled={selectionAnchor === null}
         onClick={() => actions.toggleLineShift()}
-        title="Shift: เลือกช่วงจากบรรทัดล่าสุด"
+        title={text(locale, "Shift: เลือกช่วงจากบรรทัดล่าสุด", "Shift: select a range from the latest line")}
         aria-pressed={shiftArmed}
       >
         {compact ? null : "Shift"}

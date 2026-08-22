@@ -15,6 +15,8 @@ import InputCommon from "@/components/common/data-input/input";
 import ModalCommon from "../../common/modal";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { canRedo, canUndo } from "@/stores/karaoke-store/history";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
@@ -40,6 +42,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const history = useKaraokeStore((state) => state.history);
   const actions = useKaraokeStore((state) => state.actions);
   const requestConfirm = useUiStore((state) => state.requestConfirm);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const [drafts, setDrafts] = useState<Record<number, WordDraft>>({});
   const [newWordDrafts, setNewWordDrafts] = useState<NewWordDraft[]>([]);
@@ -134,10 +137,14 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
 
   const handleDeleteWord = async (word: LyricWordData) => {
     const confirmed = await requestConfirm({
-      title: "ลบคำนี้หรือไม่?",
-      description: `คำว่า "${word.text}" จะถูกลบออกจากบรรทัดนี้`,
+      title: text(locale, "ลบคำนี้หรือไม่?", "Delete this word?"),
+      description: text(
+        locale,
+        `คำว่า "${word.text}" จะถูกลบออกจากบรรทัดนี้`,
+        `"${word.text}" will be removed from this line`
+      ),
       tone: "danger",
-      confirmLabel: "ลบคำ",
+      confirmLabel: text(locale, "ลบคำ", "Delete word"),
     });
     if (!confirmed) return;
 
@@ -160,10 +167,14 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
 
   const handleDeleteNewWord = async (draftId: string) => {
     const confirmed = await requestConfirm({
-      title: "ลบแถวคำใหม่นี้หรือไม่?",
-      description: "ข้อมูลที่กรอกไว้ในแถวนี้จะหายไป",
+      title: text(locale, "ลบแถวคำใหม่นี้หรือไม่?", "Delete this new word row?"),
+      description: text(
+        locale,
+        "ข้อมูลที่กรอกไว้ในแถวนี้จะหายไป",
+        "The text entered in this row will be lost"
+      ),
       tone: "danger",
-      confirmLabel: "ลบแถว",
+      confirmLabel: text(locale, "ลบแถว", "Delete row"),
     });
     if (!confirmed) return;
 
@@ -241,10 +252,14 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const handleRetimingLine = async () => {
     if (selectedLineIndex === null) return;
     const confirmed = await requestConfirm({
-      title: "ปาดเนื้อร้องใหม่หรือไม่?",
-      description: `เวลาและการแบ่งคำของบรรทัดที่ ${selectedLineIndex + 1} จะถูกสร้างใหม่`,
+      title: text(locale, "ปาดเนื้อร้องใหม่หรือไม่?", "Retiming this line?"),
+      description: text(
+        locale,
+        `เวลาและการแบ่งคำของบรรทัดที่ ${selectedLineIndex + 1} จะถูกสร้างใหม่`,
+        `Timing and word splits for line ${selectedLineIndex + 1} will be rebuilt`
+      ),
       tone: "danger",
-      confirmLabel: "ปาดใหม่",
+      confirmLabel: text(locale, "ปาดใหม่", "Retiming"),
     });
     if (!confirmed) return;
 
@@ -254,8 +269,12 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
 
   return (
     <ModalCommon
-      title="แก้ไขคำร้อง"
-      description="แก้เฉพาะคำที่ต้องการ เวลาเดิมจะไม่เปลี่ยน"
+      title={text(locale, "แก้ไขคำร้อง", "Edit lyrics")}
+      description={text(
+        locale,
+        "แก้เฉพาะคำที่ต้องการ เวลาเดิมจะไม่เปลี่ยน",
+        "Edit only the words you need; existing timing will stay unchanged"
+      )}
       modalClassName="flex flex-col"
       onClose={() => actions.closeEditModal()}
       open={(open ?? false) && selectedLineIndex !== null}
@@ -266,7 +285,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
           icon={<Clock3 />}
           onClick={handleRetimingLine}
         >
-          ปาดใหม่ทั้งบรรทัด
+          {text(locale, "ปาดใหม่ทั้งบรรทัด", "Retiming whole line")}
         </ButtonCommon>
       }
     >
@@ -274,13 +293,17 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
         <div className="flex flex-col rounded-xl border border-line bg-panel p-2 shadow-sm">
           <div className="flex items-center justify-between gap-2 border-b border-line px-0.5 pb-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span>บรรทัดที่ {(selectedLineIndex ?? 0) + 1}</span>
-              <span>{currentLine?.length ?? 0} คำ</span>
+              <span>
+                {text(locale, "บรรทัดที่", "Line")} {(selectedLineIndex ?? 0) + 1}
+              </span>
+              <span>
+                {currentLine?.length ?? 0} {text(locale, "คำ", "words")}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <ButtonCommon
-                aria-label="ย้อนกลับ"
-                title="ย้อนกลับ"
+                aria-label={text(locale, "ย้อนกลับ", "Undo")}
+                title={text(locale, "ย้อนกลับ", "Undo")}
                 circle
                 size="xs"
                 className="!size-7"
@@ -291,8 +314,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 onClick={handleUndo}
               />
               <ButtonCommon
-                aria-label="ทำซ้ำ"
-                title="ทำซ้ำ"
+                aria-label={text(locale, "ทำซ้ำ", "Redo")}
+                title={text(locale, "ทำซ้ำ", "Redo")}
                 circle
                 size="xs"
                 className="!size-7"
@@ -303,8 +326,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 onClick={handleRedo}
               />
               <ButtonCommon
-                aria-label="สร้างซับอัตโนมัติ"
-                title="สร้างซับอัตโนมัติ"
+                aria-label={text(locale, "สร้างซับอัตโนมัติ", "Auto-fill subtitles")}
+                title={text(locale, "สร้างซับอัตโนมัติ", "Auto-fill subtitles")}
                 circle
                 size="xs"
                 className="!size-7"
@@ -333,7 +356,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   </span>
                   <InputCommon
                     inputSize="sm"
-                    placeholder="คำร้อง"
+                    placeholder={text(locale, "คำร้อง", "Lyrics")}
                     value={draft.text}
                     onChange={(event) =>
                       updateDraft(word.index, "text", event.target.value)
@@ -342,7 +365,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   />
                   <InputCommon
                     inputSize="sm"
-                    placeholder="ซับ"
+                    placeholder={text(locale, "ซับ", "Subtitle")}
                     value={draft.vocal}
                     onChange={(event) =>
                       updateDraft(word.index, "vocal", event.target.value)
@@ -350,8 +373,12 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     onKeyDown={(event) => handleWordKeyDown(event, word)}
                   />
                   <ButtonCommon
-                    aria-label={`บันทึกคำที่ ${index + 1}`}
-                    title={isSaved ? "บันทึกแล้ว" : "บันทึกคำนี้"}
+                    aria-label={text(
+                      locale,
+                      `บันทึกคำที่ ${index + 1}`,
+                      `Save word ${index + 1}`
+                    )}
+                    title={isSaved ? text(locale, "บันทึกแล้ว", "Saved") : text(locale, "บันทึกคำนี้", "Save word")}
                     circle
                     size="xs"
                     className="!size-7"
@@ -365,8 +392,12 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     onClick={() => handleSaveWord(word)}
                   />
                   <ButtonCommon
-                    aria-label={`ลบคำที่ ${index + 1}`}
-                    title="ลบคำนี้"
+                    aria-label={text(
+                      locale,
+                      `ลบคำที่ ${index + 1}`,
+                      `Delete word ${index + 1}`
+                    )}
+                    title={text(locale, "ลบคำนี้", "Delete word")}
                     circle
                     size="xs"
                     className="!size-7"
@@ -389,7 +420,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 <InputCommon
                   autoFocus={index === newWordDrafts.length - 1}
                   inputSize="sm"
-                  placeholder="คำร้อง"
+                  placeholder={text(locale, "คำร้อง", "Lyrics")}
                   value={draft.text}
                   onChange={(event) =>
                     updateNewWordDraft(draft.id, "text", event.target.value)
@@ -398,7 +429,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 />
                 <InputCommon
                   inputSize="sm"
-                  placeholder="ซับ"
+                  placeholder={text(locale, "ซับ", "Subtitle")}
                   value={draft.vocal}
                   onChange={(event) =>
                     updateNewWordDraft(draft.id, "vocal", event.target.value)
@@ -406,8 +437,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   onKeyDown={(event) => handleNewWordKeyDown(event, draft)}
                 />
                 <ButtonCommon
-                  aria-label="บันทึกคำใหม่"
-                  title="บันทึกคำใหม่"
+                  aria-label={text(locale, "บันทึกคำใหม่", "Save new word")}
+                  title={text(locale, "บันทึกคำใหม่", "Save new word")}
                   circle
                   size="xs"
                   className="!size-7"
@@ -417,8 +448,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   onClick={() => handleSaveNewWord(draft)}
                 />
                 <ButtonCommon
-                  aria-label="ลบแถวคำใหม่"
-                  title="ลบแถวคำใหม่"
+                  aria-label={text(locale, "ลบแถวคำใหม่", "Delete new word row")}
+                  title={text(locale, "ลบแถวคำใหม่", "Delete new word row")}
                   circle
                   size="xs"
                   className="!size-7"
@@ -433,8 +464,8 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
 
           <div className="flex justify-end border-t border-line pt-2">
             <ButtonCommon
-              aria-label="เพิ่มคำ"
-              title="เพิ่มคำ"
+              aria-label={text(locale, "เพิ่มคำ", "Add word")}
+              title={text(locale, "เพิ่มคำ", "Add word")}
               circle
               size="xs"
               color="secondary"

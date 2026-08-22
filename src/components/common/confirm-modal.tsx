@@ -13,12 +13,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 export default function ConfirmModal() {
   const request = useUiStore((state) => state.confirmRequest);
   const resolveConfirm = useUiStore((state) => state.resolveConfirm);
   const isDanger = request?.tone === "danger";
   const isAlert = request?.kind === "alert";
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   return (
     <AlertDialog
@@ -42,10 +45,10 @@ export default function ConfirmModal() {
             {isDanger ? <AlertTriangle /> : <Info />}
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {request?.title ?? "ยืนยันการทำงาน"}
+            {request?.title ?? text(locale, "ยืนยันการทำงาน", "Confirm action")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {request?.description ?? "ต้องการดำเนินการต่อหรือไม่?"}
+            {request?.description ?? text(locale, "ต้องการดำเนินการต่อหรือไม่?", "Do you want to continue?")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -57,7 +60,7 @@ export default function ConfirmModal() {
               size="sm"
               onClick={() => resolveConfirm(false)}
             >
-              {request?.cancelLabel ?? "ยกเลิก"}
+              {request?.cancelLabel ?? text(locale, "ยกเลิก", "Cancel")}
             </ButtonCommon>
           )}
           <ButtonCommon
@@ -65,7 +68,10 @@ export default function ConfirmModal() {
             size="sm"
             onClick={() => resolveConfirm(true)}
           >
-            {request?.confirmLabel ?? (isAlert ? "รับทราบ" : "ยืนยัน")}
+            {request?.confirmLabel ??
+              (isAlert
+                ? text(locale, "รับทราบ", "OK")
+                : text(locale, "ยืนยัน", "Confirm"))}
           </ButtonCommon>
         </AlertDialogFooter>
       </AlertDialogContent>

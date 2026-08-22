@@ -8,6 +8,8 @@ import InputCommon from "@/components/common/data-input/input";
 import { MusicMode } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { createProject, getProject, ProjectData } from "@/lib/database/db";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
@@ -32,6 +34,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
   const requestAlert = useUiStore((state) => state.requestAlert);
+  const locale = useSettingsStore((state) => state.uiLocale);
 
   const getYouTubeId = (url: string): string | null => {
     const regExp =
@@ -76,8 +79,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const handleCreateProject = async () => {
     if (!metadata) {
       await requestAlert({
-        title: "ข้อมูลเพลงยังไม่พร้อม",
-        description: "ยังไม่ได้เตรียมข้อมูลเพลง",
+        title: text(locale, "ข้อมูลเพลงยังไม่พร้อม", "Song data is not ready"),
+        description: text(
+          locale,
+          "ยังไม่ได้เตรียมข้อมูลเพลง",
+          "Song data has not been prepared yet"
+        ),
         tone: "info",
       });
       return;
@@ -85,24 +92,36 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
     if (projectMode !== "youtube" && !musicFile) {
       await requestAlert({
-        title: "ยังไม่ได้เลือกไฟล์เพลง",
-        description: "กรุณาเลือกไฟล์เพลงก่อนสร้างโปรเจกต์",
+        title: text(locale, "ยังไม่ได้เลือกไฟล์เพลง", "No song file selected"),
+        description: text(
+          locale,
+          "กรุณาเลือกไฟล์เพลงก่อนสร้างโปรเจกต์",
+          "Choose a song file before creating the project"
+        ),
         tone: "info",
       });
       return;
     }
     if (projectMode === "youtube" && youtubeUrl ? !youtubeUrl.trim() : false) {
       await requestAlert({
-        title: "ยังไม่ได้ใส่ URL",
-        description: "กรุณาใส่ YouTube URL ก่อนสร้างโปรเจกต์",
+        title: text(locale, "ยังไม่ได้ใส่ URL", "URL is missing"),
+        description: text(
+          locale,
+          "กรุณาใส่ YouTube URL ก่อนสร้างโปรเจกต์",
+          "Enter a YouTube URL before creating the project"
+        ),
         tone: "info",
       });
       return;
     }
     if (!metadata.TITLE?.trim()) {
       await requestAlert({
-        title: "ยังไม่ได้ตั้งชื่อโปรเจกต์",
-        description: "กรุณาใส่ชื่อเพลงก่อนสร้างโปรเจกต์",
+        title: text(locale, "ยังไม่ได้ตั้งชื่อโปรเจกต์", "Project name is missing"),
+        description: text(
+          locale,
+          "กรุณาใส่ชื่อเพลงก่อนสร้างโปรเจกต์",
+          "Enter a song name before creating the project"
+        ),
         tone: "info",
       });
       return;
@@ -183,8 +202,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         const videoId = getYouTubeId(youtubeUrl);
         if (!videoId) {
           await requestAlert({
-            title: "YouTube URL ไม่ถูกต้อง",
-            description: "กรุณาตรวจสอบ URL แล้วลองใหม่อีกครั้ง",
+            title: text(locale, "YouTube URL ไม่ถูกต้อง", "Invalid YouTube URL"),
+            description: text(
+              locale,
+              "กรุณาตรวจสอบ URL แล้วลองใหม่อีกครั้ง",
+              "Check the URL and try again"
+            ),
             tone: "danger",
           });
           return;
@@ -208,8 +231,12 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     } catch (error) {
       console.error("Failed to create project:", error);
       await requestAlert({
-        title: "สร้างโปรเจกต์ไม่สำเร็จ",
-        description: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+        title: text(locale, "สร้างโปรเจกต์ไม่สำเร็จ", "Could not create project"),
+        description: text(
+          locale,
+          "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+          "Something went wrong. Please try again"
+        ),
         tone: "danger",
       });
     }
@@ -243,22 +270,24 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   return (
     <ModalCommon
-      title="Create New Project"
+      title={text(locale, "สร้าง Project ใหม่", "Create New Project")}
       open={open}
       onClose={onClose}
       modalClassName="flex flex-col"
       okButtonProps={{
         onClick: handleCreateProject,
         disabled,
+        children: text(locale, "สร้าง Project", "Create Project"),
       }}
       cancelButtonProps={{
         onClick: onClose,
         disabled,
+        children: text(locale, "ยกเลิก", "Cancel"),
       }}
     >
       <div className="flex min-h-0 flex-col gap-4">
         <SelectCommon
-          label="Project Mode"
+          label={text(locale, "รูปแบบ Project", "Project Mode")}
           options={[
             { label: "MIDI (.mid)", value: "midi" },
             { label: "MP3 (.mp3)", value: "mp3" },
@@ -293,7 +322,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
             onChange={(e) => {
               setYoutubeUrl(e.target.value);
             }}
-            placeholder="Enter the YouTube video URL"
+            placeholder={text(
+              locale,
+              "ใส่ YouTube URL ของเพลง",
+              "Enter the YouTube video URL"
+            )}
           />
         )}
 

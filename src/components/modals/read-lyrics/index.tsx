@@ -8,6 +8,8 @@ import { useKaraokeStore } from "../../../stores/karaoke-store";
 import { readLyricsFile } from "@/lib/karaoke/ncn";
 import { tokenizeThai } from "@/lib/wordcut/utils";
 import CheckboxGroup from "@/components/common/data-input/checkbox";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 
 interface ReadLyricsModalProps {
   open?: boolean;
@@ -17,6 +19,7 @@ interface ReadLyricsModalProps {
 const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   const exText = "ตัว|อย่าง|เนื้อ|เพลง\nของ|คุณ";
   const actions = useKaraokeStore((state) => state.actions);
+  const locale = useSettingsStore((state) => state.uiLocale);
   const [lyricsText, setLyricsText] = useState<string>(exText);
 
   const [isOpenSub, setOpenSub] = useState<boolean>(false);
@@ -63,7 +66,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
   return (
     <>
       <ModalCommon
-        title="เลือกเพลง"
+        title={text(locale, "เพิ่มเนื้อเพลง", "Add lyrics")}
         open={openModal}
         onClose={handleCloseModal}
         footer={
@@ -75,7 +78,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               color="gray"
               className="text-nowrap"
             >
-              Close
+              {text(locale, "ปิด", "Close")}
             </ButtonCommon>
             <ButtonCommon
               size="sm"
@@ -85,7 +88,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               color="success"
               className="text-nowrap"
             >
-              ตัดคำอัตโนมัติ
+              {text(locale, "ตัดคำอัตโนมัติ", "Auto-split words")}
             </ButtonCommon>
             <Upload
               className="text-nowrap"
@@ -103,7 +106,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
                   icon={<File />}
                   color="secondary"
                 >
-                  อ่านไฟล์ (.lyr)
+                  {text(locale, "อ่านไฟล์ (.lyr)", "Read .lyr file")}
                 </ButtonCommon>
               }
             />
@@ -113,14 +116,14 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
               onClick={handleOnAdd}
               icon={<Import />}
             >
-              นำเข้า
+              {text(locale, "นำเข้า", "Import")}
             </ButtonCommon>
           </div>
         }
       >
         <div className="p-2 border rounded-md mb-2 bg-raised">
           <label className="text-xs font-medium text-foreground mb-1 block">
-            เพิ่มเติม
+            {text(locale, "เพิ่มเติม", "Additional options")}
           </label>
           <CheckboxGroup
             onChange={(values) => {
@@ -130,7 +133,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
             }}
             options={[
               {
-                label: "เพิ่มซับไตเติ้ล Eng (ภาษาไทยเท่านั้น)",
+                label: text(locale, "เพิ่มซับไตเติ้ล Eng (ภาษาไทยเท่านั้น)", "Add English subtitles (Thai lyrics only)"),
                 value: "sub-eng",
               },
             ]}
@@ -138,7 +141,7 @@ const ReadLyricsModal: React.FC<ReadLyricsModalProps> = ({ open, onClose }) => {
         </div>
         <div className="p-2 border rounded-md bg-raised">
           <label className="text-xs font-medium text-foreground mb-1 block">
-            เนื้อเพลง
+            {text(locale, "เนื้อเพลง", "Lyrics")}
           </label>
           <TextareaCommon
             value={lyricsText}

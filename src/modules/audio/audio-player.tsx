@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import CommonPlayerStyle from "@/components/common/player";
+import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useUiStore } from "@/features/ui/ui-store";
 import { clipPlayer } from "@/lib/karaoke-engine/clip-player";
@@ -68,6 +69,8 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
       (state) => state.actions.setIsPlaying
     );
     const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
+    const locale = useSettingsStore((state) => state.uiLocale);
+    const localeRef = useRef(locale);
     const requestAlert = useUiStore((state) => state.requestAlert);
     const [isPlaying, setIsPlaying] = useState(false);
     const [fileName, setFileName] = useState("");
@@ -80,6 +83,10 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
     useEffect(() => {
       onReadyRef.current = onReady;
     }, [onReady]);
+
+    useEffect(() => {
+      localeRef.current = locale;
+    }, [locale]);
 
     useEffect(() => {
       midiBufferSizeRef.current = midiBufferSize;
@@ -213,9 +220,11 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(
         if (!cancelled) {
           console.error("Error preparing audio engine:", error);
           void requestAlert({
-            title: "เตรียมไฟล์เสียงไม่สำเร็จ",
+            title: text(localeRef.current, "เตรียมไฟล์เสียงไม่สำเร็จ", "Could not prepare audio file"),
             description:
-              error instanceof Error ? error.message : "Could not prepare audio",
+              error instanceof Error
+                ? error.message
+                : text(localeRef.current, "เตรียมไฟล์เสียงไม่สำเร็จ", "Could not prepare audio"),
             tone: "danger",
           });
         }

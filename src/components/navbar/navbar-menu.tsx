@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Code,
   FolderOpen,
   Menu,
   MicVocal,
@@ -15,7 +14,6 @@ import {
   Waves,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import Link from "next/link";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -163,7 +161,7 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
             <DropdownMenuLabel>{text(locale, "ตั้งค่า", "Settings")}</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openDialog("settings")}>
               <Settings2 />
-              {text(locale, "ตั้งค่าเสียงและจังหวะ", "Audio and timing")}
+              {text(locale, "ตั้งค่า", "Settings")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog("shortcuts")}>
               <Keyboard />
@@ -181,12 +179,6 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
               <span className="ml-auto text-xs text-muted-foreground">
                 {resolvedTheme === "dark" ? text(locale, "สว่าง", "Light") : text(locale, "มืด", "Dark")}
               </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              render={<Link href="/lyr-decode" />}
-            >
-              <Code />
-              Source Code
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

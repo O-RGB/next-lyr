@@ -1,4 +1,6 @@
 import React, { forwardRef } from "react";
+import { text } from "@/features/settings/locale";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import {
   BaseInputProps,
   BaseInputWrapper,
@@ -33,7 +35,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
       inputSize = "md",
       labelPosition = "top",
       className = "",
-      placeholder = "เลือกตัวเลือก",
+      placeholder,
       options,
       onFocus,
       onBlur,
@@ -42,6 +44,8 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
     },
     ref
   ) => {
+    const locale = useSettingsStore((state) => state.uiLocale);
+    const resolvedPlaceholder = placeholder ?? text(locale, "เลือกตัวเลือก", "Select an option");
     const selectClassName = getInputBaseClass(
       error,
       inputSize,
@@ -66,9 +70,9 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
             onFocus={onFocus}
             onBlur={onBlur}
           >
-            {placeholder && (
+            {resolvedPlaceholder && (
               <option value="" disabled>
-                {placeholder}
+                {resolvedPlaceholder}
               </option>
             )}
             {options.map((option) => (
