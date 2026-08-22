@@ -32,6 +32,7 @@ export interface ModalCommonProps {
   cancelButtonProps?: ButtonCommonProps | null;
   modalClassName?: string;
   className?: string;
+  showCloseButton?: boolean;
 }
 
 const ModalCommon: React.FC<ModalCommonProps> = ({
@@ -45,6 +46,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   cancelButtonProps,
   modalClassName,
   className,
+  showCloseButton = true,
 }) => {
   return (
     <Dialog
@@ -60,6 +62,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           modalClassName,
           className
         )}
+        showCloseButton={showCloseButton}
       >
         {title ? (
           <DialogHeader className="shrink-0 border-b border-line bg-panel px-5 py-4 pr-12">

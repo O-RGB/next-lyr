@@ -15,6 +15,7 @@ import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { parseMidi } from "@/lib/karaoke/midi/reader";
 import { SongInfo, DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
 import { readMp3 } from "@/lib/karaoke/mp3/read";
+import { getMissingRequiredSongInfo } from "@/lib/karaoke/metadata-validation";
 import {
   DEFAULT_SOUNDFONT_ENTRY,
   DEFAULT_SOUNDFONT_ID,
@@ -41,14 +42,6 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const loadProject = useKaraokeStore((state) => state.actions.loadProject);
   const requestAlert = useUiStore((state) => state.requestAlert);
   const locale = useSettingsStore((state) => state.uiLocale);
-  const requiredMetadata = [
-    { key: "TITLE", label: text(locale, "ชื่อเพลง", "Song title") },
-    { key: "TEMPO", label: text(locale, "ความเร็ว", "Tempo") },
-    { key: "ARTIST", label: text(locale, "นักร้อง", "Artist") },
-  ] as const;
-
-  const getMissingMetadata = (value: SongInfo) =>
-    requiredMetadata.filter(({ key }) => !String(value[key] ?? "").trim());
 
   const getYouTubeId = (url: string): string | null => {
     const regExp =
@@ -116,7 +109,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       return;
     }
     const currentMetadata = metadataRef.current;
-    const missingMetadata = getMissingMetadata(currentMetadata);
+    const missingMetadata = getMissingRequiredSongInfo(currentMetadata);
 
     if (missingMetadata.length > 0) {
       setShowMetadataErrors(true);
@@ -265,7 +258,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const disabled = projectMode === "youtube" ? !youtubeUrl : !musicFile;
   const requiredErrors: Partial<Record<keyof SongInfo, string>> = {};
   if (showMetadataErrors) {
-    for (const { key } of getMissingMetadata(metadata)) {
+    for (const key of getMissingRequiredSongInfo(metadata)) {
       requiredErrors[key] = text(locale, "จำเป็นต้องกรอก", "Required");
     }
   }

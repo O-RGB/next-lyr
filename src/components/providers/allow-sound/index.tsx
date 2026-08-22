@@ -1,98 +1,135 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { audioEngine } from "@/lib/karaoke-engine/engine";
+import { Loader2, Play, Volume2 } from "lucide-react";
+import React, { useCallback, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { audioEngine } from "@/lib/karaoke-engine/engine";
 
 interface AllowSoundProps {
   children?: React.ReactNode;
 }
 
+const STARTUP_AUDIO_SOURCE = "/sound/startup.mp3";
+
+/**
+ * Audio unlock gate.
+ *
+ * Browsers require a user gesture before starting Web Audio. The gate uses a
+ * short startup sound to confirm that the shared audio engine is ready before
+ * handing control back to the editor.
+ */
 const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
-  const [ended, setEnded] = useState<boolean>(false);
-  const [pressed, setPressed] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
   const locale = useSettingsStore((state) => state.uiLocale);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [ended, setEnded] = useState(false);
+  const [keepAlive, setKeepAlive] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState(false);
+  const startupAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleClick = async () => {
-    if (audioRef.current) {
-      const audio = audioRef.current;
+  const enable = useCallback(async () => {
+    setStarting(true);
+    setError(false);
 
-      setPressed(true);
-      audio.addEventListener("ended", () => {
-        void audioEngine.suspend();
-        setFadeIn(true);
-        setTimeout(() => {
-          setEnded(true);
-        }, 1000);
-      }, { once: true });
-      try {
-        await audioEngine.resume({ keepAlive: true, startupAudio: audio });
-      } catch (error) {
-        console.error("Unable to unlock audio:", error);
-        setPressed(false);
-        return;
-      }
+    try {
+      await audioEngine.resume({
+        keepAlive,
+        startupAudio: startupAudioRef.current,
+      });
+      if (!audioEngine.isReady) throw new Error("AudioContext is not running");
+
+      await waitForAudioEnd(startupAudioRef.current);
+      setEnded(true);
+    } catch (unlockError) {
+      console.error("Unable to unlock audio:", unlockError);
+      setError(true);
+    } finally {
+      setStarting(false);
     }
-  };
+  }, [keepAlive]);
 
   return (
     <>
       {ended ? (
         children
       ) : (
-        <div
-          className={`flex h-screen w-full items-center justify-center bg-raised transition-opacity duration-1000 ${
-            fadeIn ? "opacity-0" : "opacity-100"
-          }`}
-        >
-          <div className="text-center">
-            {pressed ? (
-              <div className="flex flex-col items-center justify-center gap-4">
-                <div className="text-4xl font-bold text-foreground tracking-wider">
-                  Next Lyrics Editor
-                </div>
-                <div className="flex items-center gap-2 text-foreground font-medium text-lg">
-                  <svg
-                    className="animate-spin h-5 w-5 text-foreground"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  {text(locale, "กำลังโหลด...", "Loading...")}
-                </div>
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-base/95 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-xl border border-line bg-panel p-5 shadow-2xl">
+            <div className="mb-3.5 flex items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                <Volume2 className="size-4.5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-[13px] font-semibold leading-tight text-foreground">
+                  {text(locale, "เปิดใช้งานเสียง", "Enable sound")}
+                </h2>
+                <p className="label-xs mt-0.5">NextLyricsEditor</p>
+              </div>
+            </div>
+
+            <p className="mb-4 text-[11px] leading-relaxed text-muted-foreground">
+              {text(
+                locale,
+                "เบราว์เซอร์จะปิดเสียงไว้จนกว่าจะกดอนุญาต ขั้นตอนนี้ทำเพียงครั้งเดียวเพื่อให้เสียง MIDI ไฟล์เสียง และเมโทรนอมทำงานผ่านระบบเสียงเดียวกัน",
+                "Your browser blocks audio until you allow it. This one-time step enables MIDI, audio files, and the metronome through the same audio engine."
+              )}
+            </p>
+
+            {starting ? (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-3 text-[11px] font-medium text-primary">
+                <Loader2 className="size-3.5 animate-spin" />
+                {text(locale, "กำลังเปิดระบบเสียง...", "Starting audio...")}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center space-y-6">
-                <div className="text-3xl font-bold text-foreground mb-4 tracking-wider">
-                  Next Lyrics Editor
-                </div>
-                <div className="relative flex items-center justify-center">
-                  <span className="absolute flex h-16 w-16">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-panel opacity-75"></span>
-                  </span>
-                  <button
-                    className="relative w-fit p-4 px-8 flex items-center justify-center rounded-full bg-panel border border-line shadow-md font-medium text-lg text-foreground hover:bg-raised transition-all duration-300 transform hover:scale-105"
-                    onClick={handleClick}
-                  >
-                    {text(locale, "เปิดใช้งานเสียง", "Allow sound")}
-                  </button>
+              <div className="space-y-2.5">
+                {error ? (
+                  <p className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2 text-[10px] leading-relaxed text-warn">
+                    {text(
+                      locale,
+                      "เปิดใช้งานเสียงไม่สำเร็จ กรุณาลองอีกครั้ง",
+                      "Could not enable audio. Please try again."
+                    )}
+                  </p>
+                ) : null}
+
+                <Button
+                  className="h-10 w-full gap-2 text-[12px]"
+                  onClick={() => void enable()}
+                >
+                  <Play className="size-3.5" />
+                  {text(locale, "อนุญาตให้เล่นเสียง", "Allow sound")}
+                </Button>
+
+                <div className="rounded-lg border border-line bg-base px-2.5 py-2">
+                  <p className="label-xs mb-1.5">
+                    {text(locale, "ตั้งค่าเสียง", "Audio settings")}
+                  </p>
+                  <label className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        {text(
+                          locale,
+                          "ให้ระบบเสียงทำงานต่อในเบื้องหลัง",
+                          "Keep audio ready in the background"
+                        )}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] leading-snug text-dim">
+                        {text(
+                          locale,
+                          "ช่วยให้เสียงพร้อมทันทีเมื่อเริ่มเล่น",
+                          "Keeps audio ready between plays"
+                        )}
+                      </span>
+                    </span>
+                    <Switch
+                      checked={keepAlive}
+                      onCheckedChange={setKeepAlive}
+                      className="mt-0.5 shrink-0"
+                    />
+                  </label>
                 </div>
               </div>
             )}
@@ -100,26 +137,35 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
         </div>
       )}
       <audio
-        src="/sound/startup.mp3"
-        controls={false}
-        autoPlay={false}
-        ref={audioRef}
+        ref={startupAudioRef}
+        src={STARTUP_AUDIO_SOURCE}
+        preload="auto"
+        playsInline
+        aria-hidden="true"
+        className="hidden"
       />
-      {/* CSS Keyframes for Ping Animation */}
-      <style jsx global>{`
-        @keyframes ping {
-          75%,
-          100% {
-            transform: scale(2);
-            opacity: 0;
-          }
-        }
-        .animate-ping {
-          animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-      `}</style>
     </>
   );
 };
+
+function waitForAudioEnd(audio: HTMLAudioElement | null): Promise<void> {
+  if (!audio || audio.ended) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let timeout = 0;
+    const finish = () => {
+      audio.removeEventListener("ended", finish);
+      window.clearTimeout(timeout);
+      resolve();
+    };
+
+    audio.addEventListener("ended", finish, { once: true });
+    const durationMs =
+      Number.isFinite(audio.duration) && audio.duration > 0
+        ? audio.duration * 1000 + 500
+        : 2000;
+    timeout = window.setTimeout(finish, Math.min(5000, durationMs));
+  });
+}
 
 export default AllowSound;

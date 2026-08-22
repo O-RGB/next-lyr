@@ -21,6 +21,8 @@ import { useUiStore } from "@/features/ui/ui-store";
 import pako from "pako";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import MetadataForm from "@/components/metadata/metadata-form";
+import { getMissingRequiredSongInfo } from "@/lib/karaoke/metadata-validation";
 
 interface BuildNcnModalProps {
   open?: boolean;
@@ -60,37 +62,33 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     );
 
   const [openModal, setOpenModal] = useState<boolean>(false);
+  const [metadataModalOpen, setMetadataModalOpen] = useState(false);
   const handleCloseModal = () => {
+    setMetadataModalOpen(false);
     setOpenModal(false);
     onClose?.();
   };
 
-  const validation = async () => {
-    if (!metadata?.TITLE) {
-      await requestAlert({
-        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
-        description: text(locale, "ยังไม่ได้ตั้งชื่อเพลง", "Song title is missing"),
-        tone: "info",
-      });
-      return false;
-    }
-    if (!metadata?.ARTIST) {
-      await requestAlert({
-        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
-        description: text(locale, "ยังไม่ได้ตั้งชื่อนักร้อง", "Artist name is missing"),
-        tone: "info",
-      });
-      return false;
-    }
-    if (!metadata?.KEY) {
-      await requestAlert({
-        title: text(locale, "ข้อมูลเพลงยังไม่ครบ", "Song data is incomplete"),
-        description: text(locale, "ยังไม่ได้ใส่ Key", "Key is missing"),
-        tone: "info",
-      });
+  const validation = () => {
+    if (getMissingRequiredSongInfo(metadata).length > 0) {
+      setMetadataModalOpen(true);
       return false;
     }
     return true;
+  };
+
+  const handleMetadataModalClose = () => {
+    // The metadata form is intentionally blocking: its Save button is the
+    // only way out, and only after all required values are present.
+    if (getMissingRequiredSongInfo(useKaraokeStore.getState().metadata).length === 0) {
+      setMetadataModalOpen(false);
+    }
+  };
+
+  const handleMetadataSaved = () => {
+    if (getMissingRequiredSongInfo(useKaraokeStore.getState().metadata).length === 0) {
+      setMetadataModalOpen(false);
+    }
   };
 
   const handleBuildYoutube = async () => {
@@ -247,6 +245,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildLyr = async () => {
+    if (!(await validation()) || !metadata) return;
     if (!legacyEncodingSupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
@@ -255,7 +254,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       });
       return;
     }
-    if (!(await validation()) || !metadata) return;
     const lyrInline: string[] = lyricsData.map((line) =>
       line.map((word) => word.text).join("")
     );
@@ -272,6 +270,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   };
 
   const buildCur = async () => {
+    if (!(await validation())) return;
     if (!legacyEncodingSupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
@@ -280,7 +279,6 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       });
       return;
     }
-    if (!(await validation())) return;
     if (mode === "midi" && midiInfo) {
       const flatLyrics = lyricsData.flat();
       const generator = new TickLyricSegmentGenerator(midiInfo.ticksPerBeat);
@@ -307,6 +305,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
   useEffect(() => {
     setOpenModal(open ?? false);
+    if (!open) setMetadataModalOpen(false);
   }, [open]);
 
   return (
@@ -393,6 +392,31 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         ) : (
           <>{text(locale, "กรุณาเริ่มสร้างเนื้อร้องก่อน", "Add lyrics before exporting")}</>
         )}
+      </ModalCommon>
+      <ModalCommon
+        title={text(locale, "กรอกข้อมูลเพลงที่จำเป็น", "Complete required metadata")}
+        open={metadataModalOpen}
+        onClose={handleMetadataModalClose}
+        showCloseButton={false}
+        modalClassName="flex flex-col"
+        okButtonProps={{
+          children: text(locale, "บันทึก", "Save"),
+          form: "export-metadata-form",
+          type: "submit",
+        }}
+        cancelButtonProps={null}
+      >
+        <MetadataForm
+          card={false}
+          requiredFirst
+          inputSize="md"
+          className="flex flex-col gap-3"
+          autoSave={false}
+          formId="export-metadata-form"
+          showRequiredErrors
+          validateRequiredOnSave
+          onSave={handleMetadataSaved}
+        />
       </ModalCommon>
     </>
   );

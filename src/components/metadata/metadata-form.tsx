@@ -18,12 +18,7 @@ import {
   vocalChannelOption,
 } from "@/lib/karaoke/midi/types";
 import InputCommon from "../common/data-input/input";
-
-const REQUIRED_METADATA_KEYS = [
-  "TITLE",
-  "TEMPO",
-  "ARTIST",
-] as const;
+import { getMissingRequiredSongInfo } from "@/lib/karaoke/metadata-validation";
 
 type Props = {
   adding?: boolean;
@@ -69,10 +64,8 @@ function MetadataForm({
 
   const getRequiredErrors = (value: Partial<SongInfo> | null | undefined) => {
     const errors: Partial<Record<keyof SongInfo, string>> = {};
-    for (const key of REQUIRED_METADATA_KEYS) {
-      if (!String(value?.[key] ?? "").trim()) {
-        errors[key] = text(locale, "จำเป็นต้องกรอก", "Required");
-      }
+    for (const key of getMissingRequiredSongInfo(value)) {
+      errors[key] = text(locale, "จำเป็นต้องกรอก", "Required");
     }
     return errors;
   };
