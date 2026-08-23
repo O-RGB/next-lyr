@@ -1,12 +1,10 @@
 import {
   Captions,
-  Check,
-  Clock3,
   Plus,
-  Redo2,
   Save,
   Trash2,
   Undo2,
+  Redo2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -14,11 +12,9 @@ import ButtonCommon from "@/components/common/button";
 import InputCommon from "@/components/common/data-input/input";
 import ModalCommon from "../../common/modal";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
-import { useUiStore } from "@/features/ui/ui-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
-import { canRedo, canUndo } from "@/stores/karaoke-store/history";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import type { LyricWordData } from "@/types/common.type";
 
@@ -35,25 +31,53 @@ interface NewWordDraft extends WordDraft {
   id: string;
 }
 
+interface DraftSnapshot {
+  drafts: Record<number, WordDraft>;
+  newWordDrafts: NewWordDraft[];
+  deletedWordIndexes: number[];
+}
+
+interface DraftHistory {
+  past: DraftSnapshot[];
+  present: DraftSnapshot;
+  future: DraftSnapshot[];
+}
+
+const createEmptyDraftHistory = (): DraftHistory => ({
+  past: [],
+  present: {
+    drafts: {},
+    newWordDrafts: [],
+    deletedWordIndexes: [],
+  },
+  future: [],
+});
+
 export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
   const { handleRetiming } = usePlayerHandlersStore();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
-  const history = useKaraokeStore((state) => state.history);
   const actions = useKaraokeStore((state) => state.actions);
-  const requestConfirm = useUiStore((state) => state.requestConfirm);
   const locale = useSettingsStore((state) => state.uiLocale);
 
-  const [drafts, setDrafts] = useState<Record<number, WordDraft>>({});
-  const [newWordDrafts, setNewWordDrafts] = useState<NewWordDraft[]>([]);
-  const [savedWordIndex, setSavedWordIndex] = useState<number | null>(null);
+  const [draftHistory, setDraftHistory] = useState<DraftHistory>(() =>
+    createEmptyDraftHistory()
+  );
   const sessionKeyRef = useRef<string | null>(null);
+
+  const { drafts, newWordDrafts, deletedWordIndexes } = draftHistory.present;
 
   const currentLine =
     selectedLineIndex === null ? undefined : lyricsData[selectedLineIndex];
 
   useEffect(() => {
-    if (!open || selectedLineIndex === null || !currentLine) {
+    if (!open) {
+      sessionKeyRef.current = null;
+      setDraftHistory(createEmptyDraftHistory());
+      return;
+    }
+
+    if (selectedLineIndex === null || !currentLine) {
       sessionKeyRef.current = null;
       return;
     }
@@ -62,56 +86,61 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     if (sessionKeyRef.current === sessionKey) return;
 
     sessionKeyRef.current = sessionKey;
-    setDrafts(
-      Object.fromEntries(
-        currentLine.map((word) => [
-          word.index,
-          { text: word.text, vocal: word.vocal ?? "" },
-        ])
-      )
-    );
-    setNewWordDrafts([]);
-    setSavedWordIndex(null);
+    setDraftHistory({
+      past: [],
+      present: {
+        drafts: Object.fromEntries(
+          currentLine.map((word) => [
+            word.index,
+            { text: word.text, vocal: word.vocal ?? "" },
+          ])
+        ),
+        newWordDrafts: [],
+        deletedWordIndexes: [],
+      },
+      future: [],
+    });
   }, [open, selectedLineIndex, currentLine]);
+
+  const updateDraftState = (
+    update: (previous: DraftSnapshot) => DraftSnapshot
+  ) => {
+    setDraftHistory((previous) => ({
+      past: [...previous.past, previous.present],
+      present: update(previous.present),
+      future: [],
+    }));
+  };
 
   const updateDraft = (
     wordIndex: number,
     field: keyof WordDraft,
     value: string
   ) => {
-    setDrafts((previous) => ({
+    updateDraftState((previous) => ({
       ...previous,
-      [wordIndex]: {
-        ...previous[wordIndex],
-        [field]: value,
+      drafts: {
+        ...previous.drafts,
+        [wordIndex]: {
+          ...previous.drafts[wordIndex],
+          [field]: value,
+        },
       },
     }));
-    if (savedWordIndex === wordIndex) setSavedWordIndex(null);
-  };
-
-  const handleSaveWord = (word: LyricWordData) => {
-    const draft = drafts[word.index];
-    const isDirty =
-      draft &&
-      (draft.text !== word.text || draft.vocal !== (word.vocal ?? ""));
-    if (!draft || !draft.text.trim() || !isDirty) return;
-
-    actions.updateWord(word.index, {
-      text: draft.text,
-      vocal: draft.vocal,
-    });
-    setSavedWordIndex(word.index);
   };
 
   const handleAddWordDraft = () => {
-    setNewWordDrafts((previous) => [
+    updateDraftState((previous) => ({
       ...previous,
-      {
-        id: `new-${Date.now()}-${previous.length}`,
-        text: "",
-        vocal: "",
-      },
-    ]);
+      newWordDrafts: [
+        ...previous.newWordDrafts,
+        {
+          id: `new-${Date.now()}-${previous.newWordDrafts.length}`,
+          text: "",
+          vocal: "",
+        },
+      ],
+    }));
   };
 
   const updateNewWordDraft = (
@@ -119,105 +148,66 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
     field: keyof WordDraft,
     value: string
   ) => {
-    setNewWordDrafts((previous) =>
-      previous.map((draft) =>
+    updateDraftState((previous) => ({
+      ...previous,
+      newWordDrafts: previous.newWordDrafts.map((draft) =>
         draft.id === draftId ? { ...draft, [field]: value } : draft
-      )
-    );
-  };
-
-  const handleSaveNewWord = (draft: NewWordDraft) => {
-    if (selectedLineIndex === null || !draft.text.trim()) return;
-
-    actions.addWord(selectedLineIndex, draft.text, draft.vocal);
-    setNewWordDrafts((previous) =>
-      previous.filter((item) => item.id !== draft.id)
-    );
-  };
-
-  const handleDeleteWord = async (word: LyricWordData) => {
-    const confirmed = await requestConfirm({
-      title: text(locale, "ลบคำนี้หรือไม่?", "Delete this word?"),
-      description: text(
-        locale,
-        `คำว่า "${word.text}" จะถูกลบออกจากบรรทัดนี้`,
-        `"${word.text}" will be removed from this line`
       ),
-      tone: "danger",
-      confirmLabel: text(locale, "ลบคำ", "Delete word"),
-    });
-    if (!confirmed) return;
-
-    actions.deleteWord(word.index);
-
-    const nextLine =
-      selectedLineIndex === null
-        ? []
-        : useKaraokeStore.getState().lyricsData[selectedLineIndex] ?? [];
-    setDrafts(
-      Object.fromEntries(
-        nextLine.map((nextWord) => [
-          nextWord.index,
-          { text: nextWord.text, vocal: nextWord.vocal ?? "" },
-        ])
-      )
-    );
-    setSavedWordIndex(null);
+    }));
   };
 
-  const handleDeleteNewWord = async (draftId: string) => {
-    const confirmed = await requestConfirm({
-      title: text(locale, "ลบแถวคำใหม่นี้หรือไม่?", "Delete this new word row?"),
-      description: text(
-        locale,
-        "ข้อมูลที่กรอกไว้ในแถวนี้จะหายไป",
-        "The text entered in this row will be lost"
+  const handleDeleteWord = (word: LyricWordData) => {
+    updateDraftState((previous) => ({
+      ...previous,
+      deletedWordIndexes: previous.deletedWordIndexes.includes(word.index)
+        ? previous.deletedWordIndexes
+        : [...previous.deletedWordIndexes, word.index],
+    }));
+  };
+
+  const handleDeleteNewWord = (draftId: string) => {
+    updateDraftState((previous) => ({
+      ...previous,
+      newWordDrafts: previous.newWordDrafts.filter(
+        (draft) => draft.id !== draftId
       ),
-      tone: "danger",
-      confirmLabel: text(locale, "ลบแถว", "Delete row"),
-    });
-    if (!confirmed) return;
-
-    setNewWordDrafts((previous) =>
-      previous.filter((draft) => draft.id !== draftId)
-    );
-  };
-
-  const syncDraftsFromStore = () => {
-    const nextLine =
-      selectedLineIndex === null
-        ? []
-        : useKaraokeStore.getState().lyricsData[selectedLineIndex] ?? [];
-    setDrafts(
-      Object.fromEntries(
-        nextLine.map((word) => [
-          word.index,
-          { text: word.text, vocal: word.vocal ?? "" },
-        ])
-      )
-    );
-    setNewWordDrafts([]);
-    setSavedWordIndex(null);
+    }));
   };
 
   const handleUndo = () => {
-    actions.undo();
-    syncDraftsFromStore();
+    setDraftHistory((previous) => {
+      const last = previous.past.at(-1);
+      if (!last) return previous;
+
+      return {
+        past: previous.past.slice(0, -1),
+        present: last,
+        future: [previous.present, ...previous.future],
+      };
+    });
   };
 
   const handleRedo = () => {
-    actions.redo();
-    syncDraftsFromStore();
+    setDraftHistory((previous) => {
+      const next = previous.future[0];
+      if (!next) return previous;
+
+      return {
+        past: [...previous.past, previous.present],
+        present: next,
+        future: previous.future.slice(1),
+      };
+    });
   };
 
   const handleAutoSub = () => {
     if (!currentLine?.length) return;
 
     const thaiKaraoke = ThaiKaraoke.getInstance();
-    setDrafts((previous) => {
-      const next = { ...previous };
+    updateDraftState((previous) => {
+      const next = { ...previous.drafts };
       currentLine.forEach((word) => {
-        const draft = previous[word.index] ?? {
+        const draft = previous.drafts[word.index] ?? {
           text: word.text,
           vocal: word.vocal ?? "",
         };
@@ -226,45 +216,63 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
           vocal: thaiKaraoke.transliterate(draft.text).toUpperCase(),
         };
       });
-      return next;
+      return { ...previous, drafts: next };
     });
-    setSavedWordIndex(null);
   };
 
-  const handleWordKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    word: LyricWordData
-  ) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    handleSaveWord(word);
-  };
+  const visibleWords =
+    currentLine?.filter((word) => !deletedWordIndexes.includes(word.index)) ??
+    [];
+  const hasExistingChanges = visibleWords.some((word) => {
+    const draft = drafts[word.index];
+    return (
+      draft &&
+      (draft.text !== word.text || draft.vocal !== (word.vocal ?? ""))
+    );
+  });
+  const hasNewWords = newWordDrafts.length > 0;
+  const hasInvalidDraft =
+    visibleWords.some((word) => !drafts[word.index]?.text.trim()) ||
+    newWordDrafts.some((draft) => !draft.text.trim());
+  const hasUnsavedChanges =
+    hasExistingChanges || deletedWordIndexes.length > 0 ||
+    newWordDrafts.some((draft) => draft.text.trim() || draft.vocal.trim());
 
-  const handleNewWordKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    draft: NewWordDraft
-  ) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    handleSaveNewWord(draft);
-  };
+  const handleSave = async () => {
+    if (
+      selectedLineIndex === null ||
+      !currentLine ||
+      !hasUnsavedChanges ||
+      hasInvalidDraft
+    ) {
+      return;
+    }
 
-  const handleRetimingLine = async () => {
-    if (selectedLineIndex === null) return;
-    const confirmed = await requestConfirm({
-      title: text(locale, "ปาดเนื้อร้องใหม่หรือไม่?", "Retiming this line?"),
-      description: text(
-        locale,
-        `เวลาและการแบ่งคำของบรรทัดที่ ${selectedLineIndex + 1} จะถูกสร้างใหม่`,
-        `Timing and word splits for line ${selectedLineIndex + 1} will be rebuilt`
-      ),
-      tone: "danger",
-      confirmLabel: text(locale, "ปาดใหม่", "Retiming"),
-    });
-    if (!confirmed) return;
+    const wordsToSave = [
+      ...visibleWords.map((word) => {
+        const draft = drafts[word.index] ?? {
+          text: word.text,
+          vocal: word.vocal ?? "",
+        };
+        return {
+          originalIndex: word.index,
+          text: draft.text,
+          vocal: draft.vocal,
+        };
+      }),
+      ...newWordDrafts.map((draft) => ({
+        originalIndex: null,
+        text: draft.text,
+        vocal: draft.vocal,
+      })),
+    ];
 
+    await actions.replaceLineWords(selectedLineIndex, wordsToSave);
     actions.closeEditModal();
-    handleRetiming(selectedLineIndex, selectedLineIndex);
+
+    if (hasNewWords) {
+      handleRetiming(selectedLineIndex, selectedLineIndex);
+    }
   };
 
   return (
@@ -281,11 +289,14 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
       footer={
         <ButtonCommon
           className="w-full sm:ml-auto sm:w-auto"
-          color="warning"
-          icon={<Clock3 />}
-          onClick={handleRetimingLine}
+          color={hasNewWords ? "warning" : "primary"}
+          icon={<Save />}
+          disabled={!hasUnsavedChanges || hasInvalidDraft}
+          onClick={() => void handleSave()}
         >
-          {text(locale, "ปาดใหม่ทั้งบรรทัด", "Retiming whole line")}
+          {hasNewWords
+            ? text(locale, "บันทึกและปาดใหม่", "Save & retime")
+            : text(locale, "บันทึก", "Save")}
         </ButtonCommon>
       }
     >
@@ -310,7 +321,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 color="gray"
                 variant="ghost"
                 icon={<Undo2 />}
-                disabled={!canUndo(history)}
+                disabled={draftHistory.past.length === 0}
                 onClick={handleUndo}
               />
               <ButtonCommon
@@ -322,7 +333,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                 color="gray"
                 variant="ghost"
                 icon={<Redo2 />}
-                disabled={!canRedo(history)}
+                disabled={draftHistory.future.length === 0}
                 onClick={handleRedo}
               />
               <ButtonCommon
@@ -339,17 +350,16 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
           </div>
 
           <div className="flex flex-col">
-            {currentLine?.map((word, index) => {
+            {visibleWords.map((word, index) => {
               const draft = drafts[word.index] ?? {
                 text: word.text,
                 vocal: word.vocal ?? "",
               };
-              const isSaved = savedWordIndex === word.index;
 
               return (
                 <div
                   key={word.index}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
+                  className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
                 >
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-2/15 text-[11px] font-semibold text-brand-2">
                     {index + 1}
@@ -361,7 +371,6 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     onChange={(event) =>
                       updateDraft(word.index, "text", event.target.value)
                     }
-                    onKeyDown={(event) => handleWordKeyDown(event, word)}
                   />
                   <InputCommon
                     inputSize="sm"
@@ -370,26 +379,6 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     onChange={(event) =>
                       updateDraft(word.index, "vocal", event.target.value)
                     }
-                    onKeyDown={(event) => handleWordKeyDown(event, word)}
-                  />
-                  <ButtonCommon
-                    aria-label={text(
-                      locale,
-                      `บันทึกคำที่ ${index + 1}`,
-                      `Save word ${index + 1}`
-                    )}
-                    title={isSaved ? text(locale, "บันทึกแล้ว", "Saved") : text(locale, "บันทึกคำนี้", "Save word")}
-                    circle
-                    size="xs"
-                    className="!size-7"
-                    color={isSaved ? "success" : "primary"}
-                    icon={isSaved ? <Check /> : <Save />}
-                    disabled={
-                      !draft.text.trim() ||
-                      (draft.text === word.text &&
-                        draft.vocal === (word.vocal ?? ""))
-                    }
-                    onClick={() => handleSaveWord(word)}
                   />
                   <ButtonCommon
                     aria-label={text(
@@ -404,7 +393,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                     color="danger"
                     variant="ghost"
                     icon={<Trash2 />}
-                    onClick={() => void handleDeleteWord(word)}
+                    onClick={() => handleDeleteWord(word)}
                   />
                 </div>
               );
@@ -412,9 +401,9 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
             {newWordDrafts.map((draft, index) => (
               <div
                 key={draft.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
+                className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
               >
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-2/15 text-[11px] font-semibold text-brand-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-line/60 text-[11px] font-semibold text-muted-foreground">
                   {(currentLine?.length ?? 0) + index + 1}
                 </span>
                 <InputCommon
@@ -425,7 +414,6 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   onChange={(event) =>
                     updateNewWordDraft(draft.id, "text", event.target.value)
                   }
-                  onKeyDown={(event) => handleNewWordKeyDown(event, draft)}
                 />
                 <InputCommon
                   inputSize="sm"
@@ -434,18 +422,6 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   onChange={(event) =>
                     updateNewWordDraft(draft.id, "vocal", event.target.value)
                   }
-                  onKeyDown={(event) => handleNewWordKeyDown(event, draft)}
-                />
-                <ButtonCommon
-                  aria-label={text(locale, "บันทึกคำใหม่", "Save new word")}
-                  title={text(locale, "บันทึกคำใหม่", "Save new word")}
-                  circle
-                  size="xs"
-                  className="!size-7"
-                  color="primary"
-                  icon={<Save />}
-                  disabled={!draft.text.trim()}
-                  onClick={() => handleSaveNewWord(draft)}
                 />
                 <ButtonCommon
                   aria-label={text(locale, "ลบแถวคำใหม่", "Delete new word row")}
@@ -456,7 +432,7 @@ export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
                   color="danger"
                   variant="ghost"
                   icon={<Trash2 />}
-                  onClick={() => void handleDeleteNewWord(draft.id)}
+                  onClick={() => handleDeleteNewWord(draft.id)}
                 />
               </div>
             ))}

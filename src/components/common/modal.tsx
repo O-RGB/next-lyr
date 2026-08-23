@@ -32,6 +32,7 @@ export interface ModalCommonProps {
   cancelButtonProps?: ButtonCommonProps | null;
   modalClassName?: string;
   className?: string;
+  bodyClassName?: string;
   showCloseButton?: boolean;
 }
 
@@ -46,6 +47,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   cancelButtonProps,
   modalClassName,
   className,
+  bodyClassName,
   showCloseButton = true,
 }) => {
   const handleCancelClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -83,7 +85,12 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           </DialogHeader>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+        <div
+          className={cn(
+            "min-h-0 flex-1 p-4",
+            bodyClassName ?? "overflow-y-auto overscroll-contain"
+          )}
+        >
           {children}
         </div>
 

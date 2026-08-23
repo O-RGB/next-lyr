@@ -120,6 +120,14 @@ export interface ContentActions {
     newText: string,
     vocals?: string[]
   ) => void;
+  replaceLineWords: (
+    lineIndex: number,
+    words: Array<{
+      originalIndex: number | null;
+      text: string;
+      vocal: string;
+    }>
+  ) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addWord: (lineIndex: number, text: string, vocal?: string) => void;
   deleteWord: (index: number) => void;

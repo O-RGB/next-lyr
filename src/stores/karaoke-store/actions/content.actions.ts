@@ -202,6 +202,65 @@ export const createContentActions: StateCreator<
         get().actions.processLyricsForPlayer();
         commit("เพิ่มบรรทัด");
       },
+      replaceLineWords: async (lineIndex, words) => {
+        let changed = false;
+
+        set((state) => {
+          const currentLine = state.lyricsData[lineIndex];
+          if (!currentLine) return {};
+
+          if (currentLine.length !== words.length) changed = true;
+
+          const currentWords = new Map(
+            currentLine.map((word) => [word.index, word])
+          );
+          const nextLine = words.map((draft) => {
+            const originalWord =
+              draft.originalIndex === null
+                ? undefined
+                : currentWords.get(draft.originalIndex);
+            const nextText = draft.text.trim();
+            const nextVocal = draft.vocal;
+
+            if (
+              !originalWord ||
+              originalWord.text !== nextText ||
+              (originalWord.vocal ?? "") !== nextVocal
+            ) {
+              changed = true;
+            }
+
+            return {
+              ...(originalWord ?? { at: null, index: 0 }),
+              text: nextText,
+              vocal: nextVocal,
+              lineIndex,
+            };
+          });
+
+          if (!changed) return {};
+
+          const nextLyricsData = state.lyricsData.map((line) => [...line]);
+          nextLyricsData[lineIndex] = nextLine;
+
+          let globalIndex = 0;
+          const reIndexedLyrics = nextLyricsData.map(
+            (line, nextLineIndex) =>
+              line.map((word) => ({
+                ...word,
+                index: globalIndex++,
+                lineIndex: nextLineIndex,
+              }))
+          );
+
+          return { lyricsData: reIndexedLyrics };
+        });
+
+        if (!changed) return;
+        syncLyricsDocument();
+        get().actions.processLyricsForPlayer();
+        commit("แก้ไขคำในบรรทัด");
+      },
       updateWord: async (
         index: number,
         newWordData: Partial<LyricWordData>
