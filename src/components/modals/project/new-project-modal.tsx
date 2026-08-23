@@ -29,13 +29,18 @@ import {
 interface NewProjectModalProps {
   open: boolean;
   onClose: () => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 type ParsedProjectFile =
   | { file: File; mode: "midi"; data: IMidiParseResult }
   | { file: File; mode: "mp3"; data: IParsedMp3Data };
 
-const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
+const NewProjectModal: React.FC<NewProjectModalProps> = ({
+  open,
+  onClose,
+  onLoadingChange,
+}) => {
   const router = useRouter();
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
   const [musicFile, setMusicFile] = useState<File>();
@@ -46,6 +51,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   const parsedFileRef = useRef<ParsedProjectFile | null>(null);
   const fileReadRequestRef = useRef(0);
   const [isReadingFile, setIsReadingFile] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [showMetadataErrors, setShowMetadataErrors] = useState(false);
 
   const updateMetadata = (next: SongInfo) => {
@@ -158,6 +164,9 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     }
     setShowMetadataErrors(false);
 
+    setIsCreatingProject(true);
+    onLoadingChange?.(true);
+
     try {
       let initialData: ProjectData = {
         playerState: {
@@ -264,6 +273,8 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       router.push(`/project/${newProjectId}`);
     } catch (error) {
       console.error("Failed to create project:", error);
+      setIsCreatingProject(false);
+      onLoadingChange?.(false);
       await requestAlert({
         title: text(locale, "สร้างโปรเจกต์ไม่สำเร็จ", "Could not create project"),
         description: text(
@@ -309,12 +320,15 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     setMusicFile(undefined);
     setYoutubeUrl(undefined);
     setIsReadingFile(false);
+    setIsCreatingProject(false);
     updateMetadata(DEFAULT_SONG_INFO);
     setShowMetadataErrors(false);
   }, [open]);
 
   const disabled =
-    isReadingFile || (projectMode === "youtube" ? !youtubeUrl : !musicFile);
+    isReadingFile ||
+    isCreatingProject ||
+    (projectMode === "youtube" ? !youtubeUrl : !musicFile);
   const requiredErrors: Partial<Record<keyof SongInfo, string>> = {};
   if (showMetadataErrors) {
     for (const key of getMissingRequiredSongInfo(metadata)) {
@@ -330,8 +344,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
       modalClassName="flex flex-col"
       okButtonProps={{
         onClick: handleCreateProject,
+        isLoading: isCreatingProject,
         disabled,
-        children: text(locale, "สร้าง Project", "Create Project"),
+        children: isCreatingProject
+          ? text(locale, "กำลังสร้าง...", "Creating...")
+          : text(locale, "สร้าง Project", "Create Project"),
       }}
       cancelButtonProps={{
         onClick: onClose,

@@ -1,4 +1,4 @@
-import { Music, Plus, Trash2 } from "lucide-react";
+import { Check, Music, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
@@ -14,6 +14,7 @@ import {
   upsertProjectSummary,
 } from "@/lib/database/db";
 import NewProjectModal from "./new-project-modal";
+import ProjectLoading from "./project-loading";
 
 interface ProjectListModalProps {
   open?: boolean;
@@ -27,6 +28,8 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [isProjectOpening, setIsProjectOpening] = useState(false);
+  const [loadingKind, setLoadingKind] = useState<"open" | "create">("open");
   const clearProject = useKaraokeStore((state) => state.actions.clearProject);
   const currentProjectId = useKaraokeStore((state) => state.projectId);
   const currentProjectMode = useKaraokeStore((state) => state.mode);
@@ -65,11 +68,24 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   useEffect(() => {
     if (open) {
       fetchProjects();
+    } else {
+      setIsProjectOpening(false);
     }
   }, [open]);
 
   const handleSelectProject = (project: ProjectSummary) => {
+    // Do not reload the editor that is already active, or start a second
+    // navigation while the first one is still being resolved.
+    if (isProjectOpening || project.id === currentProjectId) return;
+
+    setLoadingKind("open");
+    setIsProjectOpening(true);
     router.push(`/project/${project.id}`);
+  };
+
+  const handleNewProjectLoadingChange = (loading: boolean) => {
+    if (loading) setLoadingKind("create");
+    setIsProjectOpening(loading);
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -94,9 +110,18 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
 
   return (
     <>
+      {isProjectOpening ? (
+        <ProjectLoading
+          message={
+            loadingKind === "create"
+              ? text(locale, "กำลังสร้างโปรเจกต์...", "Creating project...")
+              : text(locale, "กำลังเปิดโปรเจกต์...", "Opening project...")
+          }
+        />
+      ) : null}
       <ModalCommon
         title={text(locale, "โปรเจกต์ของฉัน", "My Projects")}
-        open={open}
+        open={open && !isProjectOpening}
         onClose={onClose}
         modalClassName="flex flex-col"
         cancelButtonProps={{ hidden: true }}
@@ -109,18 +134,38 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
         <div>
           {projects.length > 0 ? (
             <div className="divide-y divide-line">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="group flex items-center justify-between p-4 hover:bg-panel-2 transition-colors cursor-pointer"
-                  onClick={() => handleSelectProject(project)}
-                >
+              {projects.map((project) => {
+                const isCurrentProject = project.id === currentProjectId;
+
+                return (
+                  <div
+                    key={project.id}
+                    aria-current={isCurrentProject ? "page" : undefined}
+                    className={`group flex items-center justify-between p-4 transition-colors ${
+                      isCurrentProject
+                        ? "cursor-default bg-primary/5"
+                        : "cursor-pointer hover:bg-panel-2"
+                    }`}
+                    onClick={() => handleSelectProject(project)}
+                  >
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     {/* Project Icon */}
-                    <div className="flex-shrink-0">
+                    <div className="relative flex-shrink-0">
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Music className="text-primary text-lg" />
                       </div>
+                      {isCurrentProject ? (
+                        <span
+                          className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-panel"
+                          aria-label={text(
+                            locale,
+                            "โปรเจกต์ที่กำลังเปิดอยู่",
+                            "Currently open project"
+                          )}
+                        >
+                          <Check className="size-3" strokeWidth={3} />
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Project Info */}
@@ -159,8 +204,9 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
                       />
                     </div>
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 px-4">
@@ -190,8 +236,11 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
       </ModalCommon>
 
       <NewProjectModal
-        open={isNewProjectModalOpen}
-        onClose={() => setIsNewProjectModalOpen(false)}
+        open={isNewProjectModalOpen && !isProjectOpening}
+        onClose={() => {
+          setIsNewProjectModalOpen(false);
+        }}
+        onLoadingChange={handleNewProjectLoadingChange}
       />
     </>
   );

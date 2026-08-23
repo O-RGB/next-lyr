@@ -62,6 +62,46 @@ export const createLineSelectionActions: StateCreator<
       });
     },
 
+    selectLineRange: (lineIndex) => {
+      const state = get();
+      if (!state.lineSelectionMode || state.isPlaying || state.isTimingActive) {
+        return;
+      }
+
+      const anchor = state.lineSelectionAnchor ?? lineIndex;
+      const from = Math.min(anchor, lineIndex);
+      const to = Math.max(anchor, lineIndex);
+      set({
+        selectedLineIndices: Array.from(
+          { length: to - from + 1 },
+          (_, index) => from + index
+        ),
+        lineSelectionAnchor: anchor,
+        lineShiftArmed: false,
+      });
+    },
+
+    selectAllLines: () => {
+      const state = get();
+      if (
+        !state.lineSelectionMode ||
+        state.isPlaying ||
+        state.isTimingActive ||
+        state.lyricsData.length === 0
+      ) {
+        return;
+      }
+
+      set({
+        selectedLineIndices: Array.from(
+          { length: state.lyricsData.length },
+          (_, index) => index
+        ),
+        lineSelectionAnchor: 0,
+        lineShiftArmed: false,
+      });
+    },
+
     clearLineSelection: () =>
       set({
         selectedLineIndices: [],

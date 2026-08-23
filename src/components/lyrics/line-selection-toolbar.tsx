@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Keyboard, Trash2, X } from "lucide-react";
+import { ListChecks, ListRestart, Settings2, Trash2, X } from "lucide-react";
 
 import ButtonCommon from "@/components/common/button";
 import {
@@ -33,10 +33,6 @@ export default function LineSelectionToolbar({
   const selectedLineIndices = useKaraokeStore(
     (state) => state.selectedLineIndices
   );
-  const selectionAnchor = useKaraokeStore(
-    (state) => state.lineSelectionAnchor
-  );
-  const shiftArmed = useKaraokeStore((state) => state.lineShiftArmed);
   const isTiming = useKaraokeStore(
     (state) => state.isTimingActive || state.editingLineIndex !== null
   );
@@ -80,12 +76,12 @@ export default function LineSelectionToolbar({
         type="button"
         color="danger"
         variant="outline"
-        size={compact ? "xs" : "sm"}
+        size={actionButtonsCompact ? "xs" : "sm"}
         icon={<X />}
         onClick={() => actions.setLineSelectionMode(false)}
         title={text(locale, "ยกเลิกการเลือก", "Clear selection")}
       >
-        {compact ? null : text(locale, "ยกเลิกเลือก", "Clear selection")}
+        {text(locale, "ยกเลิกเลือก", "Clear selection")}
       </ButtonCommon>
 
       <DropdownMenu>
@@ -96,7 +92,7 @@ export default function LineSelectionToolbar({
               color="white"
               variant="solid"
               size={actionButtonsCompact ? "xs" : "sm"}
-              icon={<Clock3 />}
+              icon={<Settings2 />}
               disabled={!canOperate}
               title={text(locale, "การทำงานกับบรรทัดที่เลือก", "Actions for selected lines")}
             >
@@ -117,10 +113,17 @@ export default function LineSelectionToolbar({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              disabled={selectedCount === lyricsData.length}
+              onClick={() => actions.selectAllLines()}
+            >
+              <ListChecks />
+              <span>{text(locale, "เลือกทั้งหมด", "Select all")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
               disabled={!canOperate}
               onClick={() => handleRetimingLines(selectedLineIndices)}
             >
-              <Clock3 />
+              <ListRestart />
               <span>{text(locale, "ปาดใหม่", "Retiming")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!canOperate} onClick={handleDelete}>
@@ -131,19 +134,6 @@ export default function LineSelectionToolbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ButtonCommon
-        type="button"
-        color={shiftArmed ? "warning" : "white"}
-        variant={shiftArmed ? "outline" : "solid"}
-        size={actionButtonsCompact ? "xs" : "sm"}
-        icon={<Keyboard />}
-        disabled={selectionAnchor === null}
-        onClick={() => actions.toggleLineShift()}
-        title={text(locale, "Shift: เลือกช่วงจากบรรทัดล่าสุด", "Shift: select a range from the latest line")}
-        aria-pressed={shiftArmed}
-      >
-        {actionButtonsCompact ? null : "Shift"}
-      </ButtonCommon>
     </div>
   );
 }

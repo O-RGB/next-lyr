@@ -54,8 +54,13 @@ export default function usePreventPullToRefresh() {
       touchPosition.x = touch.clientX;
       touchPosition.y = touch.clientY;
 
-      // Leave horizontal lyric gestures alone.
-      if (Math.abs(deltaY) <= Math.abs(deltaX)) return;
+      // Lock horizontal swipes at the document level. The lyric canvas handles
+      // its own horizontal word movement from pointer events, so preventing
+      // the browser gesture here does not remove that editor interaction.
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (event.cancelable) event.preventDefault();
+        return;
+      }
 
       const scrollableParent = findScrollableParent(event.target);
       if (!scrollableParent) {

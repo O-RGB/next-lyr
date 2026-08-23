@@ -96,15 +96,15 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
       </header>
 
       {isMobile ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {preview && (
-            <div className="flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
+            <div className="mb-2 flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
               <LyricsPreview textStyle={{ fontSize: 20 }} />
             </div>
           )}
 
           {showingChordPanel ? (
-            <div className="z-10 flex h-[120px] shrink-0 gap-2">
+            <div className="z-10 mb-2 flex h-[120px] shrink-0 gap-2">
               {showingChords ? (
                 <div className="min-w-0 flex-1">
                   <ChordOverviewPreview compact />
@@ -126,25 +126,27 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
           </div>
 
           {showActionToolbar ? (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mt-2 flex shrink-0 items-center gap-1.5">
               <MobileActionButton showPreview={false} />
             </div>
           ) : null}
           {showRetimingAll ? (
-            <div className="flex shrink-0 justify-end gap-1.5">
+            <div className="mt-2 flex shrink-0 justify-end gap-1.5">
               <RetimingAllButton />
             </div>
           ) : null}
-          <LyricsMobileControls
-            tools={
-              <LyricsEditorMenu
-                preview={preview}
-                onPreviewChange={setPreviewVisible}
-                chordPanelVisible={chordPanelVisible}
-                onChordPanelVisibilityChange={setChordPanelVisible}
-              />
-            }
-          />
+          <div className={showActionToolbar || showRetimingAll ? "mt-2" : undefined}>
+            <LyricsMobileControls
+              tools={
+                <LyricsEditorMenu
+                  preview={preview}
+                  onPreviewChange={setPreviewVisible}
+                  chordPanelVisible={chordPanelVisible}
+                  onChordPanelVisibilityChange={setChordPanelVisible}
+                />
+              }
+            />
+          </div>
         </div>
       ) : (
         <>

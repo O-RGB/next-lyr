@@ -68,7 +68,7 @@ const getWordPadding = () => getGridMetrics().wordPadding;
 const HORIZONTAL_RESET_DURATION_MS = 220;
 const HORIZONTAL_OFFSET_EPSILON = 0.5;
 const LINE_SELECTION_LONG_PRESS_MS = 450;
-const POINTER_MOVE_CANCEL_DISTANCE = 6;
+const POINTER_MOVE_CANCEL_DISTANCE = 12;
 const DOUBLE_ACTIVATION_WINDOW_MS = 360;
 
 interface WordHitBox {
@@ -100,13 +100,6 @@ const LyricsGrid: React.FC = () => {
   const lineSelectionMode = useKaraokeStore(
     (state) => state.lineSelectionMode
   );
-  const selectedLineIndices = useKaraokeStore(
-    (state) => state.selectedLineIndices
-  );
-  const lineSelectionAnchor = useKaraokeStore(
-    (state) => state.lineSelectionAnchor
-  );
-  const lineShiftArmed = useKaraokeStore((state) => state.lineShiftArmed);
   const hideLineActions = useKaraokeStore(
     (state) =>
       state.isPlaying ||
@@ -142,6 +135,14 @@ const LyricsGrid: React.FC = () => {
     timer: ReturnType<typeof setTimeout>;
     fired: boolean;
   } | null>(null);
+  const selectionDragRef = useRef<{
+    pointerId: number;
+    currentLineIndex: number;
+    clientY: number;
+  } | null>(null);
+  const selectionAutoScrollFrameRef = useRef<number | null>(null);
+  const selectionAutoScrollDirectionRef = useRef(0);
+  const selectionAutoScrollSpeedRef = useRef(0);
   const doubleActivationRef = useRef<{
     lineIndex: number;
     at: number;
@@ -160,6 +161,70 @@ const LyricsGrid: React.FC = () => {
       if (dirtyRef.current) drawRef.current();
     });
   }, []);
+
+  const stopSelectionAutoScroll = useCallback(() => {
+    selectionAutoScrollDirectionRef.current = 0;
+    selectionAutoScrollSpeedRef.current = 0;
+    if (selectionAutoScrollFrameRef.current !== null) {
+      cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+      selectionAutoScrollFrameRef.current = null;
+    }
+  }, []);
+
+  const updateSelectionDragLine = useCallback(
+    (clientY: number) => {
+      const selectionDrag = selectionDragRef.current;
+      const canvas = canvasRef.current;
+      const scroll = scrollRef.current;
+      if (!selectionDrag || !canvas || !scroll) return;
+
+      selectionDrag.clientY = clientY;
+      const rect = canvas.getBoundingClientRect();
+      const nextLineIndex = clamp(
+        Math.floor(
+          (clientY - rect.top + scroll.scrollTop) / getRowHeight()
+        ),
+        0,
+        Math.max(0, linesRef.current.length - 1)
+      );
+      if (nextLineIndex === selectionDrag.currentLineIndex) return;
+
+      selectionDrag.currentLineIndex = nextLineIndex;
+      actions.selectLineRange(nextLineIndex);
+      markDirty();
+    },
+    [actions, markDirty]
+  );
+
+  const runSelectionAutoScroll = useCallback(() => {
+    if (selectionAutoScrollFrameRef.current !== null) return;
+
+    const step = () => {
+      selectionAutoScrollFrameRef.current = null;
+      const selectionDrag = selectionDragRef.current;
+      const scroll = scrollRef.current;
+      const direction = selectionAutoScrollDirectionRef.current;
+      if (!selectionDrag || !scroll || direction === 0) return;
+
+      const maxScroll = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+      const nextScrollTop = clamp(
+        scroll.scrollTop + direction * selectionAutoScrollSpeedRef.current,
+        0,
+        maxScroll
+      );
+      if (nextScrollTop !== scroll.scrollTop) {
+        scroll.scrollTop = nextScrollTop;
+        updateSelectionDragLine(selectionDrag.clientY);
+      } else {
+        stopSelectionAutoScroll();
+        return;
+      }
+
+      selectionAutoScrollFrameRef.current = requestAnimationFrame(step);
+    };
+
+    selectionAutoScrollFrameRef.current = requestAnimationFrame(step);
+  }, [stopSelectionAutoScroll, updateSelectionDragLine]);
 
   const clearLineSelectionLongPress = useCallback(() => {
     const longPress = longPressRef.current;
@@ -445,14 +510,42 @@ const LyricsGrid: React.FC = () => {
         ctx.fillRect(0, y + getRowHeight() - 1, size.width, 1);
       }
 
-      ctx.fillStyle = colors.muted;
-      ctx.font = `600 10px ${monoFamily}`;
+      const showLineSelectionButton =
+        state.lineSelectionMode &&
+        !state.isPlaying &&
+        !state.isTimingActive &&
+        state.editingLineIndex === null;
+      const lineCenterY = y + getRowHeight() / 2;
       ctx.textAlign = "center";
-      ctx.fillText(
-        String(lineIndex + 1),
-        getLeftGutter() / 2,
-        y + getRowHeight() / 2
-      );
+      ctx.font = `600 10px ${monoFamily}`;
+      if (showLineSelectionButton) {
+        const buttonSize = Math.min(22, Math.max(16, getLeftGutter() - 10));
+        const buttonX = (getLeftGutter() - buttonSize) / 2;
+        const buttonY = lineCenterY - buttonSize / 2;
+        const isAnchor =
+          state.lineShiftArmed && state.lineSelectionAnchor === lineIndex;
+        const isChecked = state.selectedLineIndices.includes(lineIndex);
+
+        ctx.fillStyle = isAnchor
+          ? colors.selectionAnchor
+          : isChecked
+            ? colors.active
+            : colors.box;
+        ctx.fillRect(buttonX, buttonY, buttonSize, buttonSize);
+        ctx.strokeStyle = isAnchor
+          ? colors.selectionAnchorBorder
+          : isChecked
+            ? colors.active
+            : colors.border;
+        ctx.lineWidth = isAnchor ? 2 : 1;
+        ctx.strokeRect(buttonX, buttonY, buttonSize, buttonSize);
+
+        ctx.fillStyle = isAnchor || isChecked ? "#ffffff" : colors.muted;
+        ctx.fillText(String(lineIndex + 1), getLeftGutter() / 2, lineCenterY);
+      } else {
+        ctx.fillStyle = colors.muted;
+        ctx.fillText(String(lineIndex + 1), getLeftGutter() / 2, lineCenterY);
+      }
 
       const availableWidth = Math.max(
         1,
@@ -933,9 +1026,35 @@ const LyricsGrid: React.FC = () => {
         horizontalResetFrameRef.current = null;
       }
       clearLineSelectionLongPress();
+      selectionDragRef.current = null;
+      stopSelectionAutoScroll();
       horizontalResetAnimations.clear();
+      };
+  }, [clearLineSelectionLongPress, stopSelectionAutoScroll]);
+
+  useEffect(() => {
+    if (lineSelectionMode) return;
+
+    clearLineSelectionLongPress();
+    selectionDragRef.current = null;
+    stopSelectionAutoScroll();
+    if (canvasRef.current) canvasRef.current.style.touchAction = "pan-y";
+  }, [
+    clearLineSelectionLongPress,
+    lineSelectionMode,
+    stopSelectionAutoScroll,
+  ]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (selectionDragRef.current) event.preventDefault();
     };
-  }, [clearLineSelectionLongPress]);
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => canvas.removeEventListener("touchmove", handleTouchMove);
+  }, []);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -955,9 +1074,11 @@ const LyricsGrid: React.FC = () => {
       if (linesRef.current.length === 0) return;
 
       clearLineSelectionLongPress();
+      selectionDragRef.current = null;
+      stopSelectionAutoScroll();
       const state = useKaraokeStore.getState();
       if (
-        !state.lineSelectionMode &&
+        event.pointerType === "touch" &&
         !state.isPlaying &&
         state.editingLineIndex === null
       ) {
@@ -972,23 +1093,40 @@ const LyricsGrid: React.FC = () => {
             if (
               !activeLongPress ||
               activeLongPress.pointerId !== event.pointerId ||
-              currentState.lineSelectionMode ||
               currentState.isPlaying ||
               currentState.editingLineIndex !== null
             ) {
               return;
             }
 
+            // Every long-press starts a fresh range. Do not carry the
+            // previous selection or anchor into a new touch gesture.
             currentState.actions.setLineSelectionMode(true);
             currentState.actions.toggleLineSelection(lineIndex);
+
+            selectionDragRef.current = {
+              pointerId: event.pointerId,
+              currentLineIndex: lineIndex,
+              clientY: event.clientY,
+            };
             activeLongPress.fired = true;
             dragRef.current = null;
+            canvas.style.touchAction = "none";
+            try {
+              canvas.setPointerCapture(event.pointerId);
+            } catch {
+              // The pointer may have ended while the long-press timer fired.
+            }
             markDirty();
           }, LINE_SELECTION_LONG_PRESS_MS),
           fired: false,
         };
         longPressRef.current = longPress;
       }
+
+      // Selection mode reserves a touch for the long-press range gesture.
+      // A normal tap still reaches pointerup and toggles one line.
+      if (state.lineSelectionMode) return;
 
       const availableWidth = Math.max(
         1,
@@ -1009,11 +1147,50 @@ const LyricsGrid: React.FC = () => {
         moved: false,
       };
     },
-    [clearLineSelectionLongPress, markDirty]
+    [clearLineSelectionLongPress, markDirty, stopSelectionAutoScroll]
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
+      const selectionDrag = selectionDragRef.current;
+      const canvas = canvasRef.current;
+      const scroll = scrollRef.current;
+      if (
+        selectionDrag &&
+        selectionDrag.pointerId === event.pointerId &&
+        canvas &&
+        scroll
+      ) {
+        updateSelectionDragLine(event.clientY);
+        const rect = canvas.getBoundingClientRect();
+        const edgeThreshold = Math.min(72, Math.max(36, rect.height / 4));
+        const distanceToTop = event.clientY - rect.top;
+        const distanceToBottom = rect.bottom - event.clientY;
+        const nextDirection =
+          distanceToTop < edgeThreshold
+            ? -1
+            : distanceToBottom < edgeThreshold
+              ? 1
+              : 0;
+
+        if (nextDirection === 0) {
+          stopSelectionAutoScroll();
+        } else {
+          selectionAutoScrollDirectionRef.current = nextDirection;
+          const distanceToEdge = Math.max(
+            0,
+            nextDirection < 0 ? edgeThreshold - distanceToTop : edgeThreshold - distanceToBottom
+          );
+          selectionAutoScrollSpeedRef.current = Math.min(
+            18,
+            Math.max(5, 5 + Math.ceil(distanceToEdge / 4))
+          );
+          runSelectionAutoScroll();
+        }
+        event.preventDefault();
+        return;
+      }
+
       const longPress = longPressRef.current;
       if (
         longPress &&
@@ -1028,22 +1205,22 @@ const LyricsGrid: React.FC = () => {
       }
 
       const drag = dragRef.current;
-      const canvas = canvasRef.current;
-      if (!drag || !canvas) return;
+      const dragCanvas = canvasRef.current;
+      if (!drag || !dragCanvas) return;
 
       const delta = drag.startX - event.clientX;
       if (!drag.moved && Math.abs(delta) < 4) return;
       drag.moved = true;
-      if (!canvas.hasPointerCapture(event.pointerId)) {
-        canvas.setPointerCapture(event.pointerId);
+      if (!dragCanvas.hasPointerCapture(event.pointerId)) {
+        dragCanvas.setPointerCapture(event.pointerId);
       }
 
       const line = linesRef.current[drag.lineIndex] ?? [];
       const availableWidth = Math.max(
         1,
-        canvas.clientWidth - getLeftGutter() - getRightGutter() - 16
+        dragCanvas.clientWidth - getLeftGutter() - getRightGutter() - 16
       );
-      const metrics = getLineMetrics(canvas, line, availableWidth);
+      const metrics = getLineMetrics(dragCanvas, line, availableWidth);
       const nextOffset = clamp(
         drag.startOffset + delta,
         0,
@@ -1060,7 +1237,14 @@ const LyricsGrid: React.FC = () => {
       event.preventDefault();
       markDirty();
     },
-    [clearLineSelectionLongPress, markDirty]
+    [
+      actions,
+      clearLineSelectionLongPress,
+      markDirty,
+      runSelectionAutoScroll,
+      stopSelectionAutoScroll,
+      updateSelectionDragLine,
+    ]
   );
 
   const handlePointerUp = useCallback(
@@ -1068,6 +1252,22 @@ const LyricsGrid: React.FC = () => {
       const canvas = canvasRef.current;
       const scroll = scrollRef.current;
       if (!canvas || !scroll) return;
+
+      const selectionDrag = selectionDragRef.current;
+      if (
+        selectionDrag &&
+        selectionDrag.pointerId === event.pointerId
+      ) {
+        selectionDragRef.current = null;
+        clearLineSelectionLongPress();
+        stopSelectionAutoScroll();
+        canvas.style.touchAction = "pan-y";
+        if (canvas.hasPointerCapture(event.pointerId)) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+        markDirty();
+        return;
+      }
 
       const drag = dragRef.current;
       dragRef.current = null;
@@ -1185,6 +1385,11 @@ const LyricsGrid: React.FC = () => {
       if (longPressRef.current?.pointerId === event.pointerId) {
         clearLineSelectionLongPress();
       }
+      if (selectionDragRef.current?.pointerId === event.pointerId) {
+        selectionDragRef.current = null;
+        stopSelectionAutoScroll();
+        if (canvasRef.current) canvasRef.current.style.touchAction = "pan-y";
+      }
       dragRef.current = null;
     },
     [clearLineSelectionLongPress]
@@ -1282,42 +1487,6 @@ const LyricsGrid: React.FC = () => {
           onWheel={handleWheel}
           aria-label="Lyrics editor canvas"
         />
-        {lineSelectionMode && !hideLineActions && (
-          <div className="pointer-events-none absolute inset-0 z-30">
-            {lyricsData.map((_, lineIndex) => {
-              const checked = selectedLineIndices.includes(lineIndex);
-              const isAnchor =
-                lineShiftArmed && lineSelectionAnchor === lineIndex;
-              return (
-                <button
-                  key={`line-select-${lineIndex}`}
-                  type="button"
-                  className={`pointer-events-auto absolute left-1 flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-semibold transition ${
-                    isAnchor
-                      ? "border-warn bg-warn/15 text-warn ring-2 ring-warn/30"
-                      : checked
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-line-strong bg-panel text-muted-foreground hover:border-primary hover:text-primary"
-                  }`}
-                  style={{
-                    top:
-                      lineIndex * gridMetrics.rowHeight +
-                      gridMetrics.rowHeight / 2,
-                    transform: "translateY(-50%)",
-                  }}
-                  aria-label={`${checked ? "ยกเลิกเลือก" : "เลือก"} บรรทัด ${lineIndex + 1}`}
-                  aria-pressed={checked}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    actions.toggleLineSelection(lineIndex, event.shiftKey);
-                  }}
-                >
-                  {lineIndex + 1}
-                </button>
-              );
-            })}
-          </div>
-        )}
         {!hideLineActions && !lineSelectionMode && (
           <div className="pointer-events-none absolute inset-0 z-20">
             {lyricsData.map((_, lineIndex) => (

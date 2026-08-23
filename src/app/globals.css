@@ -292,6 +292,8 @@
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
   }
 
   body.editor-viewport-lock {
@@ -302,6 +304,8 @@
     min-height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
   }
 
   button,
@@ -332,6 +336,8 @@
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   background: linear-gradient(180deg, var(--panel) 0 56px, var(--base) 56px);
 }
 
@@ -342,6 +348,25 @@
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Keep mobile modals inside the usable safe-area viewport with a small,
+   intentional gap around the card. The gap also leaves a comfortable blank
+   area for dismissing the modal without making the content feel cramped. */
+@media (max-width: 639px) {
+  .app-modal-content {
+    top: calc(
+      50% +
+        (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2
+    );
+    max-height: min(
+      86dvh,
+      calc(
+        100dvh - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 2rem
+      )
+    );
+  }
 }
 
 .dark .app-shell {

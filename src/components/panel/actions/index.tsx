@@ -20,7 +20,7 @@ const MobileActionButton: React.FC<MobileActionButtonProps> = ({
   return (
     <>
       <div className="mr-auto flex items-center gap-1.5">
-        <RetimingCancelButton />
+        <RetimingCancelButton compact showLabel />
         {showLineSelection ? (
           <LineSelectionToolbar compactActions />
         ) : null}
