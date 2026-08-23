@@ -1,6 +1,13 @@
 import { LyricWordData } from "@/types/common.type";
 import { ThaiKaraoke } from "../thai-karaoke";
 
+export function hasCompleteLyricTiming(
+  lyricsData: LyricWordData[][]
+): boolean {
+  const words = lyricsData.flat();
+  return words.length > 0 && words.every((word) => word.at !== null);
+}
+
 export function processRawLyrics(
   rawText: string,
   autoSub: boolean

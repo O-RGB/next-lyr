@@ -3,7 +3,6 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
-import RetimingCancelButton from "@/components/common/retiming-cancel";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 
@@ -66,7 +65,6 @@ export function LyricsMobileControls() {
         >
           <ArrowRight className="mx-auto" />
         </button>
-        <RetimingCancelButton compact />
         <span className={`ml-1 h-2 w-2 rounded-full ${isPlaying ? "bg-brand-2" : "bg-line-strong"}`} />
       </div>
     </div>

@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ModalCommon from "@/components/common/modal";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -177,19 +178,19 @@ export function SettingsDialog() {
   };
 
   return (
-    <Dialog
+    <ModalCommon
       open={dialog === "settings"}
-      onOpenChange={(next) => openDialog(next ? "settings" : null)}
+      onClose={() => openDialog(null)}
+      title={text(uiLocale, "ตั้งค่า", "Settings")}
+      description={text(
+        uiLocale,
+        "ค่าการเล่นเก็บไว้ในเครื่องนี้ ส่วน SoundFont จะผูกกับโปรเจกต์",
+        "Playback settings are stored on this device; SoundFonts belong to the project"
+      )}
+      footer={null}
+      modalClassName="sm:max-w-lg"
     >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{text(uiLocale, "ตั้งค่า", "Settings")}</DialogTitle>
-          <DialogDescription>
-            {text(uiLocale, "ค่าการเล่นเก็บไว้ในเครื่องนี้ ส่วน SoundFont จะผูกกับโปรเจกต์", "Playback settings are stored on this device; SoundFonts belong to the project")}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3">
+      <div className="space-y-3">
           <Section icon={<Gauge className="size-4 text-primary" />} title={text(uiLocale, "เสียง", "Audio")}>
             <SettingSlider
               label={text(uiLocale, "ระดับเสียง", "Master volume")}
@@ -417,9 +418,8 @@ export function SettingsDialog() {
               {text(uiLocale, "คืนค่าเริ่มต้น", "Reset to defaults")}
             </Button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </ModalCommon>
   );
 }
 

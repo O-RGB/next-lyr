@@ -2,7 +2,6 @@
 import { Loader2, Pause, Play, Square } from "lucide-react";
 import React from "react";
 import { TimerRange } from "./render-time";
-import RetimingCancelButton from "@/components/common/retiming-cancel";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 
@@ -86,7 +85,6 @@ const CommonPlayerStyle: React.FC<CommonPlayerStyleProps> = ({
         onPlayPause={onPlayPause}
         onStop={onStop}
       />
-      <RetimingCancelButton className="hidden lg:inline-flex" />
       {isLoading && (
         <span
           className="whitespace-nowrap text-xs text-muted-foreground"

@@ -63,6 +63,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [metadataModalOpen, setMetadataModalOpen] = useState(false);
+  const [metadataDirty, setMetadataDirty] = useState(false);
+  const [metadataFormVersion, setMetadataFormVersion] = useState(0);
   const handleCloseModal = () => {
     setMetadataModalOpen(false);
     setOpenModal(false);
@@ -71,6 +73,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
   const validation = () => {
     if (getMissingRequiredSongInfo(metadata).length > 0) {
+      setMetadataDirty(false);
+      setMetadataFormVersion((version) => version + 1);
       setMetadataModalOpen(true);
       return false;
     }
@@ -87,6 +91,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
   const handleMetadataSaved = () => {
     if (getMissingRequiredSongInfo(useKaraokeStore.getState().metadata).length === 0) {
+      setMetadataDirty(false);
       setMetadataModalOpen(false);
     }
   };
@@ -395,6 +400,11 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       </ModalCommon>
       <ModalCommon
         title={text(locale, "กรอกข้อมูลเพลงที่จำเป็น", "Complete required metadata")}
+        description={text(
+          locale,
+          "คุณยังกรอกข้อมูลเพลงที่จำเป็นไม่ครบ กรุณากรอกและกดบันทึกก่อนส่งออก แบบฟอร์มนี้เป็นขั้นตอนของ Export ไม่ใช่หน้าต่างแก้ไขข้อมูลปกติ",
+          "Required song information is incomplete. Complete it and save before exporting. This is the Export form, not the normal metadata editor."
+        )}
         open={metadataModalOpen}
         onClose={handleMetadataModalClose}
         showCloseButton={false}
@@ -403,16 +413,19 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           children: text(locale, "บันทึก", "Save"),
           form: "export-metadata-form",
           type: "submit",
+          disabled: !metadataDirty,
         }}
         cancelButtonProps={null}
       >
         <MetadataForm
+          key={metadataFormVersion}
           card={false}
           requiredFirst
           inputSize="md"
           className="flex flex-col gap-3"
           autoSave={false}
           formId="export-metadata-form"
+          onDirtyChange={setMetadataDirty}
           showRequiredErrors
           validateRequiredOnSave
           onSave={handleMetadataSaved}

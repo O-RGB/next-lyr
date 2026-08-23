@@ -17,14 +17,17 @@ import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 
 interface LineSelectionToolbarProps {
   compact?: boolean;
+  compactActions?: boolean;
 }
 
 /** Batch actions shown only after a line's menu starts selection mode. */
 export default function LineSelectionToolbar({
   compact = false,
+  compactActions = false,
 }: LineSelectionToolbarProps) {
   const selectionMode = useKaraokeStore((state) => state.lineSelectionMode);
   const selectedLineIndices = useKaraokeStore(
@@ -37,6 +40,7 @@ export default function LineSelectionToolbar({
   const isTiming = useKaraokeStore(
     (state) => state.isTimingActive || state.editingLineIndex !== null
   );
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const actions = useKaraokeStore((state) => state.actions);
   const requestConfirm = useUiStore((state) => state.requestConfirm);
   const handleRetimingLines = usePlayerHandlersStore(
@@ -44,10 +48,13 @@ export default function LineSelectionToolbar({
   );
   const locale = useSettingsStore((state) => state.uiLocale);
 
-  if (!selectionMode || isTiming) return null;
+  if (!selectionMode || isTiming || !hasCompleteLyricTiming(lyricsData)) {
+    return null;
+  }
 
   const selectedCount = selectedLineIndices.length;
   const canOperate = selectedCount > 0;
+  const actionButtonsCompact = compact || compactActions;
 
   const handleDelete = async () => {
     if (!canOperate) return;
@@ -88,12 +95,12 @@ export default function LineSelectionToolbar({
               type="button"
               color="white"
               variant="solid"
-              size={compact ? "xs" : "sm"}
+              size={actionButtonsCompact ? "xs" : "sm"}
               icon={<Clock3 />}
               disabled={!canOperate}
               title={text(locale, "การทำงานกับบรรทัดที่เลือก", "Actions for selected lines")}
             >
-              {compact ? null : text(locale, "การทำงาน", "Actions")}
+              {actionButtonsCompact ? null : text(locale, "การทำงาน", "Actions")}
             </ButtonCommon>
           }
         />
@@ -128,14 +135,14 @@ export default function LineSelectionToolbar({
         type="button"
         color={shiftArmed ? "warning" : "white"}
         variant={shiftArmed ? "outline" : "solid"}
-        size={compact ? "xs" : "sm"}
+        size={actionButtonsCompact ? "xs" : "sm"}
         icon={<Keyboard />}
         disabled={selectionAnchor === null}
         onClick={() => actions.toggleLineShift()}
         title={text(locale, "Shift: เลือกช่วงจากบรรทัดล่าสุด", "Shift: select a range from the latest line")}
         aria-pressed={shiftArmed}
       >
-        {compact ? null : "Shift"}
+        {actionButtonsCompact ? null : "Shift"}
       </ButtonCommon>
     </div>
   );

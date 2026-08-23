@@ -11,6 +11,8 @@ export const LYRICS_PREVIEW_SCROLL_REQUEST_EVENT =
   "next-lyr:lyrics-preview-scroll-request";
 export const LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT =
   "next-lyr:lyrics-grid-center-active-word";
+export const LYRICS_GRID_SCROLL_TO_LINE_EVENT =
+  "next-lyr:lyrics-grid-scroll-to-line";
 
 let latestLyricsPreviewViewport: LyricsPreviewViewport = {
   start: 0,
@@ -62,4 +64,14 @@ export function requestLyricsPreviewScroll(start: number): void {
 export function requestLyricsGridCenterActiveWord(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT));
+}
+
+/** Ask the editor canvas to bring a line into the vertical viewport. */
+export function requestLyricsGridScrollToLine(lineIndex: number): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<{ lineIndex: number }>(LYRICS_GRID_SCROLL_TO_LINE_EVENT, {
+      detail: { lineIndex },
+    })
+  );
 }

@@ -15,8 +15,10 @@ import { ProjectToolbar } from "./project-toolbar";
 import { useProjectLoader } from "./use-project-loader";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { text } from "@/features/settings/locale";
+import usePreventPullToRefresh from "@/hooks/usePreventPullToRefresh";
 
 export function ProjectPage({ projectId }: { projectId: string }) {
+  usePreventPullToRefresh();
   const project = useProjectLoader(projectId);
   const locale = useSettingsStore((state) => state.uiLocale);
 

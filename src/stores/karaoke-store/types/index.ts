@@ -156,7 +156,7 @@ export interface PlaybackActions {
 
 export interface LineSelectionActions {
   setLineSelectionMode: (enabled: boolean) => void;
-  toggleLineSelection: (lineIndex: number) => void;
+  toggleLineSelection: (lineIndex: number, withShift?: boolean) => void;
   clearLineSelection: () => void;
   setLineShiftArmed: (armed: boolean) => void;
   toggleLineShift: () => void;

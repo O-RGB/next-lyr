@@ -58,7 +58,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
       <DialogContent
         className={cn(
           // Wide enough for the lyric and chord tables this editor puts in modals.
-          "max-h-[92dvh] gap-0 overflow-hidden p-0 sm:max-w-[min(900px,92vw)]",
+          "flex max-h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(900px,92vw)]",
           modalClassName,
           className
         )}

@@ -32,6 +32,7 @@ type Props = {
   autoSave?: boolean;
   formId?: string;
   onSave?: (metadata: Partial<SongInfo>) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   requiredErrors?: Partial<Record<keyof SongInfo, string>>;
   showRequiredErrors?: boolean;
   validateRequiredOnSave?: boolean;
@@ -49,6 +50,7 @@ function MetadataForm({
   autoSave = true,
   formId,
   onSave,
+  onDirtyChange,
   requiredErrors,
   showRequiredErrors = false,
   validateRequiredOnSave = false,
@@ -85,6 +87,11 @@ function MetadataForm({
       ...useKaraokeStore.getState().metadata,
     },
   });
+  const isDirty = initName.formState.isDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const saveMetadata = () => {
     const currentValues = initName.getValues();

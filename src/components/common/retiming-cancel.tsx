@@ -33,7 +33,7 @@ export default function RetimingCancelButton({
       type="button"
       color="danger"
       variant="outline"
-      size={compact ? "sm" : "xs"}
+      size={compact ? "xs" : "sm"}
       circle={compact}
       icon={<X />}
       className={className}

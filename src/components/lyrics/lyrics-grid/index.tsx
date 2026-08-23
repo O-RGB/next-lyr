@@ -11,6 +11,7 @@ import { resizeCanvas, clamp } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
+import useIsMobile from "@/hooks/useIsMobile";
 import LineAction from "./line/actions";
 import {
   drawLyricWordBox,
@@ -23,18 +24,47 @@ import {
 } from "../lyrics-word-renderer";
 import {
   LYRICS_GRID_CENTER_ACTIVE_WORD_EVENT,
+  LYRICS_GRID_SCROLL_TO_LINE_EVENT,
   LYRICS_PREVIEW_SCROLL_REQUEST_EVENT,
   publishLyricsPreviewViewport,
 } from "../lyrics-preview-sync";
 
-// Keep the editor boxes readable without making each lyric row oversized.
-const ROW_HEIGHT = LYRICS_ROW_HEIGHT;
-const LEFT_GUTTER = LYRICS_LEFT_GUTTER;
-const RIGHT_GUTTER = LYRICS_RIGHT_GUTTER;
-const WORD_GAP = LYRICS_WORD_GAP;
-const WORD_HEIGHT = LYRICS_WORD_HEIGHT;
-const WORD_FONT_SIZE = 15;
-const VOCAL_FONT_SIZE = 8;
+const MOBILE_BREAKPOINT = 1024;
+const DESKTOP_GRID_METRICS = {
+  rowHeight: LYRICS_ROW_HEIGHT,
+  leftGutter: LYRICS_LEFT_GUTTER,
+  rightGutter: LYRICS_RIGHT_GUTTER,
+  wordGap: LYRICS_WORD_GAP,
+  wordHeight: LYRICS_WORD_HEIGHT,
+  wordFontSize: 15,
+  vocalFontSize: 8,
+  wordPadding: 24,
+};
+const MOBILE_GRID_METRICS = {
+  rowHeight: 58,
+  leftGutter: 30,
+  rightGutter: 28,
+  wordGap: 4,
+  wordHeight: 32,
+  wordFontSize: 13,
+  vocalFontSize: 7,
+  wordPadding: 16,
+};
+
+function getGridMetrics() {
+  return typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT
+    ? MOBILE_GRID_METRICS
+    : DESKTOP_GRID_METRICS;
+}
+
+const getRowHeight = () => getGridMetrics().rowHeight;
+const getLeftGutter = () => getGridMetrics().leftGutter;
+const getRightGutter = () => getGridMetrics().rightGutter;
+const getWordGap = () => getGridMetrics().wordGap;
+const getWordHeight = () => getGridMetrics().wordHeight;
+const getWordFontSize = () => getGridMetrics().wordFontSize;
+const getVocalFontSize = () => getGridMetrics().vocalFontSize;
+const getWordPadding = () => getGridMetrics().wordPadding;
 const HORIZONTAL_RESET_DURATION_MS = 220;
 const HORIZONTAL_OFFSET_EPSILON = 0.5;
 const LINE_SELECTION_LONG_PRESS_MS = 450;
@@ -58,6 +88,10 @@ interface WordHitBox {
  * in one viewport canvas. The hot playback clock never enters React render.
  */
 const LyricsGrid: React.FC = () => {
+  // Re-render when the viewport crosses the mobile breakpoint so the spacer
+  // and the canvas use the same compact metrics after rotation/resize.
+  const isMobile = useIsMobile();
+  const gridMetrics = isMobile ? MOBILE_GRID_METRICS : getGridMetrics();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const locale = useSettingsStore((state) => state.uiLocale);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
@@ -211,7 +245,7 @@ const LyricsGrid: React.FC = () => {
 
     return clamp(
       Math.floor(
-        (scroll.scrollTop + scroll.clientHeight / 2) / ROW_HEIGHT
+        (scroll.scrollTop + scroll.clientHeight / 2) / getRowHeight()
       ),
       0,
       Math.max(0, linesRef.current.length - 1)
@@ -249,10 +283,10 @@ const LyricsGrid: React.FC = () => {
     const state = useKaraokeStore.getState();
     const lines = linesRef.current;
     const scrollTop = scroll.scrollTop;
-    const firstLine = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 1);
+    const firstLine = Math.max(0, Math.floor(scrollTop / getRowHeight()) - 1);
     const lastLine = Math.min(
       lines.length,
-      Math.ceil((scrollTop + size.height) / ROW_HEIGHT) + 1
+      Math.ceil((scrollTop + size.height) / getRowHeight()) + 1
     );
     const isDark = document.documentElement.classList.contains("dark");
     const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
@@ -342,7 +376,7 @@ const LyricsGrid: React.FC = () => {
 
     for (let lineIndex = firstLine; lineIndex < lastLine; lineIndex += 1) {
       const line = lines[lineIndex] ?? [];
-      const y = lineIndex * ROW_HEIGHT - scrollTop;
+      const y = lineIndex * getRowHeight() - scrollTop;
       const isPassedLine =
         focusLineIndex >= 0 && lineIndex < focusLineIndex;
       const isRetimingMode = state.editingLineIndex !== null;
@@ -384,48 +418,52 @@ const LyricsGrid: React.FC = () => {
         state.isTimingActive && state.timingBuffer?.lineIndex === lineIndex;
 
       ctx.fillStyle = lineIndex % 2 === 0 ? colors.base : colors.alt;
-      ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+      ctx.fillRect(0, y, size.width, getRowHeight());
       if (isRetimingTargetLine) {
         // Keep every line selected for this retiming session visible as one
         // orange preparation set, even while disconnected groups are handled
         // one group at a time by the keyboard workflow.
         ctx.fillStyle = colors.warnSoft;
-        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+        ctx.fillRect(0, y, size.width, getRowHeight());
       } else if (isSelectionAnchor) {
         ctx.fillStyle = colors.selectionAnchor;
-        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+        ctx.fillRect(0, y, size.width, getRowHeight());
         ctx.fillStyle = colors.selectionAnchorBorder;
         ctx.fillRect(0, y, size.width, 2);
-        ctx.fillRect(0, y + ROW_HEIGHT - 2, size.width, 2);
+        ctx.fillRect(0, y + getRowHeight() - 2, size.width, 2);
       } else if (isLineSelected) {
         ctx.fillStyle = colors.lineSelected;
-        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+        ctx.fillRect(0, y, size.width, getRowHeight());
       } else if (selected || isTimingLine) {
         ctx.fillStyle = colors.selected;
-        ctx.fillRect(0, y, size.width, ROW_HEIGHT);
+        ctx.fillRect(0, y, size.width, getRowHeight());
       }
       // Row rules separate lyric lines; do not paint one at the viewport edge
       // because the scroll container already owns that boundary.
-      if (y + ROW_HEIGHT < size.height - 0.5) {
+      if (y + getRowHeight() < size.height - 0.5) {
         ctx.fillStyle = colors.border;
-        ctx.fillRect(0, y + ROW_HEIGHT - 1, size.width, 1);
+        ctx.fillRect(0, y + getRowHeight() - 1, size.width, 1);
       }
 
       ctx.fillStyle = colors.muted;
       ctx.font = `600 10px ${monoFamily}`;
       ctx.textAlign = "center";
-      ctx.fillText(String(lineIndex + 1), LEFT_GUTTER / 2, y + ROW_HEIGHT / 2);
+      ctx.fillText(
+        String(lineIndex + 1),
+        getLeftGutter() / 2,
+        y + getRowHeight() / 2
+      );
 
       const availableWidth = Math.max(
         1,
-        size.width - LEFT_GUTTER - RIGHT_GUTTER - 16
+        size.width - getLeftGutter() - getRightGutter() - 16
       );
-      ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
+      ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
       const wordWidths = measureWords(ctx, line);
       const totalWidth =
         wordWidths.reduce((sum, width) => sum + width, 0) +
-        Math.max(0, line.length - 1) * WORD_GAP;
-      const startX = LEFT_GUTTER + 8;
+        Math.max(0, line.length - 1) * getWordGap();
+      const startX = getLeftGutter() + 8;
       const maxLineScroll = Math.max(0, totalWidth - availableWidth);
       const lineScrollLeft = clamp(
         lineScrollRef.current.get(lineIndex) ?? 0,
@@ -436,15 +474,15 @@ const LyricsGrid: React.FC = () => {
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(startX, y, availableWidth, ROW_HEIGHT);
+      ctx.rect(startX, y, availableWidth, getRowHeight());
       ctx.clip();
       ctx.textAlign = "center";
       line.forEach((word, wordIndex) => {
-        ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
+        ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
         // Keep the measured width. Overflow is clipped and scrolled within
         // this line's own word area.
         const boxWidth = wordWidths[wordIndex];
-        const boxY = y + (ROW_HEIGHT - WORD_HEIGHT) / 2;
+        const boxY = y + (getRowHeight() - getWordHeight()) / 2;
         const boxX = x;
         const isPlaybackActive =
           canShowPlaybackHighlight && state.playbackIndex === word.index;
@@ -499,7 +537,7 @@ const LyricsGrid: React.FC = () => {
           boxX,
           boxY,
           boxWidth,
-          WORD_HEIGHT,
+          getWordHeight(),
           {
             fill: isDisabledLine
               ? colors.disabledBox
@@ -517,8 +555,8 @@ const LyricsGrid: React.FC = () => {
           },
           {
             fontFamily,
-            fontSize: WORD_FONT_SIZE,
-            vocalFontSize: VOCAL_FONT_SIZE,
+            fontSize: getWordFontSize(),
+            vocalFontSize: getVocalFontSize(),
             radius: 5,
             lineWidth:
               isRetimingTarget || isActive || showCorrectionVisual ? 2 : 1,
@@ -532,10 +570,10 @@ const LyricsGrid: React.FC = () => {
             left: Math.max(boxX, startX),
             top: boxY,
             right: Math.min(boxX + boxWidth, startX + availableWidth),
-            bottom: boxY + WORD_HEIGHT,
+            bottom: boxY + getWordHeight(),
           });
         }
-        x += boxWidth + WORD_GAP;
+        x += boxWidth + getWordGap();
       });
       ctx.restore();
 
@@ -574,6 +612,11 @@ const LyricsGrid: React.FC = () => {
       scroll.removeEventListener("scroll", handleScroll);
     };
   }, [markDirty, resetHiddenLineScrolls, resize]);
+
+  useEffect(() => {
+    resize();
+    markDirty();
+  }, [isMobile, markDirty, resize]);
 
   useEffect(() => {
     const handleScrollRequest = (event: Event) => {
@@ -644,14 +687,14 @@ const LyricsGrid: React.FC = () => {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
-        ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
+        ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
         const wordWidths = measureWords(ctx, line);
         const totalWidth =
           wordWidths.reduce((sum, width) => sum + width, 0) +
-          Math.max(0, line.length - 1) * WORD_GAP;
+          Math.max(0, line.length - 1) * getWordGap();
         const availableWidth = Math.max(
           1,
-          scroll.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
+          scroll.clientWidth - getLeftGutter() - getRightGutter() - 16
         );
         const lineOffset = getLineScrollLeft(
           line,
@@ -739,13 +782,13 @@ const LyricsGrid: React.FC = () => {
         markDirty();
         return;
       }
-      const target = selectedLineIndex * ROW_HEIGHT;
+      const target = selectedLineIndex * getRowHeight();
       const scroll = scrollRef.current;
       const centeredTop = Math.max(
         0,
         Math.min(
           Math.max(0, scroll.scrollHeight - scroll.clientHeight),
-          target - scroll.clientHeight / 2 + ROW_HEIGHT / 2
+          target - scroll.clientHeight / 2 + getRowHeight() / 2
         )
       );
       const isCentered = Math.abs(scroll.scrollTop - centeredTop) <= 2;
@@ -759,11 +802,29 @@ const LyricsGrid: React.FC = () => {
     };
 
     const initialState = useKaraokeStore.getState();
-    scrollToSelectedLine(initialState.selectedLineIndex);
+    let followedPlaybackLineIndex: number | null = null;
     syncActiveLineScroll(initialState);
-    return useKaraokeStore.subscribe((next, previous) => {
+    const handleScrollToLine = (event: Event) => {
+      const lineIndex = (event as CustomEvent<{ lineIndex?: number }>).detail
+        ?.lineIndex;
+      if (typeof lineIndex !== "number" || !Number.isInteger(lineIndex)) {
+        return;
+      }
+      scrollToSelectedLine(lineIndex, true);
+    };
+    window.addEventListener(
+      LYRICS_GRID_SCROLL_TO_LINE_EVENT,
+      handleScrollToLine
+    );
+    const unsubscribe = useKaraokeStore.subscribe((next, previous) => {
       const selectedLineChanged =
         next.selectedLineIndex !== previous.selectedLineIndex;
+      const playbackLineIndex =
+        next.isPlaying && next.playbackIndex !== null
+          ? next.lyricsData.find((line) =>
+              line.some((word) => word.index === next.playbackIndex)
+            )?.[0]?.lineIndex ?? null
+          : null;
       if (selectedLineChanged) {
         // A line's horizontal scroll is only useful while that line is
         // active. Reset the line we just left so returning to it never opens
@@ -771,10 +832,23 @@ const LyricsGrid: React.FC = () => {
         if (previous.selectedLineIndex !== null) {
           resetLineScroll(previous.selectedLineIndex);
         }
-        // A line transition is the vertical follow trigger. Put the new line
-        // on the viewport centre even when the old line was still visible.
-        scrollToSelectedLine(next.selectedLineIndex, true);
         syncActiveLineScroll(next);
+        // Canvas highlights are rendered outside React, so selecting a line
+        // must explicitly request a redraw even when no horizontal offset
+        // changed.
+        markDirty();
+      }
+      if (!next.isPlaying) {
+        followedPlaybackLineIndex = null;
+      } else if (
+        playbackLineIndex !== null &&
+        playbackLineIndex !== followedPlaybackLineIndex
+      ) {
+        // Only the active playback word may move the vertical viewport.
+        // Selecting/highlighting a line must remain a local action, even if
+        // the player is already running.
+        followedPlaybackLineIndex = playbackLineIndex;
+        scrollToSelectedLine(playbackLineIndex, true);
       }
       if (
         next.editingLineIndex !== previous.editingLineIndex &&
@@ -819,6 +893,13 @@ const LyricsGrid: React.FC = () => {
         markDirty();
       }
     });
+    return () => {
+      window.removeEventListener(
+        LYRICS_GRID_SCROLL_TO_LINE_EVENT,
+        handleScrollToLine
+      );
+      unsubscribe();
+    };
   }, [autoScroll, markDirty, resetLineScroll, syncActiveLineScroll]);
 
   useEffect(() => {
@@ -866,7 +947,7 @@ const LyricsGrid: React.FC = () => {
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const lineIndex = clamp(
-        Math.floor((y + scroll.scrollTop) / ROW_HEIGHT),
+        Math.floor((y + scroll.scrollTop) / getRowHeight()),
         0,
         Math.max(0, linesRef.current.length - 1)
       );
@@ -911,9 +992,9 @@ const LyricsGrid: React.FC = () => {
 
       const availableWidth = Math.max(
         1,
-        canvas.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
+        canvas.clientWidth - getLeftGutter() - getRightGutter() - 16
       );
-      const startX = LEFT_GUTTER + 8;
+      const startX = getLeftGutter() + 8;
       if (x < startX || x > startX + availableWidth) return;
 
       const line = linesRef.current[lineIndex] ?? [];
@@ -960,7 +1041,7 @@ const LyricsGrid: React.FC = () => {
       const line = linesRef.current[drag.lineIndex] ?? [];
       const availableWidth = Math.max(
         1,
-        canvas.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
+        canvas.clientWidth - getLeftGutter() - getRightGutter() - 16
       );
       const metrics = getLineMetrics(canvas, line, availableWidth);
       const nextOffset = clamp(
@@ -1012,7 +1093,7 @@ const LyricsGrid: React.FC = () => {
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const lineIndex = clamp(
-        Math.floor((y + scroll.scrollTop) / ROW_HEIGHT),
+        Math.floor((y + scroll.scrollTop) / getRowHeight()),
         0,
         Math.max(0, linesRef.current.length - 1)
       );
@@ -1020,7 +1101,7 @@ const LyricsGrid: React.FC = () => {
       // Selection mode owns the complete row. Clicking anywhere on a line
       // only toggles that line; it must never seek, play, or open its menu.
       if (currentState.lineSelectionMode) {
-        actions.toggleLineSelection(lineIndex);
+        actions.toggleLineSelection(lineIndex, event.shiftKey);
         return;
       }
 
@@ -1056,7 +1137,7 @@ const LyricsGrid: React.FC = () => {
         return;
       }
 
-      if (x >= rect.width - RIGHT_GUTTER) {
+      if (x >= rect.width - getRightGutter()) {
         actions.setPlayFromScrolledPosition(false);
         actions.selectLine(lineIndex);
         actions.openEditModal();
@@ -1085,7 +1166,7 @@ const LyricsGrid: React.FC = () => {
       const rect = canvas.getBoundingClientRect();
       const lineIndex = clamp(
         Math.floor(
-          (event.clientY - rect.top + scroll.scrollTop) / ROW_HEIGHT
+          (event.clientY - rect.top + scroll.scrollTop) / getRowHeight()
         ),
         0,
         Math.max(0, linesRef.current.length - 1)
@@ -1128,14 +1209,14 @@ const LyricsGrid: React.FC = () => {
       const rect = canvas.getBoundingClientRect();
       const y = event.clientY - rect.top;
       const lineIndex = clamp(
-        Math.floor((y + scroll.scrollTop) / ROW_HEIGHT),
+        Math.floor((y + scroll.scrollTop) / getRowHeight()),
         0,
         Math.max(0, linesRef.current.length - 1)
       );
       const line = linesRef.current[lineIndex] ?? [];
       const availableWidth = Math.max(
         1,
-        canvas.clientWidth - LEFT_GUTTER - RIGHT_GUTTER - 16
+        canvas.clientWidth - getLeftGutter() - getRightGutter() - 16
       );
       const metrics = getLineMetrics(canvas, line, availableWidth);
       if (metrics.maxScroll <= 0) return;
@@ -1181,7 +1262,7 @@ const LyricsGrid: React.FC = () => {
     >
       <div
         style={{
-          height: Math.max(1, lyricsData.length * ROW_HEIGHT),
+          height: Math.max(1, lyricsData.length * gridMetrics.rowHeight),
           position: "relative",
         }}
       >
@@ -1219,14 +1300,16 @@ const LyricsGrid: React.FC = () => {
                         : "border-line-strong bg-panel text-muted-foreground hover:border-primary hover:text-primary"
                   }`}
                   style={{
-                    top: lineIndex * ROW_HEIGHT + ROW_HEIGHT / 2,
+                    top:
+                      lineIndex * gridMetrics.rowHeight +
+                      gridMetrics.rowHeight / 2,
                     transform: "translateY(-50%)",
                   }}
                   aria-label={`${checked ? "ยกเลิกเลือก" : "เลือก"} บรรทัด ${lineIndex + 1}`}
                   aria-pressed={checked}
                   onClick={(event) => {
                     event.stopPropagation();
-                    actions.toggleLineSelection(lineIndex);
+                    actions.toggleLineSelection(lineIndex, event.shiftKey);
                   }}
                 >
                   {lineIndex + 1}
@@ -1242,7 +1325,9 @@ const LyricsGrid: React.FC = () => {
                 key={`line-action-${lineIndex}`}
                 className="pointer-events-auto absolute right-1"
                 style={{
-                  top: lineIndex * ROW_HEIGHT + ROW_HEIGHT / 2,
+                  top:
+                    lineIndex * gridMetrics.rowHeight +
+                    gridMetrics.rowHeight / 2,
                   transform: "translateY(-50%)",
                 }}
               >
@@ -1292,11 +1377,11 @@ function getLineMetrics(
   if (!ctx) return { maxScroll: 0 };
 
   const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
-  ctx.font = `600 ${WORD_FONT_SIZE}px ${fontFamily}`;
+  ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
   const wordWidths = measureWords(ctx, line);
   const totalWidth =
     wordWidths.reduce((sum, width) => sum + width, 0) +
-    Math.max(0, line.length - 1) * WORD_GAP;
+    Math.max(0, line.length - 1) * getWordGap();
   return { maxScroll: Math.max(0, totalWidth - availableWidth) };
 }
 
@@ -1304,7 +1389,7 @@ function measureWords(
   ctx: CanvasRenderingContext2D,
   line: LyricWordData[],
 ): number[] {
-  return measureLyricWords(ctx, line);
+  return measureLyricWords(ctx, line, getWordPadding());
 }
 
 function getLineScrollLeft(
@@ -1342,7 +1427,7 @@ function getLineScrollLeft(
 
   const focusLeft = wordWidths
     .slice(0, focusPosition)
-    .reduce((sum, width) => sum + width + WORD_GAP, 0);
+    .reduce((sum, width) => sum + width + getWordGap(), 0);
   const focusCenter = focusLeft + wordWidths[focusPosition] / 2;
   const target = focusCenter - availableWidth / 2;
   return clamp(target, 0, Math.max(0, totalWidth - availableWidth));

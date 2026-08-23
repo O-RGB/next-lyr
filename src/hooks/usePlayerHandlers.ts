@@ -4,7 +4,10 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
 import { useTimerStore } from "@/timer-worker/store";
-import { requestLyricsGridCenterActiveWord } from "@/components/lyrics/lyrics-preview-sync";
+import {
+  requestLyricsGridCenterActiveWord,
+  requestLyricsPreviewScroll,
+} from "@/components/lyrics/lyrics-preview-sync";
 
 interface PlayerHandlersState {
   handleStop: () => void;
@@ -182,23 +185,38 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         useKaraokeStore.getState().actions.setCorrectionIndex(null);
       },
       handleWordClick: async (index) => {
-        const request = ++navigationRequest;
         const { lyricsData } = useKaraokeStore.getState();
-        const { playerControls } = usePlayerSetupStore.getState();
 
         if (transport.loading) return;
 
         const flatLyrics = lyricsData.flat();
         const word = flatLyrics.find((w) => w.index === index);
 
-        if (!word || !playerControls) {
+        if (!word) {
+          console.warn("[handleWordClick] Aborted: Word data not available.", {
+            index,
+          });
+          return;
+        }
+
+        // Untimed boxes are selectable lyric content, not playback targets.
+        // Keep the click local so an incomplete line cannot start the player
+        // with a guessed seek position.
+        if (word.at === null) {
+          useKaraokeStore.getState().actions.selectLine(word.lineIndex);
+          return;
+        }
+
+        const { playerControls } = usePlayerSetupStore.getState();
+        if (!playerControls) {
           console.warn(
-            "[handleWordClick] Aborted: Word data or playerControls not available.",
-            { word, playerControls }
+            "[handleWordClick] Aborted: playerControls not available.",
+            { word }
           );
           return;
         }
 
+        const request = ++navigationRequest;
         const targetTime = calculateSeekTime(word, flatLyrics);
         const mode = useKaraokeStore.getState().mode;
 
@@ -259,12 +277,14 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           )
         ),
       handleRetimingLines,
-      handleRetimingAll: () =>
-        handleRetimingLines(
+      handleRetimingAll: () => {
+        requestLyricsPreviewScroll(0);
+        return handleRetimingLines(
           useKaraokeStore
             .getState()
             .lyricsData.map((_, lineIndex) => lineIndex)
-      ),
+        );
+      },
       handleTimingForward,
       handleTimingBackward,
       handleCancelRetiming: async () => {

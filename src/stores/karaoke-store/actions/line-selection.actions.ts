@@ -28,14 +28,14 @@ export const createLineSelectionActions: StateCreator<
             }
       ),
 
-    toggleLineSelection: (lineIndex) => {
+    toggleLineSelection: (lineIndex, withShift = false) => {
       const state = get();
       if (!state.lineSelectionMode || state.isPlaying || state.isTimingActive) {
         return;
       }
 
       if (
-        state.lineShiftArmed &&
+        (state.lineShiftArmed || withShift) &&
         state.lineSelectionAnchor !== null
       ) {
         const from = Math.min(state.lineSelectionAnchor, lineIndex);

@@ -8,6 +8,7 @@ import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 
 /** Explicit session-level action for timing every lyric line in the song. */
 export default function RetimingAllButton() {
@@ -24,11 +25,16 @@ export default function RetimingAllButton() {
   const hasTiming = lyricsData.some((line) =>
     line.some((word) => word.at !== null)
   );
-  // This is an onboarding action for a freshly imported lyric document. Once
-  // timing exists, line-level retiming is the normal editing workflow.
-  if (lyricsData.length === 0 || hasTiming || timingMode) return null;
+  const hasCompleteTiming = hasCompleteLyricTiming(lyricsData);
+  // Keep the whole-song action available until the first complete timing pass
+  // finishes. This prevents a partial pass from hiding the only recovery path.
+  if (lyricsData.length === 0 || hasCompleteTiming || timingMode) return null;
 
-  const label = text(locale, "เริ่มปาดทั้งเพลง", "Time the whole song");
+  const label = text(
+    locale,
+    hasTiming ? "ปาดใหม่ทั้งเพลง" : "เริ่มปาดทั้งเพลง",
+    hasTiming ? "Retiming the whole song" : "Time the whole song"
+  );
   const isDisabled = !playerControls;
 
   const handleClick = () => {
@@ -48,7 +54,9 @@ export default function RetimingAllButton() {
       onClick={handleClick}
       title={label}
       aria-label={label}
-      className={isDisabled ? undefined : "retiming-onboarding-pulse"}
+      className={
+        isDisabled || hasTiming ? undefined : "retiming-onboarding-pulse"
+      }
     >
       {label}
     </ButtonCommon>

@@ -57,6 +57,9 @@ const NavBarTitle = React.memo(function NavBarTitle() {
 const NavBarHistoryActions = React.memo(function NavBarHistoryActions() {
   const { undo, redo } = useKaraokeStore((state) => state.actions);
   const history = useKaraokeStore((state) => state.history);
+  const timingMode = useKaraokeStore(
+    (state) => state.isTimingActive || state.editingLineIndex !== null
+  );
   const locale = useSettingsStore((state) => state.uiLocale);
 
   const canUndo = historyCanUndo(history);
@@ -70,7 +73,7 @@ const NavBarHistoryActions = React.memo(function NavBarHistoryActions() {
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={!canUndo}
+              disabled={timingMode || !canUndo}
               onClick={undo}
               aria-label={text(locale, "ย้อนกลับ", "Undo")}
             >
@@ -87,7 +90,7 @@ const NavBarHistoryActions = React.memo(function NavBarHistoryActions() {
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={!canRedo}
+              disabled={timingMode || !canRedo}
               onClick={redo}
               aria-label={text(locale, "ทำซ้ำ", "Redo")}
             >
@@ -106,6 +109,9 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   const openDialog = useUiStore((state) => state.openDialog);
   const locale = useSettingsStore((state) => state.uiLocale);
   const updateSettings = useSettingsStore((state) => state.set);
+  const timingMode = useKaraokeStore(
+    (state) => state.isTimingActive || state.editingLineIndex !== null
+  );
 
   return (
     <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:px-5">
@@ -133,7 +139,12 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="sm" className="gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              disabled={timingMode}
+            >
               <Menu className="size-5" />
               <span className="hidden sm:inline">{text(locale, "เมนู", "Menu")}</span>
             </Button>
@@ -142,11 +153,17 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuGroup>
             <DropdownMenuLabel>{text(locale, "โปรเจกต์", "Project")}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSelectMenu?.("PROJECT_OPEN")}>
+            <DropdownMenuItem
+              disabled={timingMode}
+              onClick={() => onSelectMenu?.("PROJECT_OPEN")}
+            >
               <FolderOpen />
               {text(locale, "เปิดโปรเจกต์", "Open project")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSelectMenu?.("EXPORT_FILE")}>
+            <DropdownMenuItem
+              disabled={timingMode}
+              onClick={() => onSelectMenu?.("EXPORT_FILE")}
+            >
               <Save />
               {text(locale, "บันทึก / ส่งออก", "Save / export")}
             </DropdownMenuItem>
@@ -156,7 +173,10 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
 
           <DropdownMenuGroup>
             <DropdownMenuLabel>{text(locale, "เนื้อเพลง", "Lyrics")}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSelectMenu?.("LYRICS_ADD")}>
+            <DropdownMenuItem
+              disabled={timingMode}
+              onClick={() => onSelectMenu?.("LYRICS_ADD")}
+            >
               <MicVocal />
               {text(locale, "ใส่เนื้อเพลง", "Add lyrics")}
             </DropdownMenuItem>
@@ -166,15 +186,22 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
 
           <DropdownMenuGroup>
             <DropdownMenuLabel>{text(locale, "ตั้งค่า", "Settings")}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => openDialog("settings")}>
+            <DropdownMenuItem
+              disabled={timingMode}
+              onClick={() => openDialog("settings")}
+            >
               <Settings2 />
               {text(locale, "ตั้งค่า", "Settings")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog("history")}>
+            <DropdownMenuItem
+              disabled={timingMode}
+              onClick={() => openDialog("history")}
+            >
               <HistoryIcon />
               {text(locale, "ประวัติการแก้ไข", "Edit history")}
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={timingMode}
               closeOnClick={false}
               onClick={() => updateSettings("uiLocale", locale === "en" ? "th" : "en")}
               className="justify-between"
@@ -207,6 +234,7 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
               </Switch>
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={timingMode}
               closeOnClick={false}
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
               className="justify-between"

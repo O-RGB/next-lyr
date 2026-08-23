@@ -7,6 +7,7 @@ import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { requestLyricsGridScrollToLine } from "@/components/lyrics/lyrics-preview-sync";
 
 /**
  * Editor keyboard service.
@@ -133,8 +134,14 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
     const flatLyrics = lyricsData.flat();
     const totalLines = lyricsData.length;
 
-    if (event.ctrlKey && event.code === "KeyZ") return actions.undo();
-    if (event.ctrlKey && event.code === "KeyY") return actions.redo();
+    if (event.ctrlKey && event.code === "KeyZ") {
+      if (!isStampingMode) actions.undo();
+      return;
+    }
+    if (event.ctrlKey && event.code === "KeyY") {
+      if (!isStampingMode) actions.redo();
+      return;
+    }
 
     if (!isStampingMode) {
       if (event.code === "ArrowUp" || event.code === "ArrowDown") {
@@ -148,7 +155,10 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
                 totalLines - 1,
                 Math.max(0, selectedLineIndex + step)
               );
-        if (next !== null) actions.selectLine(next);
+        if (next !== null) {
+          actions.selectLine(next);
+          requestLyricsGridScrollToLine(next);
+        }
         actions.setPlayFromScrolledPosition(false);
         return;
       }

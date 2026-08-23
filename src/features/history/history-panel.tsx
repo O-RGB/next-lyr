@@ -51,6 +51,9 @@ export function HistoryPanel() {
   const openDialog = useUiStore((state) => state.openDialog);
   const history = useKaraokeStore((state) => state.history);
   const actions = useKaraokeStore((state) => state.actions);
+  const timingMode = useKaraokeStore(
+    (state) => state.isTimingActive || state.editingLineIndex !== null
+  );
   const locale = useSettingsStore((state) => state.uiLocale);
 
   return (
@@ -70,7 +73,7 @@ export function HistoryPanel() {
           <Button
             variant="outline"
             size="sm"
-            disabled={!canUndo(history)}
+            disabled={timingMode || !canUndo(history)}
             onClick={actions.undo}
           >
             <Undo2 />
@@ -79,7 +82,7 @@ export function HistoryPanel() {
           <Button
             variant="outline"
             size="sm"
-            disabled={!canRedo(history)}
+            disabled={timingMode || !canRedo(history)}
             onClick={actions.redo}
           >
             <Redo2 />
@@ -100,6 +103,7 @@ export function HistoryPanel() {
               <li key={entry.id}>
                 <button
                   type="button"
+                  disabled={timingMode}
                   onClick={() => actions.jumpToHistory(entry.id)}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",

@@ -30,10 +30,14 @@ export interface LyricWordBoxOptions {
 
 export function measureLyricWords(
   ctx: CanvasRenderingContext2D,
-  words: LyricWordData[]
+  words: LyricWordData[],
+  horizontalPadding = 24
 ): number[] {
   return words.map((word) =>
-    Math.max(LYRICS_MIN_WORD_WIDTH, ctx.measureText(word.text).width + 24)
+    Math.max(
+      LYRICS_MIN_WORD_WIDTH,
+      ctx.measureText(word.text).width + horizontalPadding
+    )
   );
 }
 
@@ -62,15 +66,17 @@ export function drawLyricWordBox(
   roundedRect(ctx, x, y, boxWidth, boxHeight, radius);
   ctx.fill();
 
-  if (colors.marker) {
-    ctx.fillStyle = colors.marker;
-    ctx.fillRect(x, y, Math.min(options.markerWidth ?? 3, boxWidth), boxHeight);
-  }
-
   ctx.strokeStyle = colors.border;
   ctx.lineWidth = options.lineWidth ?? 1;
   roundedRect(ctx, x, y, boxWidth, boxHeight, radius);
   ctx.stroke();
+
+  // Paint the status tab after the outline so the colour reaches the top and
+  // bottom edge instead of looking inset behind the box border.
+  if (colors.marker) {
+    ctx.fillStyle = colors.marker;
+    ctx.fillRect(x, y, Math.min(options.markerWidth ?? 3, boxWidth), boxHeight);
+  }
 
   if (options.showText !== false) {
     ctx.save();

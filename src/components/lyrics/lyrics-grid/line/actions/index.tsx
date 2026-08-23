@@ -15,6 +15,7 @@ import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 import React from "react";
 
 interface LineActionProps {
@@ -27,21 +28,28 @@ const LineAction: React.FC<LineActionProps> = React.memo(
     const requestConfirm = useUiStore((state) => state.requestConfirm);
     const { handleRetiming } = usePlayerHandlersStore();
     const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
+    const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
+    const lyricsData = useKaraokeStore((state) => state.lyricsData);
     const locale = useSettingsStore((state) => state.uiLocale);
+    const canUseTimingActions = hasCompleteLyricTiming(lyricsData);
 
     const menuItems: IContextMenuGroup<string>[] = [
       {
         name: text(locale, "การทำงาน", "Actions"),
         contextMenus: [
-          {
-            type: "select",
-            text: text(locale, "เลือก", "Select"),
-            icon: <CheckSquare />,
-            onClick: () => {
-              actions.setLineSelectionMode(true);
-              actions.toggleLineSelection(lineIndex);
-            },
-          },
+          ...(canUseTimingActions
+            ? [
+                {
+                  type: "select",
+                  text: text(locale, "เลือก", "Select"),
+                  icon: <CheckSquare />,
+                  onClick: () => {
+                    actions.setLineSelectionMode(true);
+                    actions.toggleLineSelection(lineIndex);
+                  },
+                },
+              ]
+            : []),
           {
             type: "add",
             text: text(locale, "แทรก", "Insert"),
@@ -59,24 +67,28 @@ const LineAction: React.FC<LineActionProps> = React.memo(
               actions.openEditModal();
             },
           },
-          {
-            type: "Re Time",
-            text: text(locale, "ปาดใหม่", "Retiming"),
-            icon: <Clock />,
-            onClick: async () => {
-              const confirmed = await requestConfirm({
-                title: text(locale, "ปาดเนื้อร้องใหม่หรือไม่?", "Retiming this line?"),
-                description: text(
-                  locale,
-                  `เวลาและการแบ่งคำของบรรทัดที่ ${lineIndex + 1} จะถูกสร้างใหม่`,
-                  `Timing and word splits for line ${lineIndex + 1} will be rebuilt`
-                ),
-                tone: "danger",
-                confirmLabel: text(locale, "ปาดใหม่", "Retiming"),
-              });
-              if (confirmed) handleRetiming(lineIndex, lineIndex);
-            },
-          },
+          ...(canUseTimingActions
+            ? [
+                {
+                  type: "Re Time",
+                  text: text(locale, "ปาดใหม่", "Retiming"),
+                  icon: <Clock />,
+                  onClick: async () => {
+                    const confirmed = await requestConfirm({
+                      title: text(locale, "ปาดเนื้อร้องใหม่หรือไม่?", "Retiming this line?"),
+                      description: text(
+                        locale,
+                        `เวลาและการแบ่งคำของบรรทัดที่ ${lineIndex + 1} จะถูกสร้างใหม่`,
+                        `Timing and word splits for line ${lineIndex + 1} will be rebuilt`
+                      ),
+                      tone: "danger",
+                      confirmLabel: text(locale, "ปาดใหม่", "Retiming"),
+                    });
+                    if (confirmed) handleRetiming(lineIndex, lineIndex);
+                  },
+                },
+              ]
+            : []),
           {
             type: "delete",
             text: text(locale, "ลบ", "Delete"),
@@ -99,7 +111,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
         <ContextMenuCommon
           menuButton={
             <ButtonCommon
-              disabled={editingLineIndex !== null}
+              disabled={isTimingActive || editingLineIndex !== null}
               title={text(locale, "แก้ไขเนื้อเพลง (Enter)", "Edit lyrics (Enter)")}
               color="white"
               circle
