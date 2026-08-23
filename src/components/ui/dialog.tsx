@@ -43,9 +43,11 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onClose,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  onClose?: () => void
 }) {
   return (
     <DialogPortal>
@@ -62,6 +64,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            onClick={() => onClose?.()}
             render={
               <Button
                 variant="ghost"

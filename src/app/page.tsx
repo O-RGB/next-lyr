@@ -205,7 +205,7 @@ export default function Home() {
 
   return (
     <div className="root-light min-h-dvh bg-base text-foreground selection:bg-primary/10">
-      <header className="border-b border-[#d7dee9] bg-white text-[#1c2430] backdrop-blur-xl">
+      <header className="app-safe-top border-b border-[#d7dee9] bg-white text-[#1c2430] backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Image

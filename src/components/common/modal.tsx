@@ -48,6 +48,15 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   className,
   showCloseButton = true,
 }) => {
+  const handleCancelClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Keep cancel actions out of any form that happens to be rendered in the
+    // modal body. The metadata form is linked to the Save button by `form`,
+    // so Cancel must always remain a plain button and always close the modal.
+    event.preventDefault();
+    cancelButtonProps?.onClick?.(event);
+    onClose();
+  };
+
   return (
     <Dialog
       open={open}
@@ -63,6 +72,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           className
         )}
         showCloseButton={showCloseButton}
+        onClose={onClose}
       >
         {title ? (
           <DialogHeader className="shrink-0 border-b border-line bg-panel px-5 py-4 pr-12">
@@ -86,8 +96,9 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
                     size="sm"
                     color="gray"
                     icon={<ArrowLeft />}
-                    onClick={onClose}
                     {...cancelButtonProps}
+                    type="button"
+                    onClick={handleCancelClick}
                   >
                     {cancelButtonProps?.children ?? "Cancel"}
                   </ButtonCommon>

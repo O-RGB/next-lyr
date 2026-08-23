@@ -335,6 +335,15 @@
   background: linear-gradient(180deg, var(--panel) 0 56px, var(--base) 56px);
 }
 
+/* Installed iOS/PWA windows draw under the status bar and home indicator when
+   viewport-fit=cover is enabled. Keep the safe-area space inside the chrome
+   that owns it instead of letting it cover the first/last controls. */
+.app-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
 .dark .app-shell {
   background:
     radial-gradient(circle at 50% -20%, rgb(65 91 125 / 0.18), transparent 42%),

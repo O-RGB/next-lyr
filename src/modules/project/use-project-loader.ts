@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getProject } from "@/lib/database/db";
+import { getProject, upsertProjectSummary } from "@/lib/database/db";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
 type ProjectLoadState = {
@@ -33,6 +33,15 @@ export function useProjectLoader(projectId: string): ProjectLoadState {
         if (!project) throw new Error("Project not found");
         if (cancelled) return;
         loadProject(project);
+        void upsertProjectSummary({
+          id: project.id,
+          name: project.name,
+          mode: project.mode,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        }).catch((cause) => {
+          console.warn("Could not index project summary:", cause);
+        });
         setStatus("ready");
       } catch (cause) {
         if (cancelled) return;

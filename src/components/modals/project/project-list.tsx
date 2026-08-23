@@ -1,4 +1,5 @@
 import { Music, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import ModalCommon from "@/components/common/modal";
 import React, { useEffect, useState } from "react";
 import ButtonCommon from "@/components/common/button";
@@ -6,7 +7,12 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { deleteProject, getAllProjects, Project } from "@/lib/database/db";
+import {
+  deleteProject,
+  getAllProjectSummaries,
+  ProjectSummary,
+  upsertProjectSummary,
+} from "@/lib/database/db";
 import NewProjectModal from "./new-project-modal";
 
 interface ProjectListModalProps {
@@ -18,14 +24,41 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
   open = false,
   onClose = () => {},
 }) => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const router = useRouter();
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const clearProject = useKaraokeStore((state) => state.actions.clearProject);
+  const currentProjectId = useKaraokeStore((state) => state.projectId);
+  const currentProjectMode = useKaraokeStore((state) => state.mode);
+  const currentProjectName = useKaraokeStore(
+    (state) => state.metadata?.TITLE
+  );
   const requestConfirm = useUiStore((state) => state.requestConfirm);
   const locale = useSettingsStore((state) => state.uiLocale);
 
   const fetchProjects = async () => {
-    const allProjects = await getAllProjects();
+    const allProjects = await getAllProjectSummaries();
+
+    // A project created before the summary table was introduced can still be
+    // shown when it is the project currently loaded in the editor. It will be
+    // indexed the next time it is saved.
+    if (
+      currentProjectId &&
+      currentProjectMode &&
+      !allProjects.some((project) => project.id === currentProjectId)
+    ) {
+      const now = new Date();
+      const currentSummary = {
+        id: currentProjectId,
+        name: currentProjectName || "Untitled project",
+        mode: currentProjectMode,
+        createdAt: now,
+        updatedAt: now,
+      } satisfies ProjectSummary;
+      allProjects.unshift(currentSummary);
+      await upsertProjectSummary(currentSummary);
+    }
+
     setProjects(allProjects);
   };
 
@@ -35,8 +68,8 @@ const ProjectListModal: React.FC<ProjectListModalProps> = ({
     }
   }, [open]);
 
-  const handleSelectProject = (project: Project) => {
-    window.location.href = `/project/${project.id}`;
+  const handleSelectProject = (project: ProjectSummary) => {
+    router.push(`/project/${project.id}`);
   };
 
   const handleDeleteProject = async (id: string) => {

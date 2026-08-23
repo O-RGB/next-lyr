@@ -19,6 +19,7 @@ import ChordsPanel from "./chords-panel";
 import RetimingCancelButton from "@/components/common/retiming-cancel";
 import RetimingAllButton from "@/components/common/retiming-all";
 import LyricsEditorMenu from "./editor-menu";
+import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 
 type LyricsPanelProps = {
   onPreviewChange?: (visible: boolean) => void;
@@ -27,6 +28,13 @@ type LyricsPanelProps = {
 export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const isMobile = useIsMobile();
   const mode = useKaraokeStore((state) => state.mode);
+  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const isTimingActive = useKaraokeStore(
+    (state) => state.isTimingActive || state.editingLineIndex !== null
+  );
+  const lineSelectionMode = useKaraokeStore(
+    (state) => state.lineSelectionMode
+  );
   const locale = useSettingsStore((state) => state.uiLocale);
   const setPlayFromScrolledPosition = useKaraokeStore(
     (state) => state.actions.setPlayFromScrolledPosition
@@ -42,6 +50,13 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
   const preview = previewPreference ?? !isMobile;
   const showingChords = mode === "midi" && chordPreview;
   const showingChordPanel = mode === "midi" && chordPanelVisible;
+  const showActionToolbar =
+    !showingChords && (isTimingActive || lineSelectionMode);
+  const showRetimingAll =
+    !showingChords &&
+    lyricsData.length > 0 &&
+    !hasCompleteLyricTiming(lyricsData) &&
+    !isTimingActive;
 
   const setPreviewVisible = (visible: boolean) => {
     setPreviewPreference(visible);
@@ -63,7 +78,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
 
   return (
     <Card
-      className="relative flex h-full min-h-0 flex-col gap-2 overscroll-none border-0 bg-panel p-2 lg:p-0"
+      className="relative flex h-full min-h-0 flex-col gap-2 overscroll-none border-0 bg-panel p-2 pb-0 lg:p-0"
     >
       <header className="flex shrink-0 items-center justify-between gap-2 lg:px-4 lg:pt-4">
         <h1 className="text-lg font-semibold text-foreground">
@@ -110,21 +125,26 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
             )}
           </div>
 
-          <div className="flex shrink-0 justify-end gap-1.5">
-            <MobileActionButton
-              preview={preview}
-              setPreview={setPreviewVisible}
-              showPreview={false}
-            />
-            {!showingChords && <RetimingAllButton />}
-            <LyricsEditorMenu
-              preview={preview}
-              onPreviewChange={setPreviewVisible}
-              chordPanelVisible={chordPanelVisible}
-              onChordPanelVisibilityChange={setChordPanelVisible}
-            />
-          </div>
-          <LyricsMobileControls />
+          {showActionToolbar ? (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <MobileActionButton showPreview={false} />
+            </div>
+          ) : null}
+          {showRetimingAll ? (
+            <div className="flex shrink-0 justify-end gap-1.5">
+              <RetimingAllButton />
+            </div>
+          ) : null}
+          <LyricsMobileControls
+            tools={
+              <LyricsEditorMenu
+                preview={preview}
+                onPreviewChange={setPreviewVisible}
+                chordPanelVisible={chordPanelVisible}
+                onChordPanelVisibilityChange={setChordPanelVisible}
+              />
+            }
+          />
         </div>
       ) : (
         <>
@@ -148,11 +168,15 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
               )
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 lg:h-11 lg:pl-2 lg:pr-2 lg:pb-2">
-            {!showingChords && <RetimingCancelButton />}
-            {!showingChords && <LineSelectionToolbar />}
+          {showActionToolbar ? (
+            <div className="flex shrink-0 items-center gap-1.5 lg:pl-2 lg:pr-2">
+              <RetimingCancelButton />
+              <LineSelectionToolbar />
+            </div>
+          ) : null}
+          <div className="flex shrink-0 items-center gap-1.5 lg:pl-2 lg:pr-2 lg:pb-2">
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
-              {!showingChords && <RetimingAllButton />}
+              <RetimingAllButton />
               <LyricsEditorMenu
                 preview={preview}
                 onPreviewChange={setPreviewVisible}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
+import type { ReactNode } from "react";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { text } from "@/features/settings/locale";
@@ -11,7 +12,7 @@ function dispatchKey(code: string) {
   window.dispatchEvent(new KeyboardEvent("keyup", { code, bubbles: true }));
 }
 
-export function LyricsMobileControls() {
+export function LyricsMobileControls({ tools }: { tools?: ReactNode }) {
   const isPlaying = useKaraokeStore((state) => state.isPlaying);
   const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
   const editingLineIndex = useKaraokeStore((state) => state.editingLineIndex);
@@ -66,6 +67,7 @@ export function LyricsMobileControls() {
           <ArrowRight className="mx-auto" />
         </button>
         <span className={`ml-1 h-2 w-2 rounded-full ${isPlaying ? "bg-brand-2" : "bg-line-strong"}`} />
+        {tools ? <div className="ml-1 border-l border-line pl-1">{tools}</div> : null}
       </div>
     </div>
   );

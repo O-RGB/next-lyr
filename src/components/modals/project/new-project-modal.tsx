@@ -1,20 +1,25 @@
 import { FileMusic, Piano } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import ModalCommon from "@/components/common/modal";
 import SelectCommon from "@/components/common/data-input/select";
 import Upload from "@/components/common/data-input/upload";
 import MetadataForm from "@/components/metadata/metadata-form";
 import { MusicMode } from "@/types/common.type";
-import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useUiStore } from "@/features/ui/ui-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { createProject, getProject, ProjectData } from "@/lib/database/db";
+import { createProject, ProjectData } from "@/lib/database/db";
 import { convertParsedDataForImport } from "@/stores/karaoke-store/utils";
 import { groupLyricsByLine } from "@/lib/karaoke/lyrics/convert";
 import { parseMidi } from "@/lib/karaoke/midi/reader";
-import { SongInfo, DEFAULT_SONG_INFO } from "@/lib/karaoke/midi/types";
+import {
+  IMidiParseResult,
+  SongInfo,
+  DEFAULT_SONG_INFO,
+} from "@/lib/karaoke/midi/types";
 import { readMp3 } from "@/lib/karaoke/mp3/read";
+import type { IParsedMp3Data } from "@/lib/karaoke/mp3/type";
 import { getMissingRequiredSongInfo } from "@/lib/karaoke/metadata-validation";
 import {
   DEFAULT_SOUNDFONT_ENTRY,
@@ -26,12 +31,21 @@ interface NewProjectModalProps {
   onClose: () => void;
 }
 
+type ParsedProjectFile =
+  | { file: File; mode: "midi"; data: IMidiParseResult }
+  | { file: File; mode: "mp3"; data: IParsedMp3Data };
+
 const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
+  const router = useRouter();
   const [projectMode, setProjectMode] = useState<MusicMode>("midi");
   const [musicFile, setMusicFile] = useState<File>();
   const [youtubeUrl, setYoutubeUrl] = useState<string>();
   const [metadata, setMetadataState] = useState<SongInfo>(DEFAULT_SONG_INFO);
   const metadataRef = useRef<SongInfo>(DEFAULT_SONG_INFO);
+  const selectedFileRef = useRef<File | undefined>(undefined);
+  const parsedFileRef = useRef<ParsedProjectFile | null>(null);
+  const fileReadRequestRef = useRef(0);
+  const [isReadingFile, setIsReadingFile] = useState(false);
   const [showMetadataErrors, setShowMetadataErrors] = useState(false);
 
   const updateMetadata = (next: SongInfo) => {
@@ -39,7 +53,6 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
     setMetadataState(next);
   };
 
-  const loadProject = useKaraokeStore((state) => state.actions.loadProject);
   const requestAlert = useUiStore((state) => state.requestAlert);
   const locale = useSettingsStore((state) => state.uiLocale);
 
@@ -52,20 +65,33 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
 
   const handleFileSelect = async (files: File[]) => {
     const file = files[0];
+    const requestId = fileReadRequestRef.current + 1;
+    fileReadRequestRef.current = requestId;
+
     if (!file) {
+      selectedFileRef.current = undefined;
+      parsedFileRef.current = null;
       setMusicFile(undefined);
+      setIsReadingFile(false);
       return;
     }
+
+    selectedFileRef.current = file;
+    parsedFileRef.current = null;
     setMusicFile(file);
+    setIsReadingFile(true);
 
     try {
       let readInfo: any = {};
+      let parsedFile: ParsedProjectFile | null = null;
 
       if (projectMode === "midi") {
         const parsedMidi = await parseMidi(file);
+        parsedFile = { file, mode: "midi", data: parsedMidi };
         readInfo = parsedMidi.info;
       } else if (projectMode === "mp3") {
         const { parsedData: parsedMp3 } = await readMp3(file);
+        parsedFile = { file, mode: "mp3", data: parsedMp3 };
         readInfo = {
           ...parsedMp3.info,
           TITLE: parsedMp3.title,
@@ -77,14 +103,29 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         readInfo.TITLE = file.name.replace(/\.[^/.]+$/, "");
       }
 
+      // Ignore a slower parse if the user has already selected another file.
+      if (
+        requestId !== fileReadRequestRef.current ||
+        selectedFileRef.current !== file
+      ) {
+        return;
+      }
+
+      parsedFileRef.current = parsedFile;
       updateMetadata({ ...DEFAULT_SONG_INFO, ...readInfo });
     } catch (error) {
       console.error("Error reading metadata from file:", error);
+    } finally {
+      if (requestId === fileReadRequestRef.current) {
+        setIsReadingFile(false);
+      }
     }
   };
 
   const handleCreateProject = async () => {
-    if (projectMode !== "youtube" && !musicFile) {
+    const selectedFile = selectedFileRef.current ?? musicFile;
+
+    if (projectMode !== "youtube" && !selectedFile) {
       await requestAlert({
         title: text(locale, "ยังไม่ได้เลือกไฟล์เพลง", "No song file selected"),
         description: text(
@@ -134,10 +175,14 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         activeSoundfontId: DEFAULT_SOUNDFONT_ID,
       };
 
-      if (musicFile) {
+      if (selectedFile) {
         switch (projectMode) {
           case "midi": {
-            const parsedMidi = await parseMidi(musicFile);
+            const parsedMidi =
+              parsedFileRef.current?.file === selectedFile &&
+              parsedFileRef.current.mode === "midi"
+                ? parsedFileRef.current.data
+                : await parseMidi(selectedFile);
             initialData.playerState.midi = parsedMidi;
             initialData.playerState.duration = parsedMidi.duration;
             initialData.metadata = {
@@ -165,7 +210,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
           }
 
           case "mp3": {
-            const { parsedData } = await readMp3(musicFile);
+            const parsedData =
+              parsedFileRef.current?.file === selectedFile &&
+              parsedFileRef.current.mode === "mp3"
+                ? parsedFileRef.current.data
+                : (await readMp3(selectedFile)).parsedData;
             initialData.playerState.duration = parsedData.duration ?? null;
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
@@ -208,15 +257,11 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         currentMetadata.TITLE,
         projectMode,
         initialData,
-        musicFile
+        selectedFile
       );
 
-      const newProject = await getProject(newProjectId);
-      if (newProject) {
-        loadProject(newProject);
-        window.location.href = `/project/${newProject.id}`;
-      }
       onClose();
+      router.push(`/project/${newProjectId}`);
     } catch (error) {
       console.error("Failed to create project:", error);
       await requestAlert({
@@ -243,19 +288,33 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
   };
 
   const onProjectTypeChange = (value: MusicMode) => {
+    fileReadRequestRef.current += 1;
+    selectedFileRef.current = undefined;
+    parsedFileRef.current = null;
     setProjectMode(value);
     updateMetadata(DEFAULT_SONG_INFO);
     setShowMetadataErrors(false);
     setMusicFile(undefined);
+    setIsReadingFile(false);
     setYoutubeUrl(undefined);
   };
 
   useEffect(() => {
+    if (!open) return;
+
+    fileReadRequestRef.current += 1;
+    selectedFileRef.current = undefined;
+    parsedFileRef.current = null;
+    setProjectMode("midi");
+    setMusicFile(undefined);
+    setYoutubeUrl(undefined);
+    setIsReadingFile(false);
     updateMetadata(DEFAULT_SONG_INFO);
     setShowMetadataErrors(false);
   }, [open]);
 
-  const disabled = projectMode === "youtube" ? !youtubeUrl : !musicFile;
+  const disabled =
+    isReadingFile || (projectMode === "youtube" ? !youtubeUrl : !musicFile);
   const requiredErrors: Partial<Record<keyof SongInfo, string>> = {};
   if (showMetadataErrors) {
     for (const key of getMissingRequiredSongInfo(metadata)) {
@@ -292,6 +351,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ open, onClose }) => {
         />
 
         <Upload
+          key={`${projectMode}-${open ? "open" : "closed"}`}
           accept={getAcceptType()}
           preview={true}
           icon={

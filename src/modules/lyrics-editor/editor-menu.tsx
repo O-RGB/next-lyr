@@ -4,8 +4,8 @@ import {
   FileText,
   ListRestart,
   MicVocal,
-  SlidersHorizontal,
   StickyNote,
+  Wrench,
 } from "lucide-react";
 import React, { useState } from "react";
 
@@ -111,13 +111,14 @@ export default function LyricsEditorMenu({
               type="button"
               color="white"
               size="xs"
-              icon={<SlidersHorizontal />}
+              icon={<Wrench className="size-5 sm:size-3.5" />}
               disabled={timingMode}
-              aria-label={text(locale, "เมนูตัวแก้ไข", "Editor menu")}
-              title={text(locale, "เมนูตัวแก้ไข", "Editor menu")}
+              aria-label={text(locale, "เครื่องมือแก้ไข", "Editor tools")}
+              title={text(locale, "เครื่องมือแก้ไข", "Editor tools")}
               childrenClassName="hidden sm:inline"
+              className="max-sm:!h-10 max-sm:!w-10 max-sm:!gap-0 max-sm:!rounded-lg max-sm:!border-line max-sm:!bg-panel max-sm:!p-0 max-sm:!text-foreground max-sm:!shadow-sm max-sm:active:scale-95 max-sm:touch-manipulation"
             >
-              {text(locale, "เมนู", "Menu")}
+              {text(locale, "เครื่องมือ", "Tools")}
             </ButtonCommon>
           }
         />

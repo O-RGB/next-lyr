@@ -60,6 +60,19 @@ export interface Project {
   updatedAt: Date;
 }
 
+/** Lightweight record used by the project picker.
+ *
+ * Project.data can contain the complete song file and parsed MIDI buffers. Do
+ * not read that payload just to render a list of project names.
+ */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  mode: MusicMode;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class MySubClassedDexie extends Dexie {
   projects!: Table<Project>;
   soundfontBlobs!: Table<SoundfontBlobRecord>;
@@ -80,10 +93,17 @@ export class MySubClassedDexie extends Dexie {
       soundfontBlobs: "&key, projectId, [projectId+soundfontId]",
       editorFonts: "&id, name, createdAt",
     });
+    this.version(9).stores({
+      projects: "&id, name, createdAt, updatedAt",
+      soundfontBlobs: "&key, projectId, [projectId+soundfontId]",
+      editorFonts: "&id, name, createdAt",
+      projectSummaries: "&id, name, createdAt, updatedAt",
+    });
   }
 }
 
 export const db = new MySubClassedDexie();
+export const projectSummaries = db.table<ProjectSummary>("projectSummaries");
 
 export const createProject = async (
   name: string,
@@ -106,8 +126,17 @@ export const createProject = async (
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const id = await db.projects.add(newProject);
-    return id;
+    await db.transaction("rw", db.projects, projectSummaries, async () => {
+      await db.projects.add(newProject);
+      await projectSummaries.add({
+        id: newProject.id,
+        name: newProject.name,
+        mode: newProject.mode,
+        createdAt: newProject.createdAt,
+        updatedAt: newProject.updatedAt,
+      });
+    });
+    return newProject.id;
   } catch (error) {
     console.error("Failed to create project:", error);
     throw error;
@@ -116,6 +145,16 @@ export const createProject = async (
 
 export const getAllProjects = async (): Promise<Project[]> => {
   return await db.projects.orderBy("createdAt").reverse().toArray();
+};
+
+export const getAllProjectSummaries = async (): Promise<ProjectSummary[]> => {
+  return await projectSummaries.orderBy("createdAt").reverse().toArray();
+};
+
+export const upsertProjectSummary = async (
+  summary: ProjectSummary
+): Promise<void> => {
+  await projectSummaries.put(summary);
 };
 
 export const getProject = async (id: string): Promise<Project | undefined> => {
@@ -127,10 +166,18 @@ export const updateProject = async (
   data: ProjectData
 ): Promise<void> => {
   try {
-    await db.projects.update(id, {
-      data,
-      updatedAt: new Date(),
-    });
+    const updatedAt = new Date();
+    await db.projects.update(id, { data, updatedAt });
+
+    // Keep the lightweight picker entry current without touching the large
+    // project payload during list rendering.
+    const summary = await projectSummaries.get(id);
+    if (summary) {
+      await projectSummaries.update(id, {
+        name: data.metadata?.TITLE || summary.name,
+        updatedAt,
+      });
+    }
   } catch (error) {
     console.error(`Failed to update project ${id}:`, error);
     throw error;
@@ -139,10 +186,17 @@ export const updateProject = async (
 
 export const deleteProject = async (id: string): Promise<void> => {
   try {
-    await db.transaction("rw", db.projects, db.soundfontBlobs, async () => {
-      await db.projects.delete(id);
-      await db.soundfontBlobs.where("projectId").equals(id).delete();
-    });
+    await db.transaction(
+      "rw",
+      db.projects,
+      db.soundfontBlobs,
+      projectSummaries,
+      async () => {
+        await db.projects.delete(id);
+        await db.soundfontBlobs.where("projectId").equals(id).delete();
+        await projectSummaries.delete(id);
+      }
+    );
   } catch (error) {
     console.error(`Failed to delete project ${id}:`, error);
     throw error;
@@ -151,10 +205,17 @@ export const deleteProject = async (id: string): Promise<void> => {
 
 export const deleteAllProjects = async (): Promise<void> => {
   try {
-    await db.transaction("rw", db.projects, db.soundfontBlobs, async () => {
-      await db.projects.clear();
-      await db.soundfontBlobs.clear();
-    });
+    await db.transaction(
+      "rw",
+      db.projects,
+      db.soundfontBlobs,
+      projectSummaries,
+      async () => {
+        await db.projects.clear();
+        await db.soundfontBlobs.clear();
+        await projectSummaries.clear();
+      }
+    );
     console.log("All projects have been deleted.");
   } catch (error) {
     console.error("Failed to delete all projects:", error);
