@@ -369,10 +369,27 @@
   background-size: 100% 1.5rem, 100% 3rem;
 }
 
-.lyrics-token-selected {
-  background-color: var(--brand) !important;
-  border-color: var(--brand) !important;
-  color: #ffffff !important;
+/* A single lightweight ruler layer. The ticks are painted by CSS so dragging
+   the wrap marker does not create or update dozens of DOM nodes. */
+.lyrics-ruler {
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent 7px,
+      var(--line-soft) 7px,
+      var(--line-soft) 8px
+    )
+    2.5rem 100% / calc(100% - 2.5rem) 9px no-repeat,
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent 39px,
+      var(--line) 39px,
+      var(--line) 40px
+    )
+    2.5rem 100% / calc(100% - 2.5rem) 100% no-repeat,
+    var(--panel);
 }
 
 @keyframes lyrics-floating-caret-blink {

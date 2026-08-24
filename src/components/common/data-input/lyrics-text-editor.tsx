@@ -4,6 +4,7 @@ import {
   CornerDownLeft,
   Delete,
   GripHorizontal,
+  GripVertical,
   Keyboard as KeyboardIcon,
   Redo2,
   Undo2,
@@ -18,7 +19,6 @@ import {
 } from "react";
 
 import ButtonCommon from "@/components/common/button";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 interface LyricsTextEditorProps {
@@ -107,10 +107,6 @@ function getNodeLength(node: Node): number {
   if (element.dataset.editorPlaceholder === "true") return 0;
   if (element.dataset.editorCaret === "true") return 0;
   if (element.dataset.editorPipe === "true") return 1;
-  if (element.dataset.editorSpace) {
-    const count = Number(element.dataset.editorSpace);
-    return Number.isFinite(count) && count > 0 ? count : 0;
-  }
   if (element.dataset.editorNewline === "true") {
     return 1;
   }
@@ -132,10 +128,6 @@ function readEditorValue(root: HTMLElement): string {
       return (element.textContent ?? "").replaceAll("\u200B", "");
     }
     if (element.dataset.editorPipe === "true") return "|";
-    if (element.dataset.editorSpace) {
-      const count = Number(element.dataset.editorSpace);
-      return Number.isFinite(count) && count > 0 ? " ".repeat(count) : "";
-    }
     if (element.dataset.editorNewline === "true") {
       return "\n";
     }
@@ -161,10 +153,6 @@ function getOffsetInTree(
       }
       if (parent?.dataset.editorPipe === "true") {
         return targetOffset > 0 ? 1 : 0;
-      }
-      if (parent?.dataset.editorSpace) {
-        const count = Number(parent.dataset.editorSpace);
-        return targetOffset > 0 && Number.isFinite(count) ? count : 0;
       }
       return Math.min(targetOffset, node.textContent?.length ?? 0);
     }
@@ -269,8 +257,7 @@ function createRawCaretRange(root: HTMLElement, rawOffset: number) {
       const textNode = element.firstChild;
       const isPipeOrNewline =
         element.dataset.editorPipe === "true" ||
-        element.dataset.editorNewline === "true" ||
-        element.dataset.editorSpace !== undefined;
+        element.dataset.editorNewline === "true";
 
       if (!isPipeOrNewline && textNode && isTextNode(textNode)) {
         if (offset <= consumed + length) {
@@ -332,144 +319,16 @@ function setRawSelection(root: HTMLElement, rawStart: number, rawEnd: number) {
   selection.addRange(range);
 }
 
-interface RawTokenRange {
-  element: HTMLElement;
-  start: number;
-  end: number;
-}
-
-function getRawTokenRanges(root: HTMLElement): RawTokenRange[] {
-  const ranges: RawTokenRange[] = [];
-  let offset = 0;
-
-  for (const child of Array.from(root.childNodes)) {
-    const length = getNodeLength(child);
-    if (child.nodeType === Node.ELEMENT_NODE) {
-      const element = child as HTMLElement;
-      if (
-        element.dataset.editorPipe === "true" ||
-        element.dataset.editorSpace !== undefined
-      ) {
-        ranges.push({
-          element,
-          start: offset,
-          end: offset + length,
-        });
-      }
-    }
-    offset += length;
-  }
-
-  return ranges;
-}
-
-function expandSelectionToTokenElements(
-  root: HTMLElement,
-  showTokenElements: boolean
-) {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-    return getSelectionRange(root);
-  }
-
-  const current = getSelectionRange(root);
-  if (!current) return null;
-
-  let start = current.start;
-  let end = current.end;
-
-  if (!showTokenElements) {
-    return current;
-  }
-
-  const tokens = getRawTokenRanges(root);
-
-  tokens.forEach((token) => {
-    const endpointInsideToken =
-      token.element.contains(selection.anchorNode) ||
-      token.element.contains(selection.focusNode);
-    const overlapsSelection =
-      current.start < token.end && current.end > token.start;
-    if (!overlapsSelection && !endpointInsideToken) return;
-
-    start = Math.min(start, token.start);
-    end = Math.max(end, token.end);
-  });
-
-  if (start !== current.start || end !== current.end) {
-    setRawSelection(root, start, end);
-  }
-
-  return { start, end };
-}
-
-function updateTokenSelectionHighlight(
-  root: HTMLElement,
-  showTokenElements: boolean
-) {
-  const selection = getSelectionRange(root);
-  const selectedTokens = root.querySelectorAll<HTMLElement>(
-    ".lyrics-token-selected"
-  );
-
-  if (!showTokenElements || !selection || selection.start === selection.end) {
-    selectedTokens.forEach((token) =>
-      token.classList.remove("lyrics-token-selected")
-    );
-    return;
-  }
-
-  selectedTokens.forEach((token) =>
-    token.classList.remove("lyrics-token-selected")
-  );
-  getRawTokenRanges(root).forEach((token) => {
-    const tokenSelected =
-      selection.start < token.end && selection.end > token.start;
-    if (tokenSelected) token.element.classList.add("lyrics-token-selected");
-  });
-}
-
-function getTextSpaceArrowOffset(
+function getPipeArrowOffset(
   value: string,
   offset: number,
   direction: "left" | "right"
 ) {
-  const pivot = direction === "left" ? offset - 1 : offset;
-  if (value[pivot] !== " ") return null;
-  return direction === "left" ? offset - 1 : offset + 1;
-}
-
-function getTokenBoundaryArrowOffset(
-  value: string,
-  offset: number,
-  direction: "left" | "right",
-  showTokenElements: boolean
-) {
-  if (!showTokenElements) {
-    return getTextSpaceArrowOffset(value, offset, direction);
-  }
-
   if (direction === "left") {
-    const previousCharacter = value[offset - 1];
-    if (previousCharacter === "|") return offset - 1;
-    if (previousCharacter !== " ") return null;
-
-    let nextOffset = offset - 1;
-    while (nextOffset > 0 && value[nextOffset - 1] === " ") {
-      nextOffset -= 1;
-    }
-    return nextOffset;
+    return value[offset - 1] === "|" ? offset - 1 : null;
   }
 
-  const nextCharacter = value[offset];
-  if (nextCharacter === "|") return offset + 1;
-  if (nextCharacter !== " ") return null;
-
-  let nextOffset = offset + 1;
-  while (nextOffset < value.length && value[nextOffset] === " ") {
-    nextOffset += 1;
-  }
-  return nextOffset;
+  return value[offset] === "|" ? offset + 1 : null;
 }
 
 function getRawCaretClientRect(root: HTMLElement, rawOffset: number) {
@@ -562,99 +421,18 @@ function appendCaretSentinel(root: HTMLElement) {
   root.append(sentinel);
 }
 
-function renderEditorDom(
-  root: HTMLElement,
-  value: string,
-  showTokenElements = true
-) {
+function renderEditorDom(root: HTMLElement, value: string) {
   root.replaceChildren();
-
-  if (!showTokenElements) {
-    const lines = value.split("\n");
-    lines.forEach((line, index) => {
-      let lineOffset = 0;
-      while (lineOffset < line.length) {
-        if (line[lineOffset] !== " ") {
-          let textEnd = lineOffset + 1;
-          while (textEnd < line.length && line[textEnd] !== " ") {
-            textEnd += 1;
-          }
-
-          const textSpan = document.createElement("span");
-          textSpan.textContent = line.slice(lineOffset, textEnd);
-          root.append(textSpan);
-          lineOffset = textEnd;
-          continue;
-        }
-
-        let spaceEnd = lineOffset + 1;
-        while (spaceEnd < line.length && line[spaceEnd] === " ") {
-          spaceEnd += 1;
-        }
-
-        while (lineOffset < spaceEnd) {
-          const count = 1;
-          const space = document.createElement("span");
-          space.contentEditable = "false";
-          space.dataset.editorSpace = String(count);
-          space.className = "inline select-text whitespace-pre";
-          space.setAttribute(
-            "aria-label",
-            `${count} ${count === 1 ? "space" : "spaces"}`
-          );
-          space.textContent = "\u00a0";
-          root.append(space);
-          appendCaretSentinel(root);
-          lineOffset += count;
-        }
-      }
-
-      if (index < lines.length - 1) {
-        const newline = document.createElement("br");
-        newline.dataset.editorNewline = "true";
-        root.append(newline);
-        appendCaretSentinel(root);
-      }
-    });
-    return;
-  }
-
   for (let index = 0; index < value.length; index += 1) {
     const character = value[index];
-
-    if (character === " ") {
-      let end = index + 1;
-      while (end < value.length && value[end] === " ") end += 1;
-
-      const count = end - index;
-      const displayCount = count;
-
-      const space = document.createElement("span");
-      space.contentEditable = "false";
-      space.dataset.editorSpace = String(count);
-      space.className =
-        "mx-0.5 inline-flex select-text items-center rounded border border-line bg-panel-2 px-1 text-[10px] font-semibold leading-5 text-muted-foreground";
-      space.setAttribute(
-        "aria-label",
-        `${count} ${count === 1 ? "space" : "spaces"}`
-      );
-      space.textContent = `${displayCount}x`;
-      root.append(space);
-      appendCaretSentinel(root);
-      index = end - 1;
-      continue;
-    }
 
     if (character === "|") {
       const separator = document.createElement("span");
       separator.contentEditable = "false";
       separator.dataset.editorPipe = "true";
-      separator.className =
-        "mx-0.5 inline-flex min-w-3 items-center justify-center rounded border border-brand-2/50 bg-brand-2/15 px-px font-semibold leading-5 text-brand-2";
-      separator.setAttribute("aria-label", "Lyric separator");
+      separator.className = "font-semibold text-brand-2";
       separator.textContent = "|";
       root.append(separator);
-      appendCaretSentinel(root);
       continue;
     }
 
@@ -667,18 +445,11 @@ function renderEditorDom(
     }
 
     let end = index + 1;
-    while (
-      end < value.length &&
-      value[end] !== " " &&
-      value[end] !== "|" &&
-      value[end] !== "\n"
-    ) {
+    while (end < value.length && value[end] !== "|" && value[end] !== "\n") {
       end += 1;
     }
 
-    const textSpan = document.createElement("span");
-    textSpan.textContent = value.slice(index, end);
-    root.append(textSpan);
+    root.append(document.createTextNode(value.slice(index, end)));
     index = end - 1;
   }
 }
@@ -695,14 +466,190 @@ interface TouchCursorDrag {
   moved: boolean;
 }
 
+interface RulerDrag {
+  pointerId: number;
+  startX: number;
+  startPosition: number;
+}
+
+interface WrappedLine {
+  value: string;
+  breaks: number[];
+}
+
+interface TextUnit {
+  breakAfter: boolean;
+  breakBefore: boolean;
+  end: number;
+  index: number;
+  segment: string;
+}
+
+function getGraphemeUnits(text: string, offset = 0): TextUnit[] {
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    const segmenter = new Intl.Segmenter(undefined, {
+      granularity: "grapheme",
+    });
+
+    return Array.from(segmenter.segment(text), ({ segment, index }) => ({
+      breakAfter: /\s/.test(segment),
+      breakBefore: false,
+      end: offset + index + segment.length,
+      index: offset + index,
+      segment,
+    }));
+  }
+
+  return Array.from(text).reduce<TextUnit[]>((units, segment) => {
+    const index = offset + (units.at(-1)?.end ?? offset) - offset;
+    units.push({
+      breakAfter: /\s/.test(segment),
+      breakBefore: false,
+      end: index + segment.length,
+      index,
+      segment,
+    });
+    return units;
+  }, []);
+}
+
+function getTextUnits(
+  text: string,
+  maxWidth: number,
+  measure: (value: string) => number
+): TextUnit[] {
+  if (typeof Intl === "undefined" || !("Segmenter" in Intl)) {
+    return getGraphemeUnits(text);
+  }
+
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+  const units: TextUnit[] = [];
+
+  for (const word of segmenter.segment(text)) {
+    const segment = word.segment;
+    const isWhitespace = /^\s+$/.test(segment);
+    const isLongWord = word.isWordLike && measure(segment) > maxWidth;
+
+    if (isLongWord) {
+      units.push(...getGraphemeUnits(segment, word.index));
+      continue;
+    }
+
+    units.push({
+      breakAfter: Boolean(word.isWordLike) || isWhitespace,
+      breakBefore: false,
+      end: word.index + segment.length,
+      index: word.index,
+      segment,
+    });
+  }
+
+  return units;
+}
+
+function wrapLineToWidth(
+  line: string,
+  maxWidth: number,
+  measure: (text: string) => number
+): WrappedLine {
+  if (!line || maxWidth <= 0 || measure(line) <= maxWidth) {
+    return { value: line, breaks: [] };
+  }
+
+  const units = getTextUnits(line, maxWidth, measure);
+  const breaks: number[] = [];
+  let start = 0;
+
+  while (start < line.length) {
+    let didWrap = false;
+    let lastSoftBreak = -1;
+
+    for (const unit of units) {
+      if (unit.index < start) continue;
+
+      if (unit.breakBefore) {
+        lastSoftBreak = unit.index;
+      }
+
+      const candidate = line.slice(start, unit.end);
+      if (measure(candidate) > maxWidth && unit.index > start) {
+        const breakAt = lastSoftBreak > start ? lastSoftBreak : unit.index;
+        breaks.push(breakAt);
+        start = breakAt;
+        didWrap = true;
+        break;
+      }
+
+      if (unit.breakAfter) {
+        lastSoftBreak = unit.end;
+      }
+    }
+
+    if (!didWrap) break;
+  }
+
+  if (breaks.length === 0) return { value: line, breaks };
+
+  let value = "";
+  let sourceStart = 0;
+  for (const breakAt of breaks) {
+    value += `${line.slice(sourceStart, breakAt)}\n`;
+    sourceStart = breakAt;
+  }
+  value += line.slice(sourceStart);
+
+  return { value, breaks };
+}
+
+function wrapValueToWidth(
+  value: string,
+  maxWidth: number,
+  cursor: number,
+  measure: (text: string) => number
+) {
+  if (!value || maxWidth <= 0) {
+    return { autoBreaks: [], value, cursor };
+  }
+
+  const sourceLines = value.split("\n");
+  const insertedBreaks: number[] = [];
+  let sourceOffset = 0;
+  let wrappedValue = "";
+
+  sourceLines.forEach((line, lineIndex) => {
+    const wrappedLine = wrapLineToWidth(line, maxWidth, measure);
+    wrappedValue += wrappedLine.value;
+    insertedBreaks.push(
+      ...wrappedLine.breaks.map((breakAt) => sourceOffset + breakAt)
+    );
+
+    if (lineIndex < sourceLines.length - 1) {
+      wrappedValue += "\n";
+    }
+    sourceOffset += line.length + 1;
+  });
+
+  return {
+    autoBreaks: insertedBreaks.map((breakAt, index) => breakAt + index),
+    value: wrappedValue,
+    cursor: cursor + insertedBreaks.filter((breakAt) => breakAt <= cursor).length,
+  };
+}
+
 interface EditorHistoryEntry {
   value: string;
   cursor: number;
+  autoWrapBreaks: number[];
 }
 
 interface EditorHistory {
   past: EditorHistoryEntry[];
   future: EditorHistoryEntry[];
+}
+
+interface AutoWrapState {
+  value: string;
+  breaks: number[];
 }
 
 export default function LyricsTextEditor({
@@ -719,6 +666,15 @@ export default function LyricsTextEditor({
   const editorViewportRef = useRef<HTMLDivElement>(null);
   const lineNumberRef = useRef<HTMLDivElement>(null);
   const lineNumberContentRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+  const rulerMarkerRef = useRef<HTMLDivElement>(null);
+  const rulerGuideRef = useRef<HTMLDivElement>(null);
+  const rulerDragRef = useRef<RulerDrag | null>(null);
+  const rulerFrameRef = useRef<number | null>(null);
+  const pendingRulerPositionRef = useRef<number | null>(null);
+  const rulerPositionRef = useRef(0);
+  const rulerMeasureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const autoWrapStateRef = useRef<AutoWrapState>({ value: "", breaks: [] });
   const cursorOffsetRef = useRef(0);
   const pendingCursorRef = useRef<number | null>(null);
   const valueRef = useRef(value);
@@ -744,7 +700,6 @@ export default function LyricsTextEditor({
   const deleteRepeatIntervalRef = useRef<number | null>(null);
   const [touchBarLocked, setTouchBarLocked] = useState(false);
   const [touchCursorDragging, setTouchCursorDragging] = useState(false);
-  const [showTokenElements, setShowTokenElements] = useState(true);
   const [floatingCursorPosition, setFloatingCursorPosition] = useState<{
     left: number;
     top: number;
@@ -771,17 +726,26 @@ export default function LyricsTextEditor({
   const commitValue = (
     nextValue: string,
     nextCursor: number,
-    previousCursor = cursorOffsetRef.current
+    previousCursor = cursorOffsetRef.current,
+    autoWrapBreaks?: number[]
   ) => {
     if (nextValue === valueRef.current) return;
 
     updateHistory({
       past: [
         ...historyRef.current.past,
-        { value: valueRef.current, cursor: previousCursor },
+        {
+          value: valueRef.current,
+          cursor: previousCursor,
+          autoWrapBreaks: [...autoWrapStateRef.current.breaks],
+        },
       ],
       future: [],
     });
+    autoWrapStateRef.current = {
+      value: nextValue,
+      breaks: autoWrapBreaks ?? rebaseAutoWrapBreaks(nextValue),
+    };
     valueRef.current = nextValue;
     domSyncRequiredRef.current = true;
     cursorOffsetRef.current = nextCursor;
@@ -794,11 +758,12 @@ export default function LyricsTextEditor({
 
     resetKeyRef.current = resetKey;
     updateHistory({ past: [], future: [] });
+    autoWrapStateRef.current = { value, breaks: [] };
     valueRef.current = value;
     cursorOffsetRef.current = value.length;
     pendingCursorRef.current = null;
     domSyncRequiredRef.current = true;
-  }, [resetKey, value, showTokenElements]);
+  }, [resetKey, value]);
 
   useLayoutEffect(() => {
     const editor = editorRef.current;
@@ -809,10 +774,15 @@ export default function LyricsTextEditor({
       updateHistory({
         past: [
           ...historyRef.current.past,
-          { value: valueRef.current, cursor: cursorOffsetRef.current },
+          {
+            value: valueRef.current,
+            cursor: cursorOffsetRef.current,
+            autoWrapBreaks: [...autoWrapStateRef.current.breaks],
+          },
         ],
         future: [],
       });
+      autoWrapStateRef.current = { value, breaks: [] };
       valueRef.current = value;
       cursorOffsetRef.current = value.length;
       externalValueChanged = true;
@@ -820,7 +790,7 @@ export default function LyricsTextEditor({
     }
 
     if (domSyncRequiredRef.current || readEditorValue(editor) !== value) {
-      renderEditorDom(editor, value, showTokenElements);
+      renderEditorDom(editor, value);
       domSyncRequiredRef.current = false;
     }
 
@@ -833,23 +803,6 @@ export default function LyricsTextEditor({
       setRawCaret(editor, value.length);
     }
   }, [resetKey, value]);
-
-  useLayoutEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    renderEditorDom(editor, valueRef.current, showTokenElements);
-    domSyncRequiredRef.current = false;
-
-    const pendingCursor = pendingCursorRef.current;
-    if (pendingCursor !== null) {
-      setRawCaret(editor, pendingCursor);
-      cursorOffsetRef.current = pendingCursor;
-      pendingCursorRef.current = null;
-    } else if (document.activeElement === editor) {
-      setRawCaret(editor, cursorOffsetRef.current);
-    }
-  }, [showTokenElements]);
 
   const getCursor = () => {
     const editor = editorRef.current;
@@ -867,7 +820,8 @@ export default function LyricsTextEditor({
     const { start, end } = getCursor();
     const nextValue = `${value.slice(0, start)}${insert}${value.slice(end)}`;
     const nextOffset = start + insert.length;
-    commitValue(nextValue, nextOffset, start);
+    const prepared = prepareValueForRuler(nextValue, nextOffset);
+    commitValue(prepared.value, prepared.cursor, start, prepared.autoWrapBreaks);
   };
 
   const deleteBackward = () => {
@@ -878,11 +832,11 @@ export default function LyricsTextEditor({
     }
     if (deleteStart === end) return;
 
-    commitValue(
+    const prepared = prepareValueForRuler(
       `${value.slice(0, deleteStart)}${value.slice(end)}`,
-      deleteStart,
-      start
+      deleteStart
     );
+    commitValue(prepared.value, prepared.cursor, start, prepared.autoWrapBreaks);
   };
 
   const handleInput = () => {
@@ -894,12 +848,13 @@ export default function LyricsTextEditor({
     const nextOffset = selection?.end ?? nextValue.length;
 
     if (nextValue === valueRef.current) {
-      renderEditorDom(editor, valueRef.current, showTokenElements);
+      renderEditorDom(editor, valueRef.current);
       setRawCaret(editor, nextOffset);
       return;
     }
 
-    commitValue(nextValue, nextOffset);
+    const prepared = prepareValueForRuler(nextValue, nextOffset);
+    commitValue(prepared.value, prepared.cursor, cursorOffsetRef.current, prepared.autoWrapBreaks);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -935,11 +890,10 @@ export default function LyricsTextEditor({
       const endpoints = getRawSelectionEndpoints(editorRef.current);
       const anchor = endpoints?.anchor ?? cursorOffsetRef.current;
       const focus = endpoints?.focus ?? anchor;
-      const nextOffset = getTokenBoundaryArrowOffset(
+      const nextOffset = getPipeArrowOffset(
         value,
         focus,
-        event.key === "ArrowLeft" ? "left" : "right",
-        showTokenElements
+        event.key === "ArrowLeft" ? "left" : "right"
       );
 
       if (nextOffset !== null) {
@@ -947,7 +901,6 @@ export default function LyricsTextEditor({
         hideFloatingCursor();
         editorRef.current.focus({ preventScroll: true });
         setRawSelection(editorRef.current, anchor, nextOffset);
-        updateTokenSelectionHighlight(editorRef.current, showTokenElements);
         cursorOffsetRef.current = nextOffset;
         return;
       }
@@ -967,17 +920,15 @@ export default function LyricsTextEditor({
         hideFloatingCursor();
         editorRef.current.focus({ preventScroll: true });
         setRawCaret(editorRef.current, nextOffset);
-        updateTokenSelectionHighlight(editorRef.current, showTokenElements);
         cursorOffsetRef.current = nextOffset;
         return;
       }
 
       if (start === end) {
-        const nextOffset = getTokenBoundaryArrowOffset(
+        const nextOffset = getPipeArrowOffset(
           value,
           start,
-          event.key === "ArrowLeft" ? "left" : "right",
-          showTokenElements
+          event.key === "ArrowLeft" ? "left" : "right"
         );
 
         if (nextOffset !== null && editorRef.current) {
@@ -985,7 +936,6 @@ export default function LyricsTextEditor({
           hideFloatingCursor();
           editorRef.current.focus({ preventScroll: true });
           setRawCaret(editorRef.current, nextOffset);
-          updateTokenSelectionHighlight(editorRef.current, showTokenElements);
           cursorOffsetRef.current = nextOffset;
           return;
         }
@@ -1034,11 +984,11 @@ export default function LyricsTextEditor({
     if (deleteStart === deleteEnd) return;
 
     event.preventDefault();
-    commitValue(
+    const prepared = prepareValueForRuler(
       `${value.slice(0, deleteStart)}${value.slice(deleteEnd)}`,
-      deleteStart,
-      start
+      deleteStart
     );
+    commitValue(prepared.value, prepared.cursor, start, prepared.autoWrapBreaks);
   };
 
   const handleBeforeInput = (event: FormEvent<HTMLDivElement>) => {
@@ -1089,11 +1039,16 @@ export default function LyricsTextEditor({
         {
           value: valueRef.current,
           cursor: cursorOffsetRef.current,
+          autoWrapBreaks: [...autoWrapStateRef.current.breaks],
         },
         ...historyRef.current.future,
       ],
     };
     updateHistory(nextHistory);
+    autoWrapStateRef.current = {
+      value: previous.value,
+      breaks: [...previous.autoWrapBreaks],
+    };
     valueRef.current = previous.value;
     domSyncRequiredRef.current = true;
     cursorOffsetRef.current = previous.cursor;
@@ -1111,11 +1066,16 @@ export default function LyricsTextEditor({
         {
           value: valueRef.current,
           cursor: cursorOffsetRef.current,
+          autoWrapBreaks: [...autoWrapStateRef.current.breaks],
         },
       ],
       future: historyRef.current.future.slice(1),
     };
     updateHistory(nextHistory);
+    autoWrapStateRef.current = {
+      value: next.value,
+      breaks: [...next.autoWrapBreaks],
+    };
     valueRef.current = next.value;
     domSyncRequiredRef.current = true;
     cursorOffsetRef.current = next.cursor;
@@ -1401,6 +1361,220 @@ export default function LyricsTextEditor({
     cursorOffsetRef.current = safeOffset;
   };
 
+  const getRulerBounds = () => {
+    const width = editorViewportRef.current?.clientWidth ?? 0;
+    if (width <= 0) return { min: 0, max: 0 };
+
+    const min = Math.min(48, Math.max(18, width - 12));
+    const max = Math.max(min, width - 12);
+    return { min, max };
+  };
+
+  const clampRulerPosition = (position: number) => {
+    const { min, max } = getRulerBounds();
+    return Math.max(min, Math.min(Math.round(position), max));
+  };
+
+  const applyRulerPosition = (position: number) => {
+    const next = clampRulerPosition(position);
+    rulerPositionRef.current = next;
+    rulerRef.current?.style.setProperty("--ruler-position", `${next}px`);
+    rulerMarkerRef.current?.setAttribute("aria-valuenow", `${next}`);
+    rulerMarkerRef.current?.style.setProperty(
+      "left",
+      `calc(2.5rem + ${next}px)`
+    );
+    rulerGuideRef.current?.style.setProperty("left", `${next}px`);
+  };
+
+  const scheduleRulerPosition = (position: number) => {
+    pendingRulerPositionRef.current = clampRulerPosition(position);
+    if (rulerFrameRef.current !== null) return;
+
+    rulerFrameRef.current = window.requestAnimationFrame(() => {
+      rulerFrameRef.current = null;
+      const pending = pendingRulerPositionRef.current;
+      pendingRulerPositionRef.current = null;
+      if (pending !== null) applyRulerPosition(pending);
+    });
+  };
+
+  const getRulerTextWidth = () => {
+    const editor = editorRef.current;
+    if (!editor || rulerPositionRef.current <= 0) return 0;
+
+    const style = window.getComputedStyle(editor);
+    const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+    return Math.max(32, rulerPositionRef.current - paddingLeft);
+  };
+
+  const rebaseAutoWrapBreaks = (nextValue: string) => {
+    const state = autoWrapStateRef.current;
+    if (state.breaks.length === 0 || state.value === nextValue) {
+      return state.value === nextValue ? state.breaks : [];
+    }
+
+    let prefix = 0;
+    while (
+      prefix < state.value.length &&
+      prefix < nextValue.length &&
+      state.value[prefix] === nextValue[prefix]
+    ) {
+      prefix += 1;
+    }
+
+    let suffix = 0;
+    while (
+      suffix < state.value.length - prefix &&
+      suffix < nextValue.length - prefix &&
+      state.value[state.value.length - 1 - suffix] ===
+        nextValue[nextValue.length - 1 - suffix]
+    ) {
+      suffix += 1;
+    }
+
+    const oldChangeEnd = state.value.length - suffix;
+    const delta = nextValue.length - state.value.length;
+
+    return state.breaks.flatMap((breakAt) => {
+      if (breakAt < prefix) return [breakAt];
+      if (breakAt >= oldChangeEnd) return [breakAt + delta];
+      return [];
+    });
+  };
+
+  const removeAutoWrapBreaks = (nextValue: string, cursor: number) => {
+    const breaks = rebaseAutoWrapBreaks(nextValue).filter(
+      (breakAt) => nextValue[breakAt] === "\n"
+    );
+    if (breaks.length === 0) {
+      return { value: nextValue, cursor };
+    }
+
+    let valueStart = 0;
+    let unwrappedValue = "";
+    let unwrappedCursor = cursor;
+    for (const breakAt of breaks) {
+      unwrappedValue += nextValue.slice(valueStart, breakAt);
+      valueStart = breakAt + 1;
+      if (breakAt < cursor) unwrappedCursor -= 1;
+    }
+    unwrappedValue += nextValue.slice(valueStart);
+
+    return { value: unwrappedValue, cursor: unwrappedCursor };
+  };
+
+  const measureEditorText = (text: string) => {
+    const editor = editorRef.current;
+    if (!editor) return text.length * 8;
+
+    const canvas =
+      rulerMeasureCanvasRef.current ?? document.createElement("canvas");
+    rulerMeasureCanvasRef.current = canvas;
+    const context = canvas.getContext("2d");
+    if (!context) return text.length * 8;
+
+    context.font = window.getComputedStyle(editor).font;
+    return context.measureText(text).width;
+  };
+
+  const prepareValueForRuler = (nextValue: string, nextCursor: number) => {
+    const unwrapped = removeAutoWrapBreaks(nextValue, nextCursor);
+    const maxWidth = getRulerTextWidth();
+    if (maxWidth <= 0) {
+      return {
+        autoWrapBreaks: rebaseAutoWrapBreaks(nextValue),
+        value: nextValue,
+        cursor: nextCursor,
+      };
+    }
+
+    const wrapped = wrapValueToWidth(
+      unwrapped.value,
+      maxWidth,
+      unwrapped.cursor,
+      measureEditorText
+    );
+    return {
+      autoWrapBreaks: wrapped.autoBreaks,
+      value: wrapped.value,
+      cursor: wrapped.cursor,
+    };
+  };
+
+  const wrapCurrentValueToRuler = () => {
+    const currentValue = valueRef.current;
+    const prepared = prepareValueForRuler(
+      currentValue,
+      cursorOffsetRef.current
+    );
+    if (prepared.value === currentValue) {
+      autoWrapStateRef.current = {
+        value: currentValue,
+        breaks: prepared.autoWrapBreaks,
+      };
+      return;
+    }
+
+    commitValue(
+      prepared.value,
+      prepared.cursor,
+      cursorOffsetRef.current,
+      prepared.autoWrapBreaks
+    );
+  };
+
+  const stopRulerDrag = (event?: PointerEvent<HTMLDivElement>) => {
+    const drag = rulerDragRef.current;
+    if (drag && event && drag.pointerId === event.pointerId) {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    if (rulerFrameRef.current !== null) {
+      window.cancelAnimationFrame(rulerFrameRef.current);
+      rulerFrameRef.current = null;
+    }
+    const pending = pendingRulerPositionRef.current;
+    pendingRulerPositionRef.current = null;
+    if (pending !== null) applyRulerPosition(pending);
+
+    rulerDragRef.current = null;
+    wrapCurrentValueToRuler();
+  };
+
+  const handleRulerPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    rulerDragRef.current = {
+      pointerId: event.pointerId,
+      startPosition: rulerPositionRef.current,
+      startX: event.clientX,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleRulerPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = rulerDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    event.preventDefault();
+    scheduleRulerPosition(drag.startPosition + event.clientX - drag.startX);
+  };
+
+  const handleRulerKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const amount = event.shiftKey ? 40 : 8;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      applyRulerPosition(rulerPositionRef.current - amount);
+      wrapCurrentValueToRuler();
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      applyRulerPosition(rulerPositionRef.current + amount);
+      wrapCurrentValueToRuler();
+    }
+  };
+
   const handleTouchBarPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     updateKeyboardMode(false);
@@ -1497,16 +1671,35 @@ export default function LyricsTextEditor({
     touchCursorDragRef.current = null;
   };
 
-  const lineCount = Math.max(1, value.split("\n").length);
+  useLayoutEffect(() => {
+    const viewport = editorViewportRef.current;
+    if (!viewport) return;
 
-  const handleTokenElementsChange = (checked: boolean) => {
-    const { end } = getCursor();
-    cursorOffsetRef.current = end;
-    pendingCursorRef.current = end;
-    domSyncRequiredRef.current = true;
-    hideFloatingCursor();
-    setShowTokenElements(checked);
-  };
+    const updateRuler = () => {
+      const { min, max } = getRulerBounds();
+      if (max <= 0) return;
+
+      const current = rulerPositionRef.current;
+      applyRulerPosition(current >= min ? current : max);
+    };
+
+    updateRuler();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateRuler);
+    observer?.observe(viewport);
+
+    return () => {
+      observer?.disconnect();
+      if (rulerFrameRef.current !== null) {
+        window.cancelAnimationFrame(rulerFrameRef.current);
+        rulerFrameRef.current = null;
+      }
+    };
+  }, []);
+
+  const lineCount = Math.max(1, value.split("\n").length);
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2">
@@ -1560,157 +1753,143 @@ export default function LyricsTextEditor({
             }
           />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Switch
-            size="sm"
-            checked={showTokenElements}
-            onCheckedChange={handleTokenElementsChange}
-            aria-label="Show lyric markers"
-            title="Show lyric markers"
-            onPointerDown={(event) => event.preventDefault()}
-            className="!h-[22px] !w-auto"
-          >
-            <span className="invisible whitespace-nowrap px-3 text-[8px] font-bold leading-none">
-              TEXT
-            </span>
-            <span
-              className={cn(
-                "absolute inset-y-0 right-1 items-center text-[8px] font-bold leading-none text-foreground/70",
-                showTokenElements ? "hidden" : "flex"
-              )}
-            >
-              TXT
-            </span>
-            <span
-              className={cn(
-                "absolute inset-y-0 left-1 items-center text-[8px] font-bold leading-none text-primary-foreground",
-                showTokenElements ? "flex" : "hidden"
-              )}
-            >
-              BOX
-            </span>
-          </Switch>
-        </div>
       </div>
       <div
         className={cn(
-          "flex h-full min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-base",
+          "relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-input bg-base",
           fitToContainer
             ? "min-h-0"
             : "min-h-[280px] max-h-[calc(100dvh-18rem)] sm:min-h-[360px] sm:max-h-[min(62dvh,560px)]"
         )}
       >
         <div
-          ref={lineNumberRef}
-          aria-hidden="true"
-          className="w-10 shrink-0 select-none overflow-hidden border-r border-line text-right"
+          ref={rulerRef}
+          className="lyrics-ruler relative h-8 shrink-0 overflow-hidden border-b border-line select-none"
         >
           <div
-            ref={lineNumberContentRef}
-            className="lyrics-paper-grid min-h-full w-full px-2 py-2 font-mono text-xs leading-6 text-muted-foreground"
+            ref={rulerMarkerRef}
+            role="slider"
+            tabIndex={0}
+            aria-label="Line wrap ruler"
+            aria-valuemin={0}
+            aria-valuemax={editorViewportRef.current?.clientWidth ?? 0}
+            aria-valuenow={rulerPositionRef.current}
+            className="absolute inset-y-0 z-20 flex w-6 -translate-x-1/2 touch-none cursor-ew-resize items-center justify-center text-brand-2"
+            style={{ left: "calc(2.5rem + var(--ruler-position, 0px))" }}
+            onKeyDown={handleRulerKeyDown}
+            onPointerDown={handleRulerPointerDown}
+            onPointerMove={handleRulerPointerMove}
+            onPointerUp={stopRulerDrag}
+            onPointerCancel={stopRulerDrag}
+            onLostPointerCapture={stopRulerDrag}
           >
-            {Array.from({ length: lineCount }, (_, index) => (
-              <span key={index} className="block h-6">
-                {index + 1}
-              </span>
-            ))}
+            <GripVertical aria-hidden="true" className="size-4" />
           </div>
         </div>
-        <div
-          ref={editorViewportRef}
-          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
-        >
+        <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
           <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            role="textbox"
-            aria-multiline="true"
-            spellCheck={false}
-            data-placeholder={placeholder}
-            data-empty={!value ? "true" : undefined}
-            className={cn(
-              "lyrics-text-editor lyrics-paper-grid h-full min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain whitespace-pre rounded-r-md px-3 py-2 text-sm leading-6 text-foreground outline-none select-text selection:bg-brand selection:text-white focus-visible:ring-2 focus-visible:ring-brand/40",
-              className
-            )}
-            style={{ caretColor: floatingCursorPosition ? "transparent" : undefined }}
-            inputMode={keyboardEnabled ? "text" : "none"}
-            onInput={handleInput}
-            onBeforeInput={handleBeforeInput}
-            onPaste={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              updateValueAtSelection(readClipboardText(event.clipboardData));
-            }}
-            onPointerDown={() => {
-              updateKeyboardMode(false);
-              hideFloatingCursor();
-            }}
-            onFocus={() => {
-              if (!value && editorRef.current) setRawCaret(editorRef.current, 0);
-            }}
-            onScroll={() => {
-              if (editorRef.current) {
-                syncLineNumberScroll(editorRef.current.scrollTop);
-                const drag = touchCursorDragRef.current;
-                if (!drag?.selecting && floatingCursorPositionRef.current) {
-                  syncFloatingCursorToContent(
-                    drag?.currentOffset ?? cursorOffsetRef.current
-                  );
-                }
-              }
-            }}
-            onKeyDown={handleKeyDown}
-            onKeyUp={(event) => {
-              if (event.key === " ") {
-                skipNativeSpaceRef.current = false;
-              }
-              if (editorRef.current) {
-                updateTokenSelectionHighlight(
-                  editorRef.current,
-                  showTokenElements
-                );
-              }
-              const selection = editorRef.current
-                ? getSelectionRange(editorRef.current)
-                : null;
-              if (selection) cursorOffsetRef.current = selection.end;
-            }}
-            onMouseUp={() => {
-              const selection = editorRef.current
-                ? expandSelectionToTokenElements(
-                    editorRef.current,
-                    showTokenElements
-                  )
-                : null;
-              if (editorRef.current) {
-                updateTokenSelectionHighlight(
-                  editorRef.current,
-                  showTokenElements
-                );
-              }
-              if (selection) cursorOffsetRef.current = selection.end;
-            }}
-          />
-          {floatingCursorPosition ? (
-            <span
-              ref={floatingCursorElementRef}
-              aria-hidden="true"
+            ref={lineNumberRef}
+            aria-hidden="true"
+            className="w-10 shrink-0 select-none overflow-hidden border-r border-line text-right"
+          >
+            <div
+              ref={lineNumberContentRef}
+              className="lyrics-paper-grid min-h-full w-full px-2 py-2 font-mono text-xs leading-6 text-muted-foreground"
+            >
+              {Array.from({ length: lineCount }, (_, index) => (
+                <span key={index} className="block h-6">
+                  {index + 1}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div
+            ref={editorViewportRef}
+            className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
+          >
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              spellCheck={false}
+              data-placeholder={placeholder}
+              data-empty={!value ? "true" : undefined}
               className={cn(
-                "pointer-events-none absolute z-10 h-6 w-0.5 bg-brand shadow-[0_0_0_2px_rgb(255_255_255_/_0.7)]",
-                !touchCursorDragging && "lyrics-floating-caret"
+                "lyrics-text-editor lyrics-paper-grid h-full min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain whitespace-pre rounded-r-md px-3 py-2 text-sm leading-6 text-foreground outline-none select-text selection:bg-brand selection:text-white focus-visible:ring-2 focus-visible:ring-brand/40",
+                className
               )}
-              style={{
-                left: floatingCursorPosition.left,
-                top: floatingCursorPosition.top,
+              style={{ caretColor: floatingCursorPosition ? "transparent" : undefined }}
+              inputMode={keyboardEnabled ? "text" : "none"}
+              onInput={handleInput}
+              onBeforeInput={handleBeforeInput}
+              onPaste={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                updateValueAtSelection(readClipboardText(event.clipboardData));
+              }}
+              onPointerDown={() => {
+                updateKeyboardMode(false);
+                hideFloatingCursor();
+              }}
+              onFocus={() => {
+                if (!value && editorRef.current) setRawCaret(editorRef.current, 0);
+              }}
+              onScroll={() => {
+                if (editorRef.current) {
+                  syncLineNumberScroll(editorRef.current.scrollTop);
+                  const drag = touchCursorDragRef.current;
+                  if (!drag?.selecting && floatingCursorPositionRef.current) {
+                    syncFloatingCursorToContent(
+                      drag?.currentOffset ?? cursorOffsetRef.current
+                    );
+                  }
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              onKeyUp={(event) => {
+                if (event.key === " ") {
+                  skipNativeSpaceRef.current = false;
+                }
+                const selection = editorRef.current
+                  ? getSelectionRange(editorRef.current)
+                  : null;
+                if (selection) cursorOffsetRef.current = selection.end;
+              }}
+              onMouseUp={() => {
+                const selection = editorRef.current
+                  ? getSelectionRange(editorRef.current)
+                  : null;
+                if (selection) cursorOffsetRef.current = selection.end;
               }}
             />
-          ) : null}
+            <div
+              ref={rulerGuideRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 z-[5] w-px bg-brand-2/70 shadow-[0_0_0_1px_rgb(255_255_255_/_0.35)]"
+              style={{ left: "0px" }}
+            />
+            {floatingCursorPosition ? (
+              <span
+                ref={floatingCursorElementRef}
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute z-10 h-6 w-0.5 bg-brand shadow-[0_0_0_2px_rgb(255_255_255_/_0.7)]",
+                  !touchCursorDragging && "lyrics-floating-caret"
+                )}
+                style={{
+                  left: floatingCursorPosition.left,
+                  top: floatingCursorPosition.top,
+                }}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
 
       <div className="flex justify-center">
-        <div className="grid min-h-28 w-full grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] grid-rows-2 gap-2 rounded-lg border border-line bg-panel-2">
+        <div className="grid min-h-28 w-full grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] grid-rows-2 gap-2 rounded-lg border border-line bg-transparent">
           <div
             role="slider"
             tabIndex={0}
@@ -1720,7 +1899,7 @@ export default function LyricsTextEditor({
             aria-valuenow={cursorOffsetRef.current}
             aria-pressed={touchBarLocked}
             className={cn(
-              "row-span-2 flex h-full min-h-0 min-w-0 touch-none select-none items-center justify-center rounded-md border bg-gradient-to-b from-panel to-panel-2 px-2 shadow-inner",
+              "row-span-2 flex h-full min-h-0 min-w-0 touch-none select-none items-center justify-center rounded-md border bg-transparent px-2",
               touchBarLocked
                 ? "border-brand-2 bg-brand-2/10"
                 : "border-brand-2/35"
@@ -1733,7 +1912,7 @@ export default function LyricsTextEditor({
           >
             <GripHorizontal aria-hidden="true" className="size-5 text-brand-2/65" />
           </div>
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2">
             <ButtonCommon
               type="button"
               size="xs"
@@ -1767,7 +1946,7 @@ export default function LyricsTextEditor({
               {deleteLabel}
             </ButtonCommon>
           </div>
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2">
             <ButtonCommon
               type="button"
               size="xs"
