@@ -10,6 +10,7 @@ import {buildYoutubePlayback} from "../src/lib/stickers/playback-assets";
 import {cellsFromLine} from "../src/lib/karaoke/inline-content";
 import {resizeEffectRun,resolveEffectSelection} from "../src/lib/block-effects/editor";
 import {paintFrameSurface} from "../src/components/lyrics/block-effect-layer";
+import {stormEvent} from "../src/lib/block-effects/events";
 import type {LyricsDocument} from "../src/lib/karaoke/lyrics-core/types";
 const styles:BlockEffect[]=[{type:'rain',connected:true},{type:'rain',variant:'clouds',connected:true},{type:'rain',variant:'storm',connected:true},
  {type:'sunny',connected:true},{type:'sunny',variant:'clouds',connected:true},{type:'sunny',variant:'birds',connected:true}];
@@ -24,12 +25,12 @@ test('adjacent weather groups merge only when their type and style both match',(
  const cells=words([styles[0],styles[1],styles[1],styles[2],styles[4],styles[5]]);
  assert.deepEqual(groupEffectBlocks(cells).map(run=>[run.start,run.end,run.effect.variant]),[[0,0,undefined],[1,2,'clouds'],[3,3,'storm'],[4,4,'clouds'],[5,5,'birds']]);
 });
-test('weather styles reuse a single cloud of each color and the approved lightning asset',()=>{
- assert.deepEqual(effectAtlasRoles(styles[2]),['edge','cloud','lightning']);
+test('weather styles share clouds and retain legacy lightning while storm uses its joined sprite',()=>{
+ assert.deepEqual(effectAtlasRoles(styles[2]),['edge','storm']);
  assert.deepEqual(effectAtlasRoles(styles[5]),['edge','cloud','birds']);
  assert.equal(effectAtlasRecipe('rain','lightning').src,effectAtlasRecipe('lightning').src);
  assert.equal(frameAtlasIdentity('rain','lightning'),frameAtlasIdentity('lightning'));
- assert.equal(effectIconRole(styles[2]),'lightning');
+ assert.equal(effectIconRole(styles[2]),'storm');
  assert.equal(effectIconRole(styles[1]),'cloud');
  assert.notEqual(effectAtlasRecipe('sunny','cloud').src,effectAtlasRecipe('rain','cloud').src);
  assert.equal(effectAtlasRoles(styles[3]).length,1);
@@ -49,52 +50,55 @@ test('floating sky objects stay bounded to three and adapt to the selected width
  assert(layoutSkyActors(styles[1],2000,32).length>layoutSkyActors(styles[1],40,32).length);
  assert.deepEqual(layoutSkyActors(styles[5],200,32).map(actor=>actor.role),['edge','cloud','birds']);
 });
-test('storm lightning flashes briefly while reduced motion remains static',()=>{
- assert.equal(skyLightningVisible(0),true);assert.equal(skyLightningVisible(139),true);
- assert.equal(skyLightningVisible(140),false);assert.equal(skyLightningVisible(210),true);
- assert.equal(skyLightningVisible(469),true);assert.equal(skyLightningVisible(470),false);
- assert.equal(skyLightningVisible(1600),true);assert.equal(skyLightningVisible(500,true),true);
+test('storm lightning leaves long quiet intervals while reduced motion remains static',()=>{
+ const visible=Array.from({length:320},(_,index)=>skyLightningVisible(index*10)).filter(Boolean).length;
+ assert(visible>20&&visible<50);assert.equal(skyLightningVisible(500,true),true);
 });
-test('storm composition draws shared lightning cels during both bursts and keeps a visible static reduced-motion bolt',()=>{
- const draws:Array<{image:unknown;source:unknown[];opacity:number}>=[],alphas:number[]=[];
+test('joined thundercloud cels keep the cloud in quiet intervals and attach the flash at the same source seam',()=>{
+ const draws:Array<{image:unknown;source:unknown[];destination:unknown[];opacity:number}>=[],alphas:number[]=[];
  const ctx={globalAlpha:1,setTransform(){},clearRect(){},translate(){},rotate(){},scale(){},
   save(){alphas.push(this.globalAlpha);},restore(){this.globalAlpha=alphas.pop()!;},
-  drawImage(image:unknown,...args:unknown[]){draws.push({image,source:args.slice(0,4),opacity:this.globalAlpha});}};
+  drawImage(image:unknown,...args:unknown[]){draws.push({image,source:args.slice(0,4),destination:args.slice(4),opacity:this.globalAlpha});}};
  const canvas={width:0,height:0,getContext:()=>ctx} as unknown as HTMLCanvasElement;
  const makeAtlas=(image:string,fps:number)=>({image,frames:16,fps,
   rects:Array.from({length:16},(_,index)=>({x:index%4*100,y:Math.floor(index/4)*100,width:100,height:100})),
   anchors:Array.from({length:16},()=>({x:50,y:90,top:10}))}) as unknown as LoadedAtlas;
- const rain=makeAtlas('rain',16),cloud=makeAtlas('cloud',12),lightning=makeAtlas('lightning',20);
- const geometry=effectGeometry(200,40,styles[2]);
+ const rain=makeAtlas('rain',16),storm=makeAtlas('storm',16);
+ const geometry=effectGeometry(80,40,styles[2]);
  const placement={key:'storm',effect:styles[2],left:0,top:0,width:geometry.width,height:geometry.height};
  const previous=Object.getOwnPropertyDescriptor(globalThis,'devicePixelRatio');
  Object.defineProperty(globalThis,'devicePixelRatio',{configurable:true,value:1});
  const paint=(time:number,reduced=false,effect=styles[2])=>{
-  draws.length=0;paintFrameSurface(canvas,rain,{...placement,effect},time,reduced,{cloud,lightning});
-  return draws.filter(draw=>draw.image==='lightning');
+  draws.length=0;paintFrameSurface(canvas,rain,{...placement,effect},time,reduced,{storm});
+  return draws.filter(draw=>draw.image==='storm');
  };
  try{
-  const first=paint(0),second=paint(270);
-  assert.equal(first.length,1);assert.equal(second.length,1);
+  const flash=Array.from({length:320},(_,i)=>i*10).find(time=>stormEvent(time,'storm',1,false).active)!;
+  const quiet=Array.from({length:320},(_,i)=>i*10).find(time=>!stormEvent(time,'storm',1,false).active)!;
+  const first=paint(flash),second=paint(flash+65);
+  assert.equal(first.length,2);assert.equal(second.length,2);
   assert.notDeepEqual(first[0].source,second[0].source);
-  assert(first[0].opacity>.9);assert.equal(paint(500).length,0);
-  const still=paint(500,true);assert.equal(still.length,1);assert(still[0].opacity>=.8);
+  assert.equal(first[0].source[0],first[1].source[0]);
+  assert.equal(Number(first[0].source[1])+Number(first[0].source[3]),first[1].source[1]);
+  assert.equal(Number(first[0].destination[1])+Number(first[0].destination[3]),first[1].destination[1]);
+  assert(first[0].opacity>.9);assert.equal(paint(quiet).length,1);
+  const still=paint(500,true);assert.equal(still.length,2);assert(still[0].opacity>=.8);
   assert.equal(paint(0,false,styles[1]).length,0);
  }finally{if(previous)Object.defineProperty(globalThis,'devicePixelRatio',previous);else Reflect.deleteProperty(globalThis,'devicePixelRatio');}
 });
-test('all six weather choices package six unique binaries even alongside standalone lightning',async()=>{
- const document:LyricsDocument={source:'MP3',timeBase:{kind:'seconds'},info:{},lines:[words([...styles,{type:'lightning',connected:true}])]};
+test('weather, sunset and standalone lightning reuse their shared sun binary while including the joined storm atlas',async()=>{
+ const document:LyricsDocument={source:'MP3',timeBase:{kind:'seconds'},info:{},lines:[words([...styles,{type:'lightning',connected:true},{type:'sunset',connected:true}])]};
  let reads=0;
  const assets=await collectEffectAtlases(document,async()=>{
   const bytes=new Uint8Array(24),view=new DataView(bytes.buffer);view.setUint32(0,0x89504e47);view.setUint32(16,256);view.setUint32(20,256);bytes[8]=++reads;return new Blob([bytes]);
  });
- assert.equal(reads,6);assert.equal(assets.length,7);assert.equal(usedEffectAtlasRoles(document.lines).length,7);
+ assert.equal(reads,7);assert.equal(assets.length,8);assert.equal(usedEffectAtlasRoles(document.lines).length,8);
  const xml=buildPlaybackKlyrXml(document,[],assets);
- assert.equal((xml.match(/<SPRITE /g)??[]).length,7);assert.equal((xml.match(/<DATA ref=/g)??[]).length,1);
+ assert.equal((xml.match(/<SPRITE /g)??[]).length,8);assert.equal((xml.match(/<DATA ref=/g)??[]).length,1);
  assert(xml.includes('variant="storm"'));assert(xml.includes('variant="birds"'));
  const output=buildYoutubePlayback({youtubeId:'video',info:{},lyrics:[],chords:[],document,assets:[],effectAtlases:assets});
- assert.equal(output.data.effects!.atlases.filter(asset=>asset.base64).length,6);
- assert.equal(materializeAtlasPayloads(output.data.effects!.atlases,true).filter(asset=>asset.base64).length,7);
+ assert.equal(output.data.effects!.atlases.filter(asset=>asset.base64).length,7);
+ assert.equal(materializeAtlasPayloads(output.data.effects!.atlases,true).filter(asset=>asset.base64).length,8);
 });
 test('missing components and conflicting shared payloads fail instead of producing incomplete playback',()=>{
  const atlas:PlaybackFrameAtlas={type:'rain',id:'rain',mime:'image/png',width:256,height:256,columns:4,rows:4,frames:16,fps:16,base64:'AQID'};

@@ -1,0 +1,159 @@
+{
+  "mode": "built-in image_gen.imagegen",
+  "styled_presets": 30,
+  "new_presets": 20,
+  "picker_choices_with_none": 31,
+  "cloud_raise_in_lyric_height": 0.08,
+  "storm": {
+    "cloud_sites": "1–3 according to selected span",
+    "cycle_ms": 3200,
+    "primary_bursts_ms": [
+      180,
+      140
+    ],
+    "second_site": "only once per five long episodes; separated in time",
+    "long_span_in_lyric_height": 12,
+    "no_repeated_site": "Previous primary and optional secondary are excluded from the following episode.",
+    "cloud_crop": 0.61,
+    "cloud_part_height_ratio": 0.39,
+    "animation": "16 independently drawn source cels; generated cloud and lightning share the same cell and seam."
+  },
+  "decorations": "At most three sky objects, smaller than lyric height, shared with the live player and draft preview.",
+  "exports": "Thirty role bindings use eighteen unique PNG bodies. Package only used parts; refer to repeats by content ID.",
+  "sources": {
+    "storm_cloud": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-612b8d10-3003-4abc-af0d-e5c31a889a86.png",
+    "moon": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-88eb45a2-c155-4df8-ae76-24cabcafb801.png",
+    "stars": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-2fe463ae-691e-49f4-9b44-b81de7585d79.png",
+    "meteor": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-89b69714-3114-4fe3-bbb7-68939ce15d0c.png",
+    "snow": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-fe7ec39a-d583-48b3-99ec-2cfcbb4a3e4c.png",
+    "petals": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-a35ceffb-5a89-48f3-81fd-9dcb56abf996.png",
+    "autumn_leaf": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-f9d318c7-f120-478a-b322-fe2fd6bff941.png",
+    "aurora": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-1ed024f9-dc03-4129-81fb-aed6dc3a6832.png",
+    "butterfly": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-98b638ff-cf35-4d4e-9260-9c55bba61acd.png"
+  },
+  "prompts": {
+    "storm_cloud": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE compact dark thundercloud with a short vivid blue lightning discharge physically emerging from its underside. Cloud stays consistently centered at x=50%; cloud body occupies x=12%..88%, y=12%..42% in every cell. Build the cloud from two or three rounded slate gray shapes (#526b87, #809bb5, #b0c6d7), with a clean dark lower edge and modest flat volume. Electric blue/cyan/ivory lightning (#078eff, #32dcff, #f3feff) begins at y=42% from inside the cloud and ends by y=82%, contained in x=30%..72%. Make the lightning strongly visible in ALL sixteen active cels, alternating its jagged route between left, center and right, a short one-branch crackle, never a long tree. Keep the entire top 42% completely cloud-colored; all electric shapes begin BELOW the cloud underside so the cloud can be reused separately by clipping its lower part. Change the cloud rim subtly as the bolt crackles with substantially different paths in every cel. A single joined cloud-and-lightning effect, not a lightning icon placed next to a cloud. No rain streaks in this atlas; existing rain will be reused.",
+    "moon": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE elegant small crescent moon, centered in each cell. A clean warm ivory crescent with a thin pale-gold inner edge and a muted blue-gray shaded inner curve (#fff0bf, #eacb87, #69809a). It occupies about 60% of cell width/height; broad solid crescent body, graceful curved tips, no face, no stars. Sixteen consecutive cels with gently changing highlight shapes and a very subtle illuminated phase change, stable center and dimensions, no rotating static icon. Minimal lunar detail, at most one small flat crater shape.",
+    "stars": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small four-point star in each cell, centered with sharp short tips. Warm ivory/gold plus a restrained cool blue rim (#fff2c6, #e8c66b, #94b9d6). Alternate crisp bright and quiet twinkle silhouettes in a sixteen-frame loop: points expand/retract independently and the inner diamond changes, keeping the same center and approximate bounds. Artwork occupies about 45% of each cell, generous transparency. A polished tiny night-sky star, not a glitter explosion, no constellation, no multiple stars, no background.",
+    "meteor": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE short shooting star traveling diagonally down and to the RIGHT within each cell. Small ivory diamond head with a compact two-color tapered cool-blue/golden trail (#fff2c6, #9ac5ee, #dab97b), total occupied span no more than 65% of the cell. Sixteen real consecutive drawings of the head traveling and the trail rebuilding/shortening across the cell, then resetting cleanly. A short restrained meteor, not a rocket, not a fireball, not a long streamer. No surrounding stars or sky background.",
+    "snow": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small six-armed snow crystal falling gently through the cell. Simple six-arm ivory crystal with a muted ice-blue secondary face (#f4fbff, #acd5e8, #6c9fbb), no intricate branches. Sixteen actual cels of a slow tumbling snowflake seen in different slight perspectives, drifting down in a gentle small arc within the safe bounds and resetting into a seamless falling cycle. One flake only per cell, low detail, no blizzard, no snow mound, no background.",
+    "petals": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small elegant blossom petal fluttering down. A softly pointed pale blush petal with one muted rose fold and ivory edge (#f5c9d7, #d683a5, #fff0ee), no flower, no stalk. Sixteen real different drawings of its curling silhouette changing from broad face to narrow edge and back as it falls on a gentle diagonal path inside the cell. Restrained contemporary botanical animation, not cute hearts, no confetti or background.",
+    "autumn_leaf": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small warm amber autumn leaf falling. Broad simple ginkgo-like leaf with a short connected stem, 3 flat warm colors (#d99a42, #efc879, #9b673b), at most two subtle vein marks. Sixteen independently drawn cels of a tumbling, fluttering leaf with changed visible folds and silhouettes while drifting downward inside the safe margins. Short broad leaf, no twig or tree, no leaf pile, no textures, no busy detail.",
+    "aurora": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small horizontal aurora ribbon, NOT an entire sky. A restrained short flowing wave of three flat translucent-looking colors represented by crisp opaque shapes (#67bfae, #759bc8, #a295d1), 65% of cell width and 35% of cell height, centered with lots of transparency around it. Sixteen genuinely redrawn wave contours and folded color bands flowing along the ribbon in a smooth looping cel animation. No glow, no gradient, no long curtain, no dark sky, no stars, no landscape. Elegant minimal northern lights as a tiny lyric decoration.",
+    "butterfly": "Use case: stylized-concept. Asset type: production transparent PNG sprite atlas for small decorative effects attached to karaoke lyrics.\nOutput EXACTLY 16 genuinely different consecutive hand-drawn animation cels in a clean 4 columns by 4 rows square grid, read left to right then top to bottom. No drawn grid, no labels, no frame numbers. True transparent alpha background outside the subjects, clean empty gutters, each subject fully inside its own cell with at least 10% safe margins. Preserve a consistent subject scale and virtual origin in every cell. Frame 16 loops naturally into frame 1.\nStyle: refined modern game cel animation, clean confident silhouettes and just 3–4 flat color shapes, a little physical depth but not realistic. Restrained elegant angular accents, crisp contours, low detail, not cute, not childish. No gradients, no bloom, no glow halo, no blurry shadows, no texture, no grain, no speckles, no text, no logo, no watermark, no decorative frame or colored background. These will appear smaller than lyric lettering; prioritize a recognizable clean shape over detail. Draw real changed silhouettes/inner contours each frame, rather than repeating or translating one rigid picture.\nPrimary request: ONE small elegant butterfly with narrow indigo-blue and warm amber wings (#6c8faf, #d5a864, #dbe6ee) and a thin muted body. No eyes or face details. Sixteen consecutive actual wingbeat cels: broad open wings, intermediate folded wings, narrow raised wings and back, showing different hand-drawn silhouettes and flat interior wing shapes, stable central body. Slight physical depth, restrained proportions, no cute mascot style, no flowers, no trails, no background."
+  },
+  "refinements": {
+    "aurora": "Use case: background-extraction. Edit target: the supplied aurora sprite atlas. Preserve the sixteen ribbon silhouettes, their cel-frame differences, and their 4-column/4-row grid. Remove ALL of the dark blue/green/purple cloudy background, bloom, halo, gradient, haze and cast shadow. Keep ONLY the crisp three-color ribbon shapes. Everything around every ribbon must be actual fully transparent alpha, not black, gray or a sky backdrop. No semiopaque glow cloud behind a ribbon. The ribbons themselves must be clean opaque teal, periwinkle-blue and muted lavender flat shapes. The whole output is a production PNG animation atlas, not an illustration of a sky. No text, no labels, no drawn grid. Render true transparency."
+  },
+  "aurora_final_prompt": "Use case: stylized-concept. Production CUTOUT sprite atlas. Draw only a small flowing ribbon shape on a truly TRANSPARENT PNG background, not any scene. EXACTLY sixteen consecutive animation cels in a 4 by 4 grid, no grid lines. In every cel: one compact horizontal ribbon made of THREE crisp opaque curved strips, muted teal, periwinkle blue, pale lavender. These strips overlap as a short folded wave, each silhouette different across the sixteen frames to create a flowing loop. Subject centered within each cell, occupies about 65% width and 35% height, with 15% clear empty gutters. Every pixel outside the ribbon strips must have alpha ZERO. Absolutely NO background, NO colored atmosphere, NO sky, NO shadows, NO light bloom, NO glow, NO gradients, NO haze, NO cloudy color, NO texture, no labels, no text. Flat solid colors, professional minimal cel artwork. Think of an isolated paper ribbon cutout animated frame by frame. Export genuine transparency.",
+  "assets": [
+    {
+      "name": "storm_cloud",
+      "path": "public/effects/sprites/storm-cloud-v2.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/storm-cloud-v2.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-612b8d10-3003-4abc-af0d-e5c31a889a86.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1052407,
+      "sha256": "c1e8855aeb6e0207a1b8f07e8dda269c7e721917a4ea263ac9dfcbd29cca2411",
+      "fps": 16,
+      "frames": 16
+    },
+    {
+      "name": "moon",
+      "path": "public/effects/sprites/moon-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/moon-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-88eb45a2-c155-4df8-ae76-24cabcafb801.png",
+      "width": 1271,
+      "height": 1238,
+      "bytes": 746561,
+      "sha256": "51f74563e86fe10d9abfdfa16d153b28455cad16a20af28c8b79676c9c82cde2",
+      "fps": 8,
+      "frames": 16
+    },
+    {
+      "name": "stars",
+      "path": "public/effects/sprites/stars-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/stars-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-2fe463ae-691e-49f4-9b44-b81de7585d79.png",
+      "width": 1312,
+      "height": 1199,
+      "bytes": 451849,
+      "sha256": "602843a50e36799141203a799d316ff712b4d0bfb257498d25f7840d973c9bd6",
+      "fps": 12,
+      "frames": 16
+    },
+    {
+      "name": "meteor",
+      "path": "public/effects/sprites/meteor-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/meteor-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-89b69714-3114-4fe3-bbb7-68939ce15d0c.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 539077,
+      "sha256": "00d99552ce2626ae680dc65dbaf659182efd3ed1b673fc0d9e0c96f0219aa85b",
+      "fps": 16,
+      "frames": 16
+    },
+    {
+      "name": "snow",
+      "path": "public/effects/sprites/snow-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/snow-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-fe7ec39a-d583-48b3-99ec-2cfcbb4a3e4c.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1138677,
+      "sha256": "0abf10beed2338fabdad59a67a35f7eb1735fcf83089d6d0ffc1cb0041849495",
+      "fps": 12,
+      "frames": 16
+    },
+    {
+      "name": "petals",
+      "path": "public/effects/sprites/petals-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/petals-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-a35ceffb-5a89-48f3-81fd-9dcb56abf996.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 749144,
+      "sha256": "7d010753f221344c53f3af7ac60a733284e18b60ff5e1b80f8fc7c03acc1ba70",
+      "fps": 12,
+      "frames": 16
+    },
+    {
+      "name": "autumn_leaf",
+      "path": "public/effects/sprites/autumn-leaf-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/autumn-leaf-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-f9d318c7-f120-478a-b322-fe2fd6bff941.png",
+      "width": 1305,
+      "height": 1205,
+      "bytes": 738881,
+      "sha256": "4ba24e23be12277d058d27cc3c1d2439fe53d494ac5043e356421e118f7c883f",
+      "fps": 12,
+      "frames": 16
+    },
+    {
+      "name": "butterfly",
+      "path": "public/effects/sprites/butterfly-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/butterfly-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-98b638ff-cf35-4d4e-9260-9c55bba61acd.png",
+      "width": 1448,
+      "height": 1086,
+      "bytes": 1003673,
+      "sha256": "ea4ceac3a6a4bfc10b6ed5166ef4d5b39391812134fd9cf9b818f50c1cc30d10",
+      "fps": 14,
+      "frames": 16
+    },
+    {
+      "name": "aurora",
+      "path": "public/effects/sprites/aurora-v1.png",
+      "saved_path": "/Users/digixtwo/Documents/Project/next-lyr/public/effects/sprites/aurora-v1.png",
+      "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-1ed024f9-dc03-4129-81fb-aed6dc3a6832.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1498785,
+      "sha256": "8c63fdddfcc82eaff80dd0663f9ecfffe92e56789cb8cd16b62109d65f522018",
+      "fps": 8,
+      "frames": 16
+    }
+  ]
+}

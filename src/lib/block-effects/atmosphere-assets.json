@@ -1,0 +1,74 @@
+{
+  "storm_cloud": {
+    "src": "/effects/sprites/storm-cloud-v2.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 16,
+    "id": "c1e8855aeb6e0207a1b8f07e8dda269c7e721917a4ea263ac9dfcbd29cca2411"
+  },
+  "moon": {
+    "src": "/effects/sprites/moon-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 8,
+    "id": "51f74563e86fe10d9abfdfa16d153b28455cad16a20af28c8b79676c9c82cde2"
+  },
+  "stars": {
+    "src": "/effects/sprites/stars-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 12,
+    "id": "602843a50e36799141203a799d316ff712b4d0bfb257498d25f7840d973c9bd6"
+  },
+  "meteor": {
+    "src": "/effects/sprites/meteor-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 16,
+    "id": "00d99552ce2626ae680dc65dbaf659182efd3ed1b673fc0d9e0c96f0219aa85b"
+  },
+  "snow": {
+    "src": "/effects/sprites/snow-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 12,
+    "id": "0abf10beed2338fabdad59a67a35f7eb1735fcf83089d6d0ffc1cb0041849495"
+  },
+  "petals": {
+    "src": "/effects/sprites/petals-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 12,
+    "id": "7d010753f221344c53f3af7ac60a733284e18b60ff5e1b80f8fc7c03acc1ba70"
+  },
+  "autumn_leaf": {
+    "src": "/effects/sprites/autumn-leaf-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 12,
+    "id": "4ba24e23be12277d058d27cc3c1d2439fe53d494ac5043e356421e118f7c883f"
+  },
+  "butterfly": {
+    "src": "/effects/sprites/butterfly-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 14,
+    "id": "ea4ceac3a6a4bfc10b6ed5166ef4d5b39391812134fd9cf9b818f50c1cc30d10"
+  },
+  "aurora": {
+    "src": "/effects/sprites/aurora-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 8,
+    "id": "8c63fdddfcc82eaff80dd0663f9ecfffe92e56789cb8cd16b62109d65f522018"
+  }
+}

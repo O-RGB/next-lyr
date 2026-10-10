@@ -1,5 +1,5 @@
 import { normalizeBlockEffect, type EffectAtlasRole, type PlaybackFrameAtlas } from "../../block-effects/types";
-import { EFFECT_RENDERER, EFFECT_LAYOUT, EFFECT_COMMON, effectRecipe } from "../../block-effects/catalog";
+import { EFFECT_RENDERER, EFFECT_LAYOUT, EFFECT_COMMON, effectRecipe, supportsEffectAtlasRole } from "../../block-effects/catalog";
 import { selectPlaybackAtlases } from "../../block-effects/assets";
 import { EFFECT_ANIMATION_CSS } from "../../block-effects/animation";
 import type { PlaybackImage } from "../../stickers/types";
@@ -77,7 +77,7 @@ export function parseKlyrXmlDocument(
     const width = Number(node.getAttribute("width")), height = Number(node.getAttribute("height"));
     const columns = Number(node.getAttribute("columns")), rows = Number(node.getAttribute("rows"));
     const frames = Number(node.getAttribute("frames")), fps = Number(node.getAttribute("fps"));
-    if (!type || !["edge", "base", "cloud", "lightning", "birds"].includes(role) || (role === "base" && type !== "fire") || (role === "cloud" && type !== "rain" && type !== "sunny") || (role === "lightning" && type !== "rain") || (role === "birds" && type !== "sunny") || node.getAttribute("mime") !== "image/png" || !Number.isInteger(width) || !Number.isInteger(height) ||
+    if (!type || !supportsEffectAtlasRole(type,role) || node.getAttribute("mime") !== "image/png" || !Number.isInteger(width) || !Number.isInteger(height) ||
       width <= 0 || height <= 0 || width > 4096 || height > 4096 || columns !== 4 || rows !== 4 || width < columns || height < rows ||
       frames !== 16 || !Number.isFinite(fps) || fps < 1 || fps > 60 || base64.length > 10000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return;
     effectAtlases.push({ type, ...(role !== "edge" ? { role: role as EffectAtlasRole } : {}), id: node.getAttribute("id") ?? type, mime: "image/png", width, height, columns, rows, frames, fps, base64 });

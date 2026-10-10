@@ -1,8 +1,8 @@
 import { effectGeometry, effectHeadroom, effectRenderProfile, EFFECT_LAYOUT, frameAtTime } from "@/lib/block-effects/catalog";
 import { groupEffectBlocks, type EffectBlock, type BlockEffect, type EffectAtlasRole } from "@/lib/block-effects/types";
-import { layoutSkyActors, skyLightningVisible } from "@/lib/block-effects/weather";
+import { layoutSkyActors, STORM_CLOUD_CROP } from "@/lib/block-effects/weather";
 import { ensureEffectStyles, subscribeFramePainter, refreshFramePainter } from "@/lib/block-effects/animation";
-import { loadFrameAtlas, frameAtlasIdentity, drawAtlasFrame, drawHorizontalAtlasFrame, drawAnchoredAtlasFrame, type LoadedAtlas } from "@/lib/block-effects/frames";
+import { loadFrameAtlas, frameAtlasIdentity, drawAtlasFrame, drawHorizontalAtlasFrame, drawAnchoredAtlasFrame, drawStormAtlasFrame, type LoadedAtlas } from "@/lib/block-effects/frames";
 export interface EffectPlacement { key: string; effect: BlockEffect; left: number; top: number; width: number; height: number; progress?: number; clipLeft?: number; clipRight?: number; fireLengthScale?: number }
 export interface EffectBox { word: EffectBlock; left: number; top: number; width: number; height: number; progress?: number }
 export function placeEffectRuns(boxes: EffectBox[], prefix: string): EffectPlacement[] {
@@ -69,14 +69,13 @@ function paintEffectSprites(ctx: CanvasRenderingContext2D, atlas: LoadedAtlas, p
         drawAnchoredAtlasFrame(ctx,atlas,frameTime,x,rootY,h*profile.width,h*profile.height,anchorX,anchorY,side===0,reduced);
       }
     }
-    for(const actor of layoutSkyActors(placement.effect,width-2*outset,h)){
+    for(const actor of layoutSkyActors(placement.effect,width-2*outset,h,time,reduced,placement.key)){
       const image=actor.role==='edge'?atlas:components[actor.role];if(!image)continue;
       ctx.save();ctx.globalAlpha*=actor.opacity;
-      if(actor.role==='lightning'){
-        if(!skyLightningVisible(time,reduced)){ctx.restore();continue;}
-        if(reduced)ctx.globalAlpha*=.85;
-        drawAtlasFrame(ctx,image,time,outset+actor.left,baseline+actor.top,actor.height,false,reduced,Math.PI);
-      }else drawAnchoredAtlasFrame(ctx,image,time+actor.phase*1000/image.fps,outset+actor.left,baseline+actor.top,actor.width,actor.height,0,0,false,reduced);
+      const frameTime=actor.frameTime??time+actor.phase*1000/image.fps;
+      if(actor.role==='storm')drawStormAtlasFrame(ctx,image,frameTime,outset+actor.left,baseline+actor.top,
+        actor.width,actor.height,!!actor.flashing,reduced,STORM_CLOUD_CROP);
+      else drawAnchoredAtlasFrame(ctx,image,frameTime,outset+actor.left,baseline+actor.top,actor.width,actor.height,0,0,false,reduced);
       ctx.restore();
     }
   }

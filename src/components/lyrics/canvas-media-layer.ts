@@ -4,7 +4,7 @@ import { loadFrameAtlas, frameAtlasIdentity, type LoadedAtlas } from "@/lib/bloc
 import { frameAtTime, effectRenderProfile, effectAtlasRoles } from "@/lib/block-effects/catalog";
 import { subscribeFramePainter } from "@/lib/block-effects/animation";
 import type { EffectType, EffectAtlasRole, BlockEffect } from "@/lib/block-effects/types";
-import { skyLightningVisible } from "@/lib/block-effects/weather";
+import { atmosphereEventSignature } from "@/lib/block-effects/events";
 import { drawEffectFrame, type EffectPlacement } from "./block-effect-layer";
 
 export interface CanvasImagePlacement {
@@ -48,7 +48,7 @@ function paint(layer: CanvasMediaLayer, time: number, reduced: boolean, force = 
     return effectAtlasRoles(effect.effect).map(role=>{
       const atlas=layer.atlases.get(atlasKey(effect.effect.type,role))?.atlas;
       return atlas?frameAtTime(time,atlas.frames,atlas.fps,reduced):-1;
-    }).join('/')+(effect.effect.variant==='storm'?`:${skyLightningVisible(time,reduced)}`:'');
+    }).join('/')+atmosphereEventSignature(effect.effect,time,effect.key,reduced);
   }).join(",");
   if (!force && signature === layer.signature) return;
   layer.signature = signature;

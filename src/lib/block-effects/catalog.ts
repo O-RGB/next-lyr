@@ -1,7 +1,8 @@
 import recipes from "./recipes.json";
 import weatherAssets from "./weather-assets.json";
+import atmosphereAssets from "./atmosphere-assets.json";
 import { normalizeBlockEffect, type EffectType, type BlockEffect, type EffectAtlasRole } from "./types";
-export const EFFECT_RENDERER = "attached-sprite-frames-v9";
+export const EFFECT_RENDERER = "attached-sprite-frames-v10";
 export const EFFECT_LAYOUT = {
   edgeScale: .66, edgeOutset: 1.12, headroom: .95, bottomPad: .22,
   rootInset: .08, rootRise: .24, edgeAngle: Math.PI * .34,
@@ -26,15 +27,29 @@ export function effectHeadroom(type?: EffectType | BlockEffect): number {
 export function effectAtlasRoles(value: EffectType | BlockEffect): EffectAtlasRole[] {
   const effect=typeof value==='string'?{type:value,connected:true}:value;
   if(!Object.hasOwn(recipes,effect.type))return [];
-  if(effect.type==='rain'&&effect.variant==='storm')return ['edge','cloud','lightning'];
-  if(effect.type==='sunny'&&effect.variant==='birds')return ['edge','cloud','birds'];
-  if((effect.type==='rain'||effect.type==='sunny')&&effect.variant==='clouds')return ['edge','cloud'];
-  return ['edge'];
+  return ['edge',...(effect.variant?VARIANT_ROLES[effect.type]?.[effect.variant]??[]:[])];
+}
+const VARIANT_ROLES: Partial<Record<EffectType, Partial<Record<NonNullable<BlockEffect['variant']>, EffectAtlasRole[]>>>> = {
+  rain: { clouds:['cloud'],storm:['storm'] }, sunny: { clouds:['cloud'],birds:['cloud','birds'] },
+  night: { clouds:['cloud'],stars:['stars'],meteors:['stars','meteor'] }, stars: { meteors:['meteor'] },
+  snow: { clouds:['cloud'],moon:['moon'] }, petals: { butterflies:['butterflies'] }, autumn: { sun:['sun'] },
+  aurora: { stars:['stars'] }, sunset: { clouds:['cloud'],birds:['cloud','birds'] }, butterflies: { petals:['petals'] },
+};
+const COMPONENT_ATLASES: Partial<Record<EffectType, Partial<Record<EffectAtlasRole, typeof recipes.rain.atlas>>>> = {
+  rain: { cloud:weatherAssets.cloud_dark,storm:atmosphereAssets.storm_cloud,lightning:recipes.lightning.atlas },
+  sunny: { cloud:weatherAssets.cloud_white,birds:weatherAssets.birds },
+  night: { cloud:weatherAssets.cloud_white,stars:atmosphereAssets.stars,meteor:atmosphereAssets.meteor },
+  stars: { meteor:atmosphereAssets.meteor }, snow: { cloud:weatherAssets.cloud_dark,moon:atmosphereAssets.moon },
+  petals: { butterflies:atmosphereAssets.butterfly }, autumn: { sun:recipes.sunny.atlas },
+  aurora: { stars:atmosphereAssets.stars }, sunset: { cloud:weatherAssets.cloud_white,birds:weatherAssets.birds },
+  butterflies: { petals:atmosphereAssets.petals },
+};
+export function supportsEffectAtlasRole(type: EffectType, role: string): role is EffectAtlasRole {
+  return role==='edge'||role==='base'&&type==='fire'||Object.hasOwn(COMPONENT_ATLASES[type]??{},role);
 }
 export function effectAtlasRecipe(type: EffectType, role: EffectAtlasRole = "edge") {
-  if(role==='cloud'&&(type==='rain'||type==='sunny'))return type==='rain'?weatherAssets.cloud_dark:weatherAssets.cloud_white;
-  if(role==='lightning'&&type==='rain')return recipes.lightning.atlas;
-  if(role==='birds'&&type==='sunny')return weatherAssets.birds;
+  const component=COMPONENT_ATLASES[type]?.[role];
+  if(component)return component;
   if(role!=='edge')throw new Error(`unexpected-${role}-atlas`);
   return recipes[type].atlas;
 }

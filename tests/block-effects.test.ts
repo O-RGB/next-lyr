@@ -36,8 +36,8 @@ test('dragging carries content and effect but leaves timestamp slot indices fixe
  const moved=moveCellContent(cellsFromLine(line([fire,undefined,{type:'lightning',connected:true}])),2,0);
  assert.deepEqual(moved.map(c=>c.effect?.type),['lightning','fire',undefined]);assert.deepEqual(moved.map(c=>c.originalIndex),[0,1,2]);
 });
-test('six effect families are offered; untreated lyrics retain classic yellow',()=>{
- assert.deepEqual(EFFECT_TYPES,['fire','lightning','hearts','leaves','rain','sunny']);assert.equal(normalizeBlockEffect({type:'unknown'}),undefined);
+test('fourteen effect families are offered; untreated lyrics retain classic yellow',()=>{
+ assert.deepEqual(EFFECT_TYPES,['fire','lightning','hearts','leaves','rain','sunny','night','stars','snow','petals','autumn','aurora','sunset','butterflies']);assert.equal(normalizeBlockEffect({type:'unknown'}),undefined);
  assert.equal(LYRIC_APPEARANCE.idle[0],'#fcfe17');assert.equal(LYRIC_APPEARANCE.sung[0],'#0000ff');
 });
 test('frame playback advances through distinct source cells and wraps exactly',()=>{

@@ -12,10 +12,12 @@ node --test /tmp/next-lyr-inline-tests.cjs
 ./node_modules/.bin/esbuild tests/gif-canvas.test.ts --bundle --platform=node --format=cjs --outfile=/tmp/next-lyr-gif-canvas-tests.cjs
 ./node_modules/.bin/esbuild tests/nature-effects.test.ts --bundle --platform=node --format=cjs --outfile=/tmp/next-lyr-nature-effects-tests.cjs
 ./node_modules/.bin/esbuild tests/weather-effects.test.ts --bundle --platform=node --format=cjs --outfile=/tmp/next-lyr-weather-effects-tests.cjs
+./node_modules/.bin/esbuild tests/atmosphere-effects.test.ts --bundle --platform=node --format=cjs --outfile=/tmp/next-lyr-atmosphere-effects-tests.cjs
 node --test /tmp/next-lyr-timing-tests.cjs /tmp/next-lyr-playback-tests.cjs /tmp/next-lyr-effects-tests.cjs /tmp/next-lyr-effect-editor-tests.cjs
 node --test /tmp/next-lyr-gif-canvas-tests.cjs
 node --test /tmp/next-lyr-nature-effects-tests.cjs
 node --test /tmp/next-lyr-weather-effects-tests.cjs
+node --test /tmp/next-lyr-atmosphere-effects-tests.cjs
 ```
 
 The workflow tests mock player controls and the worker reply, while exercising
@@ -32,7 +34,9 @@ Nature-effect checks cover floating hearts, pinned leaf stems across changing so
 
 Weather checks cover the three rain styles and three sunny styles, family-specific variant validation, separate adjacent groups, and at most three floating objects. Clouds, sun and birds stay smaller than the lyric height and use restrained opacity. Browser validation covers the same canvas composition on desktop/mobile, variant persistence on save/reopen, unchanged timing slots, and shared decoded lightning. Exports include only needed sprite components: XML repeats an ID through `<DATA ref="id"/>`, while YKR repeats the binding with an empty `base64` and resolves it by ID. Readers hydrate these references before rendering; missing or conflicting required payloads fail export.
 
-Storm visibility checks exercise the actual sprite composer with rain, cloud and shared lightning atlases. Both bursts must draw different bolt cels; quiet intervals and cloud-only rain draw no bolt, while reduced motion retains a legible static bolt. Browser pixel comparisons on the main and draft renderers verify the discharge remains visible at small lyric sizes. Storm's icon uses lightning to distinguish it from the cloud-only choice.
+Storm visibility checks exercise the actual sprite composer with rain and the joined thundercloud atlas. Active and quiet intervals use the same cloud cel; the attached lower discharge appears only during a burst, while reduced motion retains a static discharge. Browser comparisons on the main and draft renderers verify the cloud and lightning form one small decoration. Storm's icon shows the generated cloud and discharge together.
+
+Atmosphere checks cover 30 styled presets, including all nighttime, star, snow, petal, autumn, aurora, sunset and butterfly variants. Every sky composition stays inside its selected span, below the text size, and at most three objects. The generated thundercloud atlas supplies both the cloud and its attached discharge: quiet intervals draw its upper part, flashes draw the matching lower part at the same seam. Seeded schedules avoid the preceding cloud; a second, different site appears only once per five long episodes and cannot become the next episode's site. Reduced motion freezes a static discharge and omits meteors. Export checks include all 30 role bindings with only 18 unique binaries, strict supported-role validation and unchanged timing slot references. Browser validation covers 16 distinct cels in every new PNG, alpha backgrounds, a shared main/draft painter, small mobile layouts, fixed sheet height, bilingual search, lazy visible icon loading, variant persistence, and XML/YKR shared-component references.
 
 Editor effect checks cover visual boundary blocks, exact group ranges, raised grouped words, restored selection on reopening, draft range recovery and undo/redo. Effect controls never create timing slots. Browser validation covers persistence, mobile scrolling over both words and effect controls, and direct group editing.
 

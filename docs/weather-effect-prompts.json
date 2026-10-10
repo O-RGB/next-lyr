@@ -38,7 +38,8 @@
       "opacity": 0.6
     },
     "extra_row_headroom_in_lyric_height": 0.35,
-    "lightning": "Reused approved bolt, up to .52 lyric height at 95% opacity, constrained to its cloud span. Two cel-animation bursts (140 ms and 260 ms) per 1600 ms make the discharge recognizable. Reduced motion retains a static bolt at about 81% opacity. The storm preset icon uses the lightning sheet to distinguish it from clouds without thunder."
+    "lightning": "Current storms use storm-cloud-v2.png, with the generated cloud and attached discharge at the same seam. Sparse seeded 3200 ms episodes switch sites. See docs/atmosphere-effect-prompts.json for current bounds and scheduling. The original standalone lightning asset remains available for legacy role bindings.",
+    "cloud_rise_in_lyric_height": 1.55
   },
   "reuse": "One canonical bitmap per white cloud, overcast cloud, sun and bird. Reuse rain-v1.png and lightning.png. Canvas image identity and export payloads are shared by content ID; unused components are excluded.",
   "assets": [

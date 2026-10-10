@@ -136,6 +136,15 @@ export function drawAnchoredAtlasFrame(ctx: CanvasRenderingContext2D, atlas: Loa
   ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);
   ctx.drawImage(atlas.image,rect.x,rect.y,rect.width,rect.height,-width*anchorX,-height*anchorY,width,height);ctx.restore();
 }
+/** The generated cloud and discharge share their source seam and animation cel. */
+export function drawStormAtlasFrame(ctx: CanvasRenderingContext2D, atlas: LoadedAtlas, time: number,
+  x: number, y: number, width: number, height: number, flashing: boolean, reduced: boolean, crop: number) {
+  const index = frameAtTime(time, atlas.frames, atlas.fps, reduced), rect = atlas.rects[index];
+  const sourceCloud = rect.height * crop, cloudHeight = height * .39;
+  ctx.drawImage(atlas.image, rect.x, rect.y, rect.width, sourceCloud, x, y, width, cloudHeight);
+  if (flashing) ctx.drawImage(atlas.image, rect.x, rect.y + sourceCloud, rect.width, rect.height - sourceCloud,
+    x, y + cloudHeight, width, height - cloudHeight);
+}
 /** Fire is drawn horizontally in its source frames; it never uses rotation. */
 export function drawHorizontalAtlasFrame(ctx: CanvasRenderingContext2D, atlas: LoadedAtlas, time: number, x: number, y: number, length: number, flip: boolean, reduced: boolean, heightScale = 1) {
   const index=frameAtTime(time,atlas.frames,atlas.fps,reduced),rect=atlas.rects[index],shape=atlas.shapes[index],scale=length/shape.width;
