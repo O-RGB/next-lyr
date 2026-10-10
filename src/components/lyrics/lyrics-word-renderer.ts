@@ -1,5 +1,8 @@
 import { roundedRect } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
+import { normalizeBlockEffect } from "@/lib/block-effects/types";
+import { withEffectTextStyle } from "@/lib/block-effects/appearance";
+import { drawCanvasText } from "./karaoke-lyrics/canvas-renderer";
 
 export const LYRICS_ROW_HEIGHT = 70;
 export const LYRICS_LEFT_GUTTER = 36;
@@ -26,6 +29,8 @@ export interface LyricWordBoxOptions {
   lineWidth?: number;
   markerWidth?: number;
   showText?: boolean;
+  effectsEnabled?: boolean;
+  effectProgress?: number;
 }
 
 export function measureLyricWords(
@@ -85,8 +90,16 @@ export function drawLyricWordBox(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `600 ${fontSize}px ${options.fontFamily}`;
-    ctx.fillStyle = colors.text;
-    ctx.fillText(word.text, x + boxWidth / 2, y + boxHeight / 2);
+    const effect = options.effectsEnabled === false ? undefined : normalizeBlockEffect(word.effect);
+    if (effect) {
+      const style = withEffectTextStyle({ fontSize, fontWeight: 600, fontFamily: options.fontFamily,
+        unsungFill: colors.text, sungFill: colors.text, unsungStroke: "transparent", sungStroke: "transparent",
+        strokeWidth: Math.max(.65, fontSize * .055) }, effect.type);
+      drawCanvasText(ctx, word.text, x + boxWidth / 2, y + boxHeight / 2, options.effectProgress ?? 0, boxWidth / .94, style);
+    } else {
+      ctx.fillStyle = colors.text;
+      ctx.fillText(word.text, x + boxWidth / 2, y + boxHeight / 2);
+    }
 
     if (word.vocal && boxHeight >= 12) {
       ctx.font = `500 ${vocalFontSize}px ${options.fontFamily}`;

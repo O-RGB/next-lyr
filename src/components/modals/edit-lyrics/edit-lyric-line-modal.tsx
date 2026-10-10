@@ -17,7 +17,8 @@ import { IMAGE_TOKEN, cellsFromLine, moveCellContent, type LyricCellDraft } from
 import type { LyricSticker } from "@/lib/stickers/types";
 import LineStickerPanel from "./line-sticker-panel";
 import { BlockEffectPanel, QuickBlockEffectControls } from "./block-effect-panel";
-import type { EffectType } from "@/lib/block-effects/types";
+import { groupEffectBlocks, normalizeBlockEffect, type WeatherStyle, type EffectType, type EffectRun } from "@/lib/block-effects/types";
+import { resolveEffectSelection, resizeEffectRun, selectionAfterDraftHistory } from "@/lib/block-effects/editor";
 import { SortableLyricCell } from "./sortable-lyric-cell";
 
 interface DraftHistory { past: LyricCellDraft[][]; present: LyricCellDraft[]; future: LyricCellDraft[][] }
@@ -29,12 +30,15 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
   const projectId = useKaraokeStore((state) => state.projectId);
   const actions = useKaraokeStore((state) => state.actions);
   const mode = useKaraokeStore((state) => state.mode);
+  const editEffectIndices = useKaraokeStore((state) => state.editEffectIndices);
   const locale = useSettingsStore((state) => state.uiLocale);
   const [history, setHistory] = useState<DraftHistory>(emptyHistory);
   const [selected, setSelected] = useState(new Set<string>());
   const [stickerBusy, setStickerBusy] = useState(false);
   const sessionRef = useRef<string | null>(null);
   const cacheRef = useRef(new Map<string, DraftHistory>());
+  const selectionCacheRef = useRef(new Map<string, Set<string>>());
+  const openedRef = useRef(false);
   const inputsRef = useRef(new Map<string, HTMLInputElement>());
   const focusedRef = useRef<string | null>(null);
   const nextKeyRef = useRef(0);
@@ -55,21 +59,30 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
   );
 
   useEffect(() => {
-    if (!open || !currentLine || selectedLineIndex === null) return;
+    if (!open) { openedRef.current = false; return; }
+    if (!currentLine || selectedLineIndex === null) return;
     const key = JSON.stringify([projectId, selectedLineIndex, currentLine]);
-    if (sessionRef.current !== key) {
+    if (sessionRef.current !== key || !openedRef.current) {
       sessionRef.current = key;
       const initial = cellsFromLine(currentLine);
-      setSelected(new Set());
-      setHistory(cacheRef.current.get(key) ?? { past: [], present: initial, future: [] });
-      focusedRef.current = initial.find((cell) => cell.originalIndex === useKaraokeStore.getState().currentIndex)?.key ?? initial[0]?.key ?? null;
+      const draft = cacheRef.current.get(key) ?? { past: [], present: initial, future: [] };
+      const selection = resolveEffectSelection(draft.present, { requestedIndices: editEffectIndices,
+        rememberedKeys: selectionCacheRef.current.get(key), focusIndex: useKaraokeStore.getState().currentIndex });
+      setSelected(selection); setHistory(draft);
+      focusedRef.current = editEffectIndices?.length ? draft.present.find(cell => selection.has(cell.key))?.key ?? null
+        : draft.present.find((cell) => cell.originalIndex === useKaraokeStore.getState().currentIndex)?.key ?? draft.present[0]?.key ?? null;
     }
+    openedRef.current = true;
     const frame = requestAnimationFrame(() => {
+      if (editEffectIndices?.length) {
+        document.querySelector<HTMLSelectElement>("select[data-effect-type-control]")?.focus();
+        return;
+      }
       const input = focusedRef.current && inputsRef.current.get(focusedRef.current);
       if (input) { input.focus(); input.select(); }
     });
     return () => cancelAnimationFrame(frame);
-  }, [open, currentLine, selectedLineIndex, projectId]);
+  }, [open, currentLine, selectedLineIndex, projectId, editEffectIndices]);
 
   const change = (update: (cells: LyricCellDraft[]) => LyricCellDraft[]) => setHistory((previous) => ({
     past: [...previous.past, previous.present].slice(-80), present: update(previous.present), future: [],
@@ -108,23 +121,34 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     focusedRef.current = cell.key;
     if (kind === "text") requestAnimationFrame(() => inputsRef.current.get(cell.key)?.focus());
   };
-  const undo = () => setHistory((previous) => {
-    const last = previous.past.at(-1);
-    return last ? { past: previous.past.slice(0, -1), present: last, future: [previous.present, ...previous.future] } : previous;
-  });
-  const redo = () => setHistory((previous) => {
-    const next = previous.future[0];
-    return next ? { past: [...previous.past, previous.present].slice(-80), present: next, future: previous.future.slice(1) } : previous;
-  });
+  const undo = () => {
+    const last = history.past.at(-1); if (!last) return;
+    setSelected(selectionAfterDraftHistory(history.present, last, selected));
+    setHistory({ past: history.past.slice(0, -1), present: last, future: [history.present, ...history.future] });
+  };
+  const redo = () => {
+    const next = history.future[0]; if (!next) return;
+    setSelected(selectionAfterDraftHistory(history.present, next, selected));
+    setHistory({ past: [...history.past, history.present].slice(-80), present: next, future: history.future.slice(1) });
+  };
   const serialize = (cells: LyricCellDraft[]) => cells.map(({ originalIndex, kind, text, vocal, sticker, effect }) => ({ originalIndex, kind, text, vocal, sticker, effect }));
   const applyEffect = (type: EffectType | "none") => change((cells) => cells.map((cell) => selected.has(cell.key)
-    ? { ...cell, effect: type === "none" ? undefined : { type, connected: cell.effect?.connected !== false } } : cell));
+    ? { ...cell, effect: type === "none" ? undefined : { ...(cell.effect?.type===type?cell.effect:{}), type, connected: cell.effect?.connected !== false } } : cell));
+  const applyWeather = (style: WeatherStyle) => change(cells=>cells.map(cell=>selected.has(cell.key)&&cell.effect&&(cell.effect.type==='rain'||cell.effect.type==='sunny')
+    ? {...cell,effect:normalizeBlockEffect({...cell.effect,variant:style==='plain'?undefined:style})}:cell));
   const connectEffects = (connected: boolean) => change((cells) => cells.map((cell) => selected.has(cell.key) && cell.effect ? { ...cell, effect: { ...cell.effect, connected } } : cell));
+  const selectEffectRun = (run: EffectRun) => setSelected(new Set(history.present.slice(run.start, run.end + 1).map(cell => cell.key)));
+  const changeEffectRange = (run: EffectRun, start: number, end: number) => {
+    const next = resizeEffectRun(history.present, run, start, end);
+    change(() => next);
+    const updated = groupEffectBlocks(next).find(group => group.start <= start && group.end >= end && group.effect.type === run.effect.type);
+    setSelected(new Set(next.slice(updated?.start ?? start, (updated?.end ?? end) + 1).map(cell => cell.key)));
+  };
   const invalid = history.present.some((cell) => cell.kind === "image" ? !cell.sticker : !cell.text.trim());
   const dirty = currentLine && JSON.stringify(serialize(history.present)) !== JSON.stringify(serialize(cellsFromLine(currentLine)));
   const hasNewCells = history.present.some((cell) => cell.originalIndex === null);
   const close = () => {
-    if (sessionRef.current) cacheRef.current.set(sessionRef.current, history);
+    if (sessionRef.current) { cacheRef.current.set(sessionRef.current, history); selectionCacheRef.current.set(sessionRef.current, new Set(selected)); }
     actions.closeEditModal();
   };
   const save = async () => {
@@ -133,7 +157,10 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     const wasTiming = state.isTimingActive || state.editingLineIndex !== null;
     if (sessionRef.current) cacheRef.current.delete(sessionRef.current);
     sessionRef.current = null;
-    actions.replaceLineWords(selectedLineIndex, history.present);
+    await actions.replaceLineWords(selectedLineIndex, history.present);
+    const savedLine = useKaraokeStore.getState().lyricsData[selectedLineIndex];
+    const savedKey = JSON.stringify([projectId, selectedLineIndex, savedLine]);
+    selectionCacheRef.current.set(savedKey, new Set(cellsFromLine(savedLine).flatMap((cell, index) => selected.has(history.present[index]?.key) ? [cell.key] : [])));
     const persistence = wasTiming ? actions.saveTimingDraft() : actions.saveCurrentProject();
     actions.closeEditModal();
     try {
@@ -151,7 +178,7 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     description={text(locale, "ลากคำหรือรูปเพื่อเรียงเนื้อหา เวลาอยู่กับช่องเดิม", "Drag words or images to reorder content. Timestamps stay in their slots.")}
     modalClassName="flex flex-col"
     footer={<div className="flex w-full flex-col">
-      <QuickBlockEffectControls cells={history.present} selected={selected} onApply={applyEffect} onConnect={connectEffects} />
+      <QuickBlockEffectControls cells={history.present} selected={selected} onApply={applyEffect} onConnect={connectEffects} onWeatherChange={applyWeather} />
       <ButtonCommon className="w-full sm:ml-auto sm:w-auto" icon={<Save />} color={hasNewCells ? "warning" : "primary"}
       disabled={!dirty || invalid || stickerBusy} onClick={() => void save()}>
       {hasNewCells ? text(locale, "บันทึกและปาดต่อ", "Save & continue timing") : text(locale, "บันทึก", "Save")}
@@ -160,8 +187,9 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
       {projectId && open && selectedLineIndex !== null && <LineStickerPanel key={`${projectId}:${selectedLineIndex}`}
         projectId={projectId} onChange={(sticker) => { if (sticker) insert("image", sticker); }} onBusyChange={setStickerBusy} />}
       <BlockEffectPanel cells={history.present} selected={selected}
+        onSelectRun={selectEffectRun} onRangeChange={changeEffectRange}
         onSelectAll={() => setSelected(selected.size === history.present.length ? new Set() : new Set(history.present.map((cell) => cell.key)))}
-        onApply={applyEffect} onConnect={connectEffects} />
+        onApply={applyEffect} onConnect={connectEffects} onWeatherChange={applyWeather} />
       <div className="rounded-xl border border-line bg-panel p-2 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-line pb-2 text-xs text-muted-foreground">
           <span>{text(locale, "บรรทัดที่", "Line")} {(selectedLineIndex ?? 0) + 1} · {history.present.length} {text(locale, "รายการ", "items")}</span>

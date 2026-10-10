@@ -1,10 +1,34 @@
 # Lyric effect frame assets
 
-Tool mode: built-in `image_gen.imagegen` (transparent PNG, 16 drawn cels per effect).
+Tool mode: built-in `image_gen.imagegen`, transparent PNG sprite atlases. Original generated files are preserved. Each atlas contains 16 independently drawn animation frames.
 
-Final assets: `public/effects/sprites/lightning.png`. This commit ships the lightning preset. All placements reuse these atlases, for every selected text run. Roots are aligned to the outer glyph strokes and the frame art is placed at a fixed outward angle. Animation advances through discrete image cells; no animated vector transforms or interpolated shapes.
+Final selected assets:
 
-## Lightning
+- `public/effects/sprites/lightning.png`: approved lightning image, 20 fps; separately committed in `76c8c01`.
+- `public/effects/sprites/fire-compact-v1.png`: active compact, thick flame; 16 fps. Its rendered footprint matches lightning while its connected body contains more fire. Full generation prompt, renderer sizing and measured frame bounds: `docs/fire-compact-v1.json`.
+- `public/effects/sprites/fire-lightning.png`: preserved approved branching fire for reverting. Original bytes retained. SHA-256: `aaa89ef7ee01669b6c57c96168e6fb1e91b4b086cea5ae83d15ee0afe711941e`. Original atlas and render profile: `docs/fire-lightning-approved.json` (height multiplier 1).
+- `public/effects/sprites/hearts-v1.png`: three small hearts with a cel-drawn pulse and rise at the group edges, 12 fps.
+- `public/effects/sprites/leaves-v1.png`: a botanical sprig with unfurling leaves and its connected stem pinned to the glyph, 12 fps.
+- `public/effects/sprites/rain-v1.png`: sparse falling streaks and small splash cels, tiled only across the selected glyph span behind the text, 16 fps. Additional headroom keeps the rain visible above letters.
+
+Full generation and refinement prompts for the three nature presets are recorded in `docs/nature-effect-prompts.json`. All atlases retain the generated transparent pixels; each is smaller than 1 MB. The existing fire/lightning artwork and text palettes are retained. Each new text theme starts pale and wipes to a darker pink, green or rain blue. All presets share the same canvas, image cache and animation clock.
+
+Weather components and their full prompts are recorded in `docs/weather-effect-prompts.json`: one white cloud atlas, one overcast cloud atlas, one sun atlas and one bird atlas. Rain offers plain, clouds and thunderstorm styles; sunshine offers plain, white clouds and white clouds with birds. Rain streaks and thunderstorm lightning reuse the existing approved sheets. Sky objects remain inside their selected group, at most three at a time, smaller than the lyric height, with muted opacity and only `.35 × lyric height` of extra row headroom. Cloud boxes are `.85 × .5` lyric height at 55% opacity, suns `.48–.52` square at 65%, and birds `.68 × .4` at 60%. Each shared bitmap is packaged once by its content ID even when different type/role bindings need it. Standalone fire/lightning and plain rain retain their approved artwork, colors and geometry.
+
+Older thick trials and the burning strip were removed; the approved branching fire remains as a fallback. The new fire has one substantial continuous body and no lightning-like branches. It already faces outward and uses translation/mirroring without rotation. Its connected lower-left root is anchored to the glyph, ignoring detached alpha residue. The common emission size remains `.66 × lyric height`; compact fire uses length multiplier `.92` and height multiplier `.63` to fit the same visible footprint as the rotated lightning. Across all 16 frames at a 100px lyric height, average fire bounds are 61.06 × 45.94px versus lightning's 60.38 × 45.50px, with roughly 24% more filled flame area and no clipped frames. Both retain the raised glyph attachment (`rootRise: .24`). Text, images, GIFs and effects share the presentation canvas. Playback exports package only the active used atlas for each effect, once each, without the backup or any base-strip assets.
+
+## Preserved branching fire — original lightning-style reference
+
+```text
+Use case: stylized-concept
+Asset type: a production transparent PNG sprite atlas for flame effects on karaoke text.
+Reference image role: approved LIGHTNING atlas. Match its elegant thin branching channels, ink thickness, pointed tips, restrained three-color treatment and visual mass. Convert that visual language into FIRE, not a round campfire or oval flame blob.
+Draw EXACTLY 16 consecutive animation cels arranged in a clean 4×4 grid. Each cell is a connected energetic flame discharge with a fixed emitter root at x=18%, y=63%, flowing outward to the RIGHT and gently upward. Main flame ends at x=83%, y=35%; two small branching flame tongues reach upward/downward from its bends. Draw the horizontal outward orientation directly. Keep the same overall occupied bounds and channel thickness in every cel. Re-sculpt the flame bends, branch tips and hot inner currents in each cel so the loop feels like fast living heat. Frame sixteen flows into frame one.
+Design: slender angular branching flame channels, slight fluid curves at the flame tips, negative-space gaps between branches. The connected shape and three thin nested color bands should have almost the SAME thickness and area as the reference lightning. Clean pointed flame forks, no rounded bulbous body, no wide solid white/yellow center. Orange outer channel (#ff8700), golden yellow middle (#ffc43b), narrow pale cream hot channel (#fff0b0). Think of the reference's blue/cyan/white energy rendered as orange/gold/cream burning energy. Minimal detail, crisp contemporary cel artwork, professional game effect.
+Background: actual fully transparent alpha outside the main connected channels; clear gutters between all cells. No glow, airbrush haze, textures, speckles, smoke, sparks, detached particles, floor/base platform, frame, badges, grid lines, labels, text or watermark. No long thin streamer and no chunky cute flame icon. Preserve the reference's balanced sharp branching design and approximate stroke weight.
+```
+
+## Lightning — retained prompt
 
 ```text
 Use case: stylized-concept

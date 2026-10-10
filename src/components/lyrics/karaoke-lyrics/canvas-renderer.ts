@@ -166,7 +166,10 @@ export function drawCanvasText(
     stops.forEach((color, index) => gradient.addColorStop(index / Math.max(1, stops.length - 1), color));
     return gradient;
   };
-  ctx.shadowColor = "rgba(20,28,49,.18)"; ctx.shadowBlur = 2; ctx.shadowOffsetY = style.fontSize * .045;
+  const themed = Boolean(style.unsungGradient?.length);
+  ctx.shadowColor = themed ? style.glowColor ?? "transparent" : "rgba(20,28,49,.18)";
+  ctx.shadowBlur = themed ? style.glowBlur ?? 0 : 2;
+  ctx.shadowOffsetY = themed ? 0 : style.fontSize * .045;
   ctx.strokeStyle = style.unsungStroke;
   ctx.lineWidth = style.strokeWidth;
   ctx.lineJoin = "round";

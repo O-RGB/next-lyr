@@ -43,6 +43,7 @@ export const initialTimingState: TimingState = {
 
 export const initialModalState: ModalState = {
   isEditModalOpen: false,
+  editEffectIndices: null,
   isAddModalOpen: false,
   lineIndexToInsertAfter: null,
   isChordModalOpen: false,

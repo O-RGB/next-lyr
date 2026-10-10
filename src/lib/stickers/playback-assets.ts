@@ -1,5 +1,6 @@
 import { normalizeBlockEffect, type PlaybackFrameAtlas } from "../block-effects/types";
 import { EFFECT_RENDERER, EFFECT_LAYOUT, EFFECT_COMMON, effectRecipe } from "../block-effects/catalog";
+import { selectPlaybackAtlases } from "../block-effects/assets";
 import { EFFECT_ANIMATION_CSS } from "../block-effects/animation";
 import type { LyricsDocument } from "../karaoke/lyrics-core/types";
 import type { LyricSticker, PlaybackImage } from "./types";
@@ -31,12 +32,11 @@ export function buildYoutubePlayback(input: {
   document: LyricsDocument; assets: PlaybackImage[]; effectAtlases?: PlaybackFrameAtlas[];
 }) {
   const used = [...new Set(input.document.lines.flat().flatMap((word) => { const effect = normalizeBlockEffect(word.effect); return effect ? [effect.type] : []; }))];
-  const frames = new Map((input.effectAtlases ?? []).filter(atlas => used.includes(atlas.type)).map(atlas => [atlas.type, atlas]));
-  if (used.some(type => !frames.has(type))) throw new Error("missing-frame-atlas");
+  const frames = selectPlaybackAtlases(input.document.lines,input.effectAtlases??[]);
   return { format: "ykr", version: 2, mode: "youtube", data: {
     playerState: { youtubeId: input.youtubeId }, metadata: input.info,
     newLyricsData: input.lyrics, chordsData: input.chords,
     lyricsDocument: { ...input.document, assets: undefined, effectAtlases: undefined }, assets: input.assets,
-    ...(used.length ? { effects: { renderer: EFFECT_RENDERER, layout: EFFECT_LAYOUT, common: EFFECT_COMMON, css: EFFECT_ANIMATION_CSS, presets: Object.fromEntries(used.map((type) => [type, effectRecipe(type)])), atlases: [...frames.values()] } } : {}),
+    ...(used.length ? { effects: { renderer: EFFECT_RENDERER, layout: EFFECT_LAYOUT, common: EFFECT_COMMON, css: EFFECT_ANIMATION_CSS, presets: Object.fromEntries(used.map((type) => [type, effectRecipe(type)])), atlases: frames } } : {}),
   } };
 }

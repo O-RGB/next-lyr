@@ -20,11 +20,11 @@ export const createModalActions: StateCreator<
 
       // ลบ startEditLine action ออก
 
-      openEditModal: () => {
+      openEditModal: (effectIndices) => {
         pauseForEditing();
-        set({ isEditModalOpen: true });
+        set({ isEditModalOpen: true, editEffectIndices: effectIndices ? [...effectIndices] : null });
       },
-      closeEditModal: () => set({ isEditModalOpen: false }),
+      closeEditModal: () => set({ isEditModalOpen: false, editEffectIndices: null }),
 
       openAddModal: (lineIndex: number) => {
         pauseForEditing();

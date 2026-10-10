@@ -1,4 +1,36 @@
 {
+  "fire": {
+    "colors": [
+      "#ff8700",
+      "#ffc43b",
+      "#fff0b0"
+    ],
+    "text": {
+      "idle": [
+        "#fff8e6",
+        "#ffe29a",
+        "#ffb12a"
+      ],
+      "sung": [
+        "#ffad32",
+        "#ff8700",
+        "#e45410"
+      ],
+      "stroke": "#632a24",
+      "activeStroke": "#632a24",
+      "editor": "#a33e28",
+      "glow": "#ff8700"
+    },
+    "edgeCount": 1,
+    "atlas": {
+      "src": "/effects/sprites/fire-compact-v1.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 16,
+      "id": "f55cf36851090a6f2885e7c8bb23733e198f563ea3227fbe2adf31132303d878"
+    }
+  },
   "lightning": {
     "colors": [
       "#078eff",
@@ -7,16 +39,16 @@
     ],
     "text": {
       "idle": [
-        "#faf5ff",
-        "#e9ddff",
-        "#cdb8ff"
+        "#effaff",
+        "#ccefff",
+        "#36b9ff"
       ],
       "sung": [
-        "#fffdf6",
-        "#f3feff",
-        "#32dcff"
+        "#63cfff",
+        "#078eff",
+        "#175bd6"
       ],
-      "stroke": "#202a43",
+      "stroke": "#3b2b5f",
       "activeStroke": "#3b2b5f",
       "editor": "#6c46ac",
       "glow": "#078eff"
@@ -29,6 +61,172 @@
       "frames": 16,
       "fps": 20,
       "id": "81b0148cb8a979f72115713219fa847d6553f021890f4bd3ff4a087920a89793"
+    }
+  },
+  "hearts": {
+    "colors": [
+      "#ef3e73",
+      "#ff91b1",
+      "#ffe6ef"
+    ],
+    "text": {
+      "idle": [
+        "#fff0f5",
+        "#ffc2d5",
+        "#ff7eaa"
+      ],
+      "sung": [
+        "#ff6e99",
+        "#ee3f72",
+        "#bd2457"
+      ],
+      "stroke": "#672a46",
+      "activeStroke": "#672a46",
+      "editor": "#672a46",
+      "glow": "#ff5588"
+    },
+    "edgeCount": 1,
+    "render": {
+      "attachment": "cluster",
+      "layer": "front",
+      "width": 0.76,
+      "height": 0.8,
+      "anchorX": 0.5,
+      "anchorY": 0.86,
+      "inset": -0.1
+    },
+    "atlas": {
+      "src": "/effects/sprites/hearts-v1.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "id": "b256d4967e8b0a308d4c11303fb9110d2cb8b460aac1ed020b85dfe427e8e508"
+    }
+  },
+  "leaves": {
+    "colors": [
+      "#287c45",
+      "#70c868",
+      "#daf1a7"
+    ],
+    "text": {
+      "idle": [
+        "#f1ffe4",
+        "#c9efa8",
+        "#7fc55e"
+      ],
+      "sung": [
+        "#6ec65a",
+        "#389c48",
+        "#207239"
+      ],
+      "stroke": "#244a35",
+      "activeStroke": "#244a35",
+      "editor": "#244a35",
+      "glow": "#4eb05b"
+    },
+    "edgeCount": 1,
+    "render": {
+      "attachment": "sprout",
+      "layer": "front",
+      "width": 0.7,
+      "height": 0.76,
+      "anchorX": 0.3,
+      "anchorY": 0.88,
+      "inset": 0.03
+    },
+    "atlas": {
+      "src": "/effects/sprites/leaves-v1.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "id": "89659dc020c704ddcb47a89e2d5e3ed093588e921b15b36e90e55213b71551fc"
+    }
+  },
+  "rain": {
+    "colors": [
+      "#397caa",
+      "#79c5df",
+      "#dbf5ff"
+    ],
+    "text": {
+      "idle": [
+        "#eefbff",
+        "#c6e8f2",
+        "#7db7d7"
+      ],
+      "sung": [
+        "#43b6d4",
+        "#238caf",
+        "#1e648e"
+      ],
+      "stroke": "#244056",
+      "activeStroke": "#244056",
+      "editor": "#244056",
+      "glow": "#60aacc"
+    },
+    "edgeCount": 0,
+    "render": {
+      "attachment": "rain",
+      "layer": "behind",
+      "width": 1.15,
+      "height": 1.4,
+      "anchorX": 0,
+      "anchorY": 0,
+      "inset": 0,
+      "headroom": 1.5
+    },
+    "atlas": {
+      "src": "/effects/sprites/rain-v1.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 16,
+      "id": "2528bcf7aceba6578855c5767c0bf68d2aa9e738df4e3b40d7403f5fcec32e8c"
+    }
+  },
+  "sunny": {
+    "colors": [
+      "#ffab2f",
+      "#ffd55b",
+      "#fff0ba"
+    ],
+    "text": {
+      "idle": [
+        "#effbff",
+        "#cdeaf9",
+        "#86cce9"
+      ],
+      "sung": [
+        "#68c0e0",
+        "#319eca",
+        "#257da9"
+      ],
+      "stroke": "#325371",
+      "activeStroke": "#325371",
+      "editor": "#325371",
+      "glow": "#8cc8e4"
+    },
+    "edgeCount": 0,
+    "render": {
+      "attachment": "sky",
+      "layer": "behind",
+      "width": 0.52,
+      "height": 0.52,
+      "anchorX": 0,
+      "anchorY": 0,
+      "inset": 0,
+      "headroom": 1.7
+    },
+    "atlas": {
+      "src": "/effects/sprites/sun-v1.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "id": "65598e7d7b52d4e742186bea9e61527642e824586c738eeb48dbfb22cd33001b"
     }
   }
 }

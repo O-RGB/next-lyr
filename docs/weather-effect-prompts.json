@@ -1,0 +1,78 @@
+{
+  "tool_mode": "built-in image_gen.imagegen",
+  "format": "Original transparent PNG atlases, 4 columns × 4 rows, 16 consecutive cels. Generated pixels preserved without post-editing.",
+  "presets": {
+    "rain": [
+      "plain",
+      "clouds",
+      "storm"
+    ],
+    "sunny": [
+      "plain",
+      "clouds",
+      "birds"
+    ]
+  },
+  "render": {
+    "max_sky_objects": 3,
+    "placement": "Above selected lyric glyphs, within the selected group; quiet decoration smaller than text.",
+    "cloud": {
+      "width_in_lyric_height": 0.85,
+      "height_in_lyric_height": 0.5,
+      "opacity": 0.55
+    },
+    "sun": {
+      "width_in_lyric_height": [
+        0.48,
+        0.52
+      ],
+      "height_in_lyric_height": [
+        0.48,
+        0.52
+      ],
+      "opacity": 0.65
+    },
+    "birds": {
+      "width_in_lyric_height": 0.68,
+      "height_in_lyric_height": 0.4,
+      "opacity": 0.6
+    },
+    "extra_row_headroom_in_lyric_height": 0.35,
+    "lightning": "Reused approved bolt, two brief bursts per 1900 ms; reduced motion uses a dim static frame."
+  },
+  "reuse": "One canonical bitmap per white cloud, overcast cloud, sun and bird. Reuse rain-v1.png and lightning.png. Canvas image identity and export payloads are shared by content ID; unused components are excluded.",
+  "assets": [
+    {
+      "name": "cloud_white",
+      "path": "public/effects/sprites/cloud-white-v1.png",
+      "fps": 12,
+      "prompt": "Use case: stylized-concept. Asset: one reusable transparent PNG animation sprite atlas for objects floating above karaoke lyrics.\nThe provided fire/lightning atlases are style references only: polished contemporary flat cel art, few clean shapes, three restrained solid colors, readable when drawn at 16–32px. Do not copy their branching silhouettes, glow or alpha-edge noise.\nEXACTLY 16 independently drawn consecutive animation cels in a regular 4 by 4 grid of square cells. One subject per cell, no visible grid/labels. Keep the subject at the same virtual center (50%,50%) and consistent occupied envelope in every cel. The motion must change the drawn contours and inner color shapes, not just rotate/translate one rigid image. A natural seamless loop from frame 16 to frame 1.\nActual transparent alpha, clean empty gutters and at least 10% clear margins. No background, ground, floor line, badge, shadow outside the subject, text, watermark, grain, sparkles, fuzzy halo, glow, airbrush, gradients, realistic textures, glossy 3D shading or cute faces.\nSubject: one elegant compact WHITE fair-weather cloud, three broad asymmetric puffs and a slightly scalloped lower edge. Occupied bounds x=12–88%, y=30–66% in every cell. It is just ONE cloud, with no sun, rain, lightning, birds or scenery.\nAnimation: sixteen actual drawings of its lobes softly billowing and gently changing fullness, a small lobe developing then folding into the body; the overall center and size remain stable. Calm and light, not bouncing.\nExactly three flat color regions: soft white #f7fbff on top, cool pale #d8e6ef body, small understated #a8becf underside. Minimal detail, contemporary professional game cel artwork.",
+      "sha256": "8c4eee0c8168d8475218ec774566ecaf6785de6982f0faf548ec295d2bbcdccc",
+      "bytes": 921558
+    },
+    {
+      "name": "cloud_dark",
+      "path": "public/effects/sprites/cloud-dark-v1.png",
+      "fps": 12,
+      "prompt": "Use case: stylized-concept. Asset: one reusable transparent PNG animation sprite atlas for objects floating above karaoke lyrics.\nThe provided fire/lightning atlases are style references only: polished contemporary flat cel art, few clean shapes, three restrained solid colors, readable when drawn at 16–32px. Do not copy their branching silhouettes, glow or alpha-edge noise.\nEXACTLY 16 independently drawn consecutive animation cels in a regular 4 by 4 grid of square cells. One subject per cell, no visible grid/labels. Keep the subject at the same virtual center (50%,50%) and consistent occupied envelope in every cel. The motion must change the drawn contours and inner color shapes, not just rotate/translate one rigid image. A natural seamless loop from frame 16 to frame 1.\nActual transparent alpha, clean empty gutters and at least 10% clear margins. No background, ground, floor line, badge, shadow outside the subject, text, watermark, grain, sparkles, fuzzy halo, glow, airbrush, gradients, realistic textures, glossy 3D shading or cute faces.\nSubject: one elegant compact OVERCAST blue-gray rain cloud, three broad asymmetric puffs and a slightly scalloped lower edge. Occupied bounds x=12–88%, y=30–66% in every cell, identical proportions and placement to a fair-weather cloud. It is just ONE cloud, with no rain, lightning, sun, birds or scenery; those will be added using other reusable assets.\nAnimation: sixteen actual drawings of the puffs rolling softly and the underside changing shape, with stable overall center and size. Heavy overcast mood but clean and understated.\nExactly three flat color regions: dark slate #607e96 lower region, muted blue gray #91aabe main body, a restrained pale rim #cbdce7 on top. No dark smoky texture or haze. Professional matte cel artwork.",
+      "sha256": "08ec3ba51e93cf0d680c0f018e746d5936291e9dc4cdbcb5614de8dc8b96eaea",
+      "bytes": 985822
+    },
+    {
+      "name": "sun",
+      "path": "public/effects/sprites/sun-v1.png",
+      "fps": 12,
+      "prompt": "Use case: stylized-concept. Asset: one reusable transparent PNG animation sprite atlas for objects floating above karaoke lyrics.\nThe provided fire/lightning atlases are style references only: polished contemporary flat cel art, few clean shapes, three restrained solid colors, readable when drawn at 16–32px. Do not copy their branching silhouettes, glow or alpha-edge noise.\nEXACTLY 16 independently drawn consecutive animation cels in a regular 4 by 4 grid of square cells. One subject per cell, no visible grid/labels. Keep the subject at the same virtual center (50%,50%) and consistent occupied envelope in every cel. The motion must change the drawn contours and inner color shapes, not just rotate/translate one rigid image. A natural seamless loop from frame 16 to frame 1.\nActual transparent alpha, clean empty gutters and at least 10% clear margins. No background, ground, floor line, badge, shadow outside the subject, text, watermark, grain, sparkles, fuzzy halo, glow, airbrush, gradients, realistic textures, glossy 3D shading or cute faces.\nSubject: ONE clean warm sun, a round disk with SIX short rounded tapered rays, mature and elegant rather than a smiling emoji. Occupied bounds x=15–85%, y=15–85%. No clouds, birds, rain, scenery or other objects.\nAnimation: sixteen drawings of rays subtly shortening and opening in alternating phases, ray tip contours and a small inner light shape changing across the cels. Stable central disk, no rotating rigid icon, no large breathing scale changes. A calm lively loop.\nOnly three flat colors: amber #ffab2f rays, gold #ffd55b disk, restrained pale cream #fff0ba inner light area. No gradients, no actual glow, no 3D sphere or glitter. Crisp professional cel artwork.",
+      "sha256": "65598e7d7b52d4e742186bea9e61527642e824586c738eeb48dbfb22cd33001b",
+      "bytes": 907012
+    },
+    {
+      "name": "birds",
+      "path": "public/effects/sprites/birds-v1.png",
+      "fps": 14,
+      "prompt": "Use case: stylized-concept. Asset: one reusable transparent PNG animation sprite atlas for objects floating above karaoke lyrics.\nThe provided fire/lightning atlases are style references only: polished contemporary flat cel art, few clean shapes, three restrained solid colors, readable when drawn at 16–32px. Do not copy their branching silhouettes, glow or alpha-edge noise.\nEXACTLY 16 independently drawn consecutive animation cels in a regular 4 by 4 grid of square cells. One subject per cell, no visible grid/labels. Keep the subject at the same virtual center (50%,50%) and consistent occupied envelope in every cel. The motion must change the drawn contours and inner color shapes, not just rotate/translate one rigid image. A natural seamless loop from frame 16 to frame 1.\nActual transparent alpha, clean empty gutters and at least 10% clear margins. No background, ground, floor line, badge, shadow outside the subject, text, watermark, grain, sparkles, fuzzy halo, glow, airbrush, gradients, realistic textures, glossy 3D shading or cute faces.\nSubject: ONE small elegant sparrow/swallow-like BIRD IN FLIGHT facing right, a compact body and two clean expressive wing silhouettes with a short tail. Not a realistic feathered eagle, not a V-shaped line icon. Occupied envelope x=12–88%, y=23–74%, always readable as a bird.\nAnimation: sixteen genuinely successive wingbeat drawings: wings lift, reach up, fold slightly, sweep down, extend, and return. Re-draw both wings, body contour and a simple inner light shape each cel. A small forward glide within the cell, no large moving sticker, no rigid silhouette wobble. Loop seamlessly.\nThree matte flat colors: slate blue #405a71 silhouette, muted #8faac0 upper wing plane, a tiny pale #e4eef5 body highlight. Minimal details, no face, no clothing, no individual feathers, no background cloud. Professional graceful game cel animation.",
+      "sha256": "53dce19a4b4705fce83ffa641b7aff8b4997c93d5f516e4ae697263078bd36df",
+      "bytes": 901291
+    }
+  ]
+}

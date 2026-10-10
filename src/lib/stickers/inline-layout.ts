@@ -10,7 +10,7 @@ export function layoutInlineWords(words: LyricWordData[], fontSize: number, view
   const totalUnits = units.reduce((sum, count) => sum + count, 0);
   const insetLeft = words.map(() => 0), insetRight = words.map(() => 0);
   for (const run of groupEffectBlocks(words)) {
-    const reserve = effectGeometry(1, fontSize).outset;
+    const reserve = effectGeometry(1, fontSize, run.effect).outset;
     insetLeft[run.start] = reserve; insetRight[run.end] = reserve;
   }
   const contentWidths = words.map((word) => word.kind === "image"

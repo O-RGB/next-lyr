@@ -7,11 +7,12 @@ import React, {
   useRef,
 } from "react";
 
-import { makeBlockEffectLayer, clearBlockEffectLayer, updateBlockEffectLayer, placeEffectRuns, type EffectPlacement } from "../block-effect-layer";
-import { effectAppearance, LYRIC_APPEARANCE } from "@/lib/block-effects/appearance";
+import { placeEffectRuns, type EffectPlacement } from "../block-effect-layer";
+import { withEffectTextStyle, LYRIC_APPEARANCE } from "@/lib/block-effects/appearance";
+import { weatherHeadroomPadding } from "@/lib/block-effects/weather";
 import { normalizeBlockEffect } from "@/lib/block-effects/types";
 import { layoutInlineWords } from "@/lib/stickers/inline-layout";
-import { makeInlineImageLayer, updateInlineImageLayer, clearInlineImageLayer, type InlineImagePlacement } from "../inline-image-layer";
+import { makeCanvasMediaLayer, updateCanvasMediaLayer, clearCanvasMediaLayer, type CanvasImagePlacement } from "../canvas-media-layer";
 import type { ISentence } from "@/lib/array-range";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/timer-worker/store";
@@ -35,20 +36,16 @@ const LINE_HOLD_MS = 100;
 /**
  * Canvas karaoke preview.
  *
- * The editor grid remains interactive DOM, while this presentation renderer
- * follows karaoke-web-online: lyrics are measured once per frame, highlighted
- * with a canvas clip, and animated by RAF without React re-rendering every
- * timer update.
+ * Text, inline images, GIF frames and effects share one visible canvas.
+ * Media animation reuses the cached text surface without React timer renders.
  */
 const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   textStyle,
   playerControls,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const effectLayer = useRef(makeBlockEffectLayer());
-  useEffect(() => { const layer = effectLayer.current; return () => clearBlockEffectLayer(layer); }, []);
-  const imageLayer = useRef(makeInlineImageLayer());
-  useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
+  const mediaLayer = useRef(makeCanvasMediaLayer());
+  useEffect(() => { const layer = mediaLayer.current; return () => clearCanvasMediaLayer(layer); }, []);
   const processedRef = useRef(useKaraokeStore.getState().lyricsProcessed);
   const styleRef = useRef(textStyle);
   const topSlotRef = useRef<CanvasSlot>(makeCanvasSlot());
@@ -136,17 +133,30 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   }, [markDirty, textStyle]);
 
   useEffect(() => {
-    const fontsReady = document.fonts?.ready;
-    if (!fontsReady) return;
-    void fontsReady.then(markDirty);
+    const canvas = canvasRef.current;
+    if (!canvas || !document.fonts) return;
+    let mounted = true;
+    const redraw = () => { if (mounted) { layoutRef.current = null; markDirty(); } };
+    const loadFont = () => {
+      const family = getComputedStyle(canvas).fontFamily || "sans-serif";
+      const weight = styleRef.current?.fontWeight ?? 700;
+      // Canvas can request a weight that the surrounding UI has not used yet.
+      // Load it explicitly before retaining measured glyph widths or effect roots.
+      void document.fonts.load(`${weight} 32px ${family}`, "Ag กข").then(redraw, redraw);
+      redraw();
+    };
+    loadFont();
+    document.fonts.addEventListener("loadingdone", redraw);
+    const observer = new MutationObserver(loadFont);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+    return () => { mounted = false; observer.disconnect(); document.fonts.removeEventListener("loadingdone", redraw); };
   }, [markDirty, textStyle]);
 
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
     const lyricRange = processedRef.current;
     if (!canvas || !lyricRange || lyricRange.ranges.length === 0) {
-      updateInlineImageLayer(imageLayer.current, null, []);
-      updateBlockEffectLayer(effectLayer.current, []);
+      clearCanvasMediaLayer(mediaLayer.current);
       if (dirtyRef.current) {
         clearCanvas(canvas);
         dirtyRef.current = false;
@@ -217,7 +227,10 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       }
       return [configuredSize * Math.min(1, width * .94 / Math.max(1, ctx.measureText(sentence.text).width))];
     });
-    const mainSize = Math.max(12, Math.min(configuredSize, ...fitSizes));
+    const topWeatherRatio=Math.max(0,...(topSentence?.words??[]).map(word=>weatherHeadroomPadding(word.effect)));
+    const bottomWeatherRatio=Math.max(0,...(bottomSentence?.words??[]).map(word=>weatherHeadroomPadding(word.effect)));
+    const mainSize = Math.max(12, Math.min(configuredSize, ...fitSizes, height/(4+topWeatherRatio+bottomWeatherRatio)));
+    const topWeatherPad=mainSize*topWeatherRatio,bottomWeatherPad=mainSize*bottomWeatherRatio;
     style = { ...style, fontSize: mainSize, strokeWidth: Math.max(1.2, style.strokeWidth * mainSize / configuredSize) };
     const vocalSize = Math.max(10, mainSize * .42);
     const fontFamily = style.fontFamily;
@@ -236,20 +249,20 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       Math.max(vocalSize * 0.1, 1.5)
     );
     const topLineBlock =
-      mainMetrics.ascent +
+      topWeatherPad + mainMetrics.ascent +
       (topSentence?.vocal.trim()
         ? mainSize * 0.72 + vocalMetrics.descent
         : mainMetrics.descent);
     const bottomLineBlock =
-      mainMetrics.ascent +
+      bottomWeatherPad + mainMetrics.ascent +
       (bottomSentence?.vocal.trim()
         ? mainSize * 0.72 + vocalMetrics.descent
         : mainMetrics.descent);
     const lineGap = mainSize * 0.55;
     const totalHeight = topLineBlock + bottomLineBlock + lineGap;
     const centeredTop = (height - totalHeight) / 2;
-    const centeredFirstY = centeredTop + mainMetrics.ascent;
-    const centeredSecondY = centeredFirstY + topLineBlock + lineGap;
+    const centeredFirstY = centeredTop + topWeatherPad + mainMetrics.ascent;
+    const centeredSecondY = centeredFirstY + topLineBlock + lineGap + bottomWeatherPad - topWeatherPad;
 
     const previousLayout = layoutRef.current;
     const sizeChanged =
@@ -267,11 +280,11 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       if (topChanged && !bottomChanged) {
         // Keep the unchanged bottom line fixed while the top lyric changes.
         secondY = previousLayout.bottomY;
-        firstY = secondY - topLineBlock - lineGap;
+        firstY = secondY - topLineBlock - lineGap - bottomWeatherPad + topWeatherPad;
       } else if (bottomChanged && !topChanged) {
         // Keep the unchanged top line fixed while the bottom lyric changes.
         firstY = previousLayout.topY;
-        secondY = firstY + topLineBlock + lineGap;
+        secondY = firstY + topLineBlock + lineGap + bottomWeatherPad - topWeatherPad;
       } else if (!topChanged && !bottomChanged) {
         // Subtitles/progress can change without moving either lyric line.
         firstY = previousLayout.topY;
@@ -292,8 +305,8 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize),
       drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize),
     ];
-    updateInlineImageLayer(imageLayer.current, useKaraokeStore.getState().projectId, rendered.flatMap((line) => line.images));
-    updateBlockEffectLayer(effectLayer.current, rendered.flatMap((line) => line.effects));
+    updateCanvasMediaLayer(mediaLayer.current, canvas, useKaraokeStore.getState().projectId,
+      rendered.flatMap((line) => line.images), rendered.flatMap((line) => line.effects));
 
     dirtyRef.current = false;
     topSlotRef.current.dirty = false;
@@ -326,8 +339,6 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="relative flex min-h-0 flex-1 w-full items-center justify-center overflow-hidden rounded-lg text-center">
-        <div ref={(element) => { effectLayer.current.element = element; }} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
-        <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
         <canvas
           ref={canvasRef}
           aria-label="Karaoke lyrics preview"
@@ -397,9 +408,9 @@ function getTextStyle(
 function drawSentence(
   ctx: CanvasRenderingContext2D, sentence: ISentence | undefined, progress: number,
   width: number, y: number, style: CanvasTextStyle, vocalSize: number
-): { images: InlineImagePlacement[]; effects: EffectPlacement[] } {
+): { images: CanvasImagePlacement[]; effects: EffectPlacement[] } {
   if (!sentence) return { images: [], effects: [] };
-  const images: InlineImagePlacement[] = [];
+  const images: CanvasImagePlacement[] = [];
   let effects: EffectPlacement[] = [];
   if (sentence.words?.some((word) => word.kind === "image" || word.effect)) {
     ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
@@ -419,10 +430,7 @@ function drawSentence(
           left: item.contentLeft, top: y - item.height / 2, width: item.contentWidth, height: item.height });
       } else {
         const effect = normalizeBlockEffect(item.word.effect);
-        const theme = effect ? effectAppearance(effect.type) : undefined;
-        const themedStyle: CanvasTextStyle = theme ? { ...renderedStyle, unsungGradient: theme.idle, sungGradient: theme.sung,
-          unsungStroke: theme.stroke, sungStroke: theme.activeStroke, glowColor: theme.glow,
-          glowBlur: item.progress > 0 && item.progress < 1 ? renderedSize * .16 : renderedSize * .06 } : renderedStyle;
+        const themedStyle = withEffectTextStyle(renderedStyle, effect?.type);
         drawCanvasText(ctx, item.word.text, item.contentLeft + item.contentWidth / 2, y,
           item.progress, Math.max(1, item.contentWidth / 0.94), themedStyle);
       }

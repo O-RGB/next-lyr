@@ -1,0 +1,17 @@
+{
+  "asset": "public/effects/sprites/fire-lightning.png",
+  "atlas": {
+    "src": "/effects/sprites/fire-lightning.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 16,
+    "id": "aaa89ef7ee01669b6c57c96168e6fb1e91b4b086cea5ae83d15ee0afe711941e"
+  },
+  "prompt": "fireLightningPrompt",
+  "render": {
+    "edgeScale": 0.66,
+    "fireLengthScale": 1,
+    "fps": 16
+  }
+}

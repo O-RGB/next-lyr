@@ -2,7 +2,9 @@
 
 import { effectAppearance } from "@/lib/block-effects/appearance";
 import { normalizeBlockEffect } from "@/lib/block-effects/types";
-import { makeBlockEffectLayer, clearBlockEffectLayer, updateBlockEffectLayer, placeEffectRuns, type EffectBox, type EffectPlacement } from "../block-effect-layer";
+import { makeEffectGroupLayer, clearEffectGroupLayer, updateEffectGroupLayer, type EffectGroupControl } from "../effect-group-layer";
+import { layoutEffectEditorBlocks } from "@/lib/block-effects/editor-layout";
+import { effectLabel, effectShortLabel } from "@/lib/block-effects/types";
 
 import { FilePlus2, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -17,7 +19,7 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import useIsMobile from "@/hooks/useIsMobile";
 import LineAction from "./line/actions";
-import { makeInlineImageLayer, updateInlineImageLayer, clearInlineImageLayer, type InlineImagePlacement } from "../inline-image-layer";
+import { makeCanvasMediaLayer, updateCanvasMediaLayer, clearCanvasMediaLayer, type CanvasImagePlacement } from "../canvas-media-layer";
 import {
   drawLyricWordBox,
   LYRICS_LEFT_GUTTER,
@@ -70,6 +72,7 @@ const getWordHeight = () => getGridMetrics().wordHeight;
 const getWordFontSize = () => getGridMetrics().wordFontSize;
 const getVocalFontSize = () => getGridMetrics().vocalFontSize;
 const getWordPadding = () => getGridMetrics().wordPadding;
+const isCompact = () => typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT;
 const HORIZONTAL_RESET_DURATION_MS = 220;
 const HORIZONTAL_OFFSET_EPSILON = 0.5;
 const LINE_SELECTION_LONG_PRESS_MS = 450;
@@ -98,10 +101,10 @@ const LyricsGrid: React.FC = () => {
   const isMobile = useIsMobile();
   const gridMetrics = isMobile ? MOBILE_GRID_METRICS : getGridMetrics();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
-  const effectLayer = useRef(makeBlockEffectLayer());
-  useEffect(() => { const layer = effectLayer.current; return () => clearBlockEffectLayer(layer); }, []);
-  const imageLayer = useRef(makeInlineImageLayer());
-  useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
+  const effectLayer = useRef(makeEffectGroupLayer());
+  useEffect(() => { const layer = effectLayer.current; return () => clearEffectGroupLayer(layer); }, []);
+  const mediaLayer = useRef(makeCanvasMediaLayer());
+  useEffect(() => { const layer = mediaLayer.current; return () => clearCanvasMediaLayer(layer); }, []);
   const locale = useSettingsStore((state) => state.uiLocale);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const actions = useKaraokeStore((state) => state.actions);
@@ -416,8 +419,8 @@ const LyricsGrid: React.FC = () => {
     ctx.font = `600 14px ${fontFamily}`;
     ctx.textBaseline = "middle";
     hitBoxesRef.current = [];
-    const imagePlacements: InlineImagePlacement[] = [];
-    const effectPlacements: EffectPlacement[] = [];
+    const imagePlacements: CanvasImagePlacement[] = [];
+    const effectPlacements: EffectGroupControl[] = [];
     const focusLineIndex =
       state.isPlaying || state.isTimingActive || state.editingLineIndex !== null
         ? state.selectedLineIndex ?? -1
@@ -562,9 +565,8 @@ const LyricsGrid: React.FC = () => {
       );
       ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
       const wordWidths = measureWords(ctx, line);
-      const totalWidth =
-        wordWidths.reduce((sum, width) => sum + width, 0) +
-        Math.max(0, line.length - 1) * getWordGap();
+      const blockLayout = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap(), lift: isCompact() ? 4 : 5 });
+      const totalWidth = blockLayout.width;
       const startX = getLeftGutter() + 8;
       const maxLineScroll = Math.max(0, totalWidth - availableWidth);
       const lineScrollLeft = clamp(
@@ -572,8 +574,7 @@ const LyricsGrid: React.FC = () => {
         0,
         maxLineScroll
       );
-      let x = startX - lineScrollLeft;
-      const effectBoxes: EffectBox[] = [];
+      const normalBoxY = y + (getRowHeight() - getWordHeight()) / 2;
 
       ctx.save();
       ctx.beginPath();
@@ -585,15 +586,8 @@ const LyricsGrid: React.FC = () => {
         // Keep the measured width. Overflow is clipped and scrolled within
         // this line's own word area.
         const boxWidth = wordWidths[wordIndex];
-        const boxY = y + (getRowHeight() - getWordHeight()) / 2;
-        const boxX = x;
-        const textMetrics = ctx.measureText(word.text);
-        const effectTextHeight = getWordFontSize() * .85;
-        const contentWidth = word.kind === "image" ? boxWidth - 10 : textMetrics.width;
-        const contentBottom = word.kind === "image" ? boxY + getWordHeight() - 4
-          : boxY + getWordHeight() / 2 + (textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent > 0 ? textMetrics.actualBoundingBoxDescent : getWordFontSize() * .3);
-        effectBoxes.push({ word, left: boxX + (boxWidth - contentWidth) / 2, top: contentBottom - effectTextHeight,
-          width: contentWidth, height: effectTextHeight, progress: state.isPlaying && state.playbackIndex === word.index ? .5 : (state.playbackIndex ?? -1) > word.index ? 1 : 0 });
+        const boxY = normalBoxY - blockLayout.words[wordIndex].lift;
+        const boxX = startX - lineScrollLeft + blockLayout.words[wordIndex].left;
         const isPlaybackActive =
           canShowPlaybackHighlight && state.playbackIndex === word.index;
         const isPlaybackPending =
@@ -668,6 +662,8 @@ const LyricsGrid: React.FC = () => {
           {
             fontFamily,
             fontSize: getWordFontSize(),
+            effectsEnabled: !isDisabledLine,
+            effectProgress: state.isPlaying && state.playbackIndex === word.index ? .5 : (state.playbackIndex ?? -1) > word.index ? 1 : 0,
             vocalFontSize: getVocalFontSize(),
             radius: 5,
             lineWidth:
@@ -691,27 +687,53 @@ const LyricsGrid: React.FC = () => {
             bottom: boxY + getWordHeight(),
           });
         }
-        x += boxWidth + getWordGap();
       });
       ctx.restore();
-      for (const placement of placeEffectRuns(effectBoxes, `${state.projectId}:grid:${lineIndex}`)) {
-        if (placement.left < startX + availableWidth + 8 && placement.left + placement.width > startX - 8) {
-          effectPlacements.push({ ...placement, clipLeft: Math.max(0, startX - 8 - placement.left),
-            clipRight: Math.max(0, placement.left + placement.width - startX - availableWidth - 8) });
+      for (const group of blockLayout.groups) {
+        const start = startX - lineScrollLeft + group.startCap.left, end = startX - lineScrollLeft + group.endCap.left;
+        if (end + group.endCap.width > startX && start < startX + availableWidth) {
+          const language = useSettingsStore.getState().uiLocale;
+          const type = group.run.effect.type;
+          effectPlacements.push({ key: `${state.projectId}:grid:${lineIndex}:${line[group.run.start].index}:${type}`,
+            effect: group.run.effect, indices: line.slice(group.run.start, group.run.end + 1).map(word => word.index), lineIndex,
+            start, end, top: normalBoxY - group.startCap.lift, capWidth: group.startCap.width, boxHeight: getWordHeight(),
+            rowTop: y, rowHeight: getRowHeight(), rangeY: normalBoxY + getWordHeight() + 6,
+            clipLeft: startX, clipRight: startX + availableWidth, background: colors.box,
+            disabled: state.lineSelectionMode, muted: isDisabledLine,
+            label: text(language, ...effectShortLabel(group.run.effect)),
+            title: text(language, `แก้ไข${effectLabel(group.run.effect)[0]} · บล็อก ${group.run.start + 1}–${group.run.end + 1}`,
+              `Edit ${effectLabel(group.run.effect)[1]} effect · blocks ${group.run.start + 1}–${group.run.end + 1}`),
+          });
         }
       }
 
     }
 
-    updateInlineImageLayer(imageLayer.current, state.projectId, imagePlacements);
-    updateBlockEffectLayer(effectLayer.current, effectPlacements);
+    updateCanvasMediaLayer(mediaLayer.current, canvas, state.projectId, imagePlacements);
+    updateEffectGroupLayer(effectLayer.current, effectPlacements, size.height, placement => {
+      const editorActions = useKaraokeStore.getState().actions;
+      editorActions.setPlayFromScrolledPosition(false);
+      editorActions.selectLine(placement.lineIndex);
+      editorActions.openEditModal(placement.indices);
+    }, (placement, delta) => {
+      const canvas = canvasRef.current; if (!canvas) return;
+      const available = Math.max(1, canvas.clientWidth - getLeftGutter() - getRightGutter() - 16);
+      const maximum = getLineMetrics(canvas, linesRef.current[placement.lineIndex] ?? [], available).maxScroll;
+      const offset = clamp((lineScrollRef.current.get(placement.lineIndex) ?? 0) + delta, 0, maximum);
+      horizontalResetAnimationsRef.current.delete(placement.lineIndex);
+      if(offset <= HORIZONTAL_OFFSET_EPSILON){lineScrollRef.current.delete(placement.lineIndex);manualScrollLinesRef.current.delete(placement.lineIndex);}
+      else{lineScrollRef.current.set(placement.lineIndex,offset);manualScrollLinesRef.current.add(placement.lineIndex);}
+      markDirty();
+    });
     dirtyRef.current = false;
-  }, []);
+  }, [markDirty]);
 
   useEffect(() => {
     drawRef.current = draw;
     markDirty();
   }, [draw, markDirty]);
+
+  useEffect(() => { markDirty(); }, [locale, markDirty]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -815,9 +837,7 @@ const LyricsGrid: React.FC = () => {
         const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
         ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
         const wordWidths = measureWords(ctx, line);
-        const totalWidth =
-          wordWidths.reduce((sum, width) => sum + width, 0) +
-          Math.max(0, line.length - 1) * getWordGap();
+        const totalWidth = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).width;
         const availableWidth = Math.max(
           1,
           scroll.clientWidth - getLeftGutter() - getRightGutter() - 16
@@ -1503,7 +1523,6 @@ const LyricsGrid: React.FC = () => {
       onWheelCapture={handlePanelWheelCapture}
     >
       <div ref={(element) => { effectLayer.current.element = element; }} className="pointer-events-none sticky top-0 z-20 h-0" />
-      <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none sticky top-0 z-20 h-0" />
       <div
         style={{
           height: Math.max(1, lyricsData.length * gridMetrics.rowHeight),
@@ -1587,9 +1606,7 @@ function getLineMetrics(
   const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
   ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
   const wordWidths = measureWords(ctx, line);
-  const totalWidth =
-    wordWidths.reduce((sum, width) => sum + width, 0) +
-    Math.max(0, line.length - 1) * getWordGap();
+  const totalWidth = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).width;
   return { maxScroll: Math.max(0, totalWidth - availableWidth) };
 }
 
@@ -1633,9 +1650,7 @@ function getLineScrollLeft(
   // first box makes the rest of a long line look as if it started mid-scroll.
   if (focusPosition === 0) return 0;
 
-  const focusLeft = wordWidths
-    .slice(0, focusPosition)
-    .reduce((sum, width) => sum + width + getWordGap(), 0);
+  const focusLeft = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).words[focusPosition].left;
   const focusCenter = focusLeft + wordWidths[focusPosition] / 2;
   const target = focusCenter - availableWidth / 2;
   return clamp(target, 0, Math.max(0, totalWidth - availableWidth));

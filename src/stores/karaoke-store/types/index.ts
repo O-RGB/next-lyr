@@ -66,6 +66,7 @@ export interface LineSelectionState {
 
 export interface ModalState {
   isEditModalOpen: boolean;
+  editEffectIndices: number[] | null;
   isAddModalOpen: boolean;
   lineIndexToInsertAfter: number | null;
   isChordModalOpen: boolean;
@@ -183,7 +184,7 @@ export interface LineSelectionActions {
 
 export interface ModalActions {
   selectLine: (lineIndex: number | null) => void;
-  openEditModal: () => void;
+  openEditModal: (effectIndices?: readonly number[]) => void;
   closeEditModal: () => void;
   openAddModal: (lineIndex: number) => void;
   closeAddModal: () => void;
@@ -263,6 +264,7 @@ export interface KaraokeState {
 
   isEditModalOpen: boolean;
   lyricsProcessed?: ArrayRange<ISentence>;
+  editEffectIndices: number[] | null;
   isChordModalOpen: boolean;
   isAddModalOpen: boolean;
   lineIndexToInsertAfter: number | null;

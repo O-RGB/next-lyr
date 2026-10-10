@@ -1,0 +1,38 @@
+{
+  "asset": "public/effects/sprites/fire-compact-v1.png",
+  "tool": "built-in image_gen.imagegen",
+  "source": "/Users/digixtwo/.codex/generated_images/01a11ed1-3390-7403-b1b1-85e1a0fcf560/exec-aa7d7891-2541-41a7-8cb2-0c8a83e43abb.png",
+  "atlas": {
+    "src": "/effects/sprites/fire-compact-v1.png",
+    "columns": 4,
+    "rows": 4,
+    "frames": 16,
+    "fps": 16,
+    "id": "f55cf36851090a6f2885e7c8bb23733e198f563ea3227fbe2adf31132303d878"
+  },
+  "render": {
+    "edgeScale": 0.66,
+    "fireLengthScale": 0.92,
+    "fireHeightScale": 0.63,
+    "rootRise": 0.24
+  },
+  "comparison": {
+    "fontHeight": 100,
+    "alphaThreshold": 128,
+    "samples": 16,
+    "fire": {
+      "width": 61.0625,
+      "height": 45.9375,
+      "area": 1345.6875,
+      "clippedFrames": 0
+    },
+    "lightning": {
+      "width": 60.375,
+      "height": 45.5,
+      "area": 1089.5,
+      "clippedFrames": 0
+    }
+  },
+  "fallback": "docs/fire-lightning-approved.json",
+  "prompt": "Use case: stylized-concept.\nAsset type: production transparent PNG animation sprite atlas for FIRE attached to karaoke letters.\nInput image: the approved lightning atlas is a SIZE, COLOR-LAYERING and visual-quality reference, not a shape to trace.\nPrimary request: replace the lightning visual language with a compact, substantial living flame. Keep the same small overall footprint and punch as the reference bolt, but fill that footprint with a thicker coherent flame body. Remove ALL tree-like forks, thin lightning channels, branches and long twigs.\n\nOutput EXACTLY sixteen independently drawn successive animation cels, in a perfectly even 4 by 4 grid of square cells. No drawn grid or frame numbers. Transparent alpha background with clean empty gutters. Same emitter position and consistent occupied envelope in every cell.\nOrientation: draw the fire already issuing diagonally to the RIGHT and upward from a fixed narrow emitter at x=18%, y=78% of each cell, toward x=80%, y=28%. This sideways flame jet will attach to the outside edge of a letter and be mirrored for the other side. It must NOT be a vertical campfire that will be rotated later.\nSilhouette: one connected compact plume, thick through the middle, broad fluid curved shoulders, a short tapered flame tip and at most one small folded flame tongue forming part of the outer silhouette. A continuous body of fire, not a cluster of little bolts. No fork structure, no twig-like offshoots, no long tail, no detached sparks. Artwork occupies approximately x=12% to 86%, y=14% to 84%; keep at least 10% safe margins and true empty gutters. Fixed narrow letter-joining root, wider upper flame mass.\nAnimation: 16 genuinely different drawings of rapid combustion. The outer contour rolls and tears into short rounded flame lobes that rejoin, the inner heat shape breaks and reforms, short tips curl and alternate. Animate the actual silhouette and internal shapes every frame, never a rigid shape wobbling or tilting. Stable emitter and stable overall scale. A deliberate 16-fps cel-animation loop; frame 16 flows into frame 1.\nStyle: refined contemporary flat cel art suitable for a professional music/game UI. Three clean nested flat color shapes only: orange #ff8700 outer fire, golden yellow #ffc43b body, a restrained thin pale-cream #fff0b0 hot interior. Elegant smooth curves with a few crisp flame tips; no outlines, no detailed shading, no glossy volume, no glow, no haze, no texture, no realism, no cute icon style. The body is substantial but not a round bubble or solid yellow blob.\nAvoid: ANY lightning zigzags, antlers, branching veins, long narrow streamers, cut-out branch gaps, smoke, particles, grain, transparent-edge speckles, background color, underlines, floor/platform, text, watermark, labels, logos. Preserve actual transparency."
+}
