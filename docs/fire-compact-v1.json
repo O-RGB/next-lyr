@@ -14,7 +14,8 @@
     "edgeScale": 0.66,
     "fireLengthScale": 0.92,
     "fireHeightScale": 0.63,
-    "rootRise": 0.24
+    "rootRise": 0.24,
+    "fireRootDrop": 0.045
   },
   "comparison": {
     "fontHeight": 100,

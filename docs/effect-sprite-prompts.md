@@ -2,6 +2,8 @@
 
 Tool mode: built-in `image_gen.imagegen`, transparent PNG sprite atlases. Original generated files are preserved. Each atlas contains 16 independently drawn animation frames.
 
+Fire-only alignment correction: its horizontal source cels place more mass above the emitter than the angled bolt. A `.045 × lyric height` downward root compensation aligns its visible center to lightning in the shared canvas painter. Frame images, scale, source orientation and the lightning placement remain unchanged.
+
 Final selected assets:
 
 - `public/effects/sprites/lightning.png`: approved lightning image, 20 fps; separately committed in `76c8c01`.

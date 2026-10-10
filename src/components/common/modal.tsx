@@ -34,6 +34,7 @@ export interface ModalCommonProps {
   className?: string;
   bodyClassName?: string;
   showCloseButton?: boolean;
+  onKeyDown?: React.ComponentProps<typeof DialogContent>["onKeyDown"];
 }
 
 const ModalCommon: React.FC<ModalCommonProps> = ({
@@ -49,6 +50,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
   className,
   bodyClassName,
   showCloseButton = true,
+  onKeyDown,
 }) => {
   const handleCancelClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     // Keep cancel actions out of any form that happens to be rendered in the
@@ -75,6 +77,7 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         )}
         showCloseButton={showCloseButton}
         onClose={onClose}
+        onKeyDown={onKeyDown}
       >
         {title ? (
           <DialogHeader className="shrink-0 border-b border-line bg-panel px-5 py-4 pr-12">

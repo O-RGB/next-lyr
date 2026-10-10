@@ -6,6 +6,8 @@ export const EFFECT_LAYOUT = {
   edgeScale: .66, edgeOutset: 1.12, headroom: .95, bottomPad: .22,
   rootInset: .08, rootRise: .24, edgeAngle: Math.PI * .34,
   fireLengthScale: .92, fireHeightScale: .63,
+  // Horizontal flame cels sit above their root more than the angled bolt does.
+  fireRootDrop: .045,
 } as const;
 export const EFFECT_COMMON = { alignment: "glyph-edge-emitter", playback: "discrete-frames", backdrop: "transparent", underline: false, gutter: { top: .02, side: .0075, bottom: .01 } } as const;
 export function effectRecipe(type: EffectType) { return recipes[type]; }

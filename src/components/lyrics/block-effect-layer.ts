@@ -45,8 +45,9 @@ function paintEffectSprites(ctx: CanvasRenderingContext2D, atlas: LoadedAtlas, p
   const rootY=baseline-h*EFFECT_LAYOUT.rootRise;
   if(placement.effect.type==='fire'){
     const length=edge*(placement.fireLengthScale??EFFECT_LAYOUT.fireLengthScale);
-    drawHorizontalAtlasFrame(ctx,atlas,time,outset+h*EFFECT_LAYOUT.rootInset,rootY,length,true,reduced,EFFECT_LAYOUT.fireHeightScale);
-    drawHorizontalAtlasFrame(ctx,atlas,time+1000/atlas.fps*5,width-outset-h*EFFECT_LAYOUT.rootInset,rootY,length,false,reduced,EFFECT_LAYOUT.fireHeightScale);
+    const fireRootY=rootY+h*EFFECT_LAYOUT.fireRootDrop;
+    drawHorizontalAtlasFrame(ctx,atlas,time,outset+h*EFFECT_LAYOUT.rootInset,fireRootY,length,true,reduced,EFFECT_LAYOUT.fireHeightScale);
+    drawHorizontalAtlasFrame(ctx,atlas,time+1000/atlas.fps*5,width-outset-h*EFFECT_LAYOUT.rootInset,fireRootY,length,false,reduced,EFFECT_LAYOUT.fireHeightScale);
   }else if(placement.effect.type==='lightning'){
     // Preserve the approved lightning art and its fixed outward-facing orientation.
     drawAtlasFrame(ctx,atlas,time,outset+h*EFFECT_LAYOUT.rootInset,rootY,edge,false,reduced,-EFFECT_LAYOUT.edgeAngle);
@@ -73,7 +74,7 @@ function paintEffectSprites(ctx: CanvasRenderingContext2D, atlas: LoadedAtlas, p
       ctx.save();ctx.globalAlpha*=actor.opacity;
       if(actor.role==='lightning'){
         if(!skyLightningVisible(time,reduced)){ctx.restore();continue;}
-        if(reduced)ctx.globalAlpha*=.5;
+        if(reduced)ctx.globalAlpha*=.85;
         drawAtlasFrame(ctx,image,time,outset+actor.left,baseline+actor.top,actor.height,false,reduced,Math.PI);
       }else drawAnchoredAtlasFrame(ctx,image,time+actor.phase*1000/image.fps,outset+actor.left,baseline+actor.top,actor.width,actor.height,0,0,false,reduced);
       ctx.restore();

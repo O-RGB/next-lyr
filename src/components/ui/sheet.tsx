@@ -41,14 +41,16 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  backdropProps,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  backdropProps?: SheetPrimitive.Backdrop.Props
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay {...backdropProps} />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side}

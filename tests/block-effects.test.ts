@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EFFECT_TYPES,groupEffectBlocks,normalizeBlockEffect,type BlockEffect,type PlaybackFrameAtlas } from '../src/lib/block-effects/types';
-import { frameAtTime,effectGeometry,effectRecipe,EFFECT_RENDERER } from '../src/lib/block-effects/catalog';
+import { frameAtTime,effectGeometry,effectRecipe,EFFECT_RENDERER,EFFECT_LAYOUT } from '../src/lib/block-effects/catalog';
 import { inspectFrameAnchors,inspectConnectedFireShapes,atlasFrameRects,safeFrameRects,collectEffectAtlases,registerPlaybackAtlases,frameAtlasIdentity,type LoadedAtlas } from '../src/lib/block-effects/frames';
 import { placeEffectRuns,paintFrameSurface } from '../src/components/lyrics/block-effect-layer';
 import { cellsFromLine,moveCellContent } from '../src/lib/karaoke/inline-content';
@@ -95,6 +95,7 @@ test('compact horizontal fire frames stay attached without rotation or a separat
   const firstRoots=translations.slice(0,2),firstAngles=angles.slice(0,2),firstSources=sources.slice(0,2);
   assert(firstRoots[0][0]>geometry.outset);assert(firstRoots[1][0]<geometry.width-geometry.outset);
   assert(firstRoots.every(([,y])=>y<geometry.baseline));assert.equal(firstAngles.length,0);
+  assert(firstRoots.every(([,y])=>y>geometry.baseline-40*EFFECT_LAYOUT.rootRise));
   assert.equal(translations.length,2);assert.equal(destinations.length,2);
   translations.length=0;angles.length=0;sources.length=0;destinations.length=0;
   paintFrameSurface(canvas,loaded,placement,1000/16+.01,false);

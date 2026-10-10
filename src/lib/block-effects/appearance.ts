@@ -15,3 +15,12 @@ export const LYRIC_APPEARANCE = {
   idle: ["#fcfe17"], sung: ["#0000ff"],
   stroke: "#000000", sungStroke: "#ffffff", glow: "transparent", editor: "#25334b",
 };
+
+export function defaultLyricTextStyle(fontSize: number, fontFamily: string): CanvasTextStyle {
+  return {
+    fontSize, fontFamily, fontWeight: 700,
+    unsungFill: LYRIC_APPEARANCE.idle[0], unsungStroke: LYRIC_APPEARANCE.stroke,
+    sungFill: LYRIC_APPEARANCE.sung[0], sungStroke: LYRIC_APPEARANCE.sungStroke,
+    strokeWidth: Math.max(fontSize * .065, 1.4), glowColor: "transparent", glowBlur: 0,
+  };
+}

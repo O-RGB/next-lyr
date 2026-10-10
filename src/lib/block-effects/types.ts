@@ -48,7 +48,23 @@ export const WEATHER_CHOICES: Partial<Record<EffectType, Array<{ value: WeatherS
 };
 export function effectLabel(effect: BlockEffect) { return WEATHER_CHOICES[effect.type]?.find(choice => choice.value === (effect.variant ?? "plain"))?.label ?? EFFECT_LABELS[effect.type]; }
 export function effectShortLabel(effect: BlockEffect) { return WEATHER_CHOICES[effect.type]?.find(choice => choice.value === (effect.variant ?? "plain"))?.short ?? EFFECT_SHORT_LABELS[effect.type]; }
-export function effectIconRole(effect: BlockEffect): EffectAtlasRole { return effect.variant === "birds" ? "birds" : effect.variant === "clouds" || effect.variant === "storm" ? "cloud" : "edge"; }
+export function effectIconRole(effect: BlockEffect): EffectAtlasRole {
+  if (effect.variant === "storm") return "lightning";
+  if (effect.variant === "birds") return "birds";
+  return effect.variant === "clouds" ? "cloud" : "edge";
+}
+export interface EffectChoice { key: string; label: [string, string]; effect?: BlockEffect }
+/** Weather variants are complete choices, rather than a second selector after the grid. */
+export const EFFECT_CHOICES: EffectChoice[] = [
+  { key: "none", label: ["ไม่มีเอฟเฟกต์", "No effect"] },
+  ...EFFECT_TYPES.flatMap(type => {
+    const weather = WEATHER_CHOICES[type];
+    return weather ? weather.map(choice => ({
+      key: `${type}:${choice.value}`, label: choice.label,
+      effect: normalizeBlockEffect({ type, variant: choice.value === "plain" ? undefined : choice.value }),
+    })) : [{ key: type, label: EFFECT_LABELS[type], effect: { type, connected: true } }];
+  }),
+];
 export interface PlaybackFrameAtlas {
   type: EffectType; role?: EffectAtlasRole; id: string; mime: string; width: number; height: number;
   columns: number; rows: number; frames: number; fps: number; base64: string;

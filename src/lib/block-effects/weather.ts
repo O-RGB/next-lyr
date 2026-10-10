@@ -13,8 +13,8 @@ export function layoutSkyActors(effect: BlockEffect, span: number, height: numbe
     const count=Math.max(1,Math.min(maximum,Math.ceil(width/(h*4))));
     for(let index=0;index<count;index++)add('cloud',(index+.5)/count,.85,.5,1.47,1/count,index*5);
     if(effect.variant==='storm'){
-      const cloud=actors[0],size=Math.min(h*.32,cloud.width*.4);
-      actors.push({role:'lightning',left:cloud.left+cloud.width*.5,top:cloud.top+cloud.height*.7,width:size,height:size,phase:0,opacity:.7});
+      const cloud=actors[0],size=Math.min(h*.52,cloud.width*.64);
+      actors.push({role:'lightning',left:cloud.left+cloud.width*.5,top:cloud.top+cloud.height*.7,width:size,height:size,phase:0,opacity:.95});
     }
   }else if(effect.variant==='birds'){
     add('edge',.16,.48,.48,1.58,.3);add('cloud',.5,.85,.5,1.47,.48,5);add('birds',.85,.68,.4,1.56,.34,9);
@@ -25,9 +25,9 @@ export function layoutSkyActors(effect: BlockEffect, span: number, height: numbe
   }else add('edge',.5,.52,.52,1.58,.8);
   return actors;
 }
-/** Brief cel-frame lightning bursts; reduced motion uses a quiet static bolt. */
+/** Long enough to recognize several lightning cels, with a quiet gap between bursts. */
 export function skyLightningVisible(time:number,reduced=false) {
   if(reduced)return true;
-  const phase=Math.max(0,time)%1900;return phase<90||(phase>=145&&phase<245);
+  const phase=Math.max(0,time)%1600;return phase<140||(phase>=210&&phase<470);
 }
 export function weatherHeadroomPadding(effect?:BlockEffect) { return effect?.type==='sunny'||effect?.type==='rain'&&effect.variant ? .35 : 0; }

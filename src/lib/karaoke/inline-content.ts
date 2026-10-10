@@ -22,6 +22,19 @@ export function moveCellContent(cells: LyricCellDraft[], from: number, to: numbe
   return content.map((cell, index) => ({ ...cell, originalIndex: cells[index].originalIndex }));
 }
 
+/** The drawer captures its insertion point before it takes focus from the line. */
+export function insertCellAfter(cells: LyricCellDraft[], cell: LyricCellDraft, afterKey: string | null): LyricCellDraft[] {
+  const anchor = cells.findIndex(item => item.key === afterKey);
+  const next = [...cells];
+  next.splice(anchor >= 0 ? anchor + 1 : next.length, 0, cell);
+  return next;
+}
+
+/** Replacing artwork keeps the block, its effect and its original timing slot. */
+export function replaceCellImage(cells: LyricCellDraft[], key: string, sticker: LyricSticker): LyricCellDraft[] {
+  return cells.map(cell => cell.key === key && cell.kind === "image" ? { ...cell, sticker } : cell);
+}
+
 export function cellsFromLine(line: LyricWordData[]): LyricCellDraft[] {
   return line.map((word) => ({ key: `slot-${word.index}`, originalIndex: word.index,
     kind: word.kind ?? "text", text: word.kind === "image" ? IMAGE_TOKEN : word.text,

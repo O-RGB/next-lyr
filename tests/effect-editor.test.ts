@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { layoutEffectEditorBlocks } from "../src/lib/block-effects/editor-layout";
-import { resolveEffectSelection, resizeEffectRun, selectionAfterDraftHistory } from "../src/lib/block-effects/editor";
+import { applySelectedEffect, resolveEffectSelection, resizeEffectRun, selectionAfterDraftHistory } from "../src/lib/block-effects/editor";
 import { groupEffectBlocks, type BlockEffect } from "../src/lib/block-effects/types";
 import { cellsFromLine } from "../src/lib/karaoke/inline-content";
 const fire: BlockEffect = { type: "fire", connected: true };
@@ -56,4 +56,21 @@ test("undoing and redoing a range edit keeps the group's controls on its current
   const afterUndo = selectionAfterDraftHistory(long, short, new Set(long.map(cell => cell.key)));
   assert.deepEqual([...afterUndo], ["slot-0", "slot-1"]);
   assert.deepEqual([...selectionAfterDraftHistory(short, long, afterUndo)], ["slot-0", "slot-1", "slot-2", "slot-3"]);
+});
+
+test("choosing a weather card uses the prior selection, joining neighbors without filling its gaps", () => {
+  const cells = cellsFromLine(words([{ ...fire, connected: false }, { ...fire, connected: false }, undefined, undefined]));
+  const selected = new Set([cells[0].key, cells[1].key, cells[3].key]);
+  const next = applySelectedEffect(cells, selected, { type: "rain", variant: "storm", connected: true });
+  assert.deepEqual(groupEffectBlocks(next).map(run => [run.start, run.end, run.effect.variant]), [[0, 1, "storm"], [3, 3, "storm"]]);
+  assert.equal(next[2], cells[2]);
+  assert.deepEqual(next.map(cell => [cell.key, cell.originalIndex, cell.text]), cells.map(cell => [cell.key, cell.originalIndex, cell.text]));
+  assert.equal(cells[0].effect?.connected, false);
+});
+
+test("choosing no effect clears only the selected blocks and keeps their content and timing slot references", () => {
+  const cells = cellsFromLine(words([fire, fire, fire]));
+  const next = applySelectedEffect(cells, new Set([cells[1].key]));
+  assert.deepEqual(next.map(cell => cell.effect?.type), ["fire", undefined, "fire"]);
+  assert.deepEqual(next.map(cell => [cell.key, cell.originalIndex, cell.text]), cells.map(cell => [cell.key, cell.originalIndex, cell.text]));
 });

@@ -7,7 +7,7 @@ import { usePlayerHandlersStore } from "../src/hooks/usePlayerHandlers";
 import { useTimerStore } from "../src/timer-worker/store";
 import { initHistory } from "../src/stores/karaoke-store/history";
 import { snapshot } from "../src/stores/karaoke-store/actions/history.actions";
-import { moveCellContent, cellsFromLine, IMAGE_TOKEN } from "../src/lib/karaoke/inline-content";
+import { moveCellContent, cellsFromLine, insertCellAfter, replaceCellImage, IMAGE_TOKEN } from "../src/lib/karaoke/inline-content";
 import { wordDataToLyricsDocument, lyricsDocumentToWordData, lyricsDocumentToEvents } from "../src/lib/karaoke/lyrics-core/timeline";
 import { buildKlyrXml } from "../src/lib/karaoke/lyrics-core/xml";
 
@@ -292,4 +292,37 @@ test("removing an effect clears it instead of inheriting the destination slot's 
   setup([1,2,3,4]);state().actions.replaceLineWords(0,cellsFromLine(state().lyricsData[0]).map(c=>({...c,effect:{type:'lightning' as const,connected:true}})));
   state().actions.replaceLineWords(0,cellsFromLine(state().lyricsData[0]).map(c=>({...c,effect:undefined})));
   assert(state().lyricsData[0].every(w=>!w.effect));assert.deepEqual(state().lyricsData.flat().map(w=>w.at),[1,2,3,4]);
+});
+
+test("drawer image replacement during the first timing pass keeps its effect, next slot and captured timestamp zero", async () => {
+  setup();
+  const cells = cellsFromLine(state().lyricsData[0]);
+  cells[1] = { ...cells[1], kind: "image", text: IMAGE_TOKEN, sticker,
+    effect: { type: "rain", connected: true, variant: "storm" } };
+  state().actions.replaceLineWords(0, cells);
+  await handlers.handleContinueTiming(); await stamp(0);
+  state().actions.selectLine(0); state().actions.openEditModal();
+  const replacement = { ...sticker, id: "replacement", name: "replacement.png" };
+  const before = [...state().timingBuffer!.buffer];
+  state().actions.replaceLineWords(0, replaceCellImage(cellsFromLine(state().lyricsData[0]), "slot-1", replacement));
+  assert.equal(state().currentIndex, 1);
+  assert.deepEqual([...state().timingBuffer!.buffer], before);
+  assert.equal(state().lyricsData[0][1].sticker?.id, replacement.id);
+  assert.equal(state().lyricsData[0][1].effect?.variant, "storm");
+  state().actions.closeEditModal(); await handlers.handleResumeTiming();
+  await stamp(2); await stamp(5); await stamp(7);
+  assert.deepEqual(state().lyricsData.flat().map(word => word.at), [0, 2, 5, 7]);
+  assert.equal(state().lyricsData[0][1].sticker?.id, replacement.id);
+});
+
+test("drawer insertion follows its captured block after a reorder while existing timing slots stay fixed", () => {
+  setup([0, 2, 5, 7]);
+  const initial = cellsFromLine(state().lyricsData[0]), capturedKey = initial[0].key;
+  const reordered = moveCellContent(initial, 0, 1);
+  const next = insertCellAfter(reordered, { key: "drawer-word", originalIndex: null, kind: "text", text: "ใหม่", vocal: "MAI" }, capturedKey);
+  state().actions.replaceLineWords(0, next);
+  assert.deepEqual(state().lyricsData[0].map(word => [word.text, word.at]), [["ผิด", 0], ["หนึ่ง", 2], ["ใหม่", null]]);
+  assert.deepEqual(state().lyricsData[1].map(word => word.at), [5, 7]);
+  state().actions.undo(); assert.deepEqual(state().lyricsData.flat().map(word => word.at), [0, 2, 5, 7]);
+  state().actions.redo(); assert.equal(state().lyricsData[0][2].vocal, "MAI");
 });

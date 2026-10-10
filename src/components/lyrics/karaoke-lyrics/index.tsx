@@ -7,10 +7,10 @@ import React, {
   useRef,
 } from "react";
 
-import { placeEffectRuns, type EffectPlacement } from "../block-effect-layer";
-import { withEffectTextStyle, LYRIC_APPEARANCE } from "@/lib/block-effects/appearance";
+import type { EffectPlacement } from "../block-effect-layer";
+import { defaultLyricTextStyle } from "@/lib/block-effects/appearance";
 import { weatherHeadroomPadding } from "@/lib/block-effects/weather";
-import { normalizeBlockEffect } from "@/lib/block-effects/types";
+import { drawInlineLyricLine } from "./inline-renderer";
 import { layoutInlineWords } from "@/lib/stickers/inline-layout";
 import { makeCanvasMediaLayer, updateCanvasMediaLayer, clearCanvasMediaLayer, type CanvasImagePlacement } from "../canvas-media-layer";
 import type { ISentence } from "@/lib/array-range";
@@ -390,18 +390,14 @@ function getTextStyle(
   fontSize: number,
   fontFamily: string
 ): CanvasTextStyle {
+  const base = defaultLyricTextStyle(fontSize, fontFamily);
   return {
-    fontSize,
+    ...base,
     fontWeight: textStyle?.fontWeight ?? 700,
-    unsungFill: textStyle?.color?.color ?? LYRIC_APPEARANCE.idle[0],
-    unsungStroke: textStyle?.activeColor?.color ?? LYRIC_APPEARANCE.stroke,
-    sungFill: textStyle?.color?.colorBorder ?? LYRIC_APPEARANCE.sung[0],
-    sungStroke: textStyle?.activeColor?.colorBorder ?? LYRIC_APPEARANCE.sungStroke,
-    unsungGradient: undefined,
-    sungGradient: undefined,
-    glowColor: "transparent", glowBlur: 0,
-    fontFamily,
-    strokeWidth: Math.max(fontSize * 0.065, 1.4),
+    unsungFill: textStyle?.color?.color ?? base.unsungFill,
+    unsungStroke: textStyle?.activeColor?.color ?? base.unsungStroke,
+    sungFill: textStyle?.color?.colorBorder ?? base.sungFill,
+    sungStroke: textStyle?.activeColor?.colorBorder ?? base.sungStroke,
   };
 }
 
@@ -413,28 +409,9 @@ function drawSentence(
   const images: CanvasImagePlacement[] = [];
   let effects: EffectPlacement[] = [];
   if (sentence.words?.some((word) => word.kind === "image" || word.effect)) {
-    ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
-    const layout = layoutInlineWords(sentence.words, style.fontSize, width, (text) => ctx.measureText(text).width, progress);
-    const renderedSize = layout[0]?.height ?? style.fontSize;
-    const renderedStroke = Math.max(1.2, style.strokeWidth * renderedSize / style.fontSize);
-    const renderedStyle: CanvasTextStyle = { ...style, fontSize: renderedSize, strokeWidth: renderedStroke };
-    ctx.save(); ctx.font = `${style.fontWeight} ${renderedSize}px ${style.fontFamily}`; ctx.textBaseline = "middle";
-    const metrics = ctx.measureText(sentence.words.filter((word) => word.kind !== "image").map((word) => word.text).join(""));
-    const textBottom = y + (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent > 0 ? metrics.actualBoundingBoxDescent : renderedSize * .35) + renderedStroke / 2;
-    ctx.restore();
-    effects = placeEffectRuns(layout.map((item) => ({ word: item.word, left: item.contentLeft, width: item.contentWidth,
-      top: (item.word.kind === "image" ? y + item.height / 2 : textBottom) - item.height, height: item.height, progress: item.progress })), `preview:${sentence.lineIndex}`);
-    for (const item of layout) {
-      if (item.word.kind === "image") {
-        if (item.word.sticker) images.push({ key: `preview:${item.word.index}`, sticker: item.word.sticker,
-          left: item.contentLeft, top: y - item.height / 2, width: item.contentWidth, height: item.height });
-      } else {
-        const effect = normalizeBlockEffect(item.word.effect);
-        const themedStyle = withEffectTextStyle(renderedStyle, effect?.type);
-        drawCanvasText(ctx, item.word.text, item.contentLeft + item.contentWidth / 2, y,
-          item.progress, Math.max(1, item.contentWidth / 0.94), themedStyle);
-      }
-    }
+    const scene = drawInlineLyricLine(ctx, sentence.words, progress, width, y, style, `preview:${sentence.lineIndex}`);
+    images.push(...scene.images);
+    effects = scene.effects;
   } else drawCanvasText(ctx, sentence.text, width / 2, y, progress, width, style);
   if (sentence.vocal.trim()) drawCanvasText(ctx, sentence.vocal, width / 2,
     y + style.fontSize * 0.72, progress, width, { ...style, fontSize: vocalSize,

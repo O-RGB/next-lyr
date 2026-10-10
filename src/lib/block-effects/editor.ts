@@ -1,5 +1,16 @@
-import { groupEffectBlocks, type EffectRun } from "./types";
+import { groupEffectBlocks, normalizeBlockEffect, type BlockEffect, type EffectRun } from "./types";
 import type { LyricCellDraft } from "../karaoke/inline-content";
+
+export function getEffectSelection(cells: LyricCellDraft[], selected: ReadonlySet<string>) {
+  const targets = cells.filter(cell => selected.has(cell.key));
+  return { targets };
+}
+
+/** The prior checkbox selection defines the range; only adjacent matching blocks join. */
+export function applySelectedEffect(cells: LyricCellDraft[], selected: ReadonlySet<string>, choice?: BlockEffect) {
+  const effect = choice ? normalizeBlockEffect({ ...choice, connected: true }) : undefined;
+  return cells.map(cell => selected.has(cell.key) ? { ...cell, effect } : cell);
+}
 
 /** Restore the requested group, a remembered selection, or a saved effect near the cursor. */
 export function resolveEffectSelection(cells: LyricCellDraft[], options: {

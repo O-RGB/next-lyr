@@ -3,6 +3,7 @@ import { effectAppearance } from "@/lib/block-effects/appearance";
 import { frameAtlasIdentity, loadFrameAtlas, type LoadedAtlas } from "@/lib/block-effects/frames";
 import { subscribeFramePainter, refreshFramePainter } from "@/lib/block-effects/animation";
 import { effectIconRole, type BlockEffect } from "@/lib/block-effects/types";
+import { paintEffectIcon } from "@/lib/block-effects/icon";
 
 export interface EffectGroupControl {
   key: string; effect: BlockEffect; indices: number[]; lineIndex: number;
@@ -26,18 +27,6 @@ export function clearEffectGroupLayer(layer: EffectGroupLayer) {
   layer.unsubscribe?.(); layer.unsubscribe = undefined; layer.painter = undefined;
   for (const entry of layer.entries.values()) { entry.disposed = true; entry.element.remove(); }
   layer.entries.clear(); layer.viewport?.remove(); layer.viewport = undefined;
-}
-
-function paintIcon(canvas: HTMLCanvasElement, atlas: LoadedAtlas, index: number) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2), size = 16;
-  canvas.width = size * dpr; canvas.height = size * dpr;
-  const ctx = canvas.getContext("2d"); if (!ctx) return;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, size, size);
-  const rect = atlas.rects[index], shape = atlas.shapes[index];
-  const scale = Math.min(14 / shape.width, 14 / shape.height);
-  const width = shape.width * scale, height = shape.height * scale;
-  ctx.drawImage(atlas.image, rect.x + shape.left, rect.y + shape.top, shape.width, shape.height,
-    (size - width) / 2, (size - height) / 2, width, height);
 }
 
 /** Visible editor controls are pooled so the playback clock never rerenders React. */
@@ -141,7 +130,7 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
       if (!entry.atlas || entry.disposed) continue;
       const index = frameAtTime(time, entry.atlas.frames, entry.atlas.fps, reduced);
       if (index === entry.lastFrame) continue;
-      entry.icons.forEach((icon, side) => { if (!entry.buttons[side].hidden) paintIcon(icon, entry.atlas!, (index + (side ? 5 : 0)) % entry.atlas!.frames); });
+      entry.icons.forEach((icon, side) => { if (!entry.buttons[side].hidden) paintEffectIcon(icon, entry.atlas!, (index + (side ? 5 : 0)) % entry.atlas!.frames); });
       entry.lastFrame = index;
     }
   };

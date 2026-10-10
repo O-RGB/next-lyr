@@ -4,15 +4,15 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ButtonCommon from "@/components/common/button";
 import { StickerImage } from "@/components/lyrics/sticker-image";
-import { putStickerAsset, getGalleryImages } from "@/lib/database/db";
-import { MAX_STICKER_INPUT_BYTES } from "@/lib/stickers/types";
-import { optimizeSticker } from "@/lib/stickers/optimize";
+import { getGalleryImages } from "@/lib/database/db";
+import { importGalleryImage } from "@/lib/stickers/gallery";
 import type { LyricSticker, GalleryImage } from "@/lib/stickers/types";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 
-export default function LineStickerPanel({ projectId, onChange, onBusyChange }: {
+export default function LineStickerPanel({ projectId, replacing = false, onChange, onBusyChange }: {
   projectId: string;
+  replacing?: boolean;
   onChange: (value: LyricSticker | null) => void;
   onBusyChange: (busy: boolean) => void;
 }) {
@@ -42,24 +42,9 @@ export default function LineStickerPanel({ projectId, onChange, onBusyChange }: 
     requestRef.current = request;
     setError(null); setNotice(null); setBusy(true); onBusyChange(true);
     try {
-      for (const file of files) {
-        if (request.signal.aborted) return;
-        if (file.size > MAX_STICKER_INPUT_BYTES) throw new Error("file-too-large");
-        const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-        const sourceHash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, "0")).join("");
-        const existing = (await getGalleryImages()).find((image) => image.sourceHashes.includes(sourceHash));
-        if (request.signal.aborted) return;
-        if (existing) {
-          onChange(existing.sticker);
-          setNotice(text(locale, "ใช้ภาพเดิมจากคลัง ไม่เก็บไฟล์ซ้ำ", "Reused gallery image; no duplicate file stored"));
-          continue;
-        }
-        const result = await optimizeSticker(file, request.signal);
-        if (request.signal.aborted) return;
-        const stored = await putStickerAsset(projectId, result.sticker, result.blob, sourceHash);
-        if (request.signal.aborted) return;
-        onChange(stored.sticker);
-      }
+      const result = await importGalleryImage(projectId, files[0], request.signal);
+      if (result.reused) setNotice(text(locale, "ใช้ภาพเดิมจากคลัง ไม่เก็บไฟล์ซ้ำ", "Reused gallery image; no duplicate file stored"));
+      onChange(result.sticker);
     } catch (cause) {
       if (request.signal.aborted) return;
       const code = cause instanceof Error ? cause.message : "invalid-image";
@@ -95,8 +80,11 @@ export default function LineStickerPanel({ projectId, onChange, onBusyChange }: 
           {text(locale, "อัปโหลด", "Upload")}
         </ButtonCommon>
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">{text(locale, "GIF, PNG, JPG ไม่เกิน 1 MB · ย่อให้โดยอัตโนมัติ · แตะภาพเพื่อแทรกหลังรายการที่เลือก", "GIF, PNG, JPG up to 1 MB · optimized automatically · tap to insert after the selected item")}</p>
-      <input ref={inputRef} type="file" multiple accept="image/gif,image/png,image/jpeg,.gif,.png,.jpg,.jpeg" className="hidden"
+      <p className="mt-2 text-[11px] text-muted-foreground">{text(locale, "GIF, PNG, JPG ไม่เกิน 1 MB · ย่อให้โดยอัตโนมัติ", "GIF, PNG, JPG up to 1 MB · optimized automatically")}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{text(locale,
+        replacing ? "แตะภาพเพื่อแทนรูปเดิม เวลาและเอฟเฟกต์อยู่เหมือนเดิม" : "แตะภาพเพื่อเพิ่มในเนื้อร้อง",
+        replacing ? "Tap to replace this image, keeping its timing and effect" : "Tap an image to add it to the lyrics")}</p>
+      <input ref={inputRef} type="file" accept="image/gif,image/png,image/jpeg,.gif,.png,.jpg,.jpeg" className="hidden"
         aria-label={text(locale, "อัปโหลดสติกเกอร์", "Upload sticker")}
         onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; void upload(files); }} />
       {images.length > 0 && <>

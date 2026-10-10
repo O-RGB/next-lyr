@@ -1,14 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {normalizeBlockEffect,groupEffectBlocks,type BlockEffect,type PlaybackFrameAtlas} from "../src/lib/block-effects/types";
-import {effectAtlasRecipe,effectAtlasRoles,usedEffectAtlasRoles} from "../src/lib/block-effects/catalog";
+import {normalizeBlockEffect,groupEffectBlocks,effectIconRole,type BlockEffect,type PlaybackFrameAtlas} from "../src/lib/block-effects/types";
+import {effectAtlasRecipe,effectAtlasRoles,usedEffectAtlasRoles,effectGeometry} from "../src/lib/block-effects/catalog";
 import {layoutSkyActors,skyLightningVisible} from "../src/lib/block-effects/weather";
-import {collectEffectAtlases,frameAtlasIdentity} from "../src/lib/block-effects/frames";
+import {collectEffectAtlases,frameAtlasIdentity,type LoadedAtlas} from "../src/lib/block-effects/frames";
 import {materializeAtlasPayloads,selectPlaybackAtlases} from "../src/lib/block-effects/assets";
 import {buildPlaybackKlyrXml} from "../src/lib/karaoke/lyrics-core/xml";
 import {buildYoutubePlayback} from "../src/lib/stickers/playback-assets";
 import {cellsFromLine} from "../src/lib/karaoke/inline-content";
 import {resizeEffectRun,resolveEffectSelection} from "../src/lib/block-effects/editor";
+import {paintFrameSurface} from "../src/components/lyrics/block-effect-layer";
 import type {LyricsDocument} from "../src/lib/karaoke/lyrics-core/types";
 const styles:BlockEffect[]=[{type:'rain',connected:true},{type:'rain',variant:'clouds',connected:true},{type:'rain',variant:'storm',connected:true},
  {type:'sunny',connected:true},{type:'sunny',variant:'clouds',connected:true},{type:'sunny',variant:'birds',connected:true}];
@@ -28,6 +29,8 @@ test('weather styles reuse a single cloud of each color and the approved lightni
  assert.deepEqual(effectAtlasRoles(styles[5]),['edge','cloud','birds']);
  assert.equal(effectAtlasRecipe('rain','lightning').src,effectAtlasRecipe('lightning').src);
  assert.equal(frameAtlasIdentity('rain','lightning'),frameAtlasIdentity('lightning'));
+ assert.equal(effectIconRole(styles[2]),'lightning');
+ assert.equal(effectIconRole(styles[1]),'cloud');
  assert.notEqual(effectAtlasRecipe('sunny','cloud').src,effectAtlasRecipe('rain','cloud').src);
  assert.equal(effectAtlasRoles(styles[3]).length,1);
 });
@@ -47,9 +50,37 @@ test('floating sky objects stay bounded to three and adapt to the selected width
  assert.deepEqual(layoutSkyActors(styles[5],200,32).map(actor=>actor.role),['edge','cloud','birds']);
 });
 test('storm lightning flashes briefly while reduced motion remains static',()=>{
- assert.equal(skyLightningVisible(0),true);assert.equal(skyLightningVisible(100),false);
- assert.equal(skyLightningVisible(180),true);assert.equal(skyLightningVisible(500),false);
- assert.equal(skyLightningVisible(1900),true);assert.equal(skyLightningVisible(500,true),true);
+ assert.equal(skyLightningVisible(0),true);assert.equal(skyLightningVisible(139),true);
+ assert.equal(skyLightningVisible(140),false);assert.equal(skyLightningVisible(210),true);
+ assert.equal(skyLightningVisible(469),true);assert.equal(skyLightningVisible(470),false);
+ assert.equal(skyLightningVisible(1600),true);assert.equal(skyLightningVisible(500,true),true);
+});
+test('storm composition draws shared lightning cels during both bursts and keeps a visible static reduced-motion bolt',()=>{
+ const draws:Array<{image:unknown;source:unknown[];opacity:number}>=[],alphas:number[]=[];
+ const ctx={globalAlpha:1,setTransform(){},clearRect(){},translate(){},rotate(){},scale(){},
+  save(){alphas.push(this.globalAlpha);},restore(){this.globalAlpha=alphas.pop()!;},
+  drawImage(image:unknown,...args:unknown[]){draws.push({image,source:args.slice(0,4),opacity:this.globalAlpha});}};
+ const canvas={width:0,height:0,getContext:()=>ctx} as unknown as HTMLCanvasElement;
+ const makeAtlas=(image:string,fps:number)=>({image,frames:16,fps,
+  rects:Array.from({length:16},(_,index)=>({x:index%4*100,y:Math.floor(index/4)*100,width:100,height:100})),
+  anchors:Array.from({length:16},()=>({x:50,y:90,top:10}))}) as unknown as LoadedAtlas;
+ const rain=makeAtlas('rain',16),cloud=makeAtlas('cloud',12),lightning=makeAtlas('lightning',20);
+ const geometry=effectGeometry(200,40,styles[2]);
+ const placement={key:'storm',effect:styles[2],left:0,top:0,width:geometry.width,height:geometry.height};
+ const previous=Object.getOwnPropertyDescriptor(globalThis,'devicePixelRatio');
+ Object.defineProperty(globalThis,'devicePixelRatio',{configurable:true,value:1});
+ const paint=(time:number,reduced=false,effect=styles[2])=>{
+  draws.length=0;paintFrameSurface(canvas,rain,{...placement,effect},time,reduced,{cloud,lightning});
+  return draws.filter(draw=>draw.image==='lightning');
+ };
+ try{
+  const first=paint(0),second=paint(270);
+  assert.equal(first.length,1);assert.equal(second.length,1);
+  assert.notDeepEqual(first[0].source,second[0].source);
+  assert(first[0].opacity>.9);assert.equal(paint(500).length,0);
+  const still=paint(500,true);assert.equal(still.length,1);assert(still[0].opacity>=.8);
+  assert.equal(paint(0,false,styles[1]).length,0);
+ }finally{if(previous)Object.defineProperty(globalThis,'devicePixelRatio',previous);else Reflect.deleteProperty(globalThis,'devicePixelRatio');}
 });
 test('all six weather choices package six unique binaries even alongside standalone lightning',async()=>{
  const document:LyricsDocument={source:'MP3',timeBase:{kind:'seconds'},info:{},lines:[words([...styles,{type:'lightning',connected:true}])]};
