@@ -61,6 +61,7 @@ export function lyricsDocumentToWordData(
         text: word.text,
         kind: word.kind,
         sticker: word.sticker,
+        effect: word.effect,
         at: word.at,
         vocal: word.vocal,
         index: globalIndex++,
@@ -86,6 +87,7 @@ export function wordDataToLyricsDocument(options: {
         text: word.text,
         kind: word.kind,
         sticker: word.sticker,
+        effect: word.effect,
         vocal: word.vocal,
         at: word.at,
       }))

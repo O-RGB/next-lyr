@@ -20,6 +20,10 @@ export interface CanvasTextStyle {
   sungStroke: string;
   fontFamily: string;
   strokeWidth: number;
+  unsungGradient?: readonly string[];
+  sungGradient?: readonly string[];
+  glowColor?: string;
+  glowBlur?: number;
 }
 
 export function makeCanvasSlot(): CanvasSlot {
@@ -154,13 +158,21 @@ export function drawCanvasText(
   const height = style.fontSize * 3 + padding * 2;
 
   ctx.translate(x, y);
-  ctx.scale(scaleX, 1);
+  ctx.scale(scaleX, scaleX);
 
+  const face = (stops: readonly string[] | undefined, fallback: string) => {
+    if (!stops?.length) return fallback;
+    const gradient = ctx.createLinearGradient(0, -style.fontSize * .52, 0, style.fontSize * .52);
+    stops.forEach((color, index) => gradient.addColorStop(index / Math.max(1, stops.length - 1), color));
+    return gradient;
+  };
+  ctx.shadowColor = "rgba(20,28,49,.18)"; ctx.shadowBlur = 2; ctx.shadowOffsetY = style.fontSize * .045;
   ctx.strokeStyle = style.unsungStroke;
   ctx.lineWidth = style.strokeWidth;
   ctx.lineJoin = "round";
   ctx.strokeText(text, 0, 0);
-  ctx.fillStyle = style.unsungFill;
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.fillStyle = face(style.unsungGradient, style.unsungFill);
   ctx.fillText(text, 0, 0);
 
   if (progress > 0.001) {
@@ -168,8 +180,9 @@ export function drawCanvasText(
     ctx.beginPath();
     ctx.rect(left - padding * 2, top, clipRight - left + padding * 2, height);
     ctx.clip();
+    ctx.shadowColor = style.glowColor ?? "transparent"; ctx.shadowBlur = style.glowBlur ?? 0;
     ctx.strokeStyle = style.sungStroke;
-    ctx.fillStyle = style.sungFill;
+    ctx.fillStyle = face(style.sungGradient, style.sungFill);
     ctx.strokeText(text, 0, 0);
     ctx.fillText(text, 0, 0);
     ctx.restore();

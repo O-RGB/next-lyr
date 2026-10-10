@@ -9,7 +9,8 @@ import ButtonCommon from "@/components/common/button";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 
-export function SortableLyricCell({ cell, ordinal, count, at, projectId, midi, onEdit, onMove, onRemove, onFocus, inputRef }: {
+export function SortableLyricCell({ cell, ordinal, count, at, projectId, midi, onEdit, onMove, onRemove, onFocus, inputRef, selected, onSelect }: {
+  selected: boolean; onSelect: () => void;
   cell: LyricCellDraft; ordinal: number; count: number; at: number | null;
   projectId: string | null; midi: boolean;
   onEdit: (field: "text" | "vocal", value: string) => void;
@@ -19,10 +20,14 @@ export function SortableLyricCell({ cell, ordinal, count, at, projectId, midi, o
   const locale = useSettingsStore((state) => state.uiLocale);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: cell.key });
   return (
-    <div data-editor-cell={cell.key} data-kind={cell.kind} className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
+    <div data-editor-cell={cell.key} data-kind={cell.kind} data-editor-effect={cell.effect?.type ?? "none"} className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
       {/* Slot/time stay fixed while only the content region animates. */}
       <div className="w-12 shrink-0 text-center">
-        <span className="text-[11px] font-semibold text-brand-2">{ordinal + 1}</span>
+        <label className="flex min-h-6 items-center justify-center gap-1">
+          <input type="checkbox" checked={selected} onChange={onSelect}
+            aria-label={text(locale, `เลือกบล็อก ${ordinal + 1}`, `Select block ${ordinal + 1}`)} />
+          <span className="text-[11px] font-semibold text-brand-2">{ordinal + 1}</span>
+        </label>
         <div data-slot-time={at ?? "untimed"} className="truncate text-[9px] tabular-nums text-muted-foreground">
           {at === null ? "—" : `${Number(at.toFixed(3))}${midi ? "t" : "s"}`}
         </div>

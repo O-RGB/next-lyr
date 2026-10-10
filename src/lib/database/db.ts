@@ -89,6 +89,7 @@ export class MySubClassedDexie extends Dexie {
   projects!: Table<Project>;
   timingDrafts!: Table<TimingDraft>;
   stickerAssets!: Table<{ key: string; projectId: string; blob: Blob }>;
+  effectSpriteAssets!: Table<{ id: string; blob: Blob }>;
   galleryAssets!: Table<{ id: string; blob: Blob }>;
   galleryImages!: Table<GalleryImage>;
   soundfontBlobs!: Table<SoundfontBlobRecord>;
@@ -156,6 +157,7 @@ export class MySubClassedDexie extends Dexie {
       }
       await tx.table("stickerAssets").clear();
     });
+    this.version(13).stores({ effectSpriteAssets: "&id" });
   }
 }
 
@@ -181,6 +183,19 @@ export const createProject = async (
       );
     }
 
+    if (initialData.lyricsDocument?.effectAtlases?.length) {
+      const atlases = initialData.lyricsDocument.effectAtlases;
+      for (const atlas of atlases) {
+        if (!atlas.base64) continue;
+        const bytes = Uint8Array.from(atob(atlas.base64), (char) => char.charCodeAt(0));
+        const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+        const id = [...digest].map(value => value.toString(16).padStart(2,"0")).join("");
+        if (id !== atlas.id) throw new Error("invalid-frame-atlas-hash");
+        if (!(await db.effectSpriteAssets.get(id))) await db.effectSpriteAssets.put({ id, blob: new Blob([bytes], { type: atlas.mime }) });
+      }
+      initialData.lyricsDocument = { ...initialData.lyricsDocument, effectAtlases: atlases.map(atlas => ({ ...atlas, base64: "" })) };
+      initialData.lyricsXml = buildKlyrXml(initialData.lyricsDocument);
+    }
     // Playback imports are new projects, never project archives. Move their
     // embedded images into the shared gallery and keep only references here.
     if (initialData.lyricsDocument?.assets?.length) {

@@ -1,3 +1,4 @@
+import { normalizeBlockEffect, type BlockEffect } from "../block-effects/types";
 import type { LyricWordData } from "@/types/common.type";
 import type { LineStickers, LyricSticker } from "@/lib/stickers/types";
 
@@ -10,6 +11,7 @@ export interface LyricCellDraft {
   text: string;
   vocal: string;
   sticker?: LyricSticker;
+  effect?: BlockEffect;
 }
 
 /** Reorder content only. The destination keeps its original timing slot. */
@@ -23,7 +25,7 @@ export function moveCellContent(cells: LyricCellDraft[], from: number, to: numbe
 export function cellsFromLine(line: LyricWordData[]): LyricCellDraft[] {
   return line.map((word) => ({ key: `slot-${word.index}`, originalIndex: word.index,
     kind: word.kind ?? "text", text: word.kind === "image" ? IMAGE_TOKEN : word.text,
-    vocal: word.vocal ?? "", sticker: word.sticker }));
+    vocal: word.vocal ?? "", sticker: word.sticker, effect: normalizeBlockEffect(word.effect) }));
 }
 
 /** Upgrade the former edge-only sticker without losing any existing timestamps. */

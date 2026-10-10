@@ -16,6 +16,8 @@ import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import { IMAGE_TOKEN, cellsFromLine, moveCellContent, type LyricCellDraft } from "@/lib/karaoke/inline-content";
 import type { LyricSticker } from "@/lib/stickers/types";
 import LineStickerPanel from "./line-sticker-panel";
+import { BlockEffectPanel, QuickBlockEffectControls } from "./block-effect-panel";
+import type { EffectType } from "@/lib/block-effects/types";
 import { SortableLyricCell } from "./sortable-lyric-cell";
 
 interface DraftHistory { past: LyricCellDraft[][]; present: LyricCellDraft[]; future: LyricCellDraft[][] }
@@ -29,6 +31,7 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
   const mode = useKaraokeStore((state) => state.mode);
   const locale = useSettingsStore((state) => state.uiLocale);
   const [history, setHistory] = useState<DraftHistory>(emptyHistory);
+  const [selected, setSelected] = useState(new Set<string>());
   const [stickerBusy, setStickerBusy] = useState(false);
   const sessionRef = useRef<string | null>(null);
   const cacheRef = useRef(new Map<string, DraftHistory>());
@@ -57,6 +60,7 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     if (sessionRef.current !== key) {
       sessionRef.current = key;
       const initial = cellsFromLine(currentLine);
+      setSelected(new Set());
       setHistory(cacheRef.current.get(key) ?? { past: [], present: initial, future: [] });
       focusedRef.current = initial.find((cell) => cell.originalIndex === useKaraokeStore.getState().currentIndex)?.key ?? initial[0]?.key ?? null;
     }
@@ -112,7 +116,10 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     const next = previous.future[0];
     return next ? { past: [...previous.past, previous.present].slice(-80), present: next, future: previous.future.slice(1) } : previous;
   });
-  const serialize = (cells: LyricCellDraft[]) => cells.map(({ originalIndex, kind, text, vocal, sticker }) => ({ originalIndex, kind, text, vocal, sticker }));
+  const serialize = (cells: LyricCellDraft[]) => cells.map(({ originalIndex, kind, text, vocal, sticker, effect }) => ({ originalIndex, kind, text, vocal, sticker, effect }));
+  const applyEffect = (type: EffectType | "none") => change((cells) => cells.map((cell) => selected.has(cell.key)
+    ? { ...cell, effect: type === "none" ? undefined : { type, connected: cell.effect?.connected !== false } } : cell));
+  const connectEffects = (connected: boolean) => change((cells) => cells.map((cell) => selected.has(cell.key) && cell.effect ? { ...cell, effect: { ...cell.effect, connected } } : cell));
   const invalid = history.present.some((cell) => cell.kind === "image" ? !cell.sticker : !cell.text.trim());
   const dirty = currentLine && JSON.stringify(serialize(history.present)) !== JSON.stringify(serialize(cellsFromLine(currentLine)));
   const hasNewCells = history.present.some((cell) => cell.originalIndex === null);
@@ -143,13 +150,18 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
     title={text(locale, "แก้ไขคำร้อง", "Edit lyrics")}
     description={text(locale, "ลากคำหรือรูปเพื่อเรียงเนื้อหา เวลาอยู่กับช่องเดิม", "Drag words or images to reorder content. Timestamps stay in their slots.")}
     modalClassName="flex flex-col"
-    footer={<ButtonCommon className="w-full sm:ml-auto sm:w-auto" icon={<Save />} color={hasNewCells ? "warning" : "primary"}
+    footer={<div className="flex w-full flex-col">
+      <QuickBlockEffectControls cells={history.present} selected={selected} onApply={applyEffect} onConnect={connectEffects} />
+      <ButtonCommon className="w-full sm:ml-auto sm:w-auto" icon={<Save />} color={hasNewCells ? "warning" : "primary"}
       disabled={!dirty || invalid || stickerBusy} onClick={() => void save()}>
       {hasNewCells ? text(locale, "บันทึกและปาดต่อ", "Save & continue timing") : text(locale, "บันทึก", "Save")}
-    </ButtonCommon>}>
+    </ButtonCommon></div>}>
     <div className="space-y-3">
       {projectId && open && selectedLineIndex !== null && <LineStickerPanel key={`${projectId}:${selectedLineIndex}`}
         projectId={projectId} onChange={(sticker) => { if (sticker) insert("image", sticker); }} onBusyChange={setStickerBusy} />}
+      <BlockEffectPanel cells={history.present} selected={selected}
+        onSelectAll={() => setSelected(selected.size === history.present.length ? new Set() : new Set(history.present.map((cell) => cell.key)))}
+        onApply={applyEffect} onConnect={connectEffects} />
       <div className="rounded-xl border border-line bg-panel p-2 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-line pb-2 text-xs text-muted-foreground">
           <span>{text(locale, "บรรทัดที่", "Line")} {(selectedLineIndex ?? 0) + 1} · {history.present.length} {text(locale, "รายการ", "items")}</span>
@@ -167,10 +179,11 @@ export default function EditLyricLineModal({ open }: { open?: boolean }) {
             {history.present.map((cell, index) => {
               const original = currentLine?.find((word) => word.index === cell.originalIndex);
               const buffered = cell.originalIndex === null ? undefined : useKaraokeStore.getState().timingBuffer?.buffer.get(cell.originalIndex)?.at;
-              return <SortableLyricCell key={cell.key} cell={cell} ordinal={index} count={history.present.length} projectId={projectId} midi={mode === "midi"}
+              return <SortableLyricCell key={cell.key} cell={cell} selected={selected.has(cell.key)}
+                onSelect={() => setSelected((previous) => { const next = new Set(previous); if (next.has(cell.key)) next.delete(cell.key); else next.add(cell.key); return next; })} ordinal={index} count={history.present.length} projectId={projectId} midi={mode === "midi"}
                 at={buffered ?? original?.at ?? null} onFocus={() => { focusedRef.current = cell.key; }}
                 inputRef={(node) => { if (node) inputsRef.current.set(cell.key, node); else inputsRef.current.delete(cell.key); }}
-                onMove={(delta) => move(index, index + delta)} onRemove={() => change((cells) => cells.filter((item) => item.key !== cell.key))}
+                onMove={(delta) => move(index, index + delta)} onRemove={() => { setSelected((previous) => { const next = new Set(previous); next.delete(cell.key); return next; }); change((cells) => cells.filter((item) => item.key !== cell.key)); }}
                 onEdit={(field, value) => change((cells) => cells.map((item) => item.key === cell.key ? { ...item, [field]: value } : item))} />;
             })}
           </SortableContext>

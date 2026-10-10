@@ -7,6 +7,9 @@ import React, {
   useRef,
 } from "react";
 
+import { makeBlockEffectLayer, clearBlockEffectLayer, updateBlockEffectLayer, placeEffectRuns, type EffectPlacement } from "../block-effect-layer";
+import { effectAppearance, LYRIC_APPEARANCE } from "@/lib/block-effects/appearance";
+import { normalizeBlockEffect } from "@/lib/block-effects/types";
 import { layoutInlineWords } from "@/lib/stickers/inline-layout";
 import { makeInlineImageLayer, updateInlineImageLayer, clearInlineImageLayer, type InlineImagePlacement } from "../inline-image-layer";
 import type { ISentence } from "@/lib/array-range";
@@ -42,6 +45,8 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   playerControls,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const effectLayer = useRef(makeBlockEffectLayer());
+  useEffect(() => { const layer = effectLayer.current; return () => clearBlockEffectLayer(layer); }, []);
   const imageLayer = useRef(makeInlineImageLayer());
   useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
   const processedRef = useRef(useKaraokeStore.getState().lyricsProcessed);
@@ -141,6 +146,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
     const lyricRange = processedRef.current;
     if (!canvas || !lyricRange || lyricRange.ranges.length === 0) {
       updateInlineImageLayer(imageLayer.current, null, []);
+      updateBlockEffectLayer(effectLayer.current, []);
       if (dirtyRef.current) {
         clearCanvas(canvas);
         dirtyRef.current = false;
@@ -200,13 +206,20 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    const mainSize = getFontSize(styleRef.current, width, height);
-    const vocalSize = Math.max(10, mainSize * 0.42);
-    const style = getTextStyle(
-      styleRef.current,
-      mainSize,
-      getComputedStyle(canvas).fontFamily || "sans-serif"
-    );
+    const configuredSize = getFontSize(styleRef.current, width, height);
+    let style = getTextStyle(styleRef.current, configuredSize,
+      getComputedStyle(canvas).fontFamily || "sans-serif");
+    ctx.font = `${style.fontWeight} ${configuredSize}px ${style.fontFamily}`;
+    const fitSizes = [topSentence, bottomSentence].flatMap((sentence) => {
+      if (!sentence) return [];
+      if (sentence.words?.some((word) => word.kind === "image" || word.effect)) {
+        return [layoutInlineWords(sentence.words, configuredSize, width, (text) => ctx.measureText(text).width, 0)[0]?.height ?? configuredSize];
+      }
+      return [configuredSize * Math.min(1, width * .94 / Math.max(1, ctx.measureText(sentence.text).width))];
+    });
+    const mainSize = Math.max(12, Math.min(configuredSize, ...fitSizes));
+    style = { ...style, fontSize: mainSize, strokeWidth: Math.max(1.2, style.strokeWidth * mainSize / configuredSize) };
+    const vocalSize = Math.max(10, mainSize * .42);
     const fontFamily = style.fontFamily;
     const mainMetrics = measureCanvasTextVertical(
       ctx,
@@ -275,11 +288,12 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       height,
     };
 
-    const images = [
-      ...drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize),
-      ...drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize),
+    const rendered = [
+      drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize),
+      drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize),
     ];
-    updateInlineImageLayer(imageLayer.current, useKaraokeStore.getState().projectId, images);
+    updateInlineImageLayer(imageLayer.current, useKaraokeStore.getState().projectId, rendered.flatMap((line) => line.images));
+    updateBlockEffectLayer(effectLayer.current, rendered.flatMap((line) => line.effects));
 
     dirtyRef.current = false;
     topSlotRef.current.dirty = false;
@@ -312,11 +326,12 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="relative flex min-h-0 flex-1 w-full items-center justify-center overflow-hidden rounded-lg text-center">
+        <div ref={(element) => { effectLayer.current.element = element; }} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
         <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
         <canvas
           ref={canvasRef}
           aria-label="Karaoke lyrics preview"
-          className="block h-full w-full"
+          className="relative block h-full w-full"
           style={{ fontFamily: "var(--font-lyrics)" }}
         />
       </div>
@@ -354,7 +369,7 @@ function getFontSize(
   height: number
 ): number {
   const configured = Number(textStyle?.fontSize);
-  const fallback = width >= 768 ? 36 : 24;
+  const fallback = width >= 768 ? 44 : 28;
   const size = Number.isFinite(configured) && configured > 0 ? configured : fallback;
   return Math.max(12, Math.min(size, height * 0.25));
 }
@@ -367,42 +382,57 @@ function getTextStyle(
   return {
     fontSize,
     fontWeight: textStyle?.fontWeight ?? 700,
-    // Match karaoke-web-online's actual canvas mapping. The field names in
-    // this project are historical, so keep the rendered roles explicit here:
-    // unsung = yellow/black and sung = blue/white.
-    unsungFill: textStyle?.color?.color ?? "#fcfe17",
-    unsungStroke: textStyle?.activeColor?.color ?? "#000000",
-    sungFill: textStyle?.color?.colorBorder ?? "#0000ff",
-    sungStroke: textStyle?.activeColor?.colorBorder ?? "#ffffff",
+    unsungFill: textStyle?.color?.color ?? LYRIC_APPEARANCE.idle[0],
+    unsungStroke: textStyle?.activeColor?.color ?? LYRIC_APPEARANCE.stroke,
+    sungFill: textStyle?.color?.colorBorder ?? LYRIC_APPEARANCE.sung[0],
+    sungStroke: textStyle?.activeColor?.colorBorder ?? LYRIC_APPEARANCE.sungStroke,
+    unsungGradient: undefined,
+    sungGradient: undefined,
+    glowColor: "transparent", glowBlur: 0,
     fontFamily,
-    strokeWidth: Math.max(fontSize * 0.08, 2),
+    strokeWidth: Math.max(fontSize * 0.065, 1.4),
   };
 }
 
 function drawSentence(
   ctx: CanvasRenderingContext2D, sentence: ISentence | undefined, progress: number,
   width: number, y: number, style: CanvasTextStyle, vocalSize: number
-): InlineImagePlacement[] {
-  if (!sentence) return [];
+): { images: InlineImagePlacement[]; effects: EffectPlacement[] } {
+  if (!sentence) return { images: [], effects: [] };
   const images: InlineImagePlacement[] = [];
-  if (sentence.words?.some((word) => word.kind === "image")) {
+  let effects: EffectPlacement[] = [];
+  if (sentence.words?.some((word) => word.kind === "image" || word.effect)) {
     ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
     const layout = layoutInlineWords(sentence.words, style.fontSize, width, (text) => ctx.measureText(text).width, progress);
+    const renderedSize = layout[0]?.height ?? style.fontSize;
+    const renderedStroke = Math.max(1.2, style.strokeWidth * renderedSize / style.fontSize);
+    const renderedStyle: CanvasTextStyle = { ...style, fontSize: renderedSize, strokeWidth: renderedStroke };
+    ctx.save(); ctx.font = `${style.fontWeight} ${renderedSize}px ${style.fontFamily}`; ctx.textBaseline = "middle";
+    const metrics = ctx.measureText(sentence.words.filter((word) => word.kind !== "image").map((word) => word.text).join(""));
+    const textBottom = y + (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent > 0 ? metrics.actualBoundingBoxDescent : renderedSize * .35) + renderedStroke / 2;
+    ctx.restore();
+    effects = placeEffectRuns(layout.map((item) => ({ word: item.word, left: item.contentLeft, width: item.contentWidth,
+      top: (item.word.kind === "image" ? y + item.height / 2 : textBottom) - item.height, height: item.height, progress: item.progress })), `preview:${sentence.lineIndex}`);
     for (const item of layout) {
       if (item.word.kind === "image") {
         if (item.word.sticker) images.push({ key: `preview:${item.word.index}`, sticker: item.word.sticker,
-          left: item.left, top: y - item.height / 2, width: item.width, height: item.height });
+          left: item.contentLeft, top: y - item.height / 2, width: item.contentWidth, height: item.height });
       } else {
-        drawCanvasText(ctx, item.word.text, item.left + item.width / 2, y,
-          item.progress, Math.max(1, item.width / 0.94), style);
+        const effect = normalizeBlockEffect(item.word.effect);
+        const theme = effect ? effectAppearance(effect.type) : undefined;
+        const themedStyle: CanvasTextStyle = theme ? { ...renderedStyle, unsungGradient: theme.idle, sungGradient: theme.sung,
+          unsungStroke: theme.stroke, sungStroke: theme.activeStroke, glowColor: theme.glow,
+          glowBlur: item.progress > 0 && item.progress < 1 ? renderedSize * .16 : renderedSize * .06 } : renderedStyle;
+        drawCanvasText(ctx, item.word.text, item.contentLeft + item.contentWidth / 2, y,
+          item.progress, Math.max(1, item.contentWidth / 0.94), themedStyle);
       }
     }
   } else drawCanvasText(ctx, sentence.text, width / 2, y, progress, width, style);
   if (sentence.vocal.trim()) drawCanvasText(ctx, sentence.vocal, width / 2,
     y + style.fontSize * 0.72, progress, width, { ...style, fontSize: vocalSize,
-      unsungFill: "#df692e", unsungStroke: "#000000", sungFill: "#0000ff", sungStroke: "#ffffff",
-      strokeWidth: Math.max(vocalSize * 0.1, 1.5) });
-  return images;
+      unsungFill: "#b8c4da", unsungStroke: "#29334b", sungFill: "#fff0bf", sungStroke: "#29334b",
+      unsungGradient: undefined, sungGradient: undefined, glowBlur: 0, strokeWidth: Math.max(vocalSize * .06, 1) });
+  return { images, effects };
 }
 
 function measureCanvasTextVertical(

@@ -1,3 +1,4 @@
+import type { BlockEffect, PlaybackFrameAtlas } from "../../block-effects/types";
 import type { LyricSticker, PlaybackImage } from "@/lib/stickers/types";
 import type { SongInfo, TempoEvent } from "../midi/types";
 
@@ -19,6 +20,7 @@ export type LyricsTimeBase =
     };
 
 export interface LyricsWord {
+  effect?: BlockEffect;
   kind?: "text" | "image";
   sticker?: LyricSticker;
   id?: string;
@@ -29,6 +31,7 @@ export interface LyricsWord {
 
 export interface LyricsDocument {
   assets?: PlaybackImage[];
+  effectAtlases?: PlaybackFrameAtlas[];
   source: LyricsSourceKind;
   timeBase: LyricsTimeBase;
   info: Partial<SongInfo>;

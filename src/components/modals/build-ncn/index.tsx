@@ -9,6 +9,8 @@ import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator } from "@/lib/karaoke/cursor";
 import { wordDataToLyricsDocument } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildPlaybackKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
+import { collectEffectAtlases } from "@/lib/block-effects/frames";
+import { normalizeBlockEffect } from "@/lib/block-effects/types";
 import { collectPlaybackAssets, buildYoutubePlayback } from "@/lib/stickers/playback-assets";
 import { lyricsDocumentToEvents } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
@@ -58,7 +60,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
   }, [chordsData, lyricsData, metadata]);
 
   const hasImages = lyricsData.some((line) => line.some((word) => word.kind === "image"));
-  const legacySupported = legacyEncodingSupported && !hasImages;
+  const hasEffects = lyricsData.some((line) => line.some((word) => normalizeBlockEffect(word.effect)));
+  const legacySupported = legacyEncodingSupported && !hasImages && !hasEffects;
   const utf8CompatibilityMessage =
     text(
       locale,
@@ -101,16 +104,16 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     }
   };
 
-  const currentDocument = () => wordDataToLyricsDocument({
+  const currentDocument = () => ({ ...wordDataToLyricsDocument({
     lyricsData, source: mode === "midi" ? "KMID" : "MP3",
     timeBase: lyricsDocument?.timeBase ?? (mode === "midi" ? { kind: "midi-tick", ppq: midiInfo?.ticksPerBeat ?? 480 } : { kind: "seconds" }),
     info: metadata ?? {},
-  });
+  }), effectAtlases: lyricsDocument?.effectAtlases });
   const playbackXml = async (info: Partial<SongInfo>) => {
-    if (!hasImages) return undefined;
+    if (!hasImages && !hasEffects) return undefined;
     const document = { ...currentDocument(), info };
     const assets = await collectPlaybackAssets(document, (id) => getStickerBlob(projectId ?? "", id));
-    return buildPlaybackKlyrXml(document, assets);
+    return buildPlaybackKlyrXml(document, assets, await collectEffectAtlases(document));
   };
   const exportError = async (error: unknown) => {
     console.error("Playback export failed", error);
@@ -144,7 +147,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     const youtubeId = useKaraokeStore.getState().playerState.youtubeId;
     if (!youtubeId) throw new Error("missing-youtube-id");
     const json = JSON.stringify(buildYoutubePlayback({ youtubeId, info: metadata, lyrics: newLyricsData,
-      chords: newChordsData, document: playbackDocument, assets }));
+      chords: newChordsData, document: playbackDocument, assets, effectAtlases: await collectEffectAtlases(playbackDocument) }));
 
     const compressed = pako.gzip(json);
     const blob = new Blob([compressed], { type: "application/octet-stream" });
@@ -184,7 +187,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       const mp3Info: SongInfo = {
         ...metadata,
         TIME_FORMAT: "TIME_MS",
-        CHARSET: legacyEncodingSupported && !hasImages ? "TIS-620" : "UTF-8",
+        CHARSET: legacyEncodingSupported && !hasImages && !hasEffects ? "TIS-620" : "UTF-8",
       };
       const buffer = buildMp3(
         {
@@ -230,7 +233,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       const newSongInfo: SongInfo = {
         ...metadata,
-        CHARSET: legacyEncodingSupported && !hasImages ? "TIS-620" : "UTF-8",
+        CHARSET: legacyEncodingSupported && !hasImages && !hasEffects ? "TIS-620" : "UTF-8",
       };
       const newChordsData: ChordEvent[] = chordsData;
 
@@ -252,7 +255,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         newLyricsData,
         newChordsData,
         headerToUse: midiInfo.lyrHeader,
-        textEncoding: legacyEncodingSupported && !hasImages ? "tis-620" : "utf-8",
+        textEncoding: legacyEncodingSupported && !hasImages && !hasEffects ? "tis-620" : "utf-8",
       });
 
       const blob = new Blob([newMidiBuffer as BlobPart], {
@@ -276,7 +279,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!legacySupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
-        description: hasImages ? text(locale, "LYR/CUR เก็บภาพไม่ได้ กรุณาส่งออก MID ซึ่งรวมภาพให้ครบ", "LYR/CUR cannot carry images. Export MID to include all used images") : utf8CompatibilityMessage,
+        description: hasImages || hasEffects ? text(locale, "LYR/CUR เก็บภาพหรือเอฟเฟกต์ไม่ได้ กรุณาส่งออก MID ซึ่งรวมให้ครบ", "LYR/CUR cannot carry images or effects. Export MID to include them") : utf8CompatibilityMessage,
         tone: "info",
       });
       return;
@@ -301,7 +304,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!legacySupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
-        description: hasImages ? text(locale, "LYR/CUR เก็บภาพไม่ได้ กรุณาส่งออก MID ซึ่งรวมภาพให้ครบ", "LYR/CUR cannot carry images. Export MID to include all used images") : utf8CompatibilityMessage,
+        description: hasImages || hasEffects ? text(locale, "LYR/CUR เก็บภาพหรือเอฟเฟกต์ไม่ได้ กรุณาส่งออก MID ซึ่งรวมให้ครบ", "LYR/CUR cannot carry images or effects. Export MID to include them") : utf8CompatibilityMessage,
         tone: "info",
       });
       return;
@@ -404,9 +407,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   )}
                 </>
               )}
-              {hasImages && <p className="text-xs text-muted-foreground">{text(locale,
-                "ไฟล์รวมเฉพาะภาพที่ใช้จริง ภาพซ้ำเก็บครั้งเดียว การแสดงภาพต้องใช้ตัวเล่นที่รองรับบล็อกภาพ · LYR/CUR ไม่รองรับภาพ",
-                "Includes only used images, once each. Images need a player supporting image blocks. LYR/CUR cannot carry images")}</p>}
+              {(hasImages || hasEffects) && <p className="text-xs text-muted-foreground">{text(locale,
+                "ไฟล์รวมภาพและเอฟเฟกต์ที่ใช้จริง เก็บชุดซ้ำครั้งเดียว ต้องใช้ตัวเล่นที่รองรับบล็อกภาพและเอฟเฟกต์ · LYR/CUR ไม่รองรับ",
+                "Includes only used images and effect presets, once each. Requires a player supporting image blocks and effects. LYR/CUR cannot carry them")}</p>}
               {mode === "youtube" && (
                 <ButtonCommon
                   onClick={handleBuildYoutube}

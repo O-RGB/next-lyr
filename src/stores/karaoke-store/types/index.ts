@@ -1,3 +1,4 @@
+import type { BlockEffect } from "@/lib/block-effects/types";
 import type { LineStickers, LyricSticker } from "@/lib/stickers/types";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { Project, StoredFile } from "@/lib/database/db";
@@ -129,6 +130,7 @@ export interface ContentActions {
       originalIndex: number | null;
       kind?: "text" | "image";
       sticker?: LyricSticker;
+      effect?: BlockEffect;
       text: string;
       vocal: string;
     }>,

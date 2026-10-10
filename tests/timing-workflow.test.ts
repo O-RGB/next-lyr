@@ -259,3 +259,26 @@ test("workspace documents retain arbitrary image cells; text exports contain no 
   assert.deepEqual(lyricsDocumentToEvents(doc)[0].map(w=>w.text),["หนึ่ง","ผิด"]);
   assert.equal(buildKlyrXml(doc).includes(IMAGE_TOKEN),false);
 });
+
+test("effect-only edits mid-timing preserve the recorded buffer and next pending slot", async () => {
+  setup(); await handlers.handleContinueTiming(); await stamp(0); state().actions.selectLine(0); state().actions.openEditModal();
+  const cells = cellsFromLine(state().lyricsData[0]).map(cell => ({...cell,effect:{type:'lightning' as const,connected:true}}));
+  state().actions.replaceLineWords(0,cells);
+  assert.equal(state().timingBuffer?.buffer.get(0)?.at,0);assert.equal(state().currentIndex,1);
+  assert.deepEqual(state().lyricsDocument?.lines[0].map(w=>w.effect?.type),['lightning','lightning']);
+  state().actions.closeEditModal();await handlers.handleResumeTiming();await stamp(2);await stamp(5);await stamp(7);
+  assert.deepEqual(state().lyricsData.flat().map(w=>w.at),[0,2,5,7]);assert.equal(state().lyricsData[0][0].effect?.type,'lightning');
+});
+
+test("effect-only saves participate in undo and redo without changing timestamps", () => {
+  setup([1,2,3,4]);const cells=cellsFromLine(state().lyricsData[0]);
+  cells[0].effect={type:'lightning',connected:false};state().actions.replaceLineWords(0,cells);
+  assert.equal(state().lyricsData[0][0].effect?.type,'lightning');state().actions.undo();assert.equal(state().lyricsData[0][0].effect,undefined);
+  state().actions.redo();assert.equal(state().lyricsData[0][0].effect?.connected,false);assert.deepEqual(state().lyricsData.flat().map(w=>w.at),[1,2,3,4]);
+});
+
+test("removing an effect clears it instead of inheriting the destination slot's effect", () => {
+  setup([1,2,3,4]);state().actions.replaceLineWords(0,cellsFromLine(state().lyricsData[0]).map(c=>({...c,effect:{type:'lightning' as const,connected:true}})));
+  state().actions.replaceLineWords(0,cellsFromLine(state().lyricsData[0]).map(c=>({...c,effect:undefined})));
+  assert(state().lyricsData[0].every(w=>!w.effect));assert.deepEqual(state().lyricsData.flat().map(w=>w.at),[1,2,3,4]);
+});

@@ -1,5 +1,9 @@
 "use client";
 
+import { effectAppearance } from "@/lib/block-effects/appearance";
+import { normalizeBlockEffect } from "@/lib/block-effects/types";
+import { makeBlockEffectLayer, clearBlockEffectLayer, updateBlockEffectLayer, placeEffectRuns, type EffectBox, type EffectPlacement } from "../block-effect-layer";
+
 import { FilePlus2, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
 
@@ -94,6 +98,8 @@ const LyricsGrid: React.FC = () => {
   const isMobile = useIsMobile();
   const gridMetrics = isMobile ? MOBILE_GRID_METRICS : getGridMetrics();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const effectLayer = useRef(makeBlockEffectLayer());
+  useEffect(() => { const layer = effectLayer.current; return () => clearBlockEffectLayer(layer); }, []);
   const imageLayer = useRef(makeInlineImageLayer());
   useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
   const locale = useSettingsStore((state) => state.uiLocale);
@@ -411,6 +417,7 @@ const LyricsGrid: React.FC = () => {
     ctx.textBaseline = "middle";
     hitBoxesRef.current = [];
     const imagePlacements: InlineImagePlacement[] = [];
+    const effectPlacements: EffectPlacement[] = [];
     const focusLineIndex =
       state.isPlaying || state.isTimingActive || state.editingLineIndex !== null
         ? state.selectedLineIndex ?? -1
@@ -566,6 +573,7 @@ const LyricsGrid: React.FC = () => {
         maxLineScroll
       );
       let x = startX - lineScrollLeft;
+      const effectBoxes: EffectBox[] = [];
 
       ctx.save();
       ctx.beginPath();
@@ -579,6 +587,13 @@ const LyricsGrid: React.FC = () => {
         const boxWidth = wordWidths[wordIndex];
         const boxY = y + (getRowHeight() - getWordHeight()) / 2;
         const boxX = x;
+        const textMetrics = ctx.measureText(word.text);
+        const effectTextHeight = getWordFontSize() * .85;
+        const contentWidth = word.kind === "image" ? boxWidth - 10 : textMetrics.width;
+        const contentBottom = word.kind === "image" ? boxY + getWordHeight() - 4
+          : boxY + getWordHeight() / 2 + (textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent > 0 ? textMetrics.actualBoundingBoxDescent : getWordFontSize() * .3);
+        effectBoxes.push({ word, left: boxX + (boxWidth - contentWidth) / 2, top: contentBottom - effectTextHeight,
+          width: contentWidth, height: effectTextHeight, progress: state.isPlaying && state.playbackIndex === word.index ? .5 : (state.playbackIndex ?? -1) > word.index ? 1 : 0 });
         const isPlaybackActive =
           canShowPlaybackHighlight && state.playbackIndex === word.index;
         const isPlaybackPending =
@@ -626,6 +641,8 @@ const LyricsGrid: React.FC = () => {
           : showCorrectionVisual
           ? colors.pending
           : colors.boxBorder;
+        const effect = normalizeBlockEffect(word.effect);
+        const theme = effect ? effectAppearance(effect.type) : undefined;
         drawLyricWordBox(
           ctx,
           word,
@@ -644,7 +661,7 @@ const LyricsGrid: React.FC = () => {
               ? colors.playing
               : colors.box,
             border: borderColor,
-            text: isDisabledLine ? colors.disabledText : colors.text,
+            text: isDisabledLine ? colors.disabledText : theme ? (isDark ? theme.idle[1] : theme.editor) : colors.text,
             muted: isDisabledLine ? colors.disabledMuted : colors.muted,
             marker: markerColor,
           },
@@ -677,10 +694,17 @@ const LyricsGrid: React.FC = () => {
         x += boxWidth + getWordGap();
       });
       ctx.restore();
+      for (const placement of placeEffectRuns(effectBoxes, `${state.projectId}:grid:${lineIndex}`)) {
+        if (placement.left < startX + availableWidth + 8 && placement.left + placement.width > startX - 8) {
+          effectPlacements.push({ ...placement, clipLeft: Math.max(0, startX - 8 - placement.left),
+            clipRight: Math.max(0, placement.left + placement.width - startX - availableWidth - 8) });
+        }
+      }
 
     }
 
     updateInlineImageLayer(imageLayer.current, state.projectId, imagePlacements);
+    updateBlockEffectLayer(effectLayer.current, effectPlacements);
     dirtyRef.current = false;
   }, []);
 
@@ -1478,6 +1502,7 @@ const LyricsGrid: React.FC = () => {
       className="relative h-full rounded-md border border-line border-l-0 bg-base overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
       onWheelCapture={handlePanelWheelCapture}
     >
+      <div ref={(element) => { effectLayer.current.element = element; }} className="pointer-events-none sticky top-0 z-20 h-0" />
       <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none sticky top-0 z-20 h-0" />
       <div
         style={{

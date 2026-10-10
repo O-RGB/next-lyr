@@ -1,3 +1,4 @@
+import { normalizeBlockEffect } from "@/lib/block-effects/types";
 import { IMAGE_TOKEN } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
 import { reconcileLyricsEdit, timingLyrics } from "../timing-session";
@@ -44,6 +45,7 @@ export const createContentActions: StateCreator<
       info: state.metadata ?? {},
     });
 
+    document.effectAtlases = state.lyricsDocument?.effectAtlases;
     set({ lyricsDocument: document, lyricsXml: buildKlyrXml(document) });
   };
 
@@ -191,6 +193,7 @@ export const createContentActions: StateCreator<
             const kind = draft.kind ?? "text";
             const nextText = kind === "image" ? IMAGE_TOKEN : draft.text.trim();
             const nextVocal = kind === "image" ? "" : draft.vocal;
+            const effect = normalizeBlockEffect(draft.effect);
             const image = kind === "image" ? draft.sticker : undefined;
 
             if (
@@ -198,7 +201,8 @@ export const createContentActions: StateCreator<
               originalWord.text !== nextText ||
               (originalWord.vocal ?? "") !== nextVocal ||
               (originalWord.kind ?? "text") !== kind ||
-              originalWord.sticker?.id !== image?.id
+              originalWord.sticker?.id !== image?.id ||
+              JSON.stringify(originalWord.effect) !== JSON.stringify(effect)
             ) {
               changed = true;
             }
@@ -208,6 +212,7 @@ export const createContentActions: StateCreator<
               text: nextText,
               kind,
               sticker: image,
+              effect,
               vocal: nextVocal,
               lineIndex,
             };

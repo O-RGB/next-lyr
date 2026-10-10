@@ -1,0 +1,34 @@
+{
+  "lightning": {
+    "colors": [
+      "#078eff",
+      "#32dcff",
+      "#f3feff"
+    ],
+    "text": {
+      "idle": [
+        "#faf5ff",
+        "#e9ddff",
+        "#cdb8ff"
+      ],
+      "sung": [
+        "#fffdf6",
+        "#f3feff",
+        "#32dcff"
+      ],
+      "stroke": "#202a43",
+      "activeStroke": "#3b2b5f",
+      "editor": "#6c46ac",
+      "glow": "#078eff"
+    },
+    "edgeCount": 1,
+    "atlas": {
+      "src": "/effects/sprites/lightning.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 20,
+      "id": "81b0148cb8a979f72115713219fa847d6553f021890f4bd3ff4a087920a89793"
+    }
+  }
+}

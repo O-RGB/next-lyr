@@ -1,3 +1,4 @@
+import { registerPlaybackAtlases } from "@/lib/block-effects/frames";
 import { migrateInlineStickers } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
 import { timingLyrics } from "../timing-session";
@@ -97,11 +98,13 @@ export const createProjectActions: StateCreator<
           timeBase,
           info: metadata ?? {},
         });
+      registerPlaybackAtlases(loadedDocument.effectAtlases);
       const restoredLyricsData = migrateInlineStickers(lyricsDocumentToWordData(
         loadedDocument,
         ppq
       ), project.data.lineStickers ?? {});
       const lyricsDocument = wordDataToLyricsDocument({ lyricsData: restoredLyricsData, source, timeBase, info: metadata ?? {} });
+      lyricsDocument.effectAtlases = loadedDocument.effectAtlases;
       const lyricsXml = buildKlyrXml(lyricsDocument);
       let audioSrc: string | null = null;
       let videoSrc: string | null = null;
