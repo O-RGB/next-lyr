@@ -1,4 +1,6 @@
+import { IMAGE_TOKEN } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
+import { reconcileLyricsEdit, timingLyrics } from "../timing-session";
 import { KaraokeState, ContentActions } from "../types";
 import { LyricWordData } from "@/types/common.type";
 import { processRawLyrics, splitLyricLine } from "@/lib/karaoke/utils";
@@ -19,7 +21,7 @@ export const createContentActions: StateCreator<
   const syncLyricsDocument = () => {
     const state = get();
     const document = wordDataToLyricsDocument({
-      lyricsData: state.lyricsData,
+      lyricsData: timingLyrics(state),
       source:
         state.mode === "midi"
           ? "KMID"
@@ -70,10 +72,14 @@ export const createContentActions: StateCreator<
         commit("แก้ข้อมูลเพลง", "metadata");
       },
       importLyrics: async (rawText: string, autoSub: boolean) => {
+        if (get().isTimingActive || get().editingLineIndex !== null) {
+          await get().actions.stopTiming();
+        }
         const words = processRawLyrics(rawText, autoSub);
         const groupedLyrics = groupLyricsByLine(words);
         set({
           lyricsData: groupedLyrics,
+          lineStickers: {},
           currentIndex: 0,
           selectedLineIndex: 0,
         });
@@ -82,27 +88,23 @@ export const createContentActions: StateCreator<
         commit("นำเข้าเนื้อร้อง");
       },
       deleteLine: async (lineIndexToDelete: number) => {
+        if (get().isTimingActive || get().editingLineIndex !== null) {
+          await get().actions.stopTiming();
+        }
         set((state) => {
           const newLyricsData = state.lyricsData.filter(
             (_, index) => index !== lineIndexToDelete
           );
 
-          const flatLyrics = newLyricsData
-            .map((line, newLineIndex) =>
-              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
-            )
-            .flat();
-
-          let globalIndex = 0;
-          flatLyrics.forEach((word) => (word.index = globalIndex++));
-
-          return { lyricsData: groupLyricsByLine(flatLyrics) };
+          return reconcileLyricsEdit(state, newLyricsData,
+            new Map(state.lyricsData.flatMap((_, index) => index === lineIndexToDelete ? [] : [[index, index > lineIndexToDelete ? index - 1 : index] as const])));
         });
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
         commit("ลบบรรทัด");
       },
       deleteLines: async (lineIndicesToDelete: number[]) => {
+        if (get().isTimingActive || get().editingLineIndex !== null) await get().actions.stopTiming();
         const deleteSet = new Set(lineIndicesToDelete);
         if (deleteSet.size === 0) return;
 
@@ -110,26 +112,9 @@ export const createContentActions: StateCreator<
           const remainingLines = state.lyricsData.filter(
             (_, index) => !deleteSet.has(index)
           );
-          const reIndexedFlat = remainingLines
-            .map((line, newLineIndex) =>
-              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
-            )
-            .flat();
-
-          reIndexedFlat.forEach((word, index) => {
-            word.index = index;
-          });
-
-          return {
-            lyricsData: groupLyricsByLine(reIndexedFlat),
-            selectedLineIndex:
-              remainingLines.length > 0
-                ? Math.min(
-                    state.selectedLineIndex ?? 0,
-                    remainingLines.length - 1
-                  )
-                : null,
-          };
+          let nextLine = 0;
+          return reconcileLyricsEdit(state, remainingLines,
+            new Map(state.lyricsData.flatMap((_, index) => deleteSet.has(index) ? [] : [[index, nextLine++] as const])));
         });
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
@@ -141,32 +126,21 @@ export const createContentActions: StateCreator<
         vocal: string[]
       ) => {
         set((state) => {
-          const newLyricsData = [...state.lyricsData];
+          const currentLine = state.lyricsData[lineIndexToUpdate];
+          if (!currentLine) return {};
           const wordsInLine = splitLyricLine(newText);
-          const firstWordOfLine = state.lyricsData[lineIndexToUpdate]?.[0];
-
-          if (!firstWordOfLine) return {};
-
-          const newWords: LyricWordData[] = wordsInLine.map(
-            (wordText, wordIndex) => ({
-              text: wordText,
-              vocal: vocal[wordIndex] ? vocal[wordIndex] : "",
-              at: null,
-              index: firstWordOfLine.index + wordIndex,
-              lineIndex: lineIndexToUpdate,
-            })
-          );
-
-          newLyricsData[lineIndexToUpdate] = newWords;
-
-          let currentGlobalIndex = firstWordOfLine.index + newWords.length;
-          for (let i = lineIndexToUpdate + 1; i < newLyricsData.length; i++) {
-            for (let j = 0; j < newLyricsData[i].length; j++) {
-              newLyricsData[i][j].index = currentGlobalIndex++;
-            }
-          }
-
-          return { lyricsData: newLyricsData };
+          let cursor = 0;
+          const newWords: LyricWordData[] = wordsInLine.map((text, position) => {
+            const match = wordsInLine.length === currentLine.length ? position
+              : currentLine.findIndex((word, index) => index >= cursor && word.text === text);
+            const original = match >= 0 ? currentLine[match] : undefined;
+            if (original) cursor = match + 1;
+            return { ...(original ?? { index: -1, at: null }), text,
+              vocal: vocal[position] ?? original?.vocal ?? "", lineIndex: lineIndexToUpdate };
+          });
+          const nextLines = [...state.lyricsData];
+          nextLines[lineIndexToUpdate] = newWords;
+          return reconcileLyricsEdit(state, nextLines);
         });
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
@@ -184,25 +158,19 @@ export const createContentActions: StateCreator<
               ...word,
               vocal: vocals[wordIndex] ?? word.vocal ?? "",
               lineIndex: lineIndex + 1,
+              index: -1,
             })
           );
           newLyricsData.splice(lineIndex + 1, 0, newWords);
 
-          let globalIndex = 0;
-          const reIndexedFlat = newLyricsData
-            .map((line, newLineIndex) =>
-              line.map((word) => ({ ...word, lineIndex: newLineIndex }))
-            )
-            .flat();
-
-          reIndexedFlat.forEach((word) => (word.index = globalIndex++));
-          return { lyricsData: groupLyricsByLine(reIndexedFlat) };
+          return reconcileLyricsEdit(state, newLyricsData,
+            new Map(state.lyricsData.map((_, index) => [index, index > lineIndex ? index + 1 : index] as const)));
         });
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
         commit("เพิ่มบรรทัด");
       },
-      replaceLineWords: async (lineIndex, words) => {
+      replaceLineWords: async (lineIndex, words, sticker) => {
         let changed = false;
 
         set((state) => {
@@ -210,6 +178,7 @@ export const createContentActions: StateCreator<
           if (!currentLine) return {};
 
           if (currentLine.length !== words.length) changed = true;
+          if (sticker !== undefined && JSON.stringify(state.lineStickers[lineIndex] ?? null) !== JSON.stringify(sticker)) changed = true;
 
           const currentWords = new Map(
             currentLine.map((word) => [word.index, word])
@@ -219,20 +188,26 @@ export const createContentActions: StateCreator<
               draft.originalIndex === null
                 ? undefined
                 : currentWords.get(draft.originalIndex);
-            const nextText = draft.text.trim();
-            const nextVocal = draft.vocal;
+            const kind = draft.kind ?? "text";
+            const nextText = kind === "image" ? IMAGE_TOKEN : draft.text.trim();
+            const nextVocal = kind === "image" ? "" : draft.vocal;
+            const image = kind === "image" ? draft.sticker : undefined;
 
             if (
               !originalWord ||
               originalWord.text !== nextText ||
-              (originalWord.vocal ?? "") !== nextVocal
+              (originalWord.vocal ?? "") !== nextVocal ||
+              (originalWord.kind ?? "text") !== kind ||
+              originalWord.sticker?.id !== image?.id
             ) {
               changed = true;
             }
 
             return {
-              ...(originalWord ?? { at: null, index: 0 }),
+              ...(originalWord ?? { at: null, index: -1 }),
               text: nextText,
+              kind,
+              sticker: image,
               vocal: nextVocal,
               lineIndex,
             };
@@ -243,17 +218,14 @@ export const createContentActions: StateCreator<
           const nextLyricsData = state.lyricsData.map((line) => [...line]);
           nextLyricsData[lineIndex] = nextLine;
 
-          let globalIndex = 0;
-          const reIndexedLyrics = nextLyricsData.map(
-            (line, nextLineIndex) =>
-              line.map((word) => ({
-                ...word,
-                index: globalIndex++,
-                lineIndex: nextLineIndex,
-              }))
-          );
-
-          return { lyricsData: reIndexedLyrics };
+          const updated = reconcileLyricsEdit(state, nextLyricsData);
+          if (sticker !== undefined) {
+            const lineStickers = { ...updated.lineStickers };
+            if (sticker) lineStickers[lineIndex] = sticker;
+            else delete lineStickers[lineIndex];
+            updated.lineStickers = lineStickers;
+          }
+          return updated;
         });
 
         if (!changed) return;
@@ -265,13 +237,9 @@ export const createContentActions: StateCreator<
         index: number,
         newWordData: Partial<LyricWordData>
       ) => {
-        set((state) => ({
-          lyricsData: state.lyricsData.map((line) =>
-            line.map((word) =>
-              word.index === index ? { ...word, ...newWordData } : word
-            )
-          ),
-        }));
+        set((state) => reconcileLyricsEdit(state, state.lyricsData.map((line) =>
+          line.map((word) => word.index === index ? { ...word, ...newWordData } : word)
+        )));
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
         commit("แก้คำ");
@@ -289,24 +257,11 @@ export const createContentActions: StateCreator<
             text: trimmedText,
             vocal,
             at: null,
-            index: 0,
+            index: -1,
             lineIndex,
           });
 
-          const reIndexedFlat = newLyricsData
-            .map((currentLine, currentLineIndex) =>
-              currentLine.map((word) => ({
-                ...word,
-                lineIndex: currentLineIndex,
-              }))
-            )
-            .flat();
-
-          reIndexedFlat.forEach((word, wordIndex) => {
-            word.index = wordIndex;
-          });
-
-          return { lyricsData: groupLyricsByLine(reIndexedFlat) };
+          return reconcileLyricsEdit(state, newLyricsData);
         });
         syncLyricsDocument();
         get().actions.processLyricsForPlayer();
@@ -326,17 +281,7 @@ export const createContentActions: StateCreator<
 
           if (!deleted) return {};
 
-          let globalIndex = 0;
-          const reIndexedLyrics = newLyricsData.map(
-            (line, lineIndex) =>
-              line.map((word) => ({
-                ...word,
-                index: globalIndex++,
-                lineIndex,
-              }))
-          );
-
-          return { lyricsData: reIndexedLyrics };
+          return reconcileLyricsEdit(state, newLyricsData);
         });
 
         if (!deleted) return;
@@ -411,11 +356,12 @@ export const createContentActions: StateCreator<
         commit("ปรับเวลาคำ", "word-timing");
       },
       processLyricsForPlayer: () => {
-        const { lyricsData, mode, playerState } = get();
+        const state = get();
+        const { mode, playerState } = state;
         if (!mode) return;
 
         const processed = processLyricsForPlayer(
-          lyricsData.flat(),
+          timingLyrics(state).flat(),
           mode,
           playerState.midi
         );

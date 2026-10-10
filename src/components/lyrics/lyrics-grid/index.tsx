@@ -13,6 +13,7 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import useIsMobile from "@/hooks/useIsMobile";
 import LineAction from "./line/actions";
+import { makeInlineImageLayer, updateInlineImageLayer, clearInlineImageLayer, type InlineImagePlacement } from "../inline-image-layer";
 import {
   drawLyricWordBox,
   LYRICS_LEFT_GUTTER,
@@ -93,6 +94,8 @@ const LyricsGrid: React.FC = () => {
   const isMobile = useIsMobile();
   const gridMetrics = isMobile ? MOBILE_GRID_METRICS : getGridMetrics();
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
+  const imageLayer = useRef(makeInlineImageLayer());
+  useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
   const locale = useSettingsStore((state) => state.uiLocale);
   const onWordClick = usePlayerHandlersStore((state) => state.handleWordClick);
   const actions = useKaraokeStore((state) => state.actions);
@@ -102,9 +105,7 @@ const LyricsGrid: React.FC = () => {
   );
   const hideLineActions = useKaraokeStore(
     (state) =>
-      state.isPlaying ||
-      state.isTimingActive ||
-      state.editingLineIndex !== null
+      state.isPlaying
   );
   // Playback follow is intentionally always enabled. It is part of the
   // editor navigation model rather than a user preference.
@@ -409,6 +410,7 @@ const LyricsGrid: React.FC = () => {
     ctx.font = `600 14px ${fontFamily}`;
     ctx.textBaseline = "middle";
     hitBoxesRef.current = [];
+    const imagePlacements: InlineImagePlacement[] = [];
     const focusLineIndex =
       state.isPlaying || state.isTimingActive || state.editingLineIndex !== null
         ? state.selectedLineIndex ?? -1
@@ -657,6 +659,12 @@ const LyricsGrid: React.FC = () => {
         );
 
         if (boxX < startX + availableWidth && boxX + boxWidth > startX) {
+          if (word.kind === "image" && word.sticker) {
+            const left = boxX + 5, imageWidth = boxWidth - 10;
+            imagePlacements.push({ key: `grid:${word.index}`, sticker: word.sticker,
+              left, top: boxY + 4, width: imageWidth, height: getWordHeight() - 8,
+              clipLeft: Math.max(0, startX - left), clipRight: Math.max(0, left + imageWidth - startX - availableWidth) });
+          }
           hitBoxesRef.current.push({
             index: word.index,
             lineIndex,
@@ -672,6 +680,7 @@ const LyricsGrid: React.FC = () => {
 
     }
 
+    updateInlineImageLayer(imageLayer.current, state.projectId, imagePlacements);
     dirtyRef.current = false;
   }, []);
 
@@ -1284,10 +1293,10 @@ const LyricsGrid: React.FC = () => {
         return;
       }
 
-      // While retiming, the selected line is the only keyboard target. Do not
-      // let a canvas click silently move the transport to another line.
+      // A timing tap never changes the transport; double activation opens
+      // the existing editor and pauses with the next target retained.
       const currentState = useKaraokeStore.getState();
-      if (currentState.editingLineIndex !== null) return;
+      const timingMode = currentState.isTimingActive || currentState.editingLineIndex !== null;
 
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
@@ -1329,6 +1338,11 @@ const LyricsGrid: React.FC = () => {
         pointerType: event.pointerType,
       };
 
+      if (timingMode) {
+        if (!currentState.isPlaying) actions.selectLine(lineIndex);
+        return;
+      }
+
       const hit = [...hitBoxesRef.current].reverse().find(
         (box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
       );
@@ -1357,8 +1371,7 @@ const LyricsGrid: React.FC = () => {
 
       const currentState = useKaraokeStore.getState();
       if (
-        currentState.lineSelectionMode ||
-        currentState.editingLineIndex !== null
+        currentState.lineSelectionMode
       ) {
         return;
       }
@@ -1465,6 +1478,7 @@ const LyricsGrid: React.FC = () => {
       className="relative h-full rounded-md border border-line border-l-0 bg-base overflow-auto overscroll-none [&::-webkit-scrollbar]:hidden"
       onWheelCapture={handlePanelWheelCapture}
     >
+      <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none sticky top-0 z-20 h-0" />
       <div
         style={{
           height: Math.max(1, lyricsData.length * gridMetrics.rowHeight),

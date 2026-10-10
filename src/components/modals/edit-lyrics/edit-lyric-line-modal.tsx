@@ -1,457 +1,185 @@
-import {
-  Captions,
-  Plus,
-  Save,
-  Trash2,
-  Undo2,
-  Redo2,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+"use client";
 
+import { Captions, Plus, Save, Undo2, Redo2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { DndContext, closestCenter, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import ButtonCommon from "@/components/common/button";
-import InputCommon from "@/components/common/data-input/input";
-import ModalCommon from "../../common/modal";
+import ModalCommon from "@/components/common/modal";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
-import type { LyricWordData } from "@/types/common.type";
+import { IMAGE_TOKEN, cellsFromLine, moveCellContent, type LyricCellDraft } from "@/lib/karaoke/inline-content";
+import type { LyricSticker } from "@/lib/stickers/types";
+import LineStickerPanel from "./line-sticker-panel";
+import { SortableLyricCell } from "./sortable-lyric-cell";
 
-interface EditLyricLineModalProps {
-  open?: boolean;
-}
+interface DraftHistory { past: LyricCellDraft[][]; present: LyricCellDraft[]; future: LyricCellDraft[][] }
+const emptyHistory = (): DraftHistory => ({ past: [], present: [], future: [] });
 
-interface WordDraft {
-  text: string;
-  vocal: string;
-}
-
-interface NewWordDraft extends WordDraft {
-  id: string;
-}
-
-interface DraftSnapshot {
-  drafts: Record<number, WordDraft>;
-  newWordDrafts: NewWordDraft[];
-  deletedWordIndexes: number[];
-}
-
-interface DraftHistory {
-  past: DraftSnapshot[];
-  present: DraftSnapshot;
-  future: DraftSnapshot[];
-}
-
-const createEmptyDraftHistory = (): DraftHistory => ({
-  past: [],
-  present: {
-    drafts: {},
-    newWordDrafts: [],
-    deletedWordIndexes: [],
-  },
-  future: [],
-});
-
-export default function EditLyricLineModal({ open }: EditLyricLineModalProps) {
-  const { handleRetiming } = usePlayerHandlersStore();
-  const lyricsData = useKaraokeStore((state) => state.lyricsData);
+export default function EditLyricLineModal({ open }: { open?: boolean }) {
   const selectedLineIndex = useKaraokeStore((state) => state.selectedLineIndex);
+  const currentLine = useKaraokeStore((state) => selectedLineIndex === null ? undefined : state.lyricsData[selectedLineIndex]);
+  const projectId = useKaraokeStore((state) => state.projectId);
   const actions = useKaraokeStore((state) => state.actions);
+  const mode = useKaraokeStore((state) => state.mode);
   const locale = useSettingsStore((state) => state.uiLocale);
-
-  const [draftHistory, setDraftHistory] = useState<DraftHistory>(() =>
-    createEmptyDraftHistory()
+  const [history, setHistory] = useState<DraftHistory>(emptyHistory);
+  const [stickerBusy, setStickerBusy] = useState(false);
+  const sessionRef = useRef<string | null>(null);
+  const cacheRef = useRef(new Map<string, DraftHistory>());
+  const inputsRef = useRef(new Map<string, HTMLInputElement>());
+  const focusedRef = useRef<string | null>(null);
+  const nextKeyRef = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const dropPointRef = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const mouse = (event: MouseEvent) => { dropPointRef.current = { x: event.clientX, y: event.clientY }; };
+    const touch = (event: TouchEvent) => { const point = event.changedTouches[0]; if (point) dropPointRef.current = { x: point.clientX, y: point.clientY }; };
+    document.addEventListener("mouseup", mouse, true);
+    document.addEventListener("touchend", touch, true);
+    return () => { document.removeEventListener("mouseup", mouse, true); document.removeEventListener("touchend", touch, true); };
+  }, [open]);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-  const sessionKeyRef = useRef<string | null>(null);
-
-  const { drafts, newWordDrafts, deletedWordIndexes } = draftHistory.present;
-
-  const currentLine =
-    selectedLineIndex === null ? undefined : lyricsData[selectedLineIndex];
 
   useEffect(() => {
-    if (!open) {
-      sessionKeyRef.current = null;
-      setDraftHistory(createEmptyDraftHistory());
-      return;
+    if (!open || !currentLine || selectedLineIndex === null) return;
+    const key = JSON.stringify([projectId, selectedLineIndex, currentLine]);
+    if (sessionRef.current !== key) {
+      sessionRef.current = key;
+      const initial = cellsFromLine(currentLine);
+      setHistory(cacheRef.current.get(key) ?? { past: [], present: initial, future: [] });
+      focusedRef.current = initial.find((cell) => cell.originalIndex === useKaraokeStore.getState().currentIndex)?.key ?? initial[0]?.key ?? null;
     }
-
-    if (selectedLineIndex === null || !currentLine) {
-      sessionKeyRef.current = null;
-      return;
-    }
-
-    const sessionKey = String(selectedLineIndex);
-    if (sessionKeyRef.current === sessionKey) return;
-
-    sessionKeyRef.current = sessionKey;
-    setDraftHistory({
-      past: [],
-      present: {
-        drafts: Object.fromEntries(
-          currentLine.map((word) => [
-            word.index,
-            { text: word.text, vocal: word.vocal ?? "" },
-          ])
-        ),
-        newWordDrafts: [],
-        deletedWordIndexes: [],
-      },
-      future: [],
+    const frame = requestAnimationFrame(() => {
+      const input = focusedRef.current && inputsRef.current.get(focusedRef.current);
+      if (input) { input.focus(); input.select(); }
     });
-  }, [open, selectedLineIndex, currentLine]);
+    return () => cancelAnimationFrame(frame);
+  }, [open, currentLine, selectedLineIndex, projectId]);
 
-  const updateDraftState = (
-    update: (previous: DraftSnapshot) => DraftSnapshot
-  ) => {
-    setDraftHistory((previous) => ({
-      past: [...previous.past, previous.present],
-      present: update(previous.present),
-      future: [],
-    }));
+  const change = (update: (cells: LyricCellDraft[]) => LyricCellDraft[]) => setHistory((previous) => ({
+    past: [...previous.past, previous.present].slice(-80), present: update(previous.present), future: [],
+  }));
+  const move = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= history.present.length) return;
+    change((cells) => moveCellContent(cells, from, to));
   };
-
-  const updateDraft = (
-    wordIndex: number,
-    field: keyof WordDraft,
-    value: string
-  ) => {
-    updateDraftState((previous) => ({
-      ...previous,
-      drafts: {
-        ...previous.drafts,
-        [wordIndex]: {
-          ...previous.drafts[wordIndex],
-          [field]: value,
-        },
-      },
-    }));
-  };
-
-  const handleAddWordDraft = () => {
-    updateDraftState((previous) => ({
-      ...previous,
-      newWordDrafts: [
-        ...previous.newWordDrafts,
-        {
-          id: `new-${Date.now()}-${previous.newWordDrafts.length}`,
-          text: "",
-          vocal: "",
-        },
-      ],
-    }));
-  };
-
-  const updateNewWordDraft = (
-    draftId: string,
-    field: keyof WordDraft,
-    value: string
-  ) => {
-    updateDraftState((previous) => ({
-      ...previous,
-      newWordDrafts: previous.newWordDrafts.map((draft) =>
-        draft.id === draftId ? { ...draft, [field]: value } : draft
-      ),
-    }));
-  };
-
-  const handleDeleteWord = (word: LyricWordData) => {
-    updateDraftState((previous) => ({
-      ...previous,
-      deletedWordIndexes: previous.deletedWordIndexes.includes(word.index)
-        ? previous.deletedWordIndexes
-        : [...previous.deletedWordIndexes, word.index],
-    }));
-  };
-
-  const handleDeleteNewWord = (draftId: string) => {
-    updateDraftState((previous) => ({
-      ...previous,
-      newWordDrafts: previous.newWordDrafts.filter(
-        (draft) => draft.id !== draftId
-      ),
-    }));
-  };
-
-  const handleUndo = () => {
-    setDraftHistory((previous) => {
-      const last = previous.past.at(-1);
-      if (!last) return previous;
-
-      return {
-        past: previous.past.slice(0, -1),
-        present: last,
-        future: [previous.present, ...previous.future],
-      };
-    });
-  };
-
-  const handleRedo = () => {
-    setDraftHistory((previous) => {
-      const next = previous.future[0];
-      if (!next) return previous;
-
-      return {
-        past: [...previous.past, previous.present],
-        present: next,
-        future: previous.future.slice(1),
-      };
-    });
-  };
-
-  const handleAutoSub = () => {
-    if (!currentLine?.length) return;
-
-    const thaiKaraoke = ThaiKaraoke.getInstance();
-    updateDraftState((previous) => {
-      const next = { ...previous.drafts };
-      currentLine.forEach((word) => {
-        const draft = previous.drafts[word.index] ?? {
-          text: word.text,
-          vocal: word.vocal ?? "",
-        };
-        next[word.index] = {
-          ...draft,
-          vocal: thaiKaraoke.transliterate(draft.text).toUpperCase(),
-        };
-      });
-      return { ...previous, drafts: next };
-    });
-  };
-
-  const visibleWords =
-    currentLine?.filter((word) => !deletedWordIndexes.includes(word.index)) ??
-    [];
-  const hasExistingChanges = visibleWords.some((word) => {
-    const draft = drafts[word.index];
-    return (
-      draft &&
-      (draft.text !== word.text || draft.vocal !== (word.vocal ?? ""))
-    );
-  });
-  const hasNewWords = newWordDrafts.length > 0;
-  const hasInvalidDraft =
-    visibleWords.some((word) => !drafts[word.index]?.text.trim()) ||
-    newWordDrafts.some((draft) => !draft.text.trim());
-  const hasUnsavedChanges =
-    hasExistingChanges || deletedWordIndexes.length > 0 ||
-    newWordDrafts.some((draft) => draft.text.trim() || draft.vocal.trim());
-
-  const handleSave = async () => {
-    if (
-      selectedLineIndex === null ||
-      !currentLine ||
-      !hasUnsavedChanges ||
-      hasInvalidDraft
-    ) {
-      return;
-    }
-
-    const wordsToSave = [
-      ...visibleWords.map((word) => {
-        const draft = drafts[word.index] ?? {
-          text: word.text,
-          vocal: word.vocal ?? "",
-        };
-        return {
-          originalIndex: word.index,
-          text: draft.text,
-          vocal: draft.vocal,
-        };
-      }),
-      ...newWordDrafts.map((draft) => ({
-        originalIndex: null,
-        text: draft.text,
-        vocal: draft.vocal,
-      })),
-    ];
-
-    await actions.replaceLineWords(selectedLineIndex, wordsToSave);
-    actions.closeEditModal();
-
-    if (hasNewWords) {
-      handleRetiming(selectedLineIndex, selectedLineIndex);
-    }
-  };
-
-  return (
-    <ModalCommon
-      title={text(locale, "แก้ไขคำร้อง", "Edit lyrics")}
-      description={text(
-        locale,
-        "แก้เฉพาะคำที่ต้องการ เวลาเดิมจะไม่เปลี่ยน",
-        "Edit only the words you need; existing timing will stay unchanged"
-      )}
-      modalClassName="flex flex-col"
-      onClose={() => actions.closeEditModal()}
-      open={(open ?? false) && selectedLineIndex !== null}
-      footer={
-        <ButtonCommon
-          className="w-full sm:ml-auto sm:w-auto"
-          color={hasNewWords ? "warning" : "primary"}
-          icon={<Save />}
-          disabled={!hasUnsavedChanges || hasInvalidDraft}
-          onClick={() => void handleSave()}
-        >
-          {hasNewWords
-            ? text(locale, "บันทึกและปาดใหม่", "Save & retime")
-            : text(locale, "บันทึก", "Save")}
-        </ButtonCommon>
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const from = history.present.findIndex((cell) => cell.key === active.id);
+    let to = over ? history.present.findIndex((cell) => cell.key === over.id) : from;
+    // Fixed slot rows give an exact final drop position, including quick mouse
+    // gestures whose last movement lands before dnd-kit's next layout frame.
+    const point = dropPointRef.current;
+    const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-editor-cell]");
+    if (point && rows?.length) {
+      const bounds = listRef.current!.getBoundingClientRect();
+      if (point.x >= bounds.left && point.x <= bounds.right && point.y >= bounds.top && point.y <= bounds.bottom) {
+        let distance = Infinity;
+        rows.forEach((row, index) => { const box = row.getBoundingClientRect(); const next = Math.abs(point.y - box.top - box.height / 2); if (next < distance) { distance = next; to = index; } });
       }
-    >
-      <div className="space-y-3">
-        <div className="flex flex-col rounded-xl border border-line bg-panel p-2 shadow-sm">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-0.5 pb-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span>
-                {text(locale, "บรรทัดที่", "Line")} {(selectedLineIndex ?? 0) + 1}
-              </span>
-              <span>
-                {currentLine?.length ?? 0} {text(locale, "คำ", "words")}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <ButtonCommon
-                aria-label={text(locale, "ย้อนกลับ", "Undo")}
-                title={text(locale, "ย้อนกลับ", "Undo")}
-                circle
-                size="xs"
-                className="!size-7"
-                color="gray"
-                variant="ghost"
-                icon={<Undo2 />}
-                disabled={draftHistory.past.length === 0}
-                onClick={handleUndo}
-              />
-              <ButtonCommon
-                aria-label={text(locale, "ทำซ้ำ", "Redo")}
-                title={text(locale, "ทำซ้ำ", "Redo")}
-                circle
-                size="xs"
-                className="!size-7"
-                color="gray"
-                variant="ghost"
-                icon={<Redo2 />}
-                disabled={draftHistory.future.length === 0}
-                onClick={handleRedo}
-              />
-              <ButtonCommon
-                aria-label={text(locale, "สร้างซับอัตโนมัติ", "Auto-fill subtitles")}
-                title={text(locale, "สร้างซับอัตโนมัติ", "Auto-fill subtitles")}
-                circle
-                size="xs"
-                className="!size-7"
-                color="success"
-                icon={<Captions />}
-                onClick={handleAutoSub}
-              />
-            </div>
-          </div>
+    }
+    dropPointRef.current = null;
+    move(from, to);
+  };
+  const insert = (kind: "text" | "image", sticker?: LyricSticker) => {
+    const cell: LyricCellDraft = { key: `new-${nextKeyRef.current++}`, originalIndex: null, kind,
+      text: kind === "image" ? IMAGE_TOKEN : "", vocal: "", sticker };
+    const focusedKey = focusedRef.current;
+    change((cells) => {
+      const focused = cells.findIndex((item) => item.key === focusedKey);
+      const next = [...cells];
+      next.splice(focused >= 0 ? focused + 1 : next.length, 0, cell);
+      return next;
+    });
+    focusedRef.current = cell.key;
+    if (kind === "text") requestAnimationFrame(() => inputsRef.current.get(cell.key)?.focus());
+  };
+  const undo = () => setHistory((previous) => {
+    const last = previous.past.at(-1);
+    return last ? { past: previous.past.slice(0, -1), present: last, future: [previous.present, ...previous.future] } : previous;
+  });
+  const redo = () => setHistory((previous) => {
+    const next = previous.future[0];
+    return next ? { past: [...previous.past, previous.present].slice(-80), present: next, future: previous.future.slice(1) } : previous;
+  });
+  const serialize = (cells: LyricCellDraft[]) => cells.map(({ originalIndex, kind, text, vocal, sticker }) => ({ originalIndex, kind, text, vocal, sticker }));
+  const invalid = history.present.some((cell) => cell.kind === "image" ? !cell.sticker : !cell.text.trim());
+  const dirty = currentLine && JSON.stringify(serialize(history.present)) !== JSON.stringify(serialize(cellsFromLine(currentLine)));
+  const hasNewCells = history.present.some((cell) => cell.originalIndex === null);
+  const close = () => {
+    if (sessionRef.current) cacheRef.current.set(sessionRef.current, history);
+    actions.closeEditModal();
+  };
+  const save = async () => {
+    if (selectedLineIndex === null || !currentLine || invalid || !dirty || stickerBusy) return;
+    const state = useKaraokeStore.getState();
+    const wasTiming = state.isTimingActive || state.editingLineIndex !== null;
+    if (sessionRef.current) cacheRef.current.delete(sessionRef.current);
+    sessionRef.current = null;
+    actions.replaceLineWords(selectedLineIndex, history.present);
+    const persistence = wasTiming ? actions.saveTimingDraft() : actions.saveCurrentProject();
+    actions.closeEditModal();
+    try {
+      const handlers = usePlayerHandlersStore.getState();
+      await Promise.all([persistence, wasTiming ? handlers.handleResumeTiming() : hasNewCells ? handlers.handleContinueTiming() : Promise.resolve()]);
+    } catch (error) {
+      usePlayerHandlersStore.getState().handlePauseTiming();
+      toast.error(text(locale, "บันทึกไม่สำเร็จ งานที่แก้ยังอยู่ในหน้านี้", "Could not save; your edits are still on this page"));
+      console.error(error);
+    }
+  };
 
-          <div className="flex flex-col">
-            {visibleWords.map((word, index) => {
-              const draft = drafts[word.index] ?? {
-                text: word.text,
-                vocal: word.vocal ?? "",
-              };
-
-              return (
-                <div
-                  key={word.index}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
-                >
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-2/15 text-[11px] font-semibold text-brand-2">
-                    {index + 1}
-                  </span>
-                  <InputCommon
-                    inputSize="sm"
-                    placeholder={text(locale, "คำร้อง", "Lyrics")}
-                    value={draft.text}
-                    onChange={(event) =>
-                      updateDraft(word.index, "text", event.target.value)
-                    }
-                  />
-                  <InputCommon
-                    inputSize="sm"
-                    placeholder={text(locale, "ซับ", "Subtitle")}
-                    value={draft.vocal}
-                    onChange={(event) =>
-                      updateDraft(word.index, "vocal", event.target.value)
-                    }
-                  />
-                  <ButtonCommon
-                    aria-label={text(
-                      locale,
-                      `ลบคำที่ ${index + 1}`,
-                      `Delete word ${index + 1}`
-                    )}
-                    title={text(locale, "ลบคำนี้", "Delete word")}
-                    circle
-                    size="xs"
-                    className="!size-7"
-                    color="danger"
-                    variant="ghost"
-                    icon={<Trash2 />}
-                    onClick={() => handleDeleteWord(word)}
-                  />
-                </div>
-              );
-            })}
-            {newWordDrafts.map((draft, index) => (
-              <div
-                key={draft.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-2 border-b border-line/60 py-1 last:border-b-0"
-              >
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-line/60 text-[11px] font-semibold text-muted-foreground">
-                  {(currentLine?.length ?? 0) + index + 1}
-                </span>
-                <InputCommon
-                  autoFocus={index === newWordDrafts.length - 1}
-                  inputSize="sm"
-                  placeholder={text(locale, "คำร้อง", "Lyrics")}
-                  value={draft.text}
-                  onChange={(event) =>
-                    updateNewWordDraft(draft.id, "text", event.target.value)
-                  }
-                />
-                <InputCommon
-                  inputSize="sm"
-                  placeholder={text(locale, "ซับ", "Subtitle")}
-                  value={draft.vocal}
-                  onChange={(event) =>
-                    updateNewWordDraft(draft.id, "vocal", event.target.value)
-                  }
-                />
-                <ButtonCommon
-                  aria-label={text(locale, "ลบแถวคำใหม่", "Delete new word row")}
-                  title={text(locale, "ลบแถวคำใหม่", "Delete new word row")}
-                  circle
-                  size="xs"
-                  className="!size-7"
-                  color="danger"
-                  variant="ghost"
-                  icon={<Trash2 />}
-                  onClick={() => handleDeleteNewWord(draft.id)}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-end border-t border-line pt-2">
-            <ButtonCommon
-              aria-label={text(locale, "เพิ่มคำ", "Add word")}
-              title={text(locale, "เพิ่มคำ", "Add word")}
-              circle
-              size="xs"
-              color="secondary"
-              variant="outline"
-              icon={<Plus />}
-              onClick={handleAddWordDraft}
-            />
+  return <ModalCommon open={!!open && selectedLineIndex !== null} onClose={close}
+    title={text(locale, "แก้ไขคำร้อง", "Edit lyrics")}
+    description={text(locale, "ลากคำหรือรูปเพื่อเรียงเนื้อหา เวลาอยู่กับช่องเดิม", "Drag words or images to reorder content. Timestamps stay in their slots.")}
+    modalClassName="flex flex-col"
+    footer={<ButtonCommon className="w-full sm:ml-auto sm:w-auto" icon={<Save />} color={hasNewCells ? "warning" : "primary"}
+      disabled={!dirty || invalid || stickerBusy} onClick={() => void save()}>
+      {hasNewCells ? text(locale, "บันทึกและปาดต่อ", "Save & continue timing") : text(locale, "บันทึก", "Save")}
+    </ButtonCommon>}>
+    <div className="space-y-3">
+      {projectId && open && selectedLineIndex !== null && <LineStickerPanel key={`${projectId}:${selectedLineIndex}`}
+        projectId={projectId} onChange={(sticker) => { if (sticker) insert("image", sticker); }} onBusyChange={setStickerBusy} />}
+      <div className="rounded-xl border border-line bg-panel p-2 shadow-sm">
+        <div className="flex items-center justify-between gap-2 border-b border-line pb-2 text-xs text-muted-foreground">
+          <span>{text(locale, "บรรทัดที่", "Line")} {(selectedLineIndex ?? 0) + 1} · {history.present.length} {text(locale, "รายการ", "items")}</span>
+          <div className="flex gap-1">
+            <ButtonCommon circle size="xs" className="!size-7" variant="ghost" color="gray" icon={<Undo2 />} disabled={!history.past.length} onClick={undo} aria-label={text(locale, "ย้อนกลับ", "Undo")} />
+            <ButtonCommon circle size="xs" className="!size-7" variant="ghost" color="gray" icon={<Redo2 />} disabled={!history.future.length} onClick={redo} aria-label={text(locale, "ทำซ้ำ", "Redo")} />
+            <ButtonCommon circle size="xs" className="!size-7" color="success" icon={<Captions />} aria-label={text(locale, "เติมซับอัตโนมัติ", "Auto-fill subtitles")}
+              onClick={() => change((cells) => cells.map((cell) => cell.kind === "text" ? { ...cell, vocal: ThaiKaraoke.getInstance().transliterate(cell.text).toUpperCase() } : cell))} />
           </div>
         </div>
+        <DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} collisionDetection={closestCenter}
+          onDragStart={() => { dropPointRef.current = null; }} onDragEnd={onDragEnd}>
+          <div ref={listRef}>
+          <SortableContext items={history.present.map((cell) => cell.key)} strategy={verticalListSortingStrategy}>
+            {history.present.map((cell, index) => {
+              const original = currentLine?.find((word) => word.index === cell.originalIndex);
+              const buffered = cell.originalIndex === null ? undefined : useKaraokeStore.getState().timingBuffer?.buffer.get(cell.originalIndex)?.at;
+              return <SortableLyricCell key={cell.key} cell={cell} ordinal={index} count={history.present.length} projectId={projectId} midi={mode === "midi"}
+                at={buffered ?? original?.at ?? null} onFocus={() => { focusedRef.current = cell.key; }}
+                inputRef={(node) => { if (node) inputsRef.current.set(cell.key, node); else inputsRef.current.delete(cell.key); }}
+                onMove={(delta) => move(index, index + delta)} onRemove={() => change((cells) => cells.filter((item) => item.key !== cell.key))}
+                onEdit={(field, value) => change((cells) => cells.map((item) => item.key === cell.key ? { ...item, [field]: value } : item))} />;
+            })}
+          </SortableContext>
+          </div>
+        </DndContext>
+        <div className="mt-2 flex justify-end border-t border-line pt-2">
+          <ButtonCommon size="xs" color="secondary" variant="outline" icon={<Plus />} onClick={() => insert("text")}>{text(locale, "เพิ่มคำ", "Add word")}</ButtonCommon>
+        </div>
       </div>
-    </ModalCommon>
-  );
+    </div>
+  </ModalCommon>;
 }

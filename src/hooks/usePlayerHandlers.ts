@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { calculateSeekTime } from "@/modules/lyrics-editor";
+import { timingLyrics, nextTimingWord } from "@/stores/karaoke-store/timing-session";
+import { calculateSeekTime } from "@/modules/lyrics-editor/timing";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
@@ -11,6 +12,10 @@ import {
 
 interface PlayerHandlersState {
   handleStop: () => void;
+  handlePlayPause: () => Promise<void>;
+  handleContinueTiming: () => Promise<void>;
+  handleResumeTiming: () => Promise<void>;
+  handlePauseTiming: () => void;
   handleWordClick: (index: number) => void;
   handleRetiming: (lineIndex: number, endLineIndex?: number) => void;
   handleRetimingLines: (lineIndices: number[]) => void;
@@ -36,6 +41,10 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
 
       const actions = useKaraokeStore.getState().actions;
       const mode = useKaraokeStore.getState().mode;
+      const previousState = useKaraokeStore.getState();
+      if (previousState.isTimingActive || previousState.editingLineIndex !== null) {
+        void actions.stopTiming();
+      }
       const { success, preRollTime } = actions.startTimingFromLines(lineIndices);
 
       if (!success) return;
@@ -47,10 +56,111 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         playerControls.play();
       }
       await Promise.resolve(seek);
-      if (request !== navigationRequest) return;
+      if (request !== navigationRequest || useKaraokeStore.getState().isEditModalOpen ||
+        useKaraokeStore.getState().isAddModalOpen) return;
       if (!wasPlaying && !playerControls.isPlaying()) {
         playerControls.play();
       }
+    };
+
+    const handlePauseTiming = () => {
+      ++navigationRequest;
+      const { playerControls } = usePlayerSetupStore.getState();
+      playerControls?.pause();
+      if (transport.loading) transport.stop();
+      const state = useKaraokeStore.getState();
+      state.actions.setIsPlaying(false);
+      state.actions.setPlaybackIndex(null);
+      state.actions.setPlaybackVisualOverride(null);
+      // The buffer and next target remain untouched while the user thinks or edits.
+      if (state.isTimingActive || state.editingLineIndex !== null) {
+        void state.actions.saveTimingDraft().catch((error) => console.error("Could not save timing progress:", error));
+      }
+    };
+
+    const handleResumeTiming = async () => {
+      ++navigationRequest;
+      const { playerControls } = usePlayerSetupStore.getState();
+      const state = useKaraokeStore.getState();
+      if (!playerControls || state.isEditModalOpen || state.isAddModalOpen || transport.loading) return;
+      if (!state.isTimingActive && state.editingLineIndex === null) return;
+      const flat = timingLyrics(state).flat();
+      let target = state.currentIndex < 0
+        ? flat.find((word) => word.lineIndex >= (state.editingLineIndex ?? 0))
+        : flat.find((word) => word.index === state.currentIndex);
+      if (target && state.timingOnlyUntimed &&
+        (target.at !== null || state.timingBuffer?.buffer.get(target.index)?.at != null)) {
+        target = nextTimingWord({ ...state, currentIndex: target.index - 1 });
+        if (target) state.actions.setCurrentIndex(target.index);
+      }
+      if (!target || (state.editingEndLineIndex !== null && target.lineIndex > state.editingEndLineIndex)) {
+        const group = state.actions.finishTimingGroup();
+        if (group.done) {
+          await state.actions.stopTiming();
+          return;
+        }
+        const seek = playerControls.seek(group.preRollTime);
+        playerControls.play();
+        await Promise.resolve(seek);
+        return;
+      }
+      // Listen to the previous timed word again; never stamp it a second time.
+      const previous = flat.slice(0, target.index).reverse().find((word) => word.at !== null);
+      state.actions.selectLine(target.lineIndex);
+      const seek = playerControls.seek(previous?.at ?? 0);
+      playerControls.play();
+      await Promise.resolve(seek);
+      requestLyricsGridCenterActiveWord();
+    };
+
+    const handleContinueTiming = async () => {
+      ++navigationRequest;
+      const state = useKaraokeStore.getState();
+      if (state.isTimingActive || state.editingLineIndex !== null) return handleResumeTiming();
+      const { playerControls } = usePlayerSetupStore.getState();
+      if (!playerControls || transport.loading) return;
+      const firstUntimed = state.lyricsData.flat().find((word) => word.at === null);
+      if (!firstUntimed) return;
+      const result = state.actions.startTimingFromWord(firstUntimed.index);
+      if (!result.success) return;
+      const seek = playerControls.seek(result.preRollTime);
+      playerControls.play();
+      await Promise.resolve(seek);
+    };
+
+    const handlePlayPause = async () => {
+      const state = useKaraokeStore.getState();
+      const { playerControls: player } = usePlayerSetupStore.getState();
+      if (!player) return;
+      if (state.isTimingActive || state.editingLineIndex !== null) {
+        if (state.isPlaying || player.isPlaying()) handlePauseTiming();
+        else await handleResumeTiming();
+        return;
+      }
+      if (state.isPlaying || player.isPlaying()) {
+        player.pause();
+        state.actions.setPlaybackIndex(null);
+        state.actions.setPlaybackVisualOverride(null);
+        return;
+      }
+      if (state.playFromScrolledPosition) {
+        state.actions.setPlaybackVisualOverride(null);
+        player.play();
+        return;
+      }
+      const firstWord = state.selectedLineIndex === null ? undefined : state.lyricsData[state.selectedLineIndex]?.[0];
+      if (firstWord) {
+        const targetTime = calculateSeekTime(firstWord, state.lyricsData.flat());
+        state.actions.setPlayFromScrolledPosition(false);
+        state.actions.setIsChordPanelAutoScrolling(true);
+        state.actions.setCurrentTime(targetTime);
+        state.actions.setCurrentIndex(firstWord.index);
+        state.actions.setPlaybackIndex(firstWord.index);
+        state.actions.setPlaybackVisualOverride({ index: firstWord.index, until: targetTime });
+        const seek = player.seek(targetTime);
+        player.play();
+        await Promise.resolve(seek);
+      } else player.play();
     };
 
     const handleTimingForward = async () => {
@@ -65,6 +175,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       }
 
       timingStepInFlight = true;
+      const request = navigationRequest;
       try {
         const timer = useTimerStore.getState();
         const currentTime = timer.worker
@@ -73,7 +184,9 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         const state = useKaraokeStore.getState();
         const { actions } = state;
 
-        if (!state.isTimingActive && state.editingLineIndex === null) return;
+        if (request !== navigationRequest) return;
+        if ((!state.isTimingActive && state.editingLineIndex === null) ||
+          state.isEditModalOpen || state.isAddModalOpen || !playerControls.isPlaying()) return;
 
         if (state.isTimingActive) {
           const { isLineEnd } = actions.recordTiming(currentTime);
@@ -98,14 +211,19 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           // The first tap stamps the first word, then advances to the next
           // word so the grid can center the next target immediately.
           const timingState = useKaraokeStore.getState();
-          const flatLyrics = timingState.lyricsData.flat();
-          const timingIndex = timingState.currentIndex;
-          const nextWord = flatLyrics[timingIndex + 1];
-          const canAdvanceWithinEdit =
-            nextWord &&
-            (timingState.editingEndLineIndex === null ||
-              nextWord.lineIndex <= timingState.editingEndLineIndex);
-          if (canAdvanceWithinEdit) actions.goToNextWord();
+          const nextWord = nextTimingWord(timingState);
+          if (nextWord) {
+            actions.goToNextWord();
+          } else {
+            playerControls.pause();
+            const nextGroup = actions.finishTimingGroup();
+            if (nextGroup.done) await actions.stopTiming();
+            else {
+              const seek = playerControls.seek(nextGroup.preRollTime);
+              playerControls.play();
+              await Promise.resolve(seek);
+            }
+          }
         }
 
         if (useKaraokeStore.getState().editingLineIndex !== null) {
@@ -146,13 +264,13 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
 
         if (
           firstWordOfActiveLine &&
-          state.currentIndex <= firstWordOfActiveLine.index
+          state.currentIndex < firstWordOfActiveLine.index
         ) {
           return;
         }
 
         const { lineStartTime } = state.actions.correctTimingStep(
-          state.currentIndex - 1
+          Math.max(firstWordOfActiveLine?.index ?? 0, state.currentIndex - 1)
         );
         // Start playback inside the same user gesture before waiting for a
         // potentially asynchronous seek, especially for MIDI.
@@ -169,6 +287,10 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
     };
 
     return {
+      handlePlayPause,
+      handleContinueTiming,
+      handleResumeTiming,
+      handlePauseTiming,
       handleStop: async () => {
         const { playerControls } = usePlayerSetupStore.getState();
         if (!playerControls) {
@@ -185,7 +307,9 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         useKaraokeStore.getState().actions.setCorrectionIndex(null);
       },
       handleWordClick: async (index) => {
-        const { lyricsData } = useKaraokeStore.getState();
+        const state = useKaraokeStore.getState();
+        const { lyricsData } = state;
+        if (state.isTimingActive || state.editingLineIndex !== null) return;
 
         if (transport.loading) return;
 

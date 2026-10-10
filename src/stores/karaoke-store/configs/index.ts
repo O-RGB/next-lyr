@@ -33,6 +33,7 @@ export const initialTimingState: TimingState = {
   playbackIndex: null,
   playbackVisualOverride: null,
   timingSnapshot: null,
+  timingOnlyUntimed: false,
   correctionIndex: null,
   selectedLineIndex: null,
   currentTime: 0,
@@ -71,6 +72,7 @@ export const transientState = {
   history: initHistory(
     {
       lyricsData: [],
+      lineStickers: {},
       lyricsDocument: null,
       lyricsXml: "",
       chordsData: [],
@@ -88,6 +90,7 @@ export const initialState: Omit<KaraokeState, "actions"> = {
   playerState: initialPlayerState,
   timingDirection: null,
   lyricsData: [],
+  lineStickers: {},
   lyricsDocument: null,
   lyricsXml: "",
   metadata: null,
@@ -107,6 +110,7 @@ export const resetStateForNewFile = (
     TITLE: fileName.replace(/\.[^/.]+$/, ""),
   },
   lyricsData: [],
+  lineStickers: {},
   lyricsDocument: null,
   lyricsXml: "",
   chordsData: [],

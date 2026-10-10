@@ -85,7 +85,7 @@ function _createModifiedMidi(
     (newSongInfo && Object.keys(newSongInfo).length > 0) ||
     (newLyricsData && newLyricsData.length > 0)
   ) {
-    const klyrXml = buildKLyrXML(newSongInfo, newLyricsData, "midi", ticksPerBeat);
+    const klyrXml = options.lyricsXml ?? buildKLyrXML(newSongInfo, newLyricsData, "midi", ticksPerBeat);
     const encodedKLyr = _encodeKLyrPayload(klyrXml, textEncoding);
     const newLyricTrack: MidiTrack = [
       {
@@ -131,18 +131,18 @@ function _buildTrackData(
             : stringToTIS620(event.text)
           : event.data || new Uint8Array(0);
       chunks.push(...writeVariableLength(data.length));
-      chunks.push(...Array.from(data));
+      for (const byte of data) chunks.push(byte);
       lastStatus = null;
     } else if (event.type === "channel") {
       if (event.status !== lastStatus) {
         chunks.push(event.status);
         lastStatus = event.status;
       }
-      chunks.push(...event.data);
+      for (const byte of event.data) chunks.push(byte);
     } else if (event.type === "sysex") {
       chunks.push(0xf0);
       chunks.push(...writeVariableLength(event.data.length));
-      chunks.push(...event.data);
+      for (const byte of event.data) chunks.push(byte);
       lastStatus = null;
     }
   });

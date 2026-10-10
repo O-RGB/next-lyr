@@ -197,8 +197,8 @@ export function buildMp3(
     newTags.EncoderSettings = parsedData.miscTags.EncoderSettings;
   }
 
-  if (parsedData.lyrics?.length) {
-    const xml = buildKLyrXML(parsedData.info, parsedData.lyrics, "mp3");
+  if (parsedData.lyricsXml || parsedData.lyrics?.length) {
+    const xml = parsedData.lyricsXml ?? buildKLyrXML(parsedData.info, parsedData.lyrics, "mp3");
     newTags.LyricsBase64 = encodeLyricsBase64(xml, "LyrHdr1");
     newTags.LyricsTagKey = parsedData.lyricsTagKey;
   }

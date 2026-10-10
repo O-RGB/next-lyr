@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand";
+import { timingLyrics } from "../timing-session";
 
 import {
   canRedo,
@@ -14,7 +15,8 @@ import { HistoryActions, HistoryState, KaraokeState } from "../types";
 /** The slice of editor state that undo restores. */
 export function snapshot(state: KaraokeState): HistoryState {
   return {
-    lyricsData: state.lyricsData,
+    lyricsData: timingLyrics(state),
+    lineStickers: state.lineStickers,
     lyricsDocument: state.lyricsDocument,
     lyricsXml: state.lyricsXml,
     chordsData: state.chordsData,
@@ -41,7 +43,10 @@ export const createHistoryActions: StateCreator<
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      void get().actions.saveCurrentProject();
+      const state = get();
+      const save = state.isTimingActive || state.editingLineIndex !== null
+        ? state.actions.saveTimingDraft : state.actions.saveCurrentProject;
+      void save().catch((error) => console.error("Could not autosave project:", error));
     }, 400);
   };
 
@@ -66,18 +71,21 @@ export const createHistoryActions: StateCreator<
       },
 
       undo: () => {
+        if (get().isTimingActive || get().editingLineIndex !== null) return;
         const history = get().history;
         if (!canUndo(history)) return;
         applyHistory(undoHistory(history));
       },
 
       redo: () => {
+        if (get().isTimingActive || get().editingLineIndex !== null) return;
         const history = get().history;
         if (!canRedo(history)) return;
         applyHistory(redoHistory(history));
       },
 
       jumpToHistory: (id) => {
+        if (get().isTimingActive || get().editingLineIndex !== null) return;
         const history = get().history;
         const next = jumpTo(history, id);
         if (next !== history) applyHistory(next);

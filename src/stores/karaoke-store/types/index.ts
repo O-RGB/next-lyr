@@ -1,3 +1,4 @@
+import type { LineStickers, LyricSticker } from "@/lib/stickers/types";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { Project, StoredFile } from "@/lib/database/db";
 import { ArrayRange, ISentence } from "@/lib/array-range";
@@ -13,7 +14,7 @@ import type { History } from "../history";
 
 export type HistoryState = Pick<
   KaraokeState,
-  "lyricsData" | "lyricsDocument" | "lyricsXml" | "chordsData" | "metadata"
+  "lyricsData" | "lyricsDocument" | "lyricsXml" | "chordsData" | "metadata" | "lineStickers"
 >;
 
 export interface PlayerState {
@@ -47,6 +48,7 @@ export interface TimingState {
   playbackIndex: number | null;
   playbackVisualOverride: PlaybackVisualOverride | null;
   timingSnapshot: LyricWordData[][] | null;
+  timingOnlyUntimed: boolean;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;
@@ -83,6 +85,7 @@ export interface ProjectActions {
   loadProject: (project: Project) => void;
   clearProject: () => void;
   saveCurrentProject: () => Promise<void>;
+  saveTimingDraft: () => Promise<void>;
 }
 
 export interface SoundfontActions {
@@ -124,9 +127,12 @@ export interface ContentActions {
     lineIndex: number,
     words: Array<{
       originalIndex: number | null;
+      kind?: "text" | "image";
+      sticker?: LyricSticker;
       text: string;
       vocal: string;
-    }>
+    }>,
+    sticker?: LyricSticker | null
   ) => void;
   updateWord: (index: number, newWordData: Partial<LyricWordData>) => void;
   addWord: (lineIndex: number, text: string, vocal?: string) => void;
@@ -146,6 +152,7 @@ export interface PlaybackActions {
     success: boolean;
     preRollTime: number;
   };
+  startTimingFromWord: (index: number) => { success: boolean; preRollTime: number };
   cancelTiming: () => Promise<void>;
   finishTimingGroup: () => { done: boolean; preRollTime: number };
   recordTiming: (currentTime: number) => { isLineEnd: boolean };
@@ -223,6 +230,7 @@ export interface KaraokeState {
   activeSoundfontId: string;
   playerState: PlayerState;
   lyricsData: LyricWordData[][];
+  lineStickers: LineStickers;
   lyricsDocument: LyricsDocument | null;
   lyricsXml: string;
   metadata: SongInfo | null;
@@ -238,6 +246,7 @@ export interface KaraokeState {
   playbackIndex: number | null;
   playbackVisualOverride: PlaybackVisualOverride | null;
   timingSnapshot: LyricWordData[][] | null;
+  timingOnlyUntimed: boolean;
   correctionIndex: number | null;
   selectedLineIndex: number | null;
   currentTime: number;

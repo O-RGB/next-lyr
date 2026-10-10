@@ -1,5 +1,6 @@
 import { Captions, CircleArrowLeft, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import ButtonCommon from "@/components/common/button";
 import InputCommon from "@/components/common/data-input/input";
@@ -9,6 +10,7 @@ import { useSettingsStore } from "@/features/settings/settings-store";
 import { ThaiKaraoke } from "@/lib/thai-karaoke";
 import { tokenizeThai } from "@/lib/wordcut/utils";
 import { useKaraokeStore } from "@/stores/karaoke-store";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import ModalCommon from "../../common/modal";
 
 interface AddLyricLineModalProps {
@@ -135,6 +137,15 @@ export default function AddLyricLineModal({ open }: AddLyricLineModalProps) {
       wordDrafts.map((draft) => draft.vocal)
     );
     actions.closeAddModal();
+    const state = useKaraokeStore.getState();
+    const timingMode = state.isTimingActive || state.editingLineIndex !== null;
+    const persistence = timingMode ? actions.saveTimingDraft() : actions.saveCurrentProject();
+    if (timingMode) void usePlayerHandlersStore.getState().handleResumeTiming();
+    void persistence.catch((error) => {
+      usePlayerHandlersStore.getState().handlePauseTiming();
+      toast.error(text(locale, "บันทึกไม่สำเร็จ บรรทัดใหม่ยังอยู่ในหน้านี้", "Could not save; the new line is still on this page"));
+      console.error(error);
+    });
   };
 
   const handleClose = () => {

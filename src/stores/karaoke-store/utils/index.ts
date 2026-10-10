@@ -68,7 +68,7 @@ export const processLyricsForPlayer = (
 
   [...timedLines.entries()]
     .sort(([left], [right]) => left - right)
-    .map(([, items]) => {
+    .map(([lineIndex, items]) => {
       const line = items.map((item) => item.text).join("");
       const vocal = items
         .map((item, index) => {
@@ -93,6 +93,8 @@ export const processLyricsForPlayer = (
       const [start, ...valueName] = lineCursor;
       const end = valueName[lineLength - 1] || start;
       const value = {
+        lineIndex,
+        words: lyricsData.filter((word) => word.lineIndex === lineIndex && (word.at !== null || word.kind === "image")),
         text: line,
         start,
         valueName,

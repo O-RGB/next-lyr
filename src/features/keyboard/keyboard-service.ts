@@ -5,7 +5,6 @@ import { create } from "zustand";
 
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
-import { calculateSeekTime } from "@/modules/lyrics-editor";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { requestLyricsGridScrollToLine } from "@/components/lyrics/lyrics-preview-sync";
 
@@ -87,6 +86,10 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       }
       return;
     }
+    if ((event.ctrlKey || event.metaKey) && ["KeyZ", "KeyY"].includes(event.code)) {
+      event.preventDefault();
+      return;
+    }
     if (!OWNED_CODES.has(event.code)) return;
     // Claim the key now so the page cannot scroll and a focused button cannot
     // activate; the actual work happens on keyup.
@@ -126,20 +129,24 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
       lyricsData,
       isTimingActive,
       editingLineIndex,
-      isPlaying,
-      playFromScrolledPosition,
     } = store;
 
     const isStampingMode = isTimingActive || editingLineIndex !== null;
-    const flatLyrics = lyricsData.flat();
     const totalLines = lyricsData.length;
 
-    if (event.ctrlKey && event.code === "KeyZ") {
-      if (!isStampingMode) actions.undo();
+    if ((event.ctrlKey || event.metaKey) && event.code === "KeyZ") {
+      if (isStampingMode) await handleTimingBackward();
+      else if (event.shiftKey) actions.redo();
+      else actions.undo();
       return;
     }
     if (event.ctrlKey && event.code === "KeyY") {
       if (!isStampingMode) actions.redo();
+      return;
+    }
+
+    if (isStampingMode && event.code === "Enter") {
+      actions.openEditModal();
       return;
     }
 
@@ -171,53 +178,7 @@ export const useKeyboardService = create<KeyboardServiceState>((set, get) => {
     }
 
     if (event.code === "Space") {
-      if (isStampingMode) return;
-
-      if (isPlaying || player.isPlaying()) {
-        player.pause();
-        // A pause is a visual reset, not a resume point. The next Space will
-        // start from box 1 of the currently selected line.
-        actions.setPlaybackIndex(null);
-        actions.setPlaybackVisualOverride(null);
-        return;
-      }
-
-      // A chord-ruler/notes click is an explicit playback target. Do not let
-      // the lyrics line selection overwrite it when Space starts playback.
-      if (playFromScrolledPosition) {
-        actions.setPlaybackVisualOverride(null);
-        player.play();
-        return;
-      }
-
-      // In lyrics mode Space starts at box 1 of the selected line.
-      const firstWord =
-        selectedLineIndex === null
-          ? undefined
-          : lyricsData[selectedLineIndex]?.[0];
-      if (firstWord) {
-        const targetTime = calculateSeekTime(firstWord, flatLyrics);
-        actions.setPlayFromScrolledPosition(false);
-        actions.setIsChordPanelAutoScrolling(true);
-        actions.setCurrentTime(targetTime);
-        actions.setCurrentIndex(firstWord.index);
-        actions.setPlaybackIndex(firstWord.index);
-        actions.setPlaybackVisualOverride({
-          index: firstWord.index,
-          // Keep the selected box stable while the exact target waits for the
-          // engine's future audio boundary.
-          until: targetTime,
-        });
-        // Seek to the exact line timestamp. The MIDI transport schedules a
-        // future boundary for its buffer, so no earlier lyric/audio is used as
-        // a synthetic lead-in.
-        const seek = player.seek(targetTime);
-        player.play();
-        await Promise.resolve(seek);
-        return;
-      }
-
-      player.play();
+      await usePlayerHandlersStore.getState().handlePlayPause();
       return;
     }
 

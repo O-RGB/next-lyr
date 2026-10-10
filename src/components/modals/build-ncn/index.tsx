@@ -7,11 +7,14 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { groupWordDataToEvents } from "@/lib/karaoke/lyrics/convert";
 import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator } from "@/lib/karaoke/cursor";
+import { wordDataToLyricsDocument } from "@/lib/karaoke/lyrics-core/timeline";
+import { buildPlaybackKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
+import { collectPlaybackAssets, buildYoutubePlayback } from "@/lib/stickers/playback-assets";
 import { lyricsDocumentToEvents } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
 import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
 import { buildMp3 } from "@/lib/karaoke/mp3/builder";
-import { getProject, Project } from "@/lib/database/db";
+import { getStickerBlob } from "@/lib/database/db";
 import {
   DEFAULT_PRE_ROLL_OFFSET_MIDI,
   DEFAULT_PRE_ROLL_OFFSET_MP3,
@@ -45,7 +48,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       (value): value is string => typeof value === "string"
     );
     const lyricText = lyricsData.flatMap((line) =>
-      line.flatMap((word) => [word.text, word.vocal ?? ""])
+      line.filter((word) => word.kind !== "image").flatMap((word) => [word.text, word.vocal ?? ""])
     );
     const chordText = chordsData.map((chord) => chord.chord);
 
@@ -54,6 +57,8 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     );
   }, [chordsData, lyricsData, metadata]);
 
+  const hasImages = lyricsData.some((line) => line.some((word) => word.kind === "image"));
+  const legacySupported = legacyEncodingSupported && !hasImages;
   const utf8CompatibilityMessage =
     text(
       locale,
@@ -96,11 +101,26 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     }
   };
 
+  const currentDocument = () => wordDataToLyricsDocument({
+    lyricsData, source: mode === "midi" ? "KMID" : "MP3",
+    timeBase: lyricsDocument?.timeBase ?? (mode === "midi" ? { kind: "midi-tick", ppq: midiInfo?.ticksPerBeat ?? 480 } : { kind: "seconds" }),
+    info: metadata ?? {},
+  });
+  const playbackXml = async (info: Partial<SongInfo>) => {
+    if (!hasImages) return undefined;
+    const document = { ...currentDocument(), info };
+    const assets = await collectPlaybackAssets(document, (id) => getStickerBlob(projectId ?? "", id));
+    return buildPlaybackKlyrXml(document, assets);
+  };
+  const exportError = async (error: unknown) => {
+    console.error("Playback export failed", error);
+    await requestAlert({ title: text(locale, "ส่งออกไม่สำเร็จ", "Export failed"),
+      description: text(locale, "ไม่สามารถอ่านหรือรวมไฟล์ที่เพลงนี้ใช้ได้ งานในโปรเจกต์ยังอยู่ กรุณาลองใหม่", "Could not read or package this song's files. Your project is saved; please try again"), tone: "info" });
+  };
+
   const handleBuildYoutube = async () => {
     if (!(await validation()) || !metadata) return;
-    if (!projectId) return;
-    const project = await getProject(projectId);
-    if (!project) return;
+    try {
       const flatLyrics = lyricsData.flat();
 
       const newLyricsData = lyricsDocument
@@ -110,7 +130,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
             (tick) => (tick - (DEFAULT_PRE_ROLL_OFFSET_MP3 + 0.5)) * 1000
           );
 
-      let newChordsData = chordsData.map((x) => ({
+      const newChordsData = chordsData.map((x) => ({
         ...x,
         tick: lyricsDocument
           ? Math.floor(x.tick * 1000)
@@ -119,12 +139,13 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
             ),
       }));
 
-    const json = JSON.stringify({
-      ...project,
-      data: { ...project.data, newLyricsData, chordsData: newChordsData },
-    } as Project);
+    const playbackDocument = currentDocument();
+    const assets = await collectPlaybackAssets(playbackDocument, (id) => getStickerBlob(projectId ?? "", id));
+    const youtubeId = useKaraokeStore.getState().playerState.youtubeId;
+    if (!youtubeId) throw new Error("missing-youtube-id");
+    const json = JSON.stringify(buildYoutubePlayback({ youtubeId, info: metadata, lyrics: newLyricsData,
+      chords: newChordsData, document: playbackDocument, assets }));
 
-    console.log("json", project.data.metadata);
     const compressed = pako.gzip(json);
     const blob = new Blob([compressed], { type: "application/octet-stream" });
     const filename = `${metadata.TITLE || "project"}.ykr`;
@@ -137,6 +158,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    } catch (error) { await exportError(error); }
   };
 
   const handleSaveMp3 = async () => {
@@ -152,7 +174,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
             (tick) => (tick + DEFAULT_PRE_ROLL_OFFSET_MP3) * 1000
           );
 
-      let newChordsData = chordsData.map((x) => ({
+      const newChordsData = chordsData.map((x) => ({
         ...x,
         tick: lyricsDocument
           ? Math.floor(x.tick * 1000)
@@ -162,7 +184,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       const mp3Info: SongInfo = {
         ...metadata,
         TIME_FORMAT: "TIME_MS",
-        CHARSET: legacyEncodingSupported ? "TIS-620" : "UTF-8",
+        CHARSET: legacyEncodingSupported && !hasImages ? "TIS-620" : "UTF-8",
       };
       const buffer = buildMp3(
         {
@@ -172,6 +194,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
           chords: newChordsData,
           info: mp3Info,
           lyrics: newLyricsData,
+          lyricsXml: await playbackXml(mp3Info),
         },
         storedFile.buffer
       );
@@ -185,8 +208,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      const err = error as Error;
-      console.error("Error saving MIDI file:", err);
+      await exportError(error);
     }
   };
 
@@ -196,7 +218,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     try {
       const flatLyrics = lyricsData.flat();
 
-      let newLyricsData: LyricEvent[][] = lyricsDocument
+      const newLyricsData: LyricEvent[][] = lyricsDocument
         ? lyricsDocumentToEvents(lyricsDocument)
         : groupWordDataToEvents(flatLyrics, (tick) => {
             // Real ticks only — buildKLyrXML scales to cursor units on write.
@@ -208,7 +230,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       const newSongInfo: SongInfo = {
         ...metadata,
-        CHARSET: legacyEncodingSupported ? "TIS-620" : "UTF-8",
+        CHARSET: legacyEncodingSupported && !hasImages ? "TIS-620" : "UTF-8",
       };
       const newChordsData: ChordEvent[] = chordsData;
 
@@ -225,11 +247,12 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
       const newMidiBuffer = buildModifiedMidi({
         originalMidiData: { ...midiInfo },
+        lyricsXml: await playbackXml(newSongInfo),
         newSongInfo,
         newLyricsData,
         newChordsData,
         headerToUse: midiInfo.lyrHeader,
-        textEncoding: legacyEncodingSupported ? "tis-620" : "utf-8",
+        textEncoding: legacyEncodingSupported && !hasImages ? "tis-620" : "utf-8",
       });
 
       const blob = new Blob([newMidiBuffer as BlobPart], {
@@ -244,17 +267,16 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      const err = error as Error;
-      console.error("Error saving MIDI file:", err);
+      await exportError(error);
     }
   };
 
   const buildLyr = async () => {
     if (!(await validation()) || !metadata) return;
-    if (!legacyEncodingSupported) {
+    if (!legacySupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
-        description: utf8CompatibilityMessage,
+        description: hasImages ? text(locale, "LYR/CUR เก็บภาพไม่ได้ กรุณาส่งออก MID ซึ่งรวมภาพให้ครบ", "LYR/CUR cannot carry images. Export MID to include all used images") : utf8CompatibilityMessage,
         tone: "info",
       });
       return;
@@ -276,10 +298,10 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
   const buildCur = async () => {
     if (!(await validation())) return;
-    if (!legacyEncodingSupported) {
+    if (!legacySupported) {
       await requestAlert({
         title: text(locale, "ไม่รองรับการส่งออกแบบเก่า", "Legacy export is unavailable"),
-        description: utf8CompatibilityMessage,
+        description: hasImages ? text(locale, "LYR/CUR เก็บภาพไม่ได้ กรุณาส่งออก MID ซึ่งรวมภาพให้ครบ", "LYR/CUR cannot carry images. Export MID to include all used images") : utf8CompatibilityMessage,
         tone: "info",
       });
       return;
@@ -332,7 +354,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                 <>
                   <ButtonCommon
                     onClick={buildCur}
-                    disabled={!legacyEncodingSupported}
+                    disabled={!legacySupported}
                     color="primary"
                     icon={<Download className="text-lg" />}
                   >
@@ -341,7 +363,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
 
                   <ButtonCommon
                     onClick={buildLyr}
-                    disabled={!legacyEncodingSupported}
+                    disabled={!legacySupported}
                     color="success"
                     icon={<Download className="text-lg" />}
                   >
@@ -382,6 +404,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
                   )}
                 </>
               )}
+              {hasImages && <p className="text-xs text-muted-foreground">{text(locale,
+                "ไฟล์รวมเฉพาะภาพที่ใช้จริง ภาพซ้ำเก็บครั้งเดียว การแสดงภาพต้องใช้ตัวเล่นที่รองรับบล็อกภาพ · LYR/CUR ไม่รองรับภาพ",
+                "Includes only used images, once each. Images need a player supporting image blocks. LYR/CUR cannot carry images")}</p>}
               {mode === "youtube" && (
                 <ButtonCommon
                   onClick={handleBuildYoutube}

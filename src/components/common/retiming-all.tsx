@@ -17,8 +17,8 @@ export default function RetimingAllButton() {
     (state) => state.isTimingActive || state.editingLineIndex !== null
   );
   const playerControls = usePlayerSetupStore((state) => state.playerControls);
-  const handleRetimingAll = usePlayerHandlersStore(
-    (state) => state.handleRetimingAll
+  const handleContinueTiming = usePlayerHandlersStore(
+    (state) => state.handleContinueTiming
   );
   const locale = useSettingsStore((state) => state.uiLocale);
 
@@ -40,7 +40,7 @@ export default function RetimingAllButton() {
   const handleClick = () => {
     if (isDisabled) return;
 
-    void handleRetimingAll();
+    void handleContinueTiming();
   };
 
   return (

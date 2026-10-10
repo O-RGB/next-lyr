@@ -34,7 +34,7 @@ export function measureLyricWords(
   horizontalPadding = 24
 ): number[] {
   return words.map((word) =>
-    Math.max(
+    word.kind === "image" ? Math.max(40, horizontalPadding + 24) : Math.max(
       LYRICS_MIN_WORD_WIDTH,
       ctx.measureText(word.text).width + horizontalPadding
     )
@@ -78,7 +78,7 @@ export function drawLyricWordBox(
     ctx.fillRect(x, y, Math.min(options.markerWidth ?? 3, boxWidth), boxHeight);
   }
 
-  if (options.showText !== false) {
+  if (options.showText !== false && word.kind !== "image") {
     ctx.save();
     roundedRect(ctx, x, y, boxWidth, boxHeight, radius);
     ctx.clip();

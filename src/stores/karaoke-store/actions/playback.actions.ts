@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand";
+import { nextTimingWord, timingLyrics } from "../timing-session";
 import { getPreRollTime } from "../utils";
 import { KaraokeState, PlaybackActions } from "../types";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
@@ -75,7 +76,8 @@ export const createPlaybackActions: StateCreator<
           if (state.editingLineIndex !== null) {
             newCurrentIndex =
               flatLyrics.find(
-                (word) => word.lineIndex === state.editingLineIndex
+                (word) => word.lineIndex >= state.editingLineIndex! &&
+                  (state.editingEndLineIndex === null || word.lineIndex <= state.editingEndLineIndex)
               )?.index ?? -1;
             newSelectedLineIndex = state.editingLineIndex;
           } else {
@@ -87,9 +89,9 @@ export const createPlaybackActions: StateCreator<
         const wordToStart = flatLyrics[newCurrentIndex];
         if (!wordToStart) return {};
 
-        const timingBuffer = state.timingBuffer || {
+        const timingBuffer = {
           lineIndex: wordToStart.lineIndex,
-          buffer: new Map(),
+          buffer: new Map(state.timingBuffer?.buffer),
         };
 
         if (wordToStart.at === null || state.editingLineIndex !== null) {
@@ -111,7 +113,7 @@ export const createPlaybackActions: StateCreator<
 
     startTimingFromLines: (lineIndices: number[]) => {
       const flatLyrics = get().lyricsData.flat();
-      const groups = groupConsecutiveLineIndices(lineIndices).filter((group) =>
+      const groups = groupConsecutiveLineIndices(lineIndices.filter((index) => get().lyricsData[index]?.length)).filter((group) =>
         group.some((lineIndex) =>
           flatLyrics.some((word) => word.lineIndex === lineIndex)
         )
@@ -129,17 +131,8 @@ export const createPlaybackActions: StateCreator<
       // preparation line before stamping the selected line.
       const preRollTime = getPreRollTime(firstGroup[0], flatLyrics);
       const snapshot = cloneLyricsData(get().lyricsData);
-      const selectedLineSet = new Set(groups.flat());
 
-      set((state) => ({
-        lyricsData: state.lyricsData.map((line, idx) =>
-          selectedLineSet.has(idx)
-            ? line.map((word) => ({
-                ...word,
-                at: null,
-              }))
-            : line
-        ),
+      set({
         // No box is selected until the first right-arrow. This keeps the
         // retiming target visually neutral during the preparation playback.
         currentIndex: -1,
@@ -154,18 +147,47 @@ export const createPlaybackActions: StateCreator<
         timingGroupIndex: 0,
         lineSelectionMode: false,
         lineShiftArmed: false,
-        // Retiming is a destructive preview until it is committed. Keep an
-        // immutable copy so Cancel can always restore the exact old values.
+        // Retain the original timestamps until their replacements are
+        // committed; Cancel can restore this independent baseline.
         timingSnapshot: snapshot,
-      }));
+        timingOnlyUntimed: false,
+      });
 
       return { success: true, preRollTime };
+    },
+
+    startTimingFromWord: (index: number) => {
+      const state = get();
+      const word = state.lyricsData.flat().find((candidate) => candidate.index === index);
+      if (!word) return { success: false, preRollTime: 0 };
+      const previous = state.lyricsData.flat().slice(0, index).reverse().find((candidate) => candidate.at !== null);
+      const groups = [Array.from({ length: state.lyricsData.length - word.lineIndex }, (_, offset) => word.lineIndex + offset)];
+      set({
+        currentIndex: index,
+        selectedLineIndex: word.lineIndex,
+        editingLineIndex: word.lineIndex,
+        editingEndLineIndex: state.lyricsData.length - 1,
+        isTimingActive: false,
+        correctionIndex: null,
+        timingBuffer: { lineIndex: word.lineIndex, buffer: new Map() },
+        timingLineGroups: groups,
+        timingGroupIndex: 0,
+        timingSnapshot: cloneLyricsData(state.lyricsData),
+        timingOnlyUntimed: true,
+        playbackIndex: null,
+        playbackVisualOverride: null,
+        lineSelectionMode: false,
+        lineShiftArmed: false,
+      });
+      return { success: true, preRollTime: previous?.at ?? 0 };
     },
 
     finishTimingGroup: () => {
       const state = get();
       const groups = state.timingLineGroups;
-      const nextGroupIndex = state.timingGroupIndex + 1;
+      const nextGroupIndex = groups?.findIndex((group, index) =>
+        index > state.timingGroupIndex && group.some((line) => state.lyricsData[line]?.length)
+      ) ?? -1;
       const nextGroup = groups?.[nextGroupIndex];
 
       if (!nextGroup) return { done: true, preRollTime: 0 };
@@ -209,6 +231,7 @@ export const createPlaybackActions: StateCreator<
         correctionIndex: null,
         lyricsProcessed: undefined,
         timingSnapshot: null,
+        timingOnlyUntimed: false,
         playbackIndex: null,
         playbackVisualOverride: null,
         timingLineGroups: null,
@@ -224,17 +247,17 @@ export const createPlaybackActions: StateCreator<
             : state.currentIndex,
       }));
 
-      // Retiming clears the target line as a temporary preview. Restore the
-      // derived document and player timeline after rolling that preview back.
+      // Text edits remain in the remapped baseline; only stamps are rolled back.
       if (restoredLyricsData) {
         get().actions.syncLyricsDocument();
         get().actions.processLyricsForPlayer();
+        get().actions.commitHistory("ยกเลิกการปาด");
       }
     },
 
     recordTiming: (currentTime: number) => {
       const state = get();
-      const { timingBuffer, lyricsData, currentIndex, editingEndLineIndex } =
+      const { timingBuffer, lyricsData, currentIndex } =
         state;
 
       if (!timingBuffer) {
@@ -243,7 +266,6 @@ export const createPlaybackActions: StateCreator<
 
       const flatLyrics = lyricsData.flat();
       const newBuffer = new Map(timingBuffer.buffer);
-      let isLineEnd = false;
 
       const currentWord = flatLyrics[currentIndex];
       if (currentWord) {
@@ -253,14 +275,7 @@ export const createPlaybackActions: StateCreator<
         }
       }
 
-      const nextWord = flatLyrics[currentIndex + 1];
-      if (
-        !nextWord ||
-        (editingEndLineIndex !== null &&
-          nextWord.lineIndex > editingEndLineIndex)
-      ) {
-        isLineEnd = true;
-      }
+      const isLineEnd = !nextTimingWord(state);
 
       set({
         timingBuffer: {
@@ -269,20 +284,14 @@ export const createPlaybackActions: StateCreator<
         },
       });
 
-      // ลบส่วนที่เรียก stopTiming() ออกจากตรงนี้
-      // if (isLineEnd) {
-      //   get().actions.stopTiming();
-      // }
-
       return { isLineEnd };
     },
 
     goToNextWord: () => {
       set((state) => {
-        const flatLyrics = state.lyricsData.flat();
-        if (state.currentIndex + 1 < flatLyrics.length) {
-          const nextIndex = state.currentIndex + 1;
-          const nextWord = flatLyrics[nextIndex];
+        const nextWord = nextTimingWord(state);
+        if (nextWord) {
+          const nextIndex = nextWord.index;
           return {
             currentIndex: nextIndex,
             selectedLineIndex: nextWord
@@ -337,19 +346,8 @@ export const createPlaybackActions: StateCreator<
       set(() => {
         const newBuffer = new Map(state.timingBuffer!.buffer);
 
-        const wordAfter = flatLyrics[newCurrentIndex + 1];
-        if (wordAfter) {
-          const data = newBuffer.get(wordAfter.index);
-          if (data) {
-            data.at = null;
-            newBuffer.set(wordAfter.index, data);
-          }
-        }
-
-        const dataToCorrect = newBuffer.get(wordToCorrect.index);
-        if (dataToCorrect) {
-          dataToCorrect.at = null;
-          newBuffer.set(wordToCorrect.index, dataToCorrect);
+        for (const word of flatLyrics) {
+          if (word.index >= newCurrentIndex) newBuffer.delete(word.index);
         }
 
         return {
@@ -368,62 +366,23 @@ export const createPlaybackActions: StateCreator<
       const state = get();
       const timingBufferData = state.timingBuffer;
 
-      set((prevState) => {
-        if (!timingBufferData || timingBufferData.buffer.size === 0) {
-          // Starting a retiming session clears its target line as a temporary
-          // preview. If no word was stamped, ending the session must restore
-          // that preview instead of leaving the whole line empty.
-          const restoredLyricsData = prevState.timingSnapshot
-            ? cloneLyricsData(prevState.timingSnapshot)
-            : undefined;
-
-          return {
-            ...(restoredLyricsData
-              ? { lyricsData: restoredLyricsData }
-              : {}),
-            isTimingActive: false,
-            editingLineIndex: null,
-            editingEndLineIndex: null,
-            timingBuffer: null,
-            timingDirection: null,
-            timingSnapshot: null,
-            timingLineGroups: null,
-            timingGroupIndex: 0,
-            lineSelectionMode: false,
-            selectedLineIndices: [],
-            lineSelectionAnchor: null,
-            lineShiftArmed: false,
-          };
-        }
-
-        const { buffer } = timingBufferData;
-
-        const newLyricsData = prevState.lyricsData.map((line) =>
-          line.map((word) => {
-            if (buffer.has(word.index)) {
-              const bufferedData = buffer.get(word.index)!;
-              return { ...word, at: bufferedData.at };
-            }
-            return word;
-          })
-        );
-
-        return {
-          lyricsData: newLyricsData,
-          isTimingActive: false,
-          editingLineIndex: null,
-          editingEndLineIndex: null,
-          timingBuffer: null,
-          timingDirection: null,
-          timingSnapshot: null,
-          timingLineGroups: null,
-          timingGroupIndex: 0,
-          lineSelectionMode: false,
-          selectedLineIndices: [],
-          lineSelectionAnchor: null,
-          lineShiftArmed: false,
-        };
-      });
+      set((prevState) => ({
+        lyricsData: timingLyrics(prevState),
+        isTimingActive: false,
+        editingLineIndex: null,
+        editingEndLineIndex: null,
+        timingBuffer: null,
+        timingDirection: null,
+        timingSnapshot: null,
+        timingOnlyUntimed: false,
+        correctionIndex: null,
+        timingLineGroups: null,
+        timingGroupIndex: 0,
+        lineSelectionMode: false,
+        selectedLineIndices: [],
+        lineSelectionAnchor: null,
+        lineShiftArmed: false,
+      }));
 
       get().actions.syncLyricsDocument();
       get().actions.processLyricsForPlayer();

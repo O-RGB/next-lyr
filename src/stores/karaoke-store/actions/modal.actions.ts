@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { getPreRollTime } from "../utils";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { initialModalState } from "../configs";
 import { KaraokeState, ModalActions } from "../types";
 import { ChordEvent } from "@/lib/karaoke/midi/types";
@@ -10,6 +10,9 @@ export const createModalActions: StateCreator<
   [],
   { actions: ModalActions }
 > = (set, get) => {
+  const pauseForEditing = () => {
+    usePlayerHandlersStore.getState().handlePauseTiming();
+  };
   return {
     actions: {
       selectLine: (lineIndex: number | null) =>
@@ -17,11 +20,16 @@ export const createModalActions: StateCreator<
 
       // ลบ startEditLine action ออก
 
-      openEditModal: () => set({ isEditModalOpen: true }),
+      openEditModal: () => {
+        pauseForEditing();
+        set({ isEditModalOpen: true });
+      },
       closeEditModal: () => set({ isEditModalOpen: false }),
 
-      openAddModal: (lineIndex: number) =>
-        set({ isAddModalOpen: true, lineIndexToInsertAfter: lineIndex }),
+      openAddModal: (lineIndex: number) => {
+        pauseForEditing();
+        set({ isAddModalOpen: true, lineIndexToInsertAfter: lineIndex });
+      },
       closeAddModal: () =>
         set({ isAddModalOpen: false, lineIndexToInsertAfter: null }),
 

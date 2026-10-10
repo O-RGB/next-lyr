@@ -1,3 +1,4 @@
+import type { LyricSticker, PlaybackImage } from "@/lib/stickers/types";
 import type { SongInfo, TempoEvent } from "../midi/types";
 
 export type LyricsSourceKind =
@@ -18,6 +19,8 @@ export type LyricsTimeBase =
     };
 
 export interface LyricsWord {
+  kind?: "text" | "image";
+  sticker?: LyricSticker;
   id?: string;
   text: string;
   at: number | null;
@@ -25,6 +28,7 @@ export interface LyricsWord {
 }
 
 export interface LyricsDocument {
+  assets?: PlaybackImage[];
   source: LyricsSourceKind;
   timeBase: LyricsTimeBase;
   info: Partial<SongInfo>;

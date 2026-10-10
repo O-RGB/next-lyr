@@ -15,7 +15,6 @@ import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 import React from "react";
 
 interface LineActionProps {
@@ -31,7 +30,8 @@ const LineAction: React.FC<LineActionProps> = React.memo(
     const isTimingActive = useKaraokeStore((state) => state.isTimingActive);
     const lyricsData = useKaraokeStore((state) => state.lyricsData);
     const locale = useSettingsStore((state) => state.uiLocale);
-    const canUseTimingActions = hasCompleteLyricTiming(lyricsData);
+    const canUseTimingActions = lyricsData[lineIndex]?.length > 0;
+    const isPlaying = useKaraokeStore((state) => state.isPlaying);
 
     const menuItems: IContextMenuGroup<string>[] = [
       {
@@ -44,6 +44,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
                   text: text(locale, "เลือก", "Select"),
                   icon: <CheckSquare />,
                   onClick: () => {
+                    if (isTimingActive || editingLineIndex !== null) void actions.stopTiming();
                     actions.setLineSelectionMode(true);
                     actions.toggleLineSelection(lineIndex);
                   },
@@ -100,7 +101,11 @@ const LineAction: React.FC<LineActionProps> = React.memo(
                 tone: "danger",
                 confirmLabel: text(locale, "ลบบรรทัด", "Delete line"),
               });
-              if (confirmed) actions.deleteLine?.(lineIndex);
+              if (confirmed) {
+                const wasTiming = isTimingActive || editingLineIndex !== null;
+                await actions.deleteLine(lineIndex);
+                if (wasTiming) void usePlayerHandlersStore.getState().handleContinueTiming();
+              }
             },
           },
         ],
@@ -111,7 +116,7 @@ const LineAction: React.FC<LineActionProps> = React.memo(
         <ContextMenuCommon
           menuButton={
             <ButtonCommon
-              disabled={isTimingActive || editingLineIndex !== null}
+              disabled={isPlaying}
               title={text(locale, "แก้ไขเนื้อเพลง (Enter)", "Edit lyrics (Enter)")}
               color="white"
               circle

@@ -250,6 +250,7 @@ export interface IMidiParseResult extends ParsedSongData, MidiFile {
 }
 
 export interface BuildOptions {
+  lyricsXml?: string;
   originalMidiData: MidiFile;
   newSongInfo: SongInfo;
   newLyricsData: LyricEvent[][];

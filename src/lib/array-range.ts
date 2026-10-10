@@ -2,6 +2,8 @@ export type LyricsPosition = "top" | "bottom";
 export type LyricsKeyProps = [number, number];
 
 export interface ISentence {
+  words?: import("@/types/common.type").LyricWordData[];
+  lineIndex?: number;
   text: string;
   start: number;
   valueName: number[];

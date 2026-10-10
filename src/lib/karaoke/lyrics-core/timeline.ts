@@ -59,6 +59,8 @@ export function lyricsDocumentToWordData(
     line.map((word) => {
       return {
         text: word.text,
+        kind: word.kind,
+        sticker: word.sticker,
         at: word.at,
         vocal: word.vocal,
         index: globalIndex++,
@@ -82,6 +84,8 @@ export function wordDataToLyricsDocument(options: {
       line.map((word, wordIndex) => ({
         id: `lyric-${lineIndex}-${wordIndex}`,
         text: word.text,
+        kind: word.kind,
+        sticker: word.sticker,
         vocal: word.vocal,
         at: word.at,
       }))
@@ -92,7 +96,7 @@ export function wordDataToLyricsDocument(options: {
 export function lyricsDocumentToEvents(document: LyricsDocument): LyricEvent[][] {
   return document.lines.map((line) =>
     line
-      .filter((word): word is LyricsWord & { at: number } => word.at !== null)
+      .filter((word): word is LyricsWord & { at: number } => word.at !== null && word.kind !== "image")
       .map((word) => ({
         text: word.text,
         tick:

@@ -17,7 +17,6 @@ import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 
 interface LineSelectionToolbarProps {
   compact?: boolean;
@@ -44,7 +43,7 @@ export default function LineSelectionToolbar({
   );
   const locale = useSettingsStore((state) => state.uiLocale);
 
-  if (!selectionMode || isTiming || !hasCompleteLyricTiming(lyricsData)) {
+  if (!selectionMode || isTiming || lyricsData.length === 0) {
     return null;
   }
 

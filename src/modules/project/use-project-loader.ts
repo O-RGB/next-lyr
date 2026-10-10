@@ -1,5 +1,7 @@
+import { collectInlineStickers } from "@/lib/karaoke/inline-content";
+import { lyricsDocumentToWordData } from "@/lib/karaoke/lyrics-core/timeline";
 import { useCallback, useEffect, useState } from "react";
-import { getProject, upsertProjectSummary } from "@/lib/database/db";
+import { getProject, upsertProjectSummary, pruneStickerAssets } from "@/lib/database/db";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 
 type ProjectLoadState = {
@@ -31,6 +33,10 @@ export function useProjectLoader(projectId: string): ProjectLoadState {
       try {
         const project = await getProject(projectId);
         if (!project) throw new Error("Project not found");
+        if (cancelled) return;
+        const content = project.data.lyricsDocument
+          ? lyricsDocumentToWordData(project.data.lyricsDocument, 0) : project.data.lyricsData;
+        await pruneStickerAssets(project.id, collectInlineStickers(content, project.data.lineStickers));
         if (cancelled) return;
         loadProject(project);
         void upsertProjectSummary({

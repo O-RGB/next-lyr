@@ -7,6 +7,8 @@ import React, {
   useRef,
 } from "react";
 
+import { layoutInlineWords } from "@/lib/stickers/inline-layout";
+import { makeInlineImageLayer, updateInlineImageLayer, clearInlineImageLayer, type InlineImagePlacement } from "../inline-image-layer";
 import type { ISentence } from "@/lib/array-range";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { useTimerStore } from "@/timer-worker/store";
@@ -40,6 +42,8 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   playerControls,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imageLayer = useRef(makeInlineImageLayer());
+  useEffect(() => { const layer = imageLayer.current; return () => clearInlineImageLayer(layer); }, []);
   const processedRef = useRef(useKaraokeStore.getState().lyricsProcessed);
   const styleRef = useRef(textStyle);
   const topSlotRef = useRef<CanvasSlot>(makeCanvasSlot());
@@ -136,6 +140,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
     const canvas = canvasRef.current;
     const lyricRange = processedRef.current;
     if (!canvas || !lyricRange || lyricRange.ranges.length === 0) {
+      updateInlineImageLayer(imageLayer.current, null, []);
       if (dirtyRef.current) {
         clearCanvas(canvas);
         dirtyRef.current = false;
@@ -270,8 +275,11 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
       height,
     };
 
-    drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize);
-    drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize);
+    const images = [
+      ...drawSentence(ctx, topSentence, topSlotRef.current.progress, width, firstY, style, vocalSize),
+      ...drawSentence(ctx, bottomSentence, bottomSlotRef.current.progress, width, secondY, style, vocalSize),
+    ];
+    updateInlineImageLayer(imageLayer.current, useKaraokeStore.getState().projectId, images);
 
     dirtyRef.current = false;
     topSlotRef.current.dirty = false;
@@ -304,6 +312,7 @@ const LyricsPlayer: React.FC<LyricsPlayerProps> = ({
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="relative flex min-h-0 flex-1 w-full items-center justify-center overflow-hidden rounded-lg text-center">
+        <div ref={(element) => { imageLayer.current.element = element; }} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" />
         <canvas
           ref={canvasRef}
           aria-label="Karaoke lyrics preview"
@@ -371,35 +380,29 @@ function getTextStyle(
 }
 
 function drawSentence(
-  ctx: CanvasRenderingContext2D,
-  sentence: ISentence | undefined,
-  progress: number,
-  width: number,
-  y: number,
-  style: CanvasTextStyle,
-  vocalSize: number
-): void {
-  if (!sentence) return;
-  drawCanvasText(ctx, sentence.text, width / 2, y, progress, width, style);
-
-  if (!sentence.vocal.trim()) return;
-  drawCanvasText(
-    ctx,
-    sentence.vocal,
-    width / 2,
-    y + style.fontSize * 0.72,
-    progress,
-    width,
-    {
-      ...style,
-      fontSize: vocalSize,
-      unsungFill: "#df692e",
-      unsungStroke: "#000000",
-      sungFill: "#0000ff",
-      sungStroke: "#ffffff",
-      strokeWidth: Math.max(vocalSize * 0.1, 1.5),
+  ctx: CanvasRenderingContext2D, sentence: ISentence | undefined, progress: number,
+  width: number, y: number, style: CanvasTextStyle, vocalSize: number
+): InlineImagePlacement[] {
+  if (!sentence) return [];
+  const images: InlineImagePlacement[] = [];
+  if (sentence.words?.some((word) => word.kind === "image")) {
+    ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
+    const layout = layoutInlineWords(sentence.words, style.fontSize, width, (text) => ctx.measureText(text).width, progress);
+    for (const item of layout) {
+      if (item.word.kind === "image") {
+        if (item.word.sticker) images.push({ key: `preview:${item.word.index}`, sticker: item.word.sticker,
+          left: item.left, top: y - item.height / 2, width: item.width, height: item.height });
+      } else {
+        drawCanvasText(ctx, item.word.text, item.left + item.width / 2, y,
+          item.progress, Math.max(1, item.width / 0.94), style);
+      }
     }
-  );
+  } else drawCanvasText(ctx, sentence.text, width / 2, y, progress, width, style);
+  if (sentence.vocal.trim()) drawCanvasText(ctx, sentence.vocal, width / 2,
+    y + style.fontSize * 0.72, progress, width, { ...style, fontSize: vocalSize,
+      unsungFill: "#df692e", unsungStroke: "#000000", sungFill: "#0000ff", sungStroke: "#ffffff",
+      strokeWidth: Math.max(vocalSize * 0.1, 1.5) });
+  return images;
 }
 
 function measureCanvasTextVertical(

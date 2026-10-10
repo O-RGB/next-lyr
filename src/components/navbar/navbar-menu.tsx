@@ -110,7 +110,7 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
   const locale = useSettingsStore((state) => state.uiLocale);
   const updateSettings = useSettingsStore((state) => state.set);
   const timingMode = useKaraokeStore(
-    (state) => state.isTimingActive || state.editingLineIndex !== null
+    (state) => state.isPlaying && (state.isTimingActive || state.editingLineIndex !== null)
   );
 
   return (
@@ -195,7 +195,10 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={timingMode}
-              onClick={() => openDialog("history")}
+              onClick={() => {
+                void useKaraokeStore.getState().actions.stopTiming();
+                openDialog("history");
+              }}
             >
               <HistoryIcon />
               {text(locale, "ประวัติการแก้ไข", "Edit history")}

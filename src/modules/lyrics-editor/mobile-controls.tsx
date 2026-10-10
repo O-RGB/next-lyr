@@ -23,6 +23,7 @@ export function LyricsMobileControls({ tools }: { tools?: ReactNode }) {
   const handleTimingBackward = usePlayerHandlersStore(
     (state) => state.handleTimingBackward
   );
+  const handlePlayPause = usePlayerHandlersStore((state) => state.handlePlayPause);
   const locale = useSettingsStore((state) => state.uiLocale);
 
   const buttonClass =
@@ -37,7 +38,7 @@ export function LyricsMobileControls({ tools }: { tools?: ReactNode }) {
         <button
           type="button"
           className={`${buttonClass} border-primary/40 bg-primary/10 text-primary`}
-          onClick={() => dispatchKey("Space")}
+          onClick={() => void handlePlayPause()}
           aria-label={isPlaying ? text(locale, "หยุดชั่วคราว", "Pause") : text(locale, "เล่น", "Play")}
         >
           {isPlaying ? <Pause className="mx-auto" /> : <Play className="mx-auto" />}

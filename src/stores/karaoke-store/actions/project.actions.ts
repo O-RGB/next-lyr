@@ -1,8 +1,10 @@
+import { migrateInlineStickers } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
+import { timingLyrics } from "../timing-session";
 
-import { Project, ProjectData, updateProject } from "@/lib/database/db";
+import { Project, ProjectData, updateProject, saveTimingDraft, nextProjectRevision } from "@/lib/database/db";
 import { createObjectURLFromStoredFile } from "../utils";
-import { initialState, initialPlayerState } from "../configs";
+import { initialState } from "../configs";
 import { KaraokeState, ProjectActions } from "../types";
 import {
   lyricsDocumentToWordData,
@@ -20,18 +22,32 @@ export const createProjectActions: StateCreator<
   { actions: ProjectActions }
 > = (set, get) => ({
   actions: {
+    saveTimingDraft: async () => {
+      const state = get();
+      if (!state.projectId) return;
+      state.actions.syncLyricsDocument();
+      const next = get();
+      await saveTimingDraft({
+        projectId: state.projectId,
+        lyricsData: timingLyrics(next),
+        lineStickers: next.lineStickers,
+        lyricsDocument: next.lyricsDocument,
+        lyricsXml: next.lyricsXml,
+        updatedAt: nextProjectRevision(),
+      });
+    },
     saveCurrentProject: async (): Promise<void> => {
       const projectId = get().projectId;
+      if (!projectId) return;
+      get().actions.syncLyricsDocument();
       const playerState = get().playerState;
-      const lyricsData = get().lyricsData;
+      const lyricsData = timingLyrics(get());
       const lyricsDocument = get().lyricsDocument;
       const lyricsXml = get().lyricsXml;
       const chordsData = get().chordsData;
       const metadata = get().metadata;
       const soundfonts = get().soundfonts;
       const activeSoundfontId = get().activeSoundfontId;
-
-      if (!projectId) return;
 
       const dataToSave: ProjectData = {
         playerState: {
@@ -41,6 +57,7 @@ export const createProjectActions: StateCreator<
           youtubeId: playerState.youtubeId,
         },
         lyricsData: lyricsData,
+        lineStickers: get().lineStickers,
         lyricsDocument,
         lyricsXml,
         chordsData: chordsData,
@@ -72,7 +89,7 @@ export const createProjectActions: StateCreator<
         project.mode === "midi"
           ? { kind: "midi-tick" as const, ppq }
           : { kind: "seconds" as const };
-      const lyricsDocument =
+      const loadedDocument =
         project.data.lyricsDocument ??
         wordDataToLyricsDocument({
           lyricsData,
@@ -80,11 +97,12 @@ export const createProjectActions: StateCreator<
           timeBase,
           info: metadata ?? {},
         });
-      const restoredLyricsData = lyricsDocumentToWordData(
-        lyricsDocument,
+      const restoredLyricsData = migrateInlineStickers(lyricsDocumentToWordData(
+        loadedDocument,
         ppq
-      );
-      const lyricsXml = project.data.lyricsXml ?? buildKlyrXml(lyricsDocument);
+      ), project.data.lineStickers ?? {});
+      const lyricsDocument = wordDataToLyricsDocument({ lyricsData: restoredLyricsData, source, timeBase, info: metadata ?? {} });
+      const lyricsXml = buildKlyrXml(lyricsDocument);
       let audioSrc: string | null = null;
       let videoSrc: string | null = null;
       let rawFile: File | null = null;
@@ -105,6 +123,7 @@ export const createProjectActions: StateCreator<
       set({
         ...initialState,
         lyricsData: restoredLyricsData,
+        lineStickers: {},
         lyricsDocument,
         lyricsXml,
         chordsData: normalizedChordsData,
@@ -123,6 +142,7 @@ export const createProjectActions: StateCreator<
         history: initHistory(
           {
             lyricsData: restoredLyricsData,
+            lineStickers: {},
             lyricsDocument,
             lyricsXml,
             chordsData: normalizedChordsData,

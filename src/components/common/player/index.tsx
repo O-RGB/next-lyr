@@ -1,6 +1,8 @@
 // src/components/common/player/index.tsx
 import { Loader2, Pause, Play, Square } from "lucide-react";
 import React from "react";
+import { useKaraokeStore } from "@/stores/karaoke-store";
+import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { TimerRange } from "./render-time";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -27,6 +29,12 @@ interface PlayerButtonsProps {
 const PlayerButtons = React.memo<PlayerButtonsProps>(
   ({ fileName, isPlaying, isLoading, onPlayPause, onStop }) => {
     const locale = useSettingsStore((state) => state.uiLocale);
+    const handleStop = () => {
+      const state = useKaraokeStore.getState();
+      if (state.isTimingActive || state.editingLineIndex !== null) {
+        void usePlayerHandlersStore.getState().handleStop();
+      } else onStop();
+    };
 
     return (
       <div className="flex justify-center items-center gap-2">
@@ -51,7 +59,7 @@ const PlayerButtons = React.memo<PlayerButtonsProps>(
         )}
       </button>
       <button
-        onClick={onStop}
+        onClick={handleStop}
         disabled={!fileName}
         className="p-3 bg-panel rounded-full shadow-md disabled:opacity-50 transition-transform transform active:scale-90"
       >
