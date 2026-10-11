@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { frameAtTime } from "@/lib/block-effects/catalog";
-import { subscribeFramePainter } from "@/lib/block-effects/animation";
-import { loadFrameAtlas, frameAtlasIdentity, type LoadedAtlas } from "@/lib/block-effects/frames";
-import { paintEffectIcon } from "@/lib/block-effects/icon";
-import { effectIconRole, type BlockEffect } from "@/lib/block-effects/types";
+import { frameAtTime } from "@next-karaoke/lyrics/effects";
+import { subscribeFramePainter } from "@next-karaoke/lyrics/effects";
+import { loadFrameAtlas, frameAtlasIdentity, type LoadedAtlas } from "@next-karaoke/lyrics/effects";
+import { paintEffectIcon } from "@next-karaoke/lyrics/effects";
+import { effectIconRole, type BlockEffect } from "@next-karaoke/lyrics/effects";
 
 export function EffectIcon({ effect, size = 20 }: { effect: BlockEffect; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);

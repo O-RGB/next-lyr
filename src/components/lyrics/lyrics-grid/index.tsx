@@ -1,10 +1,10 @@
 "use client";
 
-import { effectAppearance } from "@/lib/block-effects/appearance";
-import { normalizeBlockEffect } from "@/lib/block-effects/types";
+import { effectAppearance } from "@next-karaoke/lyrics/effects";
+import { normalizeBlockEffect } from "@next-karaoke/lyrics/effects";
 import { makeEffectGroupLayer, clearEffectGroupLayer, updateEffectGroupLayer, type EffectGroupControl } from "../effect-group-layer";
-import { layoutEffectEditorBlocks } from "@/lib/block-effects/editor-layout";
-import { effectLabel, effectShortLabel } from "@/lib/block-effects/types";
+import { layoutEffectEditorBlocks } from "@next-karaoke/lyrics/effects";
+import { effectLabel, effectShortLabel } from "@next-karaoke/lyrics/effects";
 
 import { FilePlus2, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -19,7 +19,7 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import useIsMobile from "@/hooks/useIsMobile";
 import LineAction from "./line/actions";
-import { makeCanvasMediaLayer, updateCanvasMediaLayer, clearCanvasMediaLayer, type CanvasImagePlacement } from "../canvas-media-layer";
+import { makeCanvasMediaLayer, updateCanvasMediaLayer, clearCanvasMediaLayer, type CanvasImagePlacement } from "@next-karaoke/lyrics/canvas";
 import {
   drawLyricWordBox,
   LYRICS_LEFT_GUTTER,

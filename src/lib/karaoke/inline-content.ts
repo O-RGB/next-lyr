@@ -1,6 +1,6 @@
-import { normalizeBlockEffect, type BlockEffect } from "../block-effects/types";
+import { normalizeBlockEffect, type BlockEffect } from "@next-karaoke/lyrics/effects";
 import type { LyricWordData } from "@/types/common.type";
-import type { LineStickers, LyricSticker } from "@/lib/stickers/types";
+import type { LineStickers, LyricSticker } from "@next-karaoke/lyrics/media";
 
 // One timing unit for an image; renderers display its asset, never this marker.
 export const IMAGE_TOKEN = "\uFFFC";

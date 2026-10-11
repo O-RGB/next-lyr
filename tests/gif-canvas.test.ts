@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GifCompositor, gifFrameAtTime, type GifPatch } from "../src/lib/stickers/gif-compositor";
+import { GifCompositor, gifFrameAtTime, type GifPatch } from "@next-karaoke/lyrics/gif";
 const red = [255, 0, 0, 255], blue = [0, 0, 255, 255], transparent = [0, 0, 0, 0];
 const patch = (left: number, pixels: number[], disposalType = 1): GifPatch => ({
   dims: { left, top: 0, width: pixels.length / 4, height: 1 }, patch: new Uint8ClampedArray(pixels), disposalType,

@@ -1,5 +1,5 @@
-import { fitStickerDimensions, inspectStickerImage } from "./image-info";
-import { MAX_GIF_STICKER_BYTES, MAX_STATIC_STICKER_BYTES, MAX_STICKER_INPUT_BYTES } from "./types";
+import { fitStickerDimensions, inspectStickerImage } from "@next-karaoke/lyrics/image-info";
+import { MAX_GIF_STICKER_BYTES, MAX_STATIC_STICKER_BYTES, MAX_STICKER_INPUT_BYTES } from "@next-karaoke/lyrics/media";
 
 const aborted = (signal?: AbortSignal) => {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");

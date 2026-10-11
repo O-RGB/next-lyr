@@ -1,16 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {normalizeBlockEffect,groupEffectBlocks,effectIconRole,type BlockEffect,type PlaybackFrameAtlas} from "../src/lib/block-effects/types";
-import {effectAtlasRecipe,effectAtlasRoles,usedEffectAtlasRoles,effectGeometry} from "../src/lib/block-effects/catalog";
-import {layoutSkyActors,skyLightningVisible} from "../src/lib/block-effects/weather";
-import {collectEffectAtlases,frameAtlasIdentity,type LoadedAtlas} from "../src/lib/block-effects/frames";
-import {materializeAtlasPayloads,selectPlaybackAtlases} from "../src/lib/block-effects/assets";
+import {normalizeBlockEffect,groupEffectBlocks,effectIconRole,type BlockEffect,type PlaybackFrameAtlas} from "@next-karaoke/lyrics/effects";
+import {effectAtlasRecipe,effectAtlasRoles,usedEffectAtlasRoles,effectGeometry} from "@next-karaoke/lyrics/effects";
+import {layoutSkyActors,skyLightningVisible} from "@next-karaoke/lyrics/effects";
+import {collectEffectAtlases,frameAtlasIdentity,type LoadedAtlas} from "@next-karaoke/lyrics/effects";
+import {materializeAtlasPayloads,selectPlaybackAtlases} from "@next-karaoke/lyrics/effects";
 import {buildPlaybackKlyrXml} from "../src/lib/karaoke/lyrics-core/xml";
-import {buildYoutubePlayback} from "../src/lib/stickers/playback-assets";
+import {buildYoutubePlayback} from "@next-karaoke/lyrics/format";
 import {cellsFromLine} from "../src/lib/karaoke/inline-content";
-import {resizeEffectRun,resolveEffectSelection} from "../src/lib/block-effects/editor";
-import {paintFrameSurface} from "../src/components/lyrics/block-effect-layer";
-import {stormEvent} from "../src/lib/block-effects/events";
+import {resizeEffectRun,resolveEffectSelection} from "@next-karaoke/lyrics/effects";
+import {paintFrameSurface} from "@next-karaoke/lyrics/canvas";
+import {stormEvent} from "@next-karaoke/lyrics/effects";
 import type {LyricsDocument} from "../src/lib/karaoke/lyrics-core/types";
 const styles:BlockEffect[]=[{type:'rain',connected:true},{type:'rain',variant:'clouds',connected:true},{type:'rain',variant:'storm',connected:true},
  {type:'sunny',connected:true},{type:'sunny',variant:'clouds',connected:true},{type:'sunny',variant:'birds',connected:true}];

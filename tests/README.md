@@ -47,3 +47,9 @@ Keyboard drag uses slot order and center alignment so visual effect caps do not 
 The content list displays checkboxes and slot numbers, with only the leading drag handle for moving items. Timestamp labels and move-arrow buttons are omitted; the stored timing slots still stay fixed. Effect selection is a two-column grid including all three rain and three sunshine choices. The prior checkbox selection alone defines the target blocks; adjacent matching blocks connect automatically, and gaps stay separate. There are no secondary type, connect or range controls. Effect panels always open as a fixed `82dvh` bottom sheet, with a scrollable body, fixed header/footer, and a forced nested backdrop for outside dismissal. Browser checks compare its top and height across choices on desktop and on short mobile viewports, verify internal overflow, saved variants, outside dismissal and retained parent drafts.
 
 Canvas GIF checks cover transparent patches, disposal modes 2 and 3, opaque backgrounds, loop resets, variable frame delays, finite loops and reduced motion. Browser validation covers a single presentation canvas with no inline DOM images, shared decoders across repeated image cells and both viewports, animated pixels while lyrics are paused, and releasing workers/bitmaps when the media leaves the scene. The renderer keeps only the current decoded GIF frame and a bounded composition screen, rather than expanding all frames into the project or export.
+
+Shared-package extraction: run next-lyrics's runtime suite for original karaoke slot/draw parity,
+then this full regression suite. New default exports use versioned preset IDs without sprite
+bodies; explicit legacy atlas exports retain the existing deduplication tests. Karaoke's
+`test:lyrics-package-browser` verifies rolling windows, MIDI clocks, isolated custom views,
+fire/night sprites, repeated animated GIFs on one visible canvas and final-worker release.

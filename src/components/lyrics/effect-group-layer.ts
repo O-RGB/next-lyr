@@ -1,9 +1,9 @@
-import { frameAtTime } from "@/lib/block-effects/catalog";
-import { effectAppearance } from "@/lib/block-effects/appearance";
-import { frameAtlasIdentity, loadFrameAtlas, type LoadedAtlas } from "@/lib/block-effects/frames";
-import { subscribeFramePainter, refreshFramePainter } from "@/lib/block-effects/animation";
-import { effectIconRole, type BlockEffect } from "@/lib/block-effects/types";
-import { paintEffectIcon } from "@/lib/block-effects/icon";
+import { frameAtTime } from "@next-karaoke/lyrics/effects";
+import { effectAppearance } from "@next-karaoke/lyrics/effects";
+import { frameAtlasIdentity, loadFrameAtlas, type LoadedAtlas } from "@next-karaoke/lyrics/effects";
+import { subscribeFramePainter, refreshFramePainter } from "@next-karaoke/lyrics/effects";
+import { effectIconRole, type BlockEffect } from "@next-karaoke/lyrics/effects";
+import { paintEffectIcon } from "@next-karaoke/lyrics/effects";
 
 export interface EffectGroupControl {
   key: string; effect: BlockEffect; indices: number[]; lineIndex: number;

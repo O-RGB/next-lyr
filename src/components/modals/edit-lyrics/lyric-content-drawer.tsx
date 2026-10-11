@@ -7,7 +7,7 @@ import InputCommon from "@/components/common/data-input/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import type { LyricSticker } from "@/lib/stickers/types";
+import type { LyricSticker } from "@next-karaoke/lyrics/media";
 import { EditorDrawer } from "./editor-drawer";
 import LineStickerPanel from "./line-sticker-panel";
 

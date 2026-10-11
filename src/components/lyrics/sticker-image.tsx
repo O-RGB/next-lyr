@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getStickerBlob } from "@/lib/database/db";
-import type { LyricSticker } from "@/lib/stickers/types";
+import type { LyricSticker } from "@next-karaoke/lyrics/media";
 
 export function StickerImage({ projectId, sticker, size = 32 }: {
   projectId: string;

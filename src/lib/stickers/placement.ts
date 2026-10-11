@@ -1,4 +1,4 @@
-import type { LyricSticker } from "./types";
+import type { LyricSticker } from "@next-karaoke/lyrics/media";
 
 export function stickerPlacement(sticker: LyricSticker, textWidth: number, fontSize: number, viewportWidth: number, y: number) {
   const scale = Math.min(fontSize / sticker.height, fontSize * 2 / sticker.width);

@@ -1,4 +1,4 @@
-import type { LineStickers, LyricSticker, GalleryImage } from "../stickers/types";
+import type { LineStickers, LyricSticker, GalleryImage } from "@next-karaoke/lyrics/media";
 import Dexie, { Table } from "dexie";
 import { MusicMode, IMidiInfo } from "@/types/common.type";
 import { generateUUID } from "@/lib/uuid";

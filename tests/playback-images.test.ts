@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectPlaybackAssets, buildYoutubePlayback } from '../src/lib/stickers/playback-assets';
+import { collectPlaybackAssets, buildYoutubePlayback } from '@next-karaoke/lyrics/format';
 import { buildPlaybackKlyrXml } from '../src/lib/karaoke/lyrics-core/xml';
-import { layoutInlineWords } from '../src/lib/stickers/inline-layout';
+import { layoutInlineWords } from '@next-karaoke/lyrics/canvas';
 import { buildModifiedMidi } from '../src/lib/karaoke/midi/builder';
 import { buildMp3 } from '../src/lib/karaoke/mp3/builder';
 import { decodeLyricsBase64 } from '../src/lib/karaoke/mp3/lib';

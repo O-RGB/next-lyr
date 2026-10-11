@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { layoutEffectEditorBlocks } from "../src/lib/block-effects/editor-layout";
-import { applySelectedEffect, resolveEffectSelection, resizeEffectRun, selectionAfterDraftHistory } from "../src/lib/block-effects/editor";
-import { groupEffectBlocks, type BlockEffect } from "../src/lib/block-effects/types";
+import { layoutEffectEditorBlocks } from "@next-karaoke/lyrics/effects";
+import { applySelectedEffect, resolveEffectSelection, resizeEffectRun, selectionAfterDraftHistory } from "@next-karaoke/lyrics/effects";
+import { groupEffectBlocks, type BlockEffect } from "@next-karaoke/lyrics/effects";
 import { cellsFromLine } from "../src/lib/karaoke/inline-content";
 const fire: BlockEffect = { type: "fire", connected: true };
 const words = (effects: Array<BlockEffect | undefined>) => effects.map((effect, index) => ({ text: `word${index}`, index, lineIndex: 0, at: index + 1, effect }));

@@ -9,9 +9,9 @@ import { LyrBuilder } from "@/lib/karaoke/lyrics";
 import { TickLyricSegmentGenerator } from "@/lib/karaoke/cursor";
 import { wordDataToLyricsDocument } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildPlaybackKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
-import { collectEffectAtlases } from "@/lib/block-effects/frames";
-import { normalizeBlockEffect } from "@/lib/block-effects/types";
-import { collectPlaybackAssets, buildYoutubePlayback } from "@/lib/stickers/playback-assets";
+import { collectEffectAtlases } from "@next-karaoke/lyrics/effects";
+import { normalizeBlockEffect } from "@next-karaoke/lyrics/effects";
+import { collectPlaybackAssets, buildYoutubePlayback } from "@next-karaoke/lyrics/format";
 import { lyricsDocumentToEvents } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildModifiedMidi } from "@/lib/karaoke/midi/builder";
 import { LyricEvent, SongInfo, ChordEvent } from "@/lib/karaoke/midi/types";
@@ -113,7 +113,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     if (!hasImages && !hasEffects) return undefined;
     const document = { ...currentDocument(), info };
     const assets = await collectPlaybackAssets(document, (id) => getStickerBlob(projectId ?? "", id));
-    return buildPlaybackKlyrXml(document, assets, await collectEffectAtlases(document));
+    return buildPlaybackKlyrXml(document, assets, document.effectAtlases?.length ? await collectEffectAtlases(document) : undefined);
   };
   const exportError = async (error: unknown) => {
     console.error("Playback export failed", error);
@@ -147,7 +147,7 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
     const youtubeId = useKaraokeStore.getState().playerState.youtubeId;
     if (!youtubeId) throw new Error("missing-youtube-id");
     const json = JSON.stringify(buildYoutubePlayback({ youtubeId, info: metadata, lyrics: newLyricsData,
-      chords: newChordsData, document: playbackDocument, assets, effectAtlases: await collectEffectAtlases(playbackDocument) }));
+      chords: newChordsData, document: playbackDocument, assets, effectAtlases: playbackDocument.effectAtlases?.length ? await collectEffectAtlases(playbackDocument) : undefined }));
 
     const compressed = pako.gzip(json);
     const blob = new Blob([compressed], { type: "application/octet-stream" });

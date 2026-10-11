@@ -6,7 +6,7 @@ import ButtonCommon from "@/components/common/button";
 import { StickerImage } from "@/components/lyrics/sticker-image";
 import { getGalleryImages } from "@/lib/database/db";
 import { importGalleryImage } from "@/lib/stickers/gallery";
-import type { LyricSticker, GalleryImage } from "@/lib/stickers/types";
+import type { LyricSticker, GalleryImage } from "@next-karaoke/lyrics/media";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 

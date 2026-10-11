@@ -3,8 +3,8 @@
 import { Fragment, type ReactNode } from "react";
 import { Pencil } from "lucide-react";
 import { EffectIcon } from "@/components/lyrics/effect-icon";
-import { groupEffectBlocks, effectLabel, type EffectRun } from "@/lib/block-effects/types";
-import { effectAppearance } from "@/lib/block-effects/appearance";
+import { groupEffectBlocks, effectLabel, type EffectRun } from "@next-karaoke/lyrics/effects";
+import { effectAppearance } from "@next-karaoke/lyrics/effects";
 import type { LyricCellDraft } from "@/lib/karaoke/inline-content";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";

@@ -1,6 +1,6 @@
 import { getGalleryImages, putStickerAsset } from "@/lib/database/db";
 import { optimizeSticker } from "./optimize";
-import { MAX_STICKER_INPUT_BYTES } from "./types";
+import { MAX_STICKER_INPUT_BYTES } from "@next-karaoke/lyrics/media";
 
 /** One import path for uploads; reuse the original file hash before optimizing. */
 export async function importGalleryImage(projectId: string, file: File, signal: AbortSignal) {

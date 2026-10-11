@@ -1,8 +1,8 @@
 import { roundedRect } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
-import { normalizeBlockEffect } from "@/lib/block-effects/types";
-import { withEffectTextStyle } from "@/lib/block-effects/appearance";
-import { drawCanvasText } from "./karaoke-lyrics/canvas-renderer";
+import { normalizeBlockEffect } from "@next-karaoke/lyrics/effects";
+import { withEffectTextStyle } from "@next-karaoke/lyrics/effects";
+import { drawCanvasText } from "@next-karaoke/lyrics/canvas";
 
 export const LYRICS_ROW_HEIGHT = 70;
 export const LYRICS_LEFT_GUTTER = 36;

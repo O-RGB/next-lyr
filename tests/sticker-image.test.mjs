@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectStickerImage, fitStickerDimensions } from "../src/lib/stickers/image-info.ts";
+import { inspectStickerImage, fitStickerDimensions } from "@next-karaoke/lyrics/image-info";
 import { stickerPlacement } from "../src/lib/stickers/placement.ts";
 
 const pngHeader = (width, height) => {
