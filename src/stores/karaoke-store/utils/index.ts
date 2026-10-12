@@ -1,3 +1,4 @@
+import { subtitleText } from "@next-karaoke/lyrics/core";
 import { ArrayRange, ISentence } from "@/lib/array-range";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";
@@ -9,6 +10,7 @@ import {
 } from "@/lib/karaoke/lyrics-core/timeline";
 import { buildKlyrXml } from "@/lib/karaoke/lyrics-core/xml";
 import { normalizeChordEvents } from "@/lib/karaoke/chords/normalize";
+import { LyricsPlaybackTimeline } from "./lyrics-timeline";
 import {
   TickLyricSegmentGenerator,
   TimestampLyricSegmentGenerator,
@@ -41,8 +43,8 @@ export const processLyricsForPlayer = (
   mode: MusicMode,
   midi: IMidiParseResult | null
 ): ArrayRange<ISentence> | undefined => {
-  const timedWords = lyricsData.filter((w) => w.at !== null);
-  if (timedWords.length === 0) return undefined;
+  const timedWords = lyricsData.filter((w) => w.kind !== "image" && w.at !== null);
+  if (lyricsData.length === 0) return undefined;
 
   let timestamps: number[] = [];
   if (mode === "midi" && midi) {
@@ -56,55 +58,45 @@ export const processLyricsForPlayer = (
   // Newly inserted words are intentionally allowed to remain untimed; they
   // must not consume characters from the generated cursor and shift every
   // timed line that follows them.
-  const timedLines = new Map<number, typeof lyricsData>();
-  timedWords.forEach((word) => {
-    const line = timedLines.get(word.lineIndex);
+  const visibleLines = new Map<number, typeof lyricsData>();
+  lyricsData.forEach((word) => {
+    const line = visibleLines.get(word.lineIndex);
     if (line) line.push(word);
-    else timedLines.set(word.lineIndex, [word]);
+    else visibleLines.set(word.lineIndex, [word]);
   });
 
-  const arrayRange = new ArrayRange<ISentence>();
+  const arrayRange = new LyricsPlaybackTimeline();
   let cursorIndex = 0;
+  let previousEnd = 0;
 
-  [...timedLines.entries()]
+  [...visibleLines.entries()]
     .sort(([left], [right]) => left - right)
-    .map(([lineIndex, items]) => {
+    .forEach(([lineIndex, words]) => {
+      const items = words.filter(word => word.kind !== "image" && word.at !== null);
       const line = items.map((item) => item.text).join("");
-      const vocal = items
-        .map((item, index) => {
-          if (!item.vocal) return "";
-
-          const isLastWithVocal = items
-            .slice(index + 1)
-            .every((next) => !next.vocal);
-          return item.vocal + (isLastWithVocal ? "" : "-");
-        })
-        .join("");
+      const vocal = subtitleText(items);
       const lineLength = line.length;
-      if (lineLength === 0) return undefined;
 
-      const lineCursor = timestamps.slice(
+      const lineCursor = lineLength ? timestamps.slice(
         cursorIndex,
         cursorIndex + lineLength + 1
-      );
-      cursorIndex += lineLength + 1;
-      if (!lineCursor.length) return undefined;
+      ) : [];
+      if (lineLength) cursorIndex += lineLength + 1;
 
-      const [start, ...valueName] = lineCursor;
+      const [start = previousEnd, ...valueName] = lineCursor;
       const end = valueName[lineLength - 1] || start;
       const value = {
         lineIndex,
-        words: lyricsData.filter((word) => word.lineIndex === lineIndex && (word.at !== null || word.kind === "image")),
+        words,
         text: line,
         start,
         valueName,
         end,
         vocal,
       };
-      arrayRange.push([start, end], value);
-      return value;
-    })
-    .filter((x) => x !== undefined);
+      arrayRange.addLine([start, end], value, lineCursor.length > 0);
+      previousEnd = end;
+    });
 
   return arrayRange;
 };
@@ -116,7 +108,7 @@ export const getPreRollTime = (
   if (lineIndex <= 0) return 0;
 
   const firstWordOfPreviousLine = lyricsData.find(
-    (w) => w.lineIndex === lineIndex - 1
+    (w) => w.lineIndex === lineIndex - 1 && w.kind !== "image" && w.at !== null
   );
   return firstWordOfPreviousLine?.at ?? 0;
 };

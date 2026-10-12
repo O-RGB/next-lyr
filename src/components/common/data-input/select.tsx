@@ -1,10 +1,12 @@
 import React, { forwardRef } from "react";
+import { ChevronDown } from "lucide-react";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import {
   BaseInputProps,
   BaseInputWrapper,
   getInputBaseClass,
+  InputPrefix,
 } from "./base";
 
 interface SelectOption {
@@ -23,6 +25,7 @@ interface SelectCommonProps
       "size"
     > {
   options: SelectOption[];
+  prefixIcon?: React.ReactNode;
   placeholder?: string;
 }
 
@@ -40,6 +43,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
       onFocus,
       onBlur,
       id,
+      prefixIcon,
       ...props
     },
     ref
@@ -49,7 +53,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
     const selectClassName = getInputBaseClass(
       error,
       inputSize,
-      `appearance-none cursor-pointer ${className}`
+      `appearance-none cursor-pointer pr-6 ${prefixIcon ? "pl-7" : ""} ${className}`
     );
 
     return (
@@ -62,6 +66,7 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
         htmlFor={id}
       >
         <div className="relative">
+          <InputPrefix icon={prefixIcon} />
           <select
             {...props}
             ref={ref}
@@ -86,21 +91,8 @@ const SelectCommon = forwardRef<HTMLSelectElement, SelectCommonProps>(
             ))}
           </select>
 
-          {/* Custom dropdown arrow */}
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <svg
-              className="w-4 h-4 text-muted-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
           </div>
         </div>
       </BaseInputWrapper>

@@ -97,3 +97,8 @@ export const getInputBaseClass = (
     error && "border-destructive ring-3 ring-destructive/20",
     additionalClasses
   );
+
+/** Decorative prefixes leave the native field's focus and text selection intact. */
+export function InputPrefix({ icon }: { icon?: React.ReactNode }) {
+  return icon ? <span aria-hidden="true" data-input-prefix className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-muted-foreground">{icon}</span> : null;
+}

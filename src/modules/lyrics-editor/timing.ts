@@ -4,7 +4,7 @@ export function calculateSeekTime(
   word: LyricWordData,
   lyricsData: LyricWordData[]
 ): number {
-  if (word.at !== null) return word.at;
+  if (word.kind !== "image" && word.at !== null) return word.at;
 
   const wordPosition = lyricsData.findIndex(
     (candidate) => candidate.index === word.index
@@ -14,7 +14,7 @@ export function calculateSeekTime(
   // An untimed word belongs to its line. Start that line from its first
   // available timestamp instead of jumping back to an arbitrary earlier word.
   const lineStart = lyricsData.find(
-    (candidate) => candidate.lineIndex === word.lineIndex && candidate.at !== null
+    (candidate) => candidate.kind !== "image" && candidate.lineIndex === word.lineIndex && candidate.at !== null
   )?.at;
   if (lineStart !== undefined && lineStart !== null) return lineStart;
 
@@ -22,6 +22,6 @@ export function calculateSeekTime(
   // timed word before it. Using its end avoids replaying the previous line.
   const previousTimed = [...lyricsData.slice(0, wordPosition)]
     .reverse()
-    .find((candidate) => candidate.at !== null);
+    .find((candidate) => candidate.kind !== "image" && candidate.at !== null);
   return previousTimed?.at ?? 0;
 }

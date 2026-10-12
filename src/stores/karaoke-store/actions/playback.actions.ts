@@ -76,18 +76,21 @@ export const createPlaybackActions: StateCreator<
           if (state.editingLineIndex !== null) {
             newCurrentIndex =
               flatLyrics.find(
-                (word) => word.lineIndex >= state.editingLineIndex! &&
+                (word) => word.kind !== "image" && word.lineIndex >= state.editingLineIndex! &&
                   (state.editingEndLineIndex === null || word.lineIndex <= state.editingEndLineIndex)
               )?.index ?? -1;
             newSelectedLineIndex = state.editingLineIndex;
           } else {
-            newCurrentIndex = 0;
-            newSelectedLineIndex = 0;
+            const first = flatLyrics.find(word => word.kind !== "image");
+            newCurrentIndex = first?.index ?? -1;
+            newSelectedLineIndex = first?.lineIndex ?? null;
           }
         }
 
-        const wordToStart = flatLyrics[newCurrentIndex];
+        const wordToStart = flatLyrics.find(word => word.kind !== "image" && word.index >= newCurrentIndex);
         if (!wordToStart) return {};
+        newCurrentIndex = wordToStart.index;
+        newSelectedLineIndex = wordToStart.lineIndex;
 
         const timingBuffer = {
           lineIndex: wordToStart.lineIndex,
@@ -115,12 +118,12 @@ export const createPlaybackActions: StateCreator<
       const flatLyrics = get().lyricsData.flat();
       const groups = groupConsecutiveLineIndices(lineIndices.filter((index) => get().lyricsData[index]?.length)).filter((group) =>
         group.some((lineIndex) =>
-          flatLyrics.some((word) => word.lineIndex === lineIndex)
+          flatLyrics.some((word) => word.kind !== "image" && word.lineIndex === lineIndex)
         )
       );
       const firstGroup = groups[0];
       const firstWordOfLine = firstGroup
-        ? flatLyrics.find((w) => w.lineIndex === firstGroup[0])
+        ? flatLyrics.find((w) => w.kind !== "image" && firstGroup.includes(w.lineIndex))
         : undefined;
 
       if (!firstWordOfLine) {
@@ -158,9 +161,9 @@ export const createPlaybackActions: StateCreator<
 
     startTimingFromWord: (index: number) => {
       const state = get();
-      const word = state.lyricsData.flat().find((candidate) => candidate.index === index);
+      const word = state.lyricsData.flat().find((candidate) => candidate.index === index && candidate.kind !== "image");
       if (!word) return { success: false, preRollTime: 0 };
-      const previous = state.lyricsData.flat().slice(0, index).reverse().find((candidate) => candidate.at !== null);
+      const previous = state.lyricsData.flat().slice(0, index).reverse().find((candidate) => candidate.kind !== "image" && candidate.at !== null);
       const groups = [Array.from({ length: state.lyricsData.length - word.lineIndex }, (_, offset) => word.lineIndex + offset)];
       set({
         currentIndex: index,
@@ -186,7 +189,7 @@ export const createPlaybackActions: StateCreator<
       const state = get();
       const groups = state.timingLineGroups;
       const nextGroupIndex = groups?.findIndex((group, index) =>
-        index > state.timingGroupIndex && group.some((line) => state.lyricsData[line]?.length)
+        index > state.timingGroupIndex && group.some((line) => state.lyricsData[line]?.some(word => word.kind !== "image"))
       ) ?? -1;
       const nextGroup = groups?.[nextGroupIndex];
 
@@ -268,7 +271,7 @@ export const createPlaybackActions: StateCreator<
       const newBuffer = new Map(timingBuffer.buffer);
 
       const currentWord = flatLyrics[currentIndex];
-      if (currentWord) {
+      if (currentWord && currentWord.kind !== "image") {
         const currentWordData = newBuffer.get(currentWord.index);
         if (!currentWordData || currentWordData.at === null) {
           newBuffer.set(currentWord.index, { at: currentTime });
@@ -313,14 +316,14 @@ export const createPlaybackActions: StateCreator<
 
       const flatLyrics = state.lyricsData.flat();
       const wordToCorrect = flatLyrics[newCurrentIndex];
-      if (!wordToCorrect) return { lineStartTime: 0 };
+      if (!wordToCorrect || wordToCorrect.kind === "image") return { lineStartTime: 0 };
 
       const targetLineIndex = wordToCorrect.lineIndex;
 
       if (targetLineIndex > 0) {
         const preRollLineIndex = targetLineIndex - 1;
         const firstWordOfPreRollLine = flatLyrics.find(
-          (w) => w.lineIndex === preRollLineIndex
+          (w) => w.kind !== "image" && w.lineIndex === preRollLineIndex
         );
 
         if (firstWordOfPreRollLine) {

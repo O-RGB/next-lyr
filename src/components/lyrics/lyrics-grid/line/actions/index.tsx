@@ -112,7 +112,12 @@ const LineAction: React.FC<LineActionProps> = React.memo(
       },
     ];
     return (
-      <div className="flex flex-row items-center border-l lg:border-0">
+      <div className="flex flex-row items-center border-l lg:border-0" onPointerDownCapture={event => {
+        if (!event.shiftKey || isPlaying || isTimingActive || editingLineIndex !== null) return;
+        event.preventDefault();
+        event.stopPropagation();
+        actions.toggleLineSelection(lineIndex, true);
+      }}>
         <ContextMenuCommon
           menuButton={
             <ButtonCommon

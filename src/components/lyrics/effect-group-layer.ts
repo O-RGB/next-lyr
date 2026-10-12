@@ -9,7 +9,7 @@ export interface EffectGroupControl {
   key: string; effect: BlockEffect; indices: number[]; lineIndex: number;
   start: number; end: number; top: number; capWidth: number; boxHeight: number; rangeY: number;
   rowTop: number; rowHeight: number; clipLeft: number; clipRight: number;
-  label: string; title: string; background: string; disabled?: boolean; muted?: boolean;
+  title: string; background: string; disabled?: boolean; muted?: boolean;
 }
 interface Entry {
   element: HTMLDivElement; buttons: HTMLButtonElement[]; icons: HTMLCanvasElement[];
@@ -19,7 +19,7 @@ interface Entry {
 export interface EffectGroupLayer {
   element: HTMLDivElement | null; viewport?: HTMLDivElement; entries: Map<string, Entry>;
   unsubscribe?: () => void; painter?: (time: number, reduced: boolean) => void;
-  onEdit?: (placement: EffectGroupControl) => void;
+  onEdit?: (placement: EffectGroupControl, withShift?: boolean) => void;
   onScroll?: (placement: EffectGroupControl, delta: number) => void;
 }
 export const makeEffectGroupLayer = (): EffectGroupLayer => ({ element: null, entries: new Map() });
@@ -31,7 +31,7 @@ export function clearEffectGroupLayer(layer: EffectGroupLayer) {
 
 /** Visible editor controls are pooled so the playback clock never rerenders React. */
 export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: EffectGroupControl[], height: number,
-  onEdit: (placement: EffectGroupControl) => void, onScroll?: (placement: EffectGroupControl, delta: number) => void) {
+  onEdit: (placement: EffectGroupControl, withShift?: boolean) => void, onScroll?: (placement: EffectGroupControl, delta: number) => void) {
   if (!layer.element) { clearEffectGroupLayer(layer); return; }
   layer.onEdit = onEdit;
   layer.onScroll = onScroll;
@@ -58,20 +58,20 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
       svg.append(path); range.append(svg); element.append(range);
       for (const side of ["start", "end"]) {
         const button = document.createElement("button"), body = document.createElement("span");
-        const icon = document.createElement("canvas"), label = document.createElement("span");
+        const icon = document.createElement("canvas");
         button.type = "button"; button.dataset.effectBoundary = side;
         button.className = "absolute cursor-pointer rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary";
         Object.assign(button.style, { padding: "6px 4px", background: "transparent", border: "0", pointerEvents: "auto", touchAction: "pan-y" });
-        body.className = "flex h-full items-center justify-center gap-1 rounded-md border text-[10px] font-semibold";
-        icon.style.width = "16px"; icon.style.height = "16px"; icon.setAttribute("aria-hidden", "true");
-        label.dataset.effectLabel = ""; body.append(icon, label); button.append(body); element.append(button);
+        body.className = "flex h-full items-center justify-center rounded-md border";
+        icon.style.width = "22px"; icon.style.height = "22px"; icon.setAttribute("aria-hidden", "true");
+        body.append(icon); button.append(body); element.append(button);
         buttons.push(button); icons.push(icon);
       }
       entry = { element, buttons, icons, range, path, placement, atlasKey: "", request: 0, lastFrame: -1, disposed: false };
       const current = entry;
       for (const button of [...buttons, range]) {
         let drag: { x: number; y: number; lastX: number; moved: boolean } | undefined, skipClick = false;
-        button.onclick = event => { event.stopPropagation(); if(skipClick){skipClick=false;return;}layer.onEdit?.(current.placement); };
+        button.onclick = event => { event.stopPropagation(); if(skipClick){skipClick=false;return;}layer.onEdit?.(current.placement, event.shiftKey); };
         button.onpointerdown = event => { event.stopPropagation(); skipClick=false;drag={x:event.clientX,y:event.clientY,lastX:event.clientX,moved:false}; };
         button.onpointermove = event => {
           if(!drag||!layer.onScroll)return;
@@ -101,7 +101,6 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
         width: `${placement.capWidth + 8}px`, height: `${placement.boxHeight + 12}px`, pointerEvents: placement.disabled ? "none" : "auto",touchAction:onScroll?"pan-y":"auto" });
       const body = button.firstElementChild as HTMLElement;
       Object.assign(body.style, { color: "var(--foreground)", background: placement.background, borderColor: `${color}90`, borderRadius: "5px" });
-      button.querySelector<HTMLElement>("[data-effect-label]")!.textContent = placement.label;
     }
     const span = Math.max(1, placement.end - placement.start), drop = Math.max(1, placement.rangeY - placement.top - placement.boxHeight);
     const rangeWidth = span + 2, rangeHeight = drop + 2;

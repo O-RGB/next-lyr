@@ -11,7 +11,8 @@ export const createLineSelectionActions: StateCreator<
   { actions: LineSelectionActions }
 > = (set, get) => ({
   actions: {
-    setLineSelectionMode: (enabled) =>
+    setLineSelectionMode: (enabled) => {
+      if (enabled && (get().isEditModalOpen || get().isAddModalOpen)) return;
       set(
         enabled
           ? {
@@ -26,26 +27,23 @@ export const createLineSelectionActions: StateCreator<
               lineSelectionAnchor: null,
               lineShiftArmed: false,
             }
-      ),
+      );
+    },
 
     toggleLineSelection: (lineIndex, withShift = false) => {
       const state = get();
-      if (!state.lineSelectionMode || state.isPlaying || state.isTimingActive) {
-        return;
-      }
+      if (state.isPlaying || state.isTimingActive || state.editingLineIndex !== null || state.isEditModalOpen || state.isAddModalOpen ||
+        !Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= state.lyricsData.length) return;
+      if (!state.lineSelectionMode && !withShift) return;
 
-      if (
-        (state.lineShiftArmed || withShift) &&
-        state.lineSelectionAnchor !== null
-      ) {
-        const from = Math.min(state.lineSelectionAnchor, lineIndex);
-        const to = Math.max(state.lineSelectionAnchor, lineIndex);
+      if (state.lineShiftArmed || withShift) {
+        const anchor = state.lineSelectionAnchor ?? state.selectedLineIndex ?? lineIndex;
+        const from = Math.min(anchor, lineIndex);
+        const to = Math.max(anchor, lineIndex);
         set({
-          selectedLineIndices: Array.from(
-            { length: to - from + 1 },
-            (_, index) => from + index
-          ),
-          lineSelectionAnchor: lineIndex,
+          lineSelectionMode: true,
+          selectedLineIndices: Array.from({ length: to - from + 1 }, (_, index) => from + index),
+          lineSelectionAnchor: anchor,
           lineShiftArmed: false,
         });
         return;
@@ -64,7 +62,7 @@ export const createLineSelectionActions: StateCreator<
 
     selectLineRange: (lineIndex) => {
       const state = get();
-      if (!state.lineSelectionMode || state.isPlaying || state.isTimingActive) {
+      if (!state.lineSelectionMode || state.isPlaying || state.isTimingActive || state.editingLineIndex !== null || state.isEditModalOpen || state.isAddModalOpen) {
         return;
       }
 
@@ -87,6 +85,8 @@ export const createLineSelectionActions: StateCreator<
         !state.lineSelectionMode ||
         state.isPlaying ||
         state.isTimingActive ||
+        state.isEditModalOpen ||
+        state.isAddModalOpen ||
         state.lyricsData.length === 0
       ) {
         return;

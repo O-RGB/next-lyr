@@ -2,7 +2,7 @@ import { normalizeBlockEffect, type BlockEffect } from "@next-karaoke/lyrics/eff
 import type { LyricWordData } from "@/types/common.type";
 import type { LineStickers, LyricSticker } from "@next-karaoke/lyrics/media";
 
-// One timing unit for an image; renderers display its asset, never this marker.
+// Content marker only. Images decorate a line and never consume a timing unit.
 export const IMAGE_TOKEN = "\uFFFC";
 export interface LyricCellDraft {
   key: string;
@@ -14,19 +14,33 @@ export interface LyricCellDraft {
   effect?: BlockEffect;
 }
 
-/** Reorder content only. The destination keeps its original timing slot. */
+/** Reorder content only. Text timing slots stay in order; images own no slot. */
 export function moveCellContent(cells: LyricCellDraft[], from: number, to: number): LyricCellDraft[] {
   if (from < 0 || to < 0 || from >= cells.length || to >= cells.length || from === to) return cells;
   const content = [...cells];
   content.splice(to, 0, content.splice(from, 1)[0]);
-  return content.map((cell, index) => ({ ...cell, originalIndex: cells[index].originalIndex }));
+  const textSlots = cells.filter(cell => cell.kind !== "image").map(cell => cell.originalIndex);
+  let slot = 0;
+  return content.map(cell => cell.kind === "image" ? cell : { ...cell, originalIndex: textSlots[slot++] });
+}
+
+/** A drop adopts its destination's membership, including leaving a group. */
+export function dropCellContent(cells: LyricCellDraft[], from: number, to: number, groupEffect?: BlockEffect): LyricCellDraft[] {
+  if (from < 0 || to < 0 || from >= cells.length || to >= cells.length) return cells;
+  const key = cells[from].key;
+  const effect = normalizeBlockEffect(groupEffect);
+  if (from === to && JSON.stringify(cells[from].effect) === JSON.stringify(effect)) return cells;
+  const moved = moveCellContent(cells, from, to);
+  return moved.map(cell => cell.key === key ? { ...cell, effect } : cell);
 }
 
 /** The drawer captures its insertion point before it takes focus from the line. */
 export function insertCellAfter(cells: LyricCellDraft[], cell: LyricCellDraft, afterKey: string | null): LyricCellDraft[] {
   const anchor = cells.findIndex(item => item.key === afterKey);
   const next = [...cells];
-  next.splice(anchor >= 0 ? anchor + 1 : next.length, 0, cell);
+  const effect = anchor >= 0 ? normalizeBlockEffect(cells[anchor].effect) : undefined;
+  const insideGroup = !cell.effect && effect?.connected && JSON.stringify(effect) === JSON.stringify(normalizeBlockEffect(cells[anchor + 1]?.effect));
+  next.splice(anchor >= 0 ? anchor + 1 : next.length, 0, insideGroup ? { ...cell, effect } : cell);
   return next;
 }
 
@@ -48,8 +62,7 @@ export function migrateInlineStickers(lines: LyricWordData[][], legacy: LineStic
     const sticker = legacy[lineIndex];
     const next = [...line];
     if (sticker && !line.some((word) => word.kind === "image" && word.sticker?.id === sticker.id)) {
-      const at = sticker.position === "after" ? line.at(-1)?.at ?? null : line[0]?.at ?? null;
-      const image: LyricWordData = { kind: "image", text: IMAGE_TOKEN, vocal: "", sticker, at, index: -1, lineIndex };
+      const image: LyricWordData = { kind: "image", text: IMAGE_TOKEN, vocal: "", sticker, at: null, index: -1, lineIndex };
       if (sticker.position === "after") next.push(image); else next.unshift(image);
     }
     return next.map((word) => ({ ...word, index: index++, lineIndex }));

@@ -22,6 +22,7 @@ function buildPlaybackTimeline(
 ): TimedPlaybackWord[] {
   const words = lyricsData.flat();
   const starts = words.map((word) => {
+    if (word.kind === "image") return null;
     const buffered = timingBuffer?.buffer.get(word.index);
     return buffered !== undefined ? buffered.at : word.at;
   });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ImagePlus, Plus, Type } from "lucide-react";
 import ButtonCommon from "@/components/common/button";
-import InputCommon from "@/components/common/data-input/input";
+import VisibleSpaceInput from "@/components/common/data-input/visible-space-input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -32,14 +32,14 @@ export function LyricContentDrawer({ open, replacing, projectId, onClose, onWord
       <TabsContent value="word">
         <form className="space-y-3" onSubmit={event => {
           event.preventDefault();
-          if (!word.trim()) return;
+          if (word.length === 0) return;
           onWord(word, vocal); setWord(""); setVocal("");
         }}>
-          <InputCommon label={text(locale, "คำร้อง", "Lyrics")} aria-label={text(locale, "คำร้องใหม่", "New word")}
+          <VisibleSpaceInput label={text(locale, "คำร้อง", "Lyrics")} aria-label={text(locale, "คำร้องใหม่", "New word")}
             value={word} onChange={event => setWord(event.target.value)} />
-          <InputCommon label={text(locale, "ซับ (ถ้ามี)", "Subtitle (optional)")} aria-label={text(locale, "ซับของคำใหม่", "New word subtitle")}
+          <VisibleSpaceInput label={text(locale, "ซับ (ถ้ามี)", "Subtitle (optional)")} aria-label={text(locale, "ซับของคำใหม่", "New word subtitle")}
             value={vocal} onChange={event => setVocal(event.target.value)} />
-          <ButtonCommon type="submit" className="w-full" icon={<Plus />} disabled={!word.trim()}>{text(locale, "เพิ่มคำ", "Add word")}</ButtonCommon>
+          <ButtonCommon type="submit" className="w-full" icon={<Plus />} disabled={word.length === 0}>{text(locale, "เพิ่มคำ", "Add word")}</ButtonCommon>
         </form>
       </TabsContent>
       <TabsContent value="image">{gallery}</TabsContent>

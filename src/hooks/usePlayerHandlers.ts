@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { timingLyrics, nextTimingWord } from "@/stores/karaoke-store/timing-session";
 import { calculateSeekTime } from "@/modules/lyrics-editor/timing";
+import { hasCompleteLyricTiming } from "@/lib/karaoke/utils";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { transport } from "@/lib/karaoke-engine/transport";
 import { usePlayerSetupStore } from "./usePlayerSetup";
@@ -86,10 +87,10 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       if (!state.isTimingActive && state.editingLineIndex === null) return;
       const flat = timingLyrics(state).flat();
       let target = state.currentIndex < 0
-        ? flat.find((word) => word.lineIndex >= (state.editingLineIndex ?? 0))
+        ? flat.find((word) => word.kind !== "image" && word.lineIndex >= (state.editingLineIndex ?? 0))
         : flat.find((word) => word.index === state.currentIndex);
-      if (target && state.timingOnlyUntimed &&
-        (target.at !== null || state.timingBuffer?.buffer.get(target.index)?.at != null)) {
+      if (target && (target.kind === "image" || (state.timingOnlyUntimed &&
+        (target.at !== null || state.timingBuffer?.buffer.get(target.index)?.at != null)))) {
         target = nextTimingWord({ ...state, currentIndex: target.index - 1 });
         if (target) state.actions.setCurrentIndex(target.index);
       }
@@ -105,7 +106,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         return;
       }
       // Listen to the previous timed word again; never stamp it a second time.
-      const previous = flat.slice(0, target.index).reverse().find((word) => word.at !== null);
+      const previous = flat.slice(0, target.index).reverse().find((word) => word.kind !== "image" && word.at !== null);
       state.actions.selectLine(target.lineIndex);
       const seek = playerControls.seek(previous?.at ?? 0);
       playerControls.play();
@@ -119,7 +120,8 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
       if (state.isTimingActive || state.editingLineIndex !== null) return handleResumeTiming();
       const { playerControls } = usePlayerSetupStore.getState();
       if (!playerControls || transport.loading) return;
-      const firstUntimed = state.lyricsData.flat().find((word) => word.at === null);
+      if (hasCompleteLyricTiming(state.lyricsData)) return;
+      const firstUntimed = state.lyricsData.flat().find((word) => word.kind !== "image" && word.at === null);
       if (!firstUntimed) return;
       const result = state.actions.startTimingFromWord(firstUntimed.index);
       if (!result.success) return;
@@ -148,7 +150,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         player.play();
         return;
       }
-      const firstWord = state.selectedLineIndex === null ? undefined : state.lyricsData[state.selectedLineIndex]?.[0];
+      const firstWord = state.selectedLineIndex === null ? undefined : state.lyricsData[state.selectedLineIndex]?.find(word => word.kind !== "image");
       if (firstWord) {
         const targetTime = calculateSeekTime(firstWord, state.lyricsData.flat());
         state.actions.setPlayFromScrolledPosition(false);
@@ -254,11 +256,12 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         const firstWordOfActiveLine =
           state.editingLineIndex !== null
             ? flatLyrics.find(
-                (word) => word.lineIndex === state.editingLineIndex
+                (word) => word.kind !== "image" && word.lineIndex >= state.editingLineIndex! &&
+                  (state.editingEndLineIndex === null || word.lineIndex <= state.editingEndLineIndex)
               )
             : state.timingBuffer
               ? flatLyrics.find(
-                  (word) => word.lineIndex === state.timingBuffer!.lineIndex
+                  (word) => word.kind !== "image" && word.lineIndex === state.timingBuffer!.lineIndex
                 )
               : undefined;
 
@@ -269,9 +272,12 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
           return;
         }
 
-        const { lineStartTime } = state.actions.correctTimingStep(
-          Math.max(firstWordOfActiveLine?.index ?? 0, state.currentIndex - 1)
-        );
+        const lowerBound = firstWordOfActiveLine?.index ?? 0;
+        const previousWord = flatLyrics.slice(0, state.currentIndex).reverse()
+          .find(word => word.kind !== "image" && word.index >= lowerBound);
+        const targetIndex = previousWord?.index ?? firstWordOfActiveLine?.index;
+        if (targetIndex === undefined) return;
+        const { lineStartTime } = state.actions.correctTimingStep(targetIndex);
         // Start playback inside the same user gesture before waiting for a
         // potentially asynchronous seek, especially for MIDI.
         const seek = playerControls.seek(lineStartTime);
@@ -326,7 +332,7 @@ export const usePlayerHandlersStore = create<PlayerHandlersState>(
         // Untimed boxes are selectable lyric content, not playback targets.
         // Keep the click local so an incomplete line cannot start the player
         // with a guessed seek position.
-        if (word.at === null) {
+        if (word.kind === "image" || word.at === null) {
           useKaraokeStore.getState().actions.selectLine(word.lineIndex);
           return;
         }

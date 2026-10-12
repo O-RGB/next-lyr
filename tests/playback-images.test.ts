@@ -20,7 +20,7 @@ test('playback includes only used images, loads repeated images once, and preser
  const xml=buildPlaybackKlyrXml(doc,[...assets,...assets,{sticker:{...sticker,id:'unused'},base64:'AAAA'}]);
  assert.equal((xml.match(/<ASSET /g)||[]).length,1);assert.equal((xml.match(/<IMAGE /g)||[]).length,2);
  assert(!xml.includes('unused'));assert(!xml.includes('\uFFFC'));assert(xml.includes('ภาพ &amp; &lt;one&gt;.png'));
- assert(xml.includes('<TIME>2000</TIME>'));assert(xml.includes('<TIME></TIME>'));
+ assert(!xml.includes('<TIME>2000</TIME>'));assert.equal((xml.match(/<WORD timed="false">/g)||[]).length,2);assert(xml.includes('<TIME></TIME>'));
 });
 
 test('missing image prevents an incomplete playback export',async()=>{
@@ -38,10 +38,10 @@ test('YKR is playback data only and does not contain a project or editor state',
 
 test('inline layout allocates images between text and untimed decorations consume no progress',()=>{
  const words=doc.lines[0].map((w,index)=>({...w,index,lineIndex:0}));
- const layout=layoutInlineWords(words,40,300,(t)=>t.length*20,2/3);
+ const layout=layoutInlineWords(words,40,300,(t)=>t.length*20,1/2);
  assert.deepEqual(layout.map(x=>x.word.kind ?? 'text'),['text','image','text','image']);
  for(let i=1;i<layout.length;i++)assert(layout[i].left>=layout[i-1].left+layout[i-1].width);
- assert.deepEqual(layout.map(x=>x.progress),[1,1,0,0]);
+ assert.deepEqual(layout.map(x=>x.progress),[1,0,0,0]);
  assert(layout.at(-1)!.left+layout.at(-1)!.width<=300);
 });
 

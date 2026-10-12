@@ -58,24 +58,37 @@ export function EffectSelectionToolbar({ cells, selected, onSelectAll, onEdit }:
       {text(locale, "เอฟเฟกต์", "Effects")} · {targets.length} {text(locale, "คำ / รูป", "blocks")}
     </ButtonCommon>
     <button type="button" onClick={onSelectAll} className="min-h-9 rounded-md px-2 text-xs text-muted-foreground hover:bg-panel-2">
-      {text(locale, selected.size === cells.length && cells.length > 0 ? "ยกเลิกเลือก" : "เลือกทั้งหมด",
-        selected.size === cells.length && cells.length > 0 ? "Clear selection" : "Select all")}
+      {text(locale, targets.length > 0 ? "ยกเลิกเลือก" : "เลือกทั้งหมด",
+        targets.length > 0 ? "Clear selection" : "Select all")}
     </button>
   </div>;
 }
 
-export function BlockEffectPanel({ open, onClose, projectId, cells, selected, onApply }: SelectionProps & {
+export function BlockEffectPanel({ open, onClose, projectId, cells, selected, onApply, onReselect }: SelectionProps & {
   open: boolean; onClose: () => void; projectId: string | null;
   onApply: (effect?: BlockEffect) => void;
+  onReselect?: () => void;
 }) {
   const locale = useSettingsStore(state => state.uiLocale);
   const { targets } = getEffectSelection(cells, selected);
+  const ranges: number[][] = [];
+  cells.forEach((cell, index) => {
+    if (!selected.has(cell.key)) return;
+    const last = ranges.at(-1);
+    if (last && last[1] === index) last[1] = index + 1;
+    else ranges.push([index + 1, index + 1]);
+  });
+  const rangeLabel = ranges.map(([start, end]) => start === end ? `${start}` : `${start}–${end}`).join(", ");
   const selectedChoice = targets.length ? EFFECT_CHOICES.find(choice => targets.every(cell =>
     cell.effect?.type === choice.effect?.type && cell.effect?.variant === choice.effect?.variant))?.key : undefined;
-  return <EditorDrawer open={open} onClose={onClose} placement="bottom" title={text(locale, "แก้ไขเอฟเฟกต์", "Edit effects")}
+  return <EditorDrawer open={open} onClose={onClose} placement="bottom" title={onReselect
+    ? text(locale, "แก้ไขเอฟเฟกต์ทั้งกลุ่ม", "Edit group effect") : text(locale, "เอฟเฟกต์เฉพาะที่เลือก", "Effects for selected blocks")}
     initialFocus={() => document.querySelector<HTMLButtonElement>('[data-effect-option][aria-pressed="true"]')}
-    description={text(locale, `ใช้กับ ${targets.length} คำ / รูปที่เลือก`, `Apply to ${targets.length} selected blocks`)}
-    footer={<ButtonCommon type="button" icon={<Check />} onClick={onClose}>{text(locale, "เสร็จแล้ว", "Done")}</ButtonCommon>}>
+    description={text(locale, `ใช้กับ ${targets.length} คำ / รูป · บล็อก ${rangeLabel}`, `Apply to ${targets.length} blocks · ${rangeLabel}`)}
+    footer={<div className="flex items-center justify-end gap-2">
+      {onReselect && <ButtonCommon type="button" variant="outline" onClick={onReselect}>{text(locale, "เลือกบางส่วน", "Select part of group")}</ButtonCommon>}
+      <ButtonCommon type="button" icon={<Check />} onClick={onClose}>{text(locale, "เสร็จแล้ว", "Done")}</ButtonCommon>
+    </div>}>
     {open && <div className="space-y-4">
       <LyricDraftPreview cells={cells} projectId={projectId} />
       <EffectChoiceGrid selectedChoice={selectedChoice} enabled={targets.length > 0} onApply={onApply} />

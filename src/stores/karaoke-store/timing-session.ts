@@ -7,6 +7,7 @@ export function timingLyrics(state: Pick<KaraokeState, "lyricsData" | "timingBuf
   if (!buffer?.size) return state.lyricsData;
   return state.lyricsData.map((line) => line.map((word) => {
     const at = buffer.get(word.index)?.at;
+    if (word.kind === "image") return { ...word, at: null };
     return at !== null && at !== undefined ? { ...word, at } : word;
   }));
 }
@@ -15,6 +16,7 @@ export function nextTimingWord(state: Pick<KaraokeState,
   "lyricsData" | "timingBuffer" | "currentIndex" | "editingLineIndex" | "editingEndLineIndex" | "timingOnlyUntimed"
 >) {
   return state.lyricsData.flat().find((word) =>
+    word.kind !== "image" &&
     word.index > state.currentIndex &&
     (state.editingLineIndex === null || word.lineIndex >= state.editingLineIndex) &&
     (state.editingEndLineIndex === null || word.lineIndex <= state.editingEndLineIndex) &&
@@ -40,7 +42,7 @@ export function reconcileLyricsEdit(state: KaraokeState, draftLines: LyricWordDa
       const old = oldWords.get(word.index);
       if (old) lineMap.set(old.lineIndex, lineIndex);
     } else inserted.add(nextIndex);
-    return { ...word, index: nextIndex, lineIndex };
+    return { ...word, ...(word.kind === "image" ? { at: null } : {}), index: nextIndex, lineIndex };
   }));
   const flat = lyricsData.flat();
   const mapIndex = (oldIndex: number | null) => oldIndex === null ? null : indexMap.get(oldIndex) ?? null;
@@ -62,22 +64,22 @@ export function reconcileLyricsEdit(state: KaraokeState, draftLines: LyricWordDa
   const buffer = new Map<number, { at: number | null }>();
   state.timingBuffer?.buffer.forEach((value, oldIndex) => {
     const nextIndex = indexMap.get(oldIndex);
-    if (nextIndex !== undefined) buffer.set(nextIndex, { ...value });
+    if (nextIndex !== undefined && flat[nextIndex]?.kind !== "image") buffer.set(nextIndex, { ...value });
   });
   let currentIndex = state.currentIndex === -1 ? -1 : indexMap.get(state.currentIndex);
-  if (currentIndex === undefined) {
+  if (currentIndex === undefined || flat[currentIndex]?.kind === "image") {
     const following = [...indexMap.entries()].find(([oldIndex]) => oldIndex > state.currentIndex);
-    currentIndex = following?.[1] ?? flat.length;
+    currentIndex = flat.find(word => word.kind !== "image" && word.index >= (following?.[1] ?? currentIndex ?? flat.length))?.index ?? flat.length;
   }
   // A missing word inserted before the next target needs its own timestamp.
   // Replay that small gap, retaining every timestamp already captured.
-  const firstInserted = flat.find((word) => inserted.has(word.index) &&
+  const firstInserted = flat.find((word) => word.kind !== "image" && inserted.has(word.index) &&
     word.lineIndex >= (mapLine(state.editingLineIndex) ?? 0) && word.index <= currentIndex!);
   if (firstInserted) currentIndex = firstInserted.index;
 
   const snapshotWords = new Map(state.timingSnapshot?.flat().map((word) => [word.index, word]));
   const timingSnapshot = state.timingSnapshot ? draftLines.map((line, lineIndex) =>
-    line.map((word, wordIndex) => ({ ...word, at: snapshotWords.get(word.index)?.at ?? null,
+    line.map((word, wordIndex) => ({ ...word, at: word.kind === "image" ? null : snapshotWords.get(word.index)?.at ?? null,
       index: lyricsData[lineIndex][wordIndex].index,
       lineIndex }))
   ) : null;

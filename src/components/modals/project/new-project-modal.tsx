@@ -21,6 +21,7 @@ import {
 import { readMp3 } from "@/lib/karaoke/mp3/read";
 import type { IParsedMp3Data } from "@/lib/karaoke/mp3/type";
 import { getMissingRequiredSongInfo } from "@/lib/karaoke/metadata-validation";
+import { importedMidiMetadata } from "@/lib/karaoke/metadata-draft";
 import {
   DEFAULT_SOUNDFONT_ENTRY,
   DEFAULT_SOUNDFONT_ID,
@@ -94,7 +95,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
       if (projectMode === "midi") {
         const parsedMidi = await parseMidi(file);
         parsedFile = { file, mode: "midi", data: parsedMidi };
-        readInfo = parsedMidi.info;
+        readInfo = importedMidiMetadata(parsedMidi.info, parsedMidi.tempos.ranges[0]?.value.value.bpm);
       } else if (projectMode === "mp3") {
         const { parsedData: parsedMp3 } = await readMp3(file);
         parsedFile = { file, mode: "mp3", data: parsedMp3 };

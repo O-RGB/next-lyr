@@ -42,7 +42,7 @@ Editor effect checks cover visual boundary blocks, exact group ranges, raised gr
 
 The Edit Lyrics list mirrors the main screen's effect boundaries vertically, joined by a range bracket around its members. Add Word opens a shared content drawer; image rows open the same gallery to replace their own asset. The drawer captures a stable insertion key before taking focus. Workflow checks cover replacement during an unfinished timing pass, timestamp zero, effect preservation, reordering before insertion, and undo/redo. Browser checks cover desktop side panels, mobile bottom panels, restoring focus, a hidden upload panel until requested, 1 MB validation, shared-file reuse, and saved weather choices. Draft previews and playback call the same inline canvas renderer, media compositor and sprite icon painter.
 
-Keyboard drag uses slot order and center alignment so visual effect caps do not become drop targets. While a drag handle is active, its up/down arrows reach the drag sensor through Base UI's composite-key trap. Mouse/touch drops still use their final pointer position; keyboard drops use the active slot target. Browser checks confirm both mouse and keyboard reordering preserve each destination timestamp.
+Keyboard drag visits stable lyric rows and the gaps outside effect groups. Effect caps accept pointer drops into their group; outside gaps remove membership. Adjacent groups share one keyboard gap so arrows cannot get stuck. While a drag handle is active, its up/down arrows reach the drag sensor through Base UI's composite-key trap. Mouse/touch drops still use their final pointer position; keyboard drops use the active slot target. Browser checks confirm both mouse and keyboard reordering preserve each destination timestamp.
 
 The content list displays checkboxes and slot numbers, with only the leading drag handle for moving items. Timestamp labels and move-arrow buttons are omitted; the stored timing slots still stay fixed. Effect selection is a two-column grid including all three rain and three sunshine choices. The prior checkbox selection alone defines the target blocks; adjacent matching blocks connect automatically, and gaps stay separate. There are no secondary type, connect or range controls. Effect panels always open as a fixed `82dvh` bottom sheet, with a scrollable body, fixed header/footer, and a forced nested backdrop for outside dismissal. Browser checks compare its top and height across choices on desktop and on short mobile viewports, verify internal overflow, saved variants, outside dismissal and retained parent drafts.
 
@@ -53,3 +53,14 @@ then this full regression suite. New default exports use versioned preset IDs wi
 bodies; explicit legacy atlas exports retain the existing deduplication tests. Karaoke's
 `test:lyrics-package-browser` verifies rolling windows, MIDI clocks, isolated custom views,
 fire/night sprites, repeated animated GIFs on one visible canvas and final-worker release.
+
+Edit Lyrics regressions cover neutral checkbox selection on ordinary opens, exact manual
+selections through undo/redo, and explicit effect-group editing. Saving completes the checkbox selection; only unsaved drafts restore it on an ordinary reopen.
+Dropping a text or image block inside an effect bracket (including either cap) adopts its exact preset.
+Text timing slots stay in order when images move. Images never consume a stamp, advance playback,
+rewind a paused timing target, or become a backtracking target. Legacy image timestamps are ignored
+in the shared renderer and omitted from playback exports. Untimed text stays visible and unsung.
+
+Group drag regressions cover Add Word insertion inside a connected range, adopting the exact preset on a drop, leaving through the outside boundaries without moving a timing slot, cancelling off-editor drops, and saved membership through undo/redo. Browser checks exercise the real Add Word drawer followed by drag-in and drag-out on desktop, and whole-group boundary extraction with keyboard and touch.
+
+Free pointer dragging uses one visible insertion marker. Its last painted destination is the committed destination, including a release outside the modal or viewport. Targets outside the visible scroll area cannot steal this marker. Drag previews are portaled to the body so the modal does not clip them; source timing slots stay fixed.

@@ -4,7 +4,7 @@ import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import type { LyricCellDraft } from "@/lib/karaoke/inline-content";
 import { StickerImage } from "@/components/lyrics/sticker-image";
-import InputCommon from "@/components/common/data-input/input";
+import VisibleSpaceInput from "@/components/common/data-input/visible-space-input";
 import ButtonCommon from "@/components/common/button";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -18,9 +18,11 @@ export function SortableLyricCell({ cell, ordinal, projectId, onEdit, onRemove, 
   inputRef: (node: HTMLInputElement | null) => void;
 }) {
   const locale = useSettingsStore((state) => state.uiLocale);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: cell.key });
+  const { attributes, listeners, setDraggableNodeRef, setDroppableNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: cell.key, data: { lyricDrop: { kind: "row", index: ordinal, effect: cell.effect } },
+  });
   return (
-    <div data-editor-cell={cell.key} data-kind={cell.kind} data-editor-effect={cell.effect?.type ?? "none"} className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
+    <div ref={setDroppableNodeRef} data-editor-cell={cell.key} data-editor-drop-id={cell.key} data-kind={cell.kind} data-editor-effect={cell.effect?.type ?? "none"} className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
       {/* Only the content region moves; timestamp slots stay in the data. */}
       <div className="w-9 shrink-0 text-center sm:w-12">
         <label className="flex min-h-11 items-center justify-center gap-1">
@@ -29,10 +31,10 @@ export function SortableLyricCell({ cell, ordinal, projectId, onEdit, onRemove, 
           <span className="text-[11px] font-semibold text-brand-2">{ordinal + 1}</span>
         </label>
       </div>
-      <div ref={setNodeRef} onFocusCapture={onFocus}
-        style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      <div ref={setDraggableNodeRef} onFocusCapture={onFocus}
+        style={{ transform: !isDragging && transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
           transition, zIndex: isDragging ? 10 : undefined }}
-        className={`relative flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-panel ${isDragging ? "shadow-lg ring-1 ring-primary" : ""}`}>
+        className={`relative flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-panel ${isDragging ? "opacity-30" : ""}`}>
         <button ref={setActivatorNodeRef} {...attributes} {...listeners} type="button" data-editor-drag-handle
           aria-label={text(locale, `ลากรายการที่ ${ordinal + 1}`, `Drag item ${ordinal + 1}`)}
           className="grid h-11 w-7 shrink-0 cursor-grab touch-none place-items-center text-muted-foreground active:cursor-grabbing">
@@ -48,9 +50,9 @@ export function SortableLyricCell({ cell, ordinal, projectId, onEdit, onRemove, 
           </button>
         ) : (
           <div className="grid min-w-0 flex-1 grid-cols-1 gap-1 py-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.65fr)] sm:gap-1.5">
-            <InputCommon ref={inputRef} inputSize="sm" aria-label={text(locale, `คำร้องช่อง ${ordinal + 1}`, `Lyrics slot ${ordinal + 1}`)}
+            <VisibleSpaceInput ref={inputRef} inputSize="sm" aria-label={text(locale, `คำร้องช่อง ${ordinal + 1}`, `Lyrics slot ${ordinal + 1}`)}
               placeholder={text(locale, "คำร้อง", "Lyrics")} value={cell.text} onChange={(event) => onEdit("text", event.target.value)} />
-            <InputCommon inputSize="sm" aria-label={text(locale, `ซับช่อง ${ordinal + 1}`, `Subtitle slot ${ordinal + 1}`)}
+            <VisibleSpaceInput inputSize="sm" aria-label={text(locale, `ซับช่อง ${ordinal + 1}`, `Subtitle slot ${ordinal + 1}`)}
               placeholder={text(locale, "ซับ", "Subtitle")} value={cell.vocal} onChange={(event) => onEdit("vocal", event.target.value)} />
           </div>
         )}

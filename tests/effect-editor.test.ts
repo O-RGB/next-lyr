@@ -26,10 +26,11 @@ test("partial and disconnected ranges leave ungrouped words at their normal heig
   assert(layout.groups[0].endCap.left < layout.words[2].left);
   assert(layout.groups[1].endCap.left < layout.words[4].left);
 });
-test("reopening a saved line restores an existing effect instead of an empty selection", () => {
+test("opening a line for word edits never checks an existing effect group automatically", () => {
   const cells = cellsFromLine(words([fire, fire, undefined, { type: "lightning", connected: false }]));
-  assert.deepEqual([...resolveEffectSelection(cells)], ["slot-0", "slot-1"]);
-  assert.deepEqual([...resolveEffectSelection(cells, { focusIndex: 3 })], ["slot-3"]);
+  assert.deepEqual([...resolveEffectSelection(cells)], []);
+  assert.deepEqual([...resolveEffectSelection(cells, { focusIndex: 3 })], []);
+  assert.deepEqual([...resolveEffectSelection(cells, { rememberedKeys: new Set() })], []);
   assert.equal(cells[3].effect?.connected, false);
 });
 test("an explicit boundary click selects its own saved group over a remembered other group", () => {
@@ -53,9 +54,17 @@ test("returning to an unsaved expanded group restores the current draft range", 
 test("undoing and redoing a range edit keeps the group's controls on its current members", () => {
   const short = cellsFromLine(words([fire, fire, undefined, undefined]));
   const long = resizeEffectRun(short, groupEffectBlocks(short)[0], 0, 3);
-  const afterUndo = selectionAfterDraftHistory(long, short, new Set(long.map(cell => cell.key)));
+  const afterUndo = selectionAfterDraftHistory(long, short, new Set(long.map(cell => cell.key)), { followGroup: true });
   assert.deepEqual([...afterUndo], ["slot-0", "slot-1"]);
-  assert.deepEqual([...selectionAfterDraftHistory(short, long, afterUndo)], ["slot-0", "slot-1", "slot-2", "slot-3"]);
+  assert.deepEqual([...selectionAfterDraftHistory(short, long, afterUndo, { followGroup: true })], ["slot-0", "slot-1", "slot-2", "slot-3"]);
+});
+
+test("undo and redo never expand a manually checked word into its entire effect group", () => {
+  const before = cellsFromLine(words([fire, undefined, fire]));
+  const after = applySelectedEffect(before, new Set(["slot-1"]), fire);
+  const checked = new Set(["slot-1"]);
+  assert.deepEqual([...selectionAfterDraftHistory(after, before, checked)], ["slot-1"]);
+  assert.deepEqual([...selectionAfterDraftHistory(before, after, checked)], ["slot-1"]);
 });
 
 test("choosing a weather card uses the prior selection, joining neighbors without filling its gaps", () => {

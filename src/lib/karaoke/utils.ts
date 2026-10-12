@@ -5,7 +5,7 @@ export function hasCompleteLyricTiming(
   lyricsData: LyricWordData[][]
 ): boolean {
   const words = lyricsData.flat();
-  return words.length > 0 && words.every((word) => word.at !== null);
+  return words.length > 0 && words.every((word) => word.kind === "image" || word.at !== null);
 }
 
 export function processRawLyrics(

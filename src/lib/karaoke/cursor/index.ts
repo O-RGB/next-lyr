@@ -1,6 +1,6 @@
 import { LyricWordData } from "@/types/common.type";
 import { groupLyricsByLine } from "../lyrics/convert";
-import { clustersFromText } from "./lib";
+import { smoothedWordCursor } from "@next-karaoke/lyrics/core";
 import { cursorToTick, tickToCursor } from "./units";
 
 export {
@@ -19,10 +19,6 @@ export class TickLyricSegmentGenerator {
   constructor(ppq: number) {
     this.ticksPerBeat = ppq;
   }
-
-  private DEFAULT_MEDIAN_R = 0.2;
-  private DEFAULT_CHAR_SPAN = 4;
-  private EASE_POWER = 0.95;
 
   generateSmoothedTimestamps(
     words: LyricWordData[],
@@ -53,85 +49,8 @@ export class TickLyricSegmentGenerator {
             )
           : null;
 
-      const lastTokenUnit = tokens[tokens.length - 1].unit;
-      let groupEndUnit: number;
-
-      if (nextGroupStartUnit !== null) {
-        const gap = nextGroupStartUnit - lastTokenUnit;
-        if (gap <= 0) {
-          groupEndUnit =
-            lastTokenUnit +
-            Math.max(
-              1,
-              this.DEFAULT_CHAR_SPAN *
-                Math.max(1, Math.floor(fullText.length / 5))
-            );
-        } else {
-          groupEndUnit =
-            lastTokenUnit +
-            Math.max(1, Math.floor(this.DEFAULT_MEDIAN_R * gap));
-        }
-      } else {
-        groupEndUnit =
-          lastTokenUnit +
-          Math.max(
-            1,
-            this.DEFAULT_CHAR_SPAN *
-              Math.max(1, Math.floor(fullText.length / 4))
-          );
-      }
-
-      const charUnits: number[] = [];
-      const bounds: { lower: number; upper: number }[] = [];
-
-      tokens.forEach((tok, i_tok) => {
-        const startUnit = tok.unit;
-        const stopUnit =
-          i_tok + 1 < tokens.length ? tokens[i_tok + 1].unit : groupEndUnit;
-
-        const clusters = clustersFromText(tok.text);
-        const nBase = Math.max(1, clusters.length);
-
-        const clusterVals: number[] = [];
-        if (nBase === 1) {
-          clusterVals.push(startUnit);
-        } else {
-          for (let i = 0; i < nBase; i++) {
-            let frac = i / nBase;
-            frac = Math.pow(frac, this.EASE_POWER);
-            const mapped = startUnit + frac * (stopUnit - startUnit);
-            clusterVals.push(mapped);
-          }
-        }
-
-        clusters.forEach((cl) => {
-          const val = clusterVals.shift() ?? startUnit;
-          cl.chars.forEach(() => {
-            charUnits.push(val);
-            bounds.push({ lower: startUnit, upper: stopUnit - 1 });
-          });
-        });
-      });
-
-      let ints = charUnits.map((p, i) => {
-        const bound = bounds[i];
-        return Math.min(Math.max(Math.round(p), bound.lower), bound.upper);
-      });
-
-      for (let i = 1; i < ints.length; i++) {
-        if (ints[i] < ints[i - 1]) {
-          ints[i] = ints[i - 1];
-        }
-      }
-
-      if (ints.length > 0) {
-        ints[ints.length - 1] = Math.round(groupEndUnit);
-      }
-
-      if (tokens.length > 0) {
-        generatedUnits.push(tokens[0].unit);
-      }
-      generatedUnits.push(...ints);
+      const curve = smoothedWordCursor(tokens, nextGroupStartUnit);
+      generatedUnits.push(curve.start, ...curve.values);
     });
 
     const finalTimestamps = generatedUnits.map((unit) =>

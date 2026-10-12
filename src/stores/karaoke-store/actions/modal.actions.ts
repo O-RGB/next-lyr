@@ -22,12 +22,14 @@ export const createModalActions: StateCreator<
 
       openEditModal: (effectIndices) => {
         pauseForEditing();
+        get().actions.setLineSelectionMode(false);
         set({ isEditModalOpen: true, editEffectIndices: effectIndices ? [...effectIndices] : null });
       },
       closeEditModal: () => set({ isEditModalOpen: false, editEffectIndices: null }),
 
       openAddModal: (lineIndex: number) => {
         pauseForEditing();
+        get().actions.setLineSelectionMode(false);
         set({ isAddModalOpen: true, lineIndexToInsertAfter: lineIndex });
       },
       closeAddModal: () =>

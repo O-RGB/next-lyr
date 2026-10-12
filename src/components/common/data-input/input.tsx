@@ -3,6 +3,7 @@ import {
   BaseInputProps,
   getInputBaseClass,
   BaseInputWrapper,
+  InputPrefix,
 } from "./base";
 
 interface InputCommonProps
@@ -13,7 +14,7 @@ interface InputCommonProps
         HTMLInputElement
       >,
       "size"
-    > {}
+    > { prefixIcon?: React.ReactNode }
 
 const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
   (
@@ -30,6 +31,7 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
       onFocus,
       onBlur,
       id,
+      prefixIcon,
       ...props
     },
     ref
@@ -37,7 +39,7 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
     const inputClassName = getInputBaseClass(
       error,
       inputSize,
-      `placeholder:text-muted-foreground ${className}`
+      `placeholder:text-muted-foreground ${prefixIcon ? "pl-7" : ""} ${className}`
     );
 
     return (
@@ -50,6 +52,7 @@ const InputCommon = forwardRef<HTMLInputElement, InputCommonProps>(
         htmlFor={id}
       >
         <div className="relative">
+          <InputPrefix icon={prefixIcon} />
           <input
             {...props}
             ref={ref}

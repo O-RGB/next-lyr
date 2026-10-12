@@ -191,7 +191,8 @@ export const createContentActions: StateCreator<
                 ? undefined
                 : currentWords.get(draft.originalIndex);
             const kind = draft.kind ?? "text";
-            const nextText = kind === "image" ? IMAGE_TOKEN : draft.text.trim();
+            // Spaces belong to the lyric content, including spacing-only blocks.
+            const nextText = kind === "image" ? IMAGE_TOKEN : draft.text;
             const nextVocal = kind === "image" ? "" : draft.vocal;
             const effect = normalizeBlockEffect(draft.effect);
             const image = kind === "image" ? draft.sticker : undefined;
@@ -202,6 +203,7 @@ export const createContentActions: StateCreator<
               (originalWord.vocal ?? "") !== nextVocal ||
               (originalWord.kind ?? "text") !== kind ||
               originalWord.sticker?.id !== image?.id ||
+              (kind === "image" && originalWord.at !== null) ||
               JSON.stringify(originalWord.effect) !== JSON.stringify(effect)
             ) {
               changed = true;
@@ -209,6 +211,7 @@ export const createContentActions: StateCreator<
 
             return {
               ...(originalWord ?? { at: null, index: -1 }),
+              ...(kind === "image" ? { at: null } : {}),
               text: nextText,
               kind,
               sticker: image,
@@ -250,8 +253,7 @@ export const createContentActions: StateCreator<
         commit("แก้คำ");
       },
       addWord: async (lineIndex: number, text: string, vocal = "") => {
-        const trimmedText = text.trim();
-        if (!trimmedText) return;
+        if (text.length === 0) return;
 
         set((state) => {
           const newLyricsData = state.lyricsData.map((line) => [...line]);
@@ -259,7 +261,7 @@ export const createContentActions: StateCreator<
           if (!line) return {};
 
           line.push({
-            text: trimmedText,
+            text,
             vocal,
             at: null,
             index: -1,

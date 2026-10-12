@@ -4,7 +4,7 @@ import { effectAppearance } from "@next-karaoke/lyrics/effects";
 import { normalizeBlockEffect } from "@next-karaoke/lyrics/effects";
 import { makeEffectGroupLayer, clearEffectGroupLayer, updateEffectGroupLayer, type EffectGroupControl } from "../effect-group-layer";
 import { layoutEffectEditorBlocks } from "@next-karaoke/lyrics/effects";
-import { effectLabel, effectShortLabel } from "@next-karaoke/lyrics/effects";
+import { effectLabel } from "@next-karaoke/lyrics/effects";
 
 import { FilePlus2, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -112,6 +112,7 @@ const LyricsGrid: React.FC = () => {
   const lineSelectionMode = useKaraokeStore(
     (state) => state.lineSelectionMode
   );
+  const contentEditorOpen = useKaraokeStore(state => state.isEditModalOpen || state.isAddModalOpen);
   const hideLineActions = useKaraokeStore(
     (state) =>
       state.isPlaying
@@ -243,6 +244,38 @@ const LyricsGrid: React.FC = () => {
     longPressRef.current = null;
   }, []);
 
+  const cancelPointerGesture = useCallback(() => {
+    const pointerId = selectionDragRef.current?.pointerId ?? longPressRef.current?.pointerId;
+    clearLineSelectionLongPress();
+    selectionDragRef.current = null;
+    dragRef.current = null;
+    doubleActivationRef.current = null;
+    stopSelectionAutoScroll();
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.touchAction = "pan-y";
+      if (pointerId !== undefined && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    }
+  }, [clearLineSelectionLongPress, stopSelectionAutoScroll]);
+
+  useEffect(() => {
+    if (contentEditorOpen) cancelPointerGesture();
+  }, [contentEditorOpen, cancelPointerGesture]);
+
+  useEffect(() => {
+    // Pointer releases outside the canvas must also cancel a pending hold or
+    // scrolling range; otherwise it can survive an edit and fire after Save.
+    const end = () => { if (longPressRef.current || selectionDragRef.current || dragRef.current) cancelPointerGesture(); };
+    document.addEventListener("pointerup", end);
+    document.addEventListener("pointercancel", end);
+    window.addEventListener("blur", cancelPointerGesture);
+    return () => {
+      document.removeEventListener("pointerup", end);
+      document.removeEventListener("pointercancel", end);
+      window.removeEventListener("blur", cancelPointerGesture);
+    };
+  }, [cancelPointerGesture]);
+
   const resize = useCallback(() => {
     const canvas = canvasRef.current;
     const scroll = scrollRef.current;
@@ -368,8 +401,8 @@ const LyricsGrid: React.FC = () => {
     const monoFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
     const colors = isDark
       ? {
-          base: "#131a23",
-          alt: "#18212d",
+          base: "#171717",
+          alt: "#222222",
           border: "#3b4a5d",
           text: "#f4f7fb",
           muted: "#8795a8",
@@ -391,8 +424,8 @@ const LyricsGrid: React.FC = () => {
           pending: "#ff9f43",
         }
       : {
-          base: "#f2f5f9",
-          alt: "#eaf0f7",
+          base: "#ffffff",
+          alt: "#f4f4f5",
           border: "#c9d2df",
           text: "#1c2430",
           muted: "#7b8796",
@@ -700,7 +733,6 @@ const LyricsGrid: React.FC = () => {
             rowTop: y, rowHeight: getRowHeight(), rangeY: normalBoxY + getWordHeight() + 6,
             clipLeft: startX, clipRight: startX + availableWidth, background: colors.box,
             disabled: state.lineSelectionMode, muted: isDisabledLine,
-            label: text(language, ...effectShortLabel(group.run.effect)),
             title: text(language, `แก้ไข${effectLabel(group.run.effect)[0]} · บล็อก ${group.run.start + 1}–${group.run.end + 1}`,
               `Edit ${effectLabel(group.run.effect)[1]} effect · blocks ${group.run.start + 1}–${group.run.end + 1}`),
           });
@@ -710,8 +742,9 @@ const LyricsGrid: React.FC = () => {
     }
 
     updateCanvasMediaLayer(mediaLayer.current, canvas, state.projectId, imagePlacements);
-    updateEffectGroupLayer(effectLayer.current, effectPlacements, size.height, placement => {
+    updateEffectGroupLayer(effectLayer.current, effectPlacements, size.height, (placement, withShift) => {
       const editorActions = useKaraokeStore.getState().actions;
+      if (withShift) { editorActions.toggleLineSelection(placement.lineIndex, true); return; }
       editorActions.setPlayFromScrolledPosition(false);
       editorActions.selectLine(placement.lineIndex);
       editorActions.openEditModal(placement.indices);
@@ -1130,6 +1163,7 @@ const LyricsGrid: React.FC = () => {
       selectionDragRef.current = null;
       stopSelectionAutoScroll();
       const state = useKaraokeStore.getState();
+      if (state.isEditModalOpen || state.isAddModalOpen) return;
       if (
         event.pointerType === "touch" &&
         !state.isPlaying &&
@@ -1147,6 +1181,8 @@ const LyricsGrid: React.FC = () => {
               !activeLongPress ||
               activeLongPress.pointerId !== event.pointerId ||
               currentState.isPlaying ||
+              currentState.isEditModalOpen ||
+              currentState.isAddModalOpen ||
               currentState.editingLineIndex !== null
             ) {
               return;
@@ -1179,7 +1215,7 @@ const LyricsGrid: React.FC = () => {
 
       // Selection mode reserves a touch for the long-press range gesture.
       // A normal tap still reaches pointerup and toggles one line.
-      if (state.lineSelectionMode) return;
+      if (state.lineSelectionMode || event.shiftKey) return;
 
       const availableWidth = Math.max(
         1,
@@ -1291,7 +1327,6 @@ const LyricsGrid: React.FC = () => {
       markDirty();
     },
     [
-      actions,
       clearLineSelectionLongPress,
       markDirty,
       runSelectionAutoScroll,
@@ -1340,6 +1375,7 @@ const LyricsGrid: React.FC = () => {
       // A timing tap never changes the transport; double activation opens
       // the existing editor and pauses with the next target retained.
       const currentState = useKaraokeStore.getState();
+      if (currentState.isEditModalOpen || currentState.isAddModalOpen) return;
       const timingMode = currentState.isTimingActive || currentState.editingLineIndex !== null;
 
       const rect = canvas.getBoundingClientRect();
@@ -1350,6 +1386,14 @@ const LyricsGrid: React.FC = () => {
         0,
         Math.max(0, linesRef.current.length - 1)
       );
+
+      if (event.shiftKey && !timingMode && !currentState.isPlaying) {
+        event.preventDefault();
+        doubleActivationRef.current = null;
+        actions.toggleLineSelection(lineIndex, true);
+        markDirty();
+        return;
+      }
 
       // Selection mode owns the complete row. Clicking anywhere on a line
       // only toggles that line; it must never seek, play, or open its menu.
@@ -1404,7 +1448,7 @@ const LyricsGrid: React.FC = () => {
         actions.selectLine(lineIndex);
       }
     },
-    [actions, clearLineSelectionLongPress, markDirty, onWordClick]
+    [actions, clearLineSelectionLongPress, markDirty, onWordClick, stopSelectionAutoScroll]
   );
 
   const handleDoubleClick = useCallback(
@@ -1449,7 +1493,7 @@ const LyricsGrid: React.FC = () => {
       }
       dragRef.current = null;
     },
-    [clearLineSelectionLongPress]
+    [clearLineSelectionLongPress, stopSelectionAutoScroll]
   );
 
   const handleContextMenu = useCallback(
