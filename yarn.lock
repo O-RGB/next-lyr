@@ -1199,10 +1199,10 @@
     zod "^3.25 || ^4.0"
     zod-to-json-schema "^3.25.1"
 
-"@next-karaoke/lyrics@file:./vendor/next-karaoke-lyrics-0.2.17.tgz":
-  version "0.2.17"
-  resolved "file:vendor/next-karaoke-lyrics-0.2.17.tgz"
-  integrity sha512-hDvdK1MbJI+JaqGrnq3tsmkbIjAHO+QVv45/fDiHPNaEFuqjho8Z86NON5FKLg+CRrfAqCnR4gGFdO9yTvSXyw==
+"@next-karaoke/lyrics@file:./vendor/next-karaoke-lyrics-0.2.20.tgz":
+  version "0.2.20"
+  resolved "file:vendor/next-karaoke-lyrics-0.2.20.tgz"
+  integrity sha512-G19qqnuR8m6zpDEEvl6EDnz79qiQQQJPTrFe1Cedqf6pPfL5hzpKm+MJlvKQ+v58ESB6XYNTtIt7N8j2SD2Dew==
 
 "@next/env@16.3.0":
   version "16.3.0"
