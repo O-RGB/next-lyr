@@ -44,4 +44,4 @@ next-env.d.ts
 
 # Keep only the currently pinned local lyrics package archive tracked.
 vendor/next-karaoke-lyrics-*.tgz
-!vendor/next-karaoke-lyrics-0.2.11.tgz
+!vendor/next-karaoke-lyrics-0.2.17.tgz
