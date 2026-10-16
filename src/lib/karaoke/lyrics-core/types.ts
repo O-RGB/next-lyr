@@ -1,1 +1,1 @@
-export type {LyricsDocument,LyricsWord,LyricsSourceKind,LyricsTimeBase} from '@next-karaoke/lyrics/core';
+export type {LyricsDocument,LyricsWord,LyricsSourceKind,LyricsTimeBase} from 'lyrio/core';

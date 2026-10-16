@@ -1,4 +1,4 @@
-import {configureLyricsAssets} from '@next-karaoke/lyrics/canvas';
+import {configureLyricsAssets} from 'lyrio/canvas';
 import {getStickerBlob,db} from '@/lib/database/db';
 configureLyricsAssets({
   loadImage:getStickerBlob,

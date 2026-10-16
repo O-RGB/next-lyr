@@ -7,7 +7,7 @@ import VisibleSpaceInput from "@/components/common/data-input/visible-space-inpu
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import type { LyricSticker } from "@next-karaoke/lyrics/media";
+import type { LyricSticker } from "lyrio/media";
 import { EditorDrawer } from "./editor-drawer";
 import LineStickerPanel from "./line-sticker-panel";
 

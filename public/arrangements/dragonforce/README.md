@@ -9,7 +9,7 @@ User-supplied `DT0001.mid` is untouched.
 - All 12 music tracks preserved byte-for-byte, including 200 → 170 → 200 BPM tempo changes.
 - Instrumental messages leave at least 3 seconds before the next vocal entrance. Ordinary space-only cues clear the display and hold final syllables.
 - Two transparent WebP assets, 32,190 bytes total, reused in 10 positions. They are embedded only once each; image blocks remain untimed.
-- Effect IDs reference @next-karaoke/lyrics 0.2.6; no sprite-sheet binaries are embedded.
+- Effect IDs reference lyrio 0.2.6; no sprite-sheet binaries are embedded.
 - Fixed active-line selection: a new first-word cue takes ownership immediately, even when the generated tail of the previous line overlaps. This prevents a future line from wiping early and resetting.
 
 Open `http://localhost:3001/arrangements/dragonforce`. The page creates/reopens the project in the current browser. This distributes a complete playback MIDI only; no project archive.
@@ -112,13 +112,13 @@ One compact transparent-background power metal karaoke sticker: a proud winged d
 
 Thai translations are now spread over phrase anchors in 143 multi-word rows. Explicit spaces preserve natural phrases; legacy romanized subtitles retain hyphen separators. Primary lyrics, timestamps, images and effects have the same SHA-256 before/after the project update. Custom user translations and changed timings are preserved.
 
-Unstyled subtitles use orange/black before singing and blue/white afterward. Effect subtitles share the primary effect fill palette, with black idle and white sung outlines. No extra subtitle effect icons/sprites. Measured glyph descenders/ascenders leave a small 1.5px minimum gap; both lyric rows are closer together. All 153 adjacent pairs remain inside the 390px mobile preview. The common renderer is @next-karaoke/lyrics 0.2.6 in both hosts. Package 28 checks, editor 48 workflow/migration checks, shared player browser integration, TypeScript and production build passed. Actual app MIDI export preserves every subtitle fragment.
+Unstyled subtitles use orange/black before singing and blue/white afterward. Effect subtitles share the primary effect fill palette, with black idle and white sung outlines. No extra subtitle effect icons/sprites. Measured glyph descenders/ascenders leave a small 1.5px minimum gap; both lyric rows are closer together. All 153 adjacent pairs remain inside the 390px mobile preview. The common renderer is lyrio 0.2.6 in both hosts. Package 28 checks, editor 48 workflow/migration checks, shared player browser integration, TypeScript and production build passed. Actual app MIDI export preserves every subtitle fragment.
 
 ## Audible lyric clock update
 
 Next Karaoke's Lyrics now consume the latency-compensated presentation clock rather than the ahead-of-audio sequencer clock. The original raw clock, BPM/measure/beat calculations and stamping/scheduling references remain unchanged. A bundled versioned worker keeps the clock protocol synchronized with the app. Golden worker comparisons passed through 200 → 170 → 200 BPM, seek, handoff and restart.
 
-Both hosts now use @next-karaoke/lyrics 0.2.7, sharing the existing editor MIDI word-to-character curve. Live comparison of this file matched every one of its 149 nonblank display rows; actual playback confirmed Canvas followed presentation ticks with zero mismatches. On the test device, the raw sequencer lead was about 390ms at a 16,384-frame buffer.
+Both hosts now use lyrio 0.2.7, sharing the existing editor MIDI word-to-character curve. Live comparison of this file matched every one of its 149 nonblank display rows; actual playback confirmed Canvas followed presentation ticks with zero mismatches. On the test device, the raw sequencer lead was about 390ms at a 16,384-frame buffer.
 
 Unstyled subtitle orange is slightly lighter (#E7753E). Two promotion rows now read “Live OGG backing tracks” and “Real sound. Browser power.” with Thai subtitles. This remains a MIDI playback file; live OGG stems will be added to NKML separately. Actual app export preserves the live workspace's text, subtitles, timestamps, images and effect membership.
 

@@ -1,4 +1,4 @@
-import type { BlockEffect } from "@next-karaoke/lyrics/effects";
+import type { BlockEffect } from "lyrio/effects";
 
 export type LyricDropTarget =
   | { kind: "row"; index: number; effect?: BlockEffect }

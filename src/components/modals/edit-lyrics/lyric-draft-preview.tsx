@@ -1,6 +1,6 @@
 "use client";
 import {useMemo} from 'react';
-import {LyricsCanvas} from '@next-karaoke/lyrics/react';
+import {LyricsCanvas} from 'lyrio/react';
 import type {LyricCellDraft} from '@/lib/karaoke/inline-content';
 import {useSettingsStore} from '@/features/settings/settings-store';
 import {text} from '@/features/settings/locale';

@@ -1,4 +1,4 @@
-import { registerPlaybackAtlases } from "@next-karaoke/lyrics/effects";
+import { registerPlaybackAtlases } from "lyrio/effects";
 import { migrateInlineStickers } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
 import { timingLyrics } from "../timing-session";

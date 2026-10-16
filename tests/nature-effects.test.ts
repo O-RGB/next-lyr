@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { paintFrameSurface } from "@next-karaoke/lyrics/canvas";
-import { effectGeometry, effectRenderProfile, effectRecipe } from "@next-karaoke/lyrics/effects";
-import { atlasFrameRects, collectEffectAtlases, type LoadedAtlas } from "@next-karaoke/lyrics/effects";
-import { groupEffectBlocks, type EffectType } from "@next-karaoke/lyrics/effects";
+import { paintFrameSurface } from "lyrio/canvas";
+import { effectGeometry, effectRenderProfile, effectRecipe } from "lyrio/effects";
+import { atlasFrameRects, collectEffectAtlases, type LoadedAtlas } from "lyrio/effects";
+import { groupEffectBlocks, type EffectType } from "lyrio/effects";
 import { buildPlaybackKlyrXml } from "../src/lib/karaoke/lyrics-core/xml";
-import { buildYoutubePlayback } from "@next-karaoke/lyrics/format";
-import { layoutInlineWords } from "@next-karaoke/lyrics/canvas";
+import { buildYoutubePlayback } from "lyrio/format";
+import { layoutInlineWords } from "lyrio/canvas";
 import type { LyricsDocument } from "../src/lib/karaoke/lyrics-core/types";
 const atlas = { image: {}, width: 256, height: 256, columns: 4, rows: 4, frames: 16, fps: 12,
   rects: atlasFrameRects(256, 256, 4, 4), anchors: Array.from({ length: 16 }, () => ({ x: 32, y: 55, top: 5 })),

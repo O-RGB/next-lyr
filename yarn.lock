@@ -1199,11 +1199,6 @@
     zod "^3.25 || ^4.0"
     zod-to-json-schema "^3.25.1"
 
-"@next-karaoke/lyrics@file:./vendor/next-karaoke-lyrics-0.2.20.tgz":
-  version "0.2.20"
-  resolved "file:vendor/next-karaoke-lyrics-0.2.20.tgz"
-  integrity sha512-G19qqnuR8m6zpDEEvl6EDnz79qiQQQJPTrFe1Cedqf6pPfL5hzpKm+MJlvKQ+v58ESB6XYNTtIt7N8j2SD2Dew==
-
 "@next/env@16.3.0":
   version "16.3.0"
 
@@ -3751,6 +3746,11 @@ lru-cache@^5.1.1:
 
 lucide-react@^1.30.0:
   version "1.31.0"
+
+"lyrio@file:./vendor/lyrio-0.2.20.tgz":
+  version "0.2.20"
+  resolved "file:vendor/lyrio-0.2.20.tgz"
+  integrity sha512-dX1QdvUIuiZ2O7k3pgH7umQ0zhufC2XivHZoPFy5Fh1zwlwXoTyuGD0I7atlfOYTaAam0DWuCrq25tIvYivJmg==
 
 magic-string@^0.30.21:
   version "0.30.21"

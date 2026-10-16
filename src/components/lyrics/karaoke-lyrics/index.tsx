@@ -1,6 +1,6 @@
 "use client";
 import {useMemo,type ReactNode} from 'react';
-import {LyricsCanvas} from '@next-karaoke/lyrics/react';
+import {LyricsCanvas} from 'lyrio/react';
 import {useKaraokeStore} from '@/stores/karaoke-store';
 import {useTimerStore} from '@/timer-worker/store';
 import type {LyricsCharacterStyle} from '../lyrics-character';

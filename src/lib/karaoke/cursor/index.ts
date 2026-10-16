@@ -1,6 +1,6 @@
 import { LyricWordData } from "@/types/common.type";
 import { groupLyricsByLine } from "../lyrics/convert";
-import { smoothedWordCursor } from "@next-karaoke/lyrics/core";
+import { smoothedWordCursor } from "lyrio/core";
 import { cursorToTick, tickToCursor } from "./units";
 
 export {

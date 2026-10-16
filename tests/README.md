@@ -48,7 +48,7 @@ The content list displays checkboxes and slot numbers, with only the leading dra
 
 Canvas GIF checks cover transparent patches, disposal modes 2 and 3, opaque backgrounds, loop resets, variable frame delays, finite loops and reduced motion. Browser validation covers a single presentation canvas with no inline DOM images, shared decoders across repeated image cells and both viewports, animated pixels while lyrics are paused, and releasing workers/bitmaps when the media leaves the scene. The renderer keeps only the current decoded GIF frame and a bounded composition screen, rather than expanding all frames into the project or export.
 
-Shared-package extraction: run next-lyrics's runtime suite for original karaoke slot/draw parity,
+Shared-package extraction: run lyrio's runtime suite for original karaoke slot/draw parity,
 then this full regression suite. New default exports use versioned preset IDs without sprite
 bodies; explicit legacy atlas exports retain the existing deduplication tests. Karaoke's
 `test:lyrics-package-browser` verifies rolling windows, MIDI clocks, isolated custom views,

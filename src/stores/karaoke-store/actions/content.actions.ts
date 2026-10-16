@@ -1,4 +1,4 @@
-import { normalizeBlockEffect } from "@next-karaoke/lyrics/effects";
+import { normalizeBlockEffect } from "lyrio/effects";
 import { IMAGE_TOKEN } from "@/lib/karaoke/inline-content";
 import { StateCreator } from "zustand";
 import { reconcileLyricsEdit, timingLyrics } from "../timing-session";

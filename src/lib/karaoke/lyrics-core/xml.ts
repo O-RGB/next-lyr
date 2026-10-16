@@ -1,1 +1,1 @@
-export * from '@next-karaoke/lyrics/format';
+export * from 'lyrio/format';

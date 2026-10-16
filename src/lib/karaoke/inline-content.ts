@@ -1,6 +1,6 @@
-import { normalizeBlockEffect, type BlockEffect } from "@next-karaoke/lyrics/effects";
+import { normalizeBlockEffect, type BlockEffect } from "lyrio/effects";
 import type { LyricWordData } from "@/types/common.type";
-import type { LineStickers, LyricSticker } from "@next-karaoke/lyrics/media";
+import type { LineStickers, LyricSticker } from "lyrio/media";
 
 // Content marker only. Images decorate a line and never consume a timing unit.
 export const IMAGE_TOKEN = "\uFFFC";

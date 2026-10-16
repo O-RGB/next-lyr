@@ -1,5 +1,5 @@
-import type { BlockEffect } from "@next-karaoke/lyrics/effects";
-import type { LineStickers, LyricSticker } from "@next-karaoke/lyrics/media";
+import type { BlockEffect } from "lyrio/effects";
+import type { LineStickers, LyricSticker } from "lyrio/media";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { Project, StoredFile } from "@/lib/database/db";
 import { ArrayRange, ISentence } from "@/lib/array-range";

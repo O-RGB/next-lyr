@@ -1,5 +1,5 @@
-import { fitStickerDimensions, inspectStickerImage } from "@next-karaoke/lyrics/image-info";
-import { MAX_GIF_STICKER_BYTES, MAX_STATIC_STICKER_BYTES, MAX_STICKER_INPUT_BYTES } from "@next-karaoke/lyrics/media";
+import { fitStickerDimensions, inspectStickerImage } from "lyrio/image-info";
+import { MAX_GIF_STICKER_BYTES, MAX_STATIC_STICKER_BYTES, MAX_STICKER_INPUT_BYTES } from "lyrio/media";
 
 const aborted = (signal?: AbortSignal) => {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");

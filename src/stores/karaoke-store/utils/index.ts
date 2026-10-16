@@ -1,4 +1,4 @@
-import { subtitleText } from "@next-karaoke/lyrics/core";
+import { subtitleText } from "lyrio/core";
 import { ArrayRange, ISentence } from "@/lib/array-range";
 import { LyricWordData, MusicMode } from "@/types/common.type";
 import { StoredFile } from "@/lib/database/db";

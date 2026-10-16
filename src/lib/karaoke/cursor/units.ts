@@ -1,1 +1,1 @@
-export {CURSOR_PPQ,cursorToTick,cursorToTicks,tickToCursor,ticksToCursor} from '@next-karaoke/lyrics/core';
+export {CURSOR_PPQ,cursorToTick,cursorToTicks,tickToCursor,ticksToCursor} from 'lyrio/core';
