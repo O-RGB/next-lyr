@@ -3747,10 +3747,10 @@ lru-cache@^5.1.1:
 lucide-react@^1.30.0:
   version "1.31.0"
 
-"lyrio@file:./vendor/lyrio-0.2.20.tgz":
-  version "0.2.20"
-  resolved "file:vendor/lyrio-0.2.20.tgz"
-  integrity sha512-dX1QdvUIuiZ2O7k3pgH7umQ0zhufC2XivHZoPFy5Fh1zwlwXoTyuGD0I7atlfOYTaAam0DWuCrq25tIvYivJmg==
+"lyrio@file:./vendor/lyrio-0.2.26-safari.1.tgz":
+  version "0.2.26-safari.1"
+  resolved "file:vendor/lyrio-0.2.26-safari.1.tgz"
+  integrity sha512-mTsmsKQUGD79m1A2h+4puQQ6KpRn+NqS9+ED5BzJW8lRk5yOC8TdAlCSHVbnIbYdaGSRm01f/poT5fKUE6otAg==
 
 magic-string@^0.30.21:
   version "0.30.21"

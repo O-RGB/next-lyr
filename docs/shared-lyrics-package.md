@@ -21,3 +21,14 @@ then check/build both apps. Commit the tarball and lockfile. No separate asset-c
 
 New playback exports use stable built-in preset IDs and library version 1. Uploaded images
 remain embedded once per ID; explicit legacy sprites and untimed image blocks stay supported.
+
+## Renderer update — 2026-10-20
+
+The editor consumes `lyrio@0.2.26-safari.1`, upgraded from `0.2.20`.
+The archive is identical to the one installed in `karaoke-web-online`; it includes
+the Safari text alignment/fill fixes and the shared renderer improvements.
+Authoring and inline previews continue to use their existing package adapters.
+Player-only composition optimizations remain scoped to the layouts that support
+them; this update does not enable player clipping on the authoring canvas.
+Reduce Motion continues to select stationary effect frames by design.
+Physical iPad acceptance remains separate from the package upgrade.
