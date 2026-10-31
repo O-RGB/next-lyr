@@ -52,8 +52,8 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
       Object.assign(element.style, { position: "absolute", overflow: "hidden", pointerEvents: "none" });
       const range = document.createElement("button"), svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      range.type = "button"; range.tabIndex = -1; range.dataset.effectRange = placement.key;
-      Object.assign(range.style, { position: "absolute", padding: "0", border: "0", background: "transparent", pointerEvents: "auto", cursor: "pointer" });
+      range.type = "button"; range.tabIndex = -1; range.setAttribute("aria-hidden", "true"); range.dataset.effectRange = placement.key;
+      Object.assign(range.style, { position: "absolute", padding: "0", border: "0", background: "transparent", pointerEvents: "none" });
       svg.setAttribute("aria-hidden", "true"); path.setAttribute("fill", "none"); path.setAttribute("stroke-width", "1.5"); path.setAttribute("stroke-linejoin", "round");
       svg.append(path); range.append(svg); element.append(range);
       for (const side of ["start", "end"]) {
@@ -69,7 +69,7 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
       }
       entry = { element, buttons, icons, range, path, placement, atlasKey: "", request: 0, lastFrame: -1, disposed: false };
       const current = entry;
-      for (const button of [...buttons, range]) {
+      for (const button of buttons) {
         let drag: { x: number; y: number; lastX: number; moved: boolean } | undefined, skipClick = false;
         button.onclick = event => { event.stopPropagation(); if(skipClick){skipClick=false;return;}layer.onEdit?.(current.placement, event.shiftKey); };
         button.onpointerdown = event => { event.stopPropagation(); skipClick=false;drag={x:event.clientX,y:event.clientY,lastX:event.clientX,moved:false}; };
@@ -106,7 +106,7 @@ export function updateEffectGroupLayer(layer: EffectGroupLayer, placements: Effe
     const rangeWidth = span + 2, rangeHeight = drop + 2;
     Object.assign(entry.range.style, { left: `${placement.start + placement.capWidth / 2 - placement.clipLeft - 1}px`,
       top: `${placement.top + placement.boxHeight - placement.rowTop}px`, width: `${rangeWidth}px`, height: `${rangeHeight}px`,
-      pointerEvents: placement.disabled ? "none" : "auto" });
+      pointerEvents: "none" });
     entry.range.style.touchAction=onScroll?"pan-y":"auto";
     entry.range.disabled = !!placement.disabled; entry.range.title = placement.title; entry.range.setAttribute("aria-label", placement.title);
     const svg = entry.range.firstElementChild!;

@@ -3747,10 +3747,10 @@ lru-cache@^5.1.1:
 lucide-react@^1.30.0:
   version "1.31.0"
 
-"lyrio@file:./vendor/lyrio-0.2.26-safari.1.tgz":
-  version "0.2.26-safari.1"
-  resolved "file:vendor/lyrio-0.2.26-safari.1.tgz"
-  integrity sha512-mTsmsKQUGD79m1A2h+4puQQ6KpRn+NqS9+ED5BzJW8lRk5yOC8TdAlCSHVbnIbYdaGSRm01f/poT5fKUE6otAg==
+"lyrio@file:./vendor/lyrio-0.2.42-player-subtitle-gap.1.tgz":
+  version "0.2.42-player-subtitle-gap.1"
+  resolved "file:vendor/lyrio-0.2.42-player-subtitle-gap.1.tgz"
+  integrity sha512-fPZHsJjb5pJPHXTBh2SLksPqd9tOp/UMyRgC0OkhERUUXi12qtc+etgLUWbCvAkYcQ/nzIVbJxWxy9BcPUVYzA==
 
 magic-string@^0.30.21:
   version "0.30.21"
@@ -3777,10 +3777,6 @@ micromatch@^4.0.4, micromatch@^4.0.8:
   dependencies:
     braces "^3.0.3"
     picomatch "^2.3.1"
-
-"midi-chord-detect@file:../midi-chord-detect":
-  version "0.1.0"
-  resolved "file:../midi-chord-detect"
 
 mime-db@^1.54.0:
   version "1.54.0"

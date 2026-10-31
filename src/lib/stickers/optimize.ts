@@ -23,7 +23,9 @@ async function decodeImage(blob: Blob): Promise<{ source: CanvasImageSource; wid
 }
 
 async function optimizeGif(buffer: ArrayBuffer, maximum: number, colors: number, lossy: number, signal?: AbortSignal): Promise<Blob> {
-  const moduleUrl = "/vendor/gifsicle/gifsicle.min.js";
+  // Resolve at browser runtime so the OpenNext server bundler does not treat
+  // this public asset URL as a server-side filesystem import.
+  const moduleUrl = new URL("/vendor/gifsicle/gifsicle.min.js", window.location.origin).href;
   const { default: engine } = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ moduleUrl);
   aborted(signal);
   return new Promise((resolve, reject) => {

@@ -98,7 +98,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
       {isMobile ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {preview && (
-            <div className="mb-2 flex h-[115px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
+            <div className="mb-2 flex h-[135px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
               <LyricsPreview textStyle={{ fontSize: 20 }} />
             </div>
           )}

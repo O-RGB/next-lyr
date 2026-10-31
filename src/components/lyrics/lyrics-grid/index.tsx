@@ -598,7 +598,7 @@ const LyricsGrid: React.FC = () => {
       );
       ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
       const wordWidths = measureWords(ctx, line);
-      const blockLayout = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap(), lift: isCompact() ? 4 : 5 });
+      const blockLayout = layoutGridBlocks(line, wordWidths, state);
       const totalWidth = blockLayout.width;
       const startX = getLeftGutter() + 8;
       const maxLineScroll = Math.max(0, totalWidth - availableWidth);
@@ -870,7 +870,7 @@ const LyricsGrid: React.FC = () => {
         const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
         ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
         const wordWidths = measureWords(ctx, line);
-        const totalWidth = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).width;
+        const totalWidth = layoutGridBlocks(line, wordWidths).width;
         const availableWidth = Math.max(
           1,
           scroll.clientWidth - getLeftGutter() - getRightGutter() - 16
@@ -1402,6 +1402,15 @@ const LyricsGrid: React.FC = () => {
         return;
       }
 
+      const wordHit = [...hitBoxesRef.current].reverse().find(
+        box => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+      );
+      if (wordHit && !timingMode) {
+        doubleActivationRef.current = null;
+        void onWordClick(wordHit.index);
+        return;
+      }
+
       const now = performance.now();
       const previousActivation = doubleActivationRef.current;
       const isDoubleActivation =
@@ -1465,6 +1474,12 @@ const LyricsGrid: React.FC = () => {
       }
 
       const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left, y = event.clientY - rect.top;
+      if (!currentState.isTimingActive && currentState.editingLineIndex === null &&
+        hitBoxesRef.current.some(box => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)) {
+        event.preventDefault();
+        return;
+      }
       const lineIndex = clamp(
         Math.floor(
           (event.clientY - rect.top + scroll.scrollTop) / getRowHeight()
@@ -1639,6 +1654,18 @@ const LyricsGrid: React.FC = () => {
   );
 };
 
+/** Timing shows only timestamped word boxes; effect caps never consume a timing step. */
+function layoutGridBlocks(
+  line: LyricWordData[],
+  widths: number[],
+  state = useKaraokeStore.getState(),
+) {
+  const timing = state.isTimingActive || state.editingLineIndex !== null;
+  return layoutEffectEditorBlocks(timing ? line.map(() => ({})) : line, widths, {
+    gap: getWordGap(), lift: isCompact() ? 4 : 5,
+  });
+}
+
 function getLineMetrics(
   canvas: HTMLCanvasElement,
   line: LyricWordData[],
@@ -1650,7 +1677,7 @@ function getLineMetrics(
   const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
   ctx.font = `600 ${getWordFontSize()}px ${fontFamily}`;
   const wordWidths = measureWords(ctx, line);
-  const totalWidth = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).width;
+  const totalWidth = layoutGridBlocks(line, wordWidths).width;
   return { maxScroll: Math.max(0, totalWidth - availableWidth) };
 }
 
@@ -1694,7 +1721,7 @@ function getLineScrollLeft(
   // first box makes the rest of a long line look as if it started mid-scroll.
   if (focusPosition === 0) return 0;
 
-  const focusLeft = layoutEffectEditorBlocks(line, wordWidths, { gap: getWordGap() }).words[focusPosition].left;
+  const focusLeft = layoutGridBlocks(line, wordWidths, state).words[focusPosition].left;
   const focusCenter = focusLeft + wordWidths[focusPosition] / 2;
   const target = focusCenter - availableWidth / 2;
   return clamp(target, 0, Math.max(0, totalWidth - availableWidth));
