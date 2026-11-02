@@ -56,8 +56,8 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
       {ended ? (
         children
       ) : (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-base/95 p-4 backdrop-blur-md">
-          <div className="w-full max-w-sm rounded-xl border border-line bg-panel p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-base/95 p-4">
+          <div className="editor-audio-card w-full max-w-sm border border-line bg-panel p-5">
             <div className="mb-3.5 flex items-center gap-2.5">
               <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
                 <Volume2 className="size-4.5" />
@@ -66,7 +66,7 @@ const AllowSound: React.FC<AllowSoundProps> = ({ children }) => {
                 <h2 className="text-[13px] font-semibold leading-tight text-foreground">
                   {text(locale, "เปิดใช้งานเสียง", "Enable sound")}
                 </h2>
-                <p className="label-xs mt-0.5">NextLyricsEditor</p>
+                <p className="label-xs mt-0.5">Lyrio Studio</p>
               </div>
             </div>
 

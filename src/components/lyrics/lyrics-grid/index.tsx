@@ -1685,7 +1685,7 @@ function measureWords(
   ctx: CanvasRenderingContext2D,
   line: LyricWordData[],
 ): number[] {
-  return measureLyricWords(ctx, line, getWordPadding());
+  return measureLyricWords(ctx, line, getWordPadding(), getWordHeight());
 }
 
 function getLineScrollLeft(

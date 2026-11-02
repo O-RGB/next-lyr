@@ -1,3 +1,4 @@
+import { stickerDisplayWidth } from "lyrio/media";
 import { roundedRect } from "@/lib/canvas/runtime";
 import type { LyricWordData } from "@/types/common.type";
 import { normalizeBlockEffect } from "lyrio/effects";
@@ -36,10 +37,11 @@ export interface LyricWordBoxOptions {
 export function measureLyricWords(
   ctx: CanvasRenderingContext2D,
   words: LyricWordData[],
-  horizontalPadding = 24
+  horizontalPadding = 24,
+  wordHeight = LYRICS_WORD_HEIGHT
 ): number[] {
   return words.map((word) =>
-    word.kind === "image" ? Math.max(40, horizontalPadding + 24) : Math.max(
+    word.kind === "image" ? Math.max(40, 10 + stickerDisplayWidth(word.sticker, Math.max(1, wordHeight - 8))) : Math.max(
       LYRICS_MIN_WORD_WIDTH,
       ctx.measureText(word.text).width + horizontalPadding
     )

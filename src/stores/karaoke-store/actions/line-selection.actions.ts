@@ -54,8 +54,9 @@ export const createLineSelectionActions: StateCreator<
       else selected.add(lineIndex);
 
       set({
+        lineSelectionMode: selected.size > 0,
         selectedLineIndices: [...selected].sort((a, b) => a - b),
-        lineSelectionAnchor: lineIndex,
+        lineSelectionAnchor: selected.size > 0 ? lineIndex : null,
         lineShiftArmed: false,
       });
     },
@@ -104,6 +105,7 @@ export const createLineSelectionActions: StateCreator<
 
     clearLineSelection: () =>
       set({
+        lineSelectionMode: false,
         selectedLineIndices: [],
         lineSelectionAnchor: null,
         lineShiftArmed: false,

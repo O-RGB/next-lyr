@@ -144,8 +144,8 @@ export default function Home() {
       text(locale, "ต้องติดตั้งโปรแกรมไหม?", "Do I need to install anything?"),
       text(
         locale,
-        "ไม่ต้อง NextLyricsEditor ทำงานผ่าน browser และเก็บ Project ไว้ในเครื่องของคุณเป็นหลัก",
-        "No. NextLyricsEditor runs in the browser and keeps projects primarily on your device"
+        "ไม่ต้อง Lyrio Studio ทำงานผ่าน browser และเก็บ Project ไว้ในเครื่องของคุณเป็นหลัก",
+        "No. Lyrio Studio runs in the browser and keeps projects primarily on your device"
       ),
     ],
     [
@@ -209,8 +209,8 @@ export default function Home() {
         <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Image
-              src="/images/icon-app.png"
-              alt="NextLyricsEditor"
+              src="/images/icon-app.b051ea6945.png"
+              alt="Lyrio Studio"
               width={512}
               height={512}
               priority
@@ -218,7 +218,7 @@ export default function Home() {
             />
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold text-[#1c2430]">
-                NextLyricsEditor
+                Lyrio Studio
               </span>
               <span className="hidden text-[10px] uppercase tracking-[0.15em] text-[#6b7280] sm:block">
                 {text(locale, "เครื่องมือแก้ไขเนื้อเพลงคาราโอเกะ", "Karaoke Lyrics Editor")}
@@ -280,7 +280,7 @@ export default function Home() {
               </div>
               <div className="p-4 sm:p-6">
                 <h1 className="text-2xl font-extrabold leading-tight text-[#1c2430] sm:text-3xl">
-                  NextLyricsEditor
+                  Lyrio Studio
                 </h1>
                 <p className="mt-1 text-sm font-semibold !text-[#2878e8] sm:text-base">
                   {text(
@@ -348,7 +348,7 @@ export default function Home() {
             <section className="overflow-hidden rounded-lg border border-line bg-slate-950 shadow-sm">
               <Image
                 src="/images/cover.png"
-                alt="NextLyricsEditor lyrics editing preview"
+                alt="Lyrio Studio lyrics editing preview"
                 width={1671}
                 height={941}
                 priority
@@ -456,7 +456,7 @@ export default function Home() {
             <section className="rounded-lg border border-line bg-panel shadow-sm">
               <div className="border-b border-line bg-panel-2 px-4 py-3 sm:px-6 sm:py-4">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                  {text(locale, "ทำไมต้องใช้ NextLyricsEditor", "Why NextLyricsEditor")}
+                  {text(locale, "ทำไมต้องใช้ Lyrio Studio", "Why Lyrio Studio")}
                 </h2>
               </div>
               <div className="space-y-3 p-4 text-xs leading-5 text-muted-foreground sm:p-5">
@@ -521,7 +521,7 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
           <div>
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} NextLyricsEditor. {text(locale, "เครื่องมือแก้ไขเนื้อเพลงคาราโอเกะบนเว็บ", "Browser-based karaoke lyrics editor")}
+              © {new Date().getFullYear()} Lyrio Studio. {text(locale, "เครื่องมือแก้ไขเนื้อเพลงคาราโอเกะบนเว็บ", "Browser-based karaoke lyrics editor")}
             </p>
             <p className="mt-1 text-[11px] text-dim">
               {text(locale, "โปรดใช้ไฟล์ที่คุณมีสิทธิ์ใช้งานตามกฎหมาย", "Use files that you are legally allowed to use")}

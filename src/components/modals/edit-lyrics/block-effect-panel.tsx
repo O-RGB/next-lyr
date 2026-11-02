@@ -26,11 +26,12 @@ function EffectChoiceGrid({ selectedChoice, enabled, onApply }: {
     const label = (choice.label.join(" ") + " " + family).toLocaleLowerCase();
     return tokens.every(token => label.includes(token));
   });
-  return <div className="space-y-3">
+  return <div className="flex min-h-0 flex-1 flex-col gap-3">
     <input type="search" value={query} onChange={event => setQuery(event.target.value)}
       aria-label={text(locale, "ค้นหาเอฟเฟกต์", "Search effects")}
       placeholder={text(locale, "ค้นหา เช่น กลางคืน ดาว หิมะ", "Search night, stars, snow…")}
-      className="h-10 w-full rounded-lg border border-line bg-base px-3 text-xs" />
+      className="h-10 w-full shrink-0 rounded-lg border border-line bg-base px-3 text-xs" />
+    <div data-effect-list className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
     <div className="grid grid-cols-2 gap-2" role="group" aria-label={text(locale, "เลือกเอฟเฟกต์", "Choose effect")}>
       {choices.map(choice => <button key={choice.key} type="button" aria-pressed={selectedChoice === choice.key}
         disabled={!enabled} onClick={() => onApply(choice.effect)} data-effect-option={choice.key}
@@ -43,6 +44,7 @@ function EffectChoiceGrid({ selectedChoice, enabled, onApply }: {
       </button>)}
     </div>
     {!choices.length && <p role="status" className="text-xs text-muted-foreground">{text(locale, "ไม่พบเอฟเฟกต์", "No matching effects")}</p>}
+    </div>
   </div>;
 }
 
@@ -81,7 +83,7 @@ export function BlockEffectPanel({ open, onClose, projectId, cells, selected, on
   const rangeLabel = ranges.map(([start, end]) => start === end ? `${start}` : `${start}–${end}`).join(", ");
   const selectedChoice = targets.length ? EFFECT_CHOICES.find(choice => targets.every(cell =>
     cell.effect?.type === choice.effect?.type && cell.effect?.variant === choice.effect?.variant))?.key : undefined;
-  return <EditorDrawer open={open} onClose={onClose} placement="bottom" title={onReselect
+  return <EditorDrawer open={open} onClose={onClose} placement="bottom" bodyClassName="flex flex-col overflow-hidden" title={onReselect
     ? text(locale, "แก้ไขเอฟเฟกต์ทั้งกลุ่ม", "Edit group effect") : text(locale, "เอฟเฟกต์เฉพาะที่เลือก", "Effects for selected blocks")}
     initialFocus={() => document.querySelector<HTMLButtonElement>('[data-effect-option][aria-pressed="true"]')}
     description={text(locale, `ใช้กับ ${targets.length} คำ / รูป · บล็อก ${rangeLabel}`, `Apply to ${targets.length} blocks · ${rangeLabel}`)}
@@ -89,8 +91,10 @@ export function BlockEffectPanel({ open, onClose, projectId, cells, selected, on
       {onReselect && <ButtonCommon type="button" variant="outline" onClick={onReselect}>{text(locale, "เลือกบางส่วน", "Select part of group")}</ButtonCommon>}
       <ButtonCommon type="button" icon={<Check />} onClick={onClose}>{text(locale, "เสร็จแล้ว", "Done")}</ButtonCommon>
     </div>}>
-    {open && <div className="space-y-4">
-      <LyricDraftPreview cells={cells} projectId={projectId} />
+    {open && <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div data-effect-preview className="shrink-0">
+        <LyricDraftPreview cells={cells} projectId={projectId} />
+      </div>
       <EffectChoiceGrid selectedChoice={selectedChoice} enabled={targets.length > 0} onApply={onApply} />
     </div>}
   </EditorDrawer>;

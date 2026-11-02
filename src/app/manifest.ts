@@ -3,10 +3,10 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "NextLyricsEditor",
-    short_name: "NextLyricsEditor",
+    name: "Lyrio Studio",
+    short_name: "Lyrio Studio",
     description:
-      "สร้างและแก้ไขเนื้อเพลง Karaoke Next Lyrics Editor รองรับ NCN",
+      "สร้างและแก้ไขเนื้อเพลง Karaoke Lyrio Studio รองรับ NCN",
     start_url: "/",
     scope: "/",
     display: "fullscreen",
@@ -15,31 +15,31 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#f4f6fa",
     icons: [
       {
-        src: "/images/icon-app.png",
+        src: "/images/icon-app.b051ea6945.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/images/lyr192.png",
+        src: "/images/lyr192.b051ea6945.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/images/lyr512.png",
+        src: "/images/lyr512.b051ea6945.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/images/lyr1000.png",
+        src: "/images/lyr1000.b051ea6945.png",
         sizes: "1000x1000",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/images/favicon.ico",
+        src: "/images/favicon.b051ea6945.ico",
         sizes: "48x48",
         type: "image/x-icon",
         purpose: "any",
@@ -51,7 +51,7 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "1671x941",
         type: "image/png",
         form_factor: "wide",
-        label: "NextLyricsEditor karaoke lyrics editor",
+        label: "Lyrio Studio karaoke lyrics editor",
       },
     ],
   };

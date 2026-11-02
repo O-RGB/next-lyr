@@ -1,0 +1,95 @@
+.editor {
+  background-color: var(--base);
+  background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.editor :global(.editor-toolbar) {
+  background: var(--panel);
+  box-shadow: 0 3px 0 var(--line-soft);
+}
+
+.editor :global(.editor-brand-caption),
+.editor :global(.editor-section-label) {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.editor :global(.editor-workspace) {
+  gap: 8px;
+  padding: 8px;
+}
+
+.editor :global(.editor-lyrics-surface),
+.editor :global(.editor-sidebar),
+.editor :global(.editor-preview) {
+  border: 1px solid var(--line);
+  box-shadow: 3px 3px 0 var(--line);
+  background: var(--panel);
+}
+
+.editor :global(.editor-lyrics-surface) {
+  border-top: 3px solid var(--brand);
+}
+
+.editor :global(.editor-lyrics-heading) {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  padding: 8px 12px;
+}
+
+.editor :global(.editor-section-icon) {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--midi-line);
+  background: var(--midi-surface);
+  color: var(--midi-text);
+  box-shadow: 2px 2px 0 var(--midi-line);
+}
+
+.editor :global(.editor-sidebar) {
+  border-top: 3px solid var(--brand-2);
+}
+
+.editor :global(.editor-sidebar-heading) {
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  color: var(--audio-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor :global(.editor-preview) {
+  position: relative;
+  border-top: 3px solid var(--line-strong);
+}
+
+.editor :global(.editor-preview) > :global(.editor-section-label) {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  pointer-events: none;
+  z-index: 1;
+  background: var(--panel);
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 1023px) {
+  .editor :global(.editor-workspace) { padding: 4px; gap: 0; }
+  .editor :global(.editor-sidebar) { border: 0; box-shadow: none; }
+  .editor :global(.editor-lyrics-heading) { padding: 4px 6px; }
+}
+
+.editor :global(.editor-audio-card) {
+  border-top: 3px solid var(--brand);
+  box-shadow: 4px 4px 0 var(--line);
+}

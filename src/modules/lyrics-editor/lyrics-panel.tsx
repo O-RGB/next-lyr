@@ -1,5 +1,6 @@
 "use client";
 
+import { MicVocal, Guitar } from "lucide-react";
 import React, { useState } from "react";
 
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -78,10 +79,11 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
 
   return (
     <Card
-      className="relative flex h-full min-h-0 flex-col gap-2 overscroll-none border-0 bg-panel p-2 pb-0 lg:p-0"
+      className="editor-lyrics-surface relative flex h-full min-h-0 flex-col gap-2 overscroll-none border-0 bg-panel p-2 pb-0 lg:p-0"
     >
-      <header className="flex shrink-0 items-center justify-between gap-2 lg:px-4 lg:pt-4">
-        <h1 className="text-lg font-semibold text-foreground">
+      <header className="editor-lyrics-heading flex shrink-0 items-center justify-between gap-2 lg:px-4 lg:pt-4">
+        <h1 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <span className="editor-section-icon">{showingChords ? <Guitar className="size-4" /> : <MicVocal className="size-4" />}</span>
           {showingChords
             ? text(locale, "คอร์ด", "Chords")
             : text(locale, "เนื้อเพลง", "Lyrics")}
@@ -98,7 +100,7 @@ export function LyricsEditorPanel({ onPreviewChange }: LyricsPanelProps) {
       {isMobile ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {preview && (
-            <div className="mb-2 flex h-[135px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-lane ring-1 ring-line-soft p-2">
+            <div className="mb-2 flex h-[135px] shrink-0 items-center justify-center overflow-hidden bg-lane ring-1 ring-line-soft">
               <LyricsPreview textStyle={{ fontSize: 20 }} />
             </div>
           )}

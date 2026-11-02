@@ -27,9 +27,9 @@ export function LyricsMobileControls({ tools }: { tools?: ReactNode }) {
   const locale = useSettingsStore((state) => state.uiLocale);
 
   const buttonClass =
-    "h-10 w-10 rounded-lg border border-line bg-panel text-foreground shadow-sm transition active:scale-95 touch-manipulation";
+    "h-10 w-10 rounded-lg border border-line bg-panel text-foreground shadow-sm transition enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none touch-manipulation";
   const timingClass = timingMode
-    ? "border-primary ring-2 ring-primary/20"
+    ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
     : "";
 
   return (
@@ -44,10 +44,10 @@ export function LyricsMobileControls({ tools }: { tools?: ReactNode }) {
           {isPlaying ? <Pause className="mx-auto" /> : <Play className="mx-auto" />}
         </button>
         <span className="mx-1 h-6 w-px bg-raised-2" />
-        <button type="button" className={buttonClass} onClick={() => dispatchKey("ArrowUp")} aria-label={text(locale, "บรรทัดก่อนหน้า", "Previous line")}>
+        <button type="button" className={buttonClass} disabled={timingMode} onClick={() => dispatchKey("ArrowUp")} aria-label={text(locale, "บรรทัดก่อนหน้า", "Previous line")}>
           <ArrowUp className="mx-auto" />
         </button>
-        <button type="button" className={buttonClass} onClick={() => dispatchKey("ArrowDown")} aria-label={text(locale, "บรรทัดถัดไป", "Next line")}>
+        <button type="button" className={buttonClass} disabled={timingMode} onClick={() => dispatchKey("ArrowDown")} aria-label={text(locale, "บรรทัดถัดไป", "Next line")}>
           <ArrowDown className="mx-auto" />
         </button>
         <span className="mx-1 h-6 w-px bg-raised-2" />

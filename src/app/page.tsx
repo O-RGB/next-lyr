@@ -37,6 +37,7 @@ import { useSettingsStore } from "@/features/settings/settings-store";
 import { text as localizedText } from "@/features/settings/locale";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import styles from "./dashboard.module.css";
+import skin from "@/components/common/workspace-skin.module.css";
 
 export default function Home() {
   const language = useSettingsStore((state) => state.uiLocale);
@@ -86,7 +87,7 @@ export default function Home() {
 
   return (
     <div
-      className={`dashboard-shell bg-base text-foreground ${styles.workspace}`}
+      className={`dashboard-shell bg-base text-foreground ${styles.workspace} ${skin.skin}`}
     >
       <div className="flex min-h-full">
         <aside
@@ -94,16 +95,16 @@ export default function Home() {
         >
           <Link href="/" className="flex items-center gap-3">
             <Image
-              src="/images/icon-app.png"
+              src="/images/icon-app.b051ea6945.png"
               alt=""
               width={40}
               height={40}
               className=""
             />
             <div>
-              <p className="font-semibold tracking-tight">NextLyricsEditor</p>
+              <p className="font-semibold tracking-tight">Lyrio Studio</p>
               <p className="mt-0.5 text-[10px] tracking-[0.16em] text-dim">
-                PROJECT WORKSPACE
+                Karaoke Lyrics Editor
               </p>
             </div>
           </Link>
@@ -143,7 +144,7 @@ export default function Home() {
             href="/guide"
             className="mt-5 text-xs text-dim hover:text-primary"
           >
-            {text("เกี่ยวกับ NextLyricsEditor", "About NextLyricsEditor")}
+            {text("เกี่ยวกับ Lyrio Studio", "About Lyrio Studio")}
           </Link>
         </aside>
 
@@ -153,7 +154,7 @@ export default function Home() {
           >
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <FolderOpen className="size-4 text-primary" />
-              <span className="font-medium lg:hidden">NextLyricsEditor</span>
+              <span className="font-medium lg:hidden">Lyrio Studio</span>
               <span className="hidden text-muted-foreground lg:inline">
                 {text("พื้นที่ทำงาน", "Workspace")}
               </span>

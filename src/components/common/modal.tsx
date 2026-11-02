@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import skin from "./workspace-skin.module.css";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,6 +73,8 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
         className={cn(
           // Wide enough for the lyric and chord tables this editor puts in modals.
           "app-modal-content flex max-h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(900px,92vw)]",
+          skin.skin,
+          "border border-line shadow-[4px_4px_0_var(--line)]",
           modalClassName,
           className
         )}

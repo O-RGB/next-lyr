@@ -1,3 +1,4 @@
+import { createStaticWebpEncoder } from "./webp-encoder";
 import { fitStickerDimensions, inspectStickerImage } from "lyrio/image-info";
 import { MAX_GIF_STICKER_BYTES, MAX_STATIC_STICKER_BYTES, MAX_STICKER_INPUT_BYTES } from "lyrio/media";
 
@@ -74,29 +75,30 @@ export async function optimizeSticker(file: File, signal?: AbortSignal) {
     if (!blob || blob.size > MAX_GIF_STICKER_BYTES) throw new Error("optimized-image-too-large");
   } else {
     const bitmap = await decodeImage(new Blob([buffer], { type: original.mime }));
+    const encoder = createStaticWebpEncoder(signal);
     try {
-      for (const maximum of [256, 192, 128]) {
+      // A small display image should not consume the entire 200 KB hard limit.
+      for (const [maximum, quality] of [[256, 0.76], [256, 0.6], [192, 0.72], [128, 0.68]]) {
+        aborted(signal);
         const size = fitStickerDimensions(bitmap.width, bitmap.height, maximum);
         const canvas = document.createElement("canvas");
         canvas.width = size.width; canvas.height = size.height;
         const context = canvas.getContext("2d");
         if (!context) throw new Error("image-optimize-failed");
         context.drawImage(bitmap.source, 0, 0, size.width, size.height);
-        const candidate = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.86));
+        const candidate = await encoder.encode(canvas, quality);
         aborted(signal);
         if (!candidate) throw new Error("image-optimize-failed");
-        blob = candidate; width = size.width; height = size.height;
-        if (blob.size <= MAX_STATIC_STICKER_BYTES) break;
+        if (!blob || candidate.size < blob.size) { blob = candidate; width = size.width; height = size.height; }
+        if (blob.size <= 24_000) break;
       }
-      if (Math.max(bitmap.width, bitmap.height) <= 256 && file.size <= (blob?.size ?? Infinity)) {
-        blob = new Blob([buffer], { type: original.mime }); width = bitmap.width; height = bitmap.height;
-      }
-    } finally { bitmap.close(); }
+    } finally { bitmap.close(); encoder.dispose(); }
     if (!blob || blob.size > MAX_STATIC_STICKER_BYTES) throw new Error("optimized-image-too-large");
   }
   aborted(signal);
   const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
   const id = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
-  return { blob, sticker: { id, name: file.name, mime: blob.type, width, height,
+  const name = blob.type === "image/webp" ? file.name.replace(/\.[^.]+$/, "") + ".webp" : file.name;
+  return { blob, sticker: { id, name, mime: blob.type, width, height,
     bytes: blob.size, originalBytes: file.size, position: "before" as const } };
 }

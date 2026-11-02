@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import NavBarMemu from "./navbar-menu";
 import ReadLyricsModal from "@/components/modals/read-lyrics";
 import BuildNcnModal from "../modals/build-ncn";
@@ -14,6 +15,10 @@ import { IMenusType } from "./navbar";
 interface HandleNavbarModalProps {}
 
 const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
+  const router = useRouter();
+  const [isReturningToProjects, setIsReturningToProjects] = useState(false);
+  const returnRequestRef = useRef(false);
+  const requestConfirm = useUiStore((state) => state.requestConfirm);
   const [modal, setModal] = useState<IMenusType>();
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const dialog = useUiStore((state) => state.dialog);
@@ -45,6 +50,33 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
     }
   };
 
+  const returnToProjects = async () => {
+    if (returnRequestRef.current || menuRequestRef.current) return;
+    returnRequestRef.current = true;
+    setIsReturningToProjects(true);
+    const locale = useSettingsStore.getState().uiLocale;
+    try {
+      const confirmed = await requestConfirm({
+        title: text(locale, "กลับไปหน้ารายการโปรเจกต์?", "Return to project list?"),
+        description: text(locale, "บันทึกงานปัจจุบันแล้วกลับไปหน้ารายการโปรเจกต์", "Save your current work and return to the project list."),
+        confirmLabel: text(locale, "ยืนยันกลับ", "Return to projects"),
+      });
+      if (!confirmed) return;
+      usePlayerHandlersStore.getState().handlePauseTiming();
+      const state = useKaraokeStore.getState();
+      if (state.isTimingActive || state.editingLineIndex !== null) await state.actions.stopTiming();
+      await useKaraokeStore.getState().actions.saveCurrentProject();
+      useKaraokeStore.getState().actions.setLineSelectionMode(false);
+      router.push("/");
+    } catch (error) {
+      toast.error(text(locale, "บันทึกไม่สำเร็จ งานยังอยู่ในหน้านี้", "Could not save; your work is still on this page"));
+      console.error(error);
+    } finally {
+      returnRequestRef.current = false;
+      setIsReturningToProjects(false);
+    }
+  };
+
   const onCloseModal = () => {
     setModal(undefined);
     if (dialog === "lyrics") openDialog(null);
@@ -63,7 +95,7 @@ const NavBar: React.FC<HandleNavbarModalProps> = ({}) => {
         open={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
       />
-      <NavBarMemu onSelectMenu={onSelectMenu}></NavBarMemu>
+      <NavBarMemu onSelectMenu={onSelectMenu} onReturnToProjects={returnToProjects} returningToProjects={isReturningToProjects} />
     </>
   );
 };

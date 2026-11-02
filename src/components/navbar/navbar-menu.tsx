@@ -41,6 +41,8 @@ import { IMenusType } from "./navbar.d";
 
 interface NavBarMenuProps {
   onSelectMenu?: (value: IMenusType) => void;
+  onReturnToProjects?: () => void;
+  returningToProjects?: boolean;
 }
 
 const NavBarTitle = React.memo(function NavBarTitle() {
@@ -104,7 +106,7 @@ const NavBarHistoryActions = React.memo(function NavBarHistoryActions() {
   );
 });
 
-const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
+const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu, onReturnToProjects, returningToProjects = false }) => {
   const { resolvedTheme, setTheme } = useTheme();
   const openDialog = useUiStore((state) => state.openDialog);
   const locale = useSettingsStore((state) => state.uiLocale);
@@ -115,19 +117,27 @@ const NavBarMenu: React.FC<NavBarMenuProps> = ({ onSelectMenu }) => {
 
   return (
     <div className="flex h-14 min-w-0 items-center gap-2 px-3 sm:px-5">
-      <div className="flex shrink-0 items-center gap-2 pr-1">
-        <Image
-          src="/images/icon-app.png"
-          alt=""
-          aria-hidden="true"
-          width={512}
-          height={512}
-          className="size-9 shrink-0 rounded-xl object-cover"
-        />
-        <span className="hidden text-sm font-semibold tracking-tight sm:block">
-          {text(locale, "Lyrics Editor", "Lyrics Editor")}
+      <button
+          type="button"
+          onClick={onReturnToProjects}
+          disabled={returningToProjects}
+          aria-label={text(locale, "กลับไปรายการโปรเจกต์", "Back to project list")}
+          title={text(locale, "กลับไปรายการโปรเจกต์", "Back to project list")}
+          className="flex shrink-0 cursor-pointer items-center gap-2 pr-1 text-left transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-50"
+        >
+          <Image
+            src="/images/icon-app.b051ea6945.png"
+            alt=""
+            aria-hidden="true"
+            width={512}
+            height={512}
+            className="size-9 rounded-xl object-cover"
+          />
+        <span className="hidden sm:block">
+          <span className="block text-sm font-semibold tracking-tight">Lyrio Studio</span>
+          <span className="editor-brand-caption block">Karaoke Lyrics Editor</span>
         </span>
-      </div>
+      </button>
 
       <Separator orientation="vertical" className="hidden h-6 sm:block" />
 

@@ -15,7 +15,7 @@ const DonateModal = () => {
   }, []);
   return (
     <ModalCommon
-      title={text(locale, "สนับสนุน NextLyricsEditor", "Support NextLyricsEditor")}
+      title={text(locale, "สนับสนุน Lyrio Studio", "Support Lyrio Studio")}
       cancelButtonProps={{ children: text(locale, "ปิด", "Close") }}
       okButtonProps={{ hidden: true }}
       open={open}

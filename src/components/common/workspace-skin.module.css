@@ -1,0 +1,36 @@
+.skin {
+  --dashboard-shadow: var(--line);
+  --midi-line: color-mix(in srgb, var(--brand), var(--panel) 65%);
+  --midi-surface: color-mix(in srgb, var(--brand), var(--panel) 94%);
+  --midi-surface-strong: color-mix(in srgb, var(--brand), var(--panel) 87%);
+  --midi-text: var(--brand);
+  --audio-line: color-mix(in srgb, var(--brand-2), var(--panel) 65%);
+  --audio-surface: color-mix(in srgb, var(--brand-2), var(--panel) 94%);
+  --audio-text: var(--brand-2);
+}
+
+.skin svg {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.skin [data-slot="button"] {
+  border: 1px solid var(--line-strong);
+  box-shadow: 2px 2px 0 var(--dashboard-shadow);
+  transition: background-color 120ms, color 120ms, box-shadow 120ms;
+}
+
+.skin [data-slot="button"]:active:not(:disabled) {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.skin [data-slot="button"]:disabled {
+  box-shadow: none;
+}
+
+.skin input:not([type="range"]):not([type="checkbox"]):not([type="file"]),
+.skin select,
+.skin textarea {
+  box-shadow: inset 2px 2px 0 var(--line-soft);
+}

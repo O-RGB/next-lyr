@@ -9,7 +9,8 @@ export async function importGalleryImage(projectId: string, file: File, signal: 
   if (file.size > MAX_STICKER_INPUT_BYTES) throw new Error("file-too-large");
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   const sourceHash = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
-  const existing = (await getGalleryImages()).find(image => image.sourceHashes.includes(sourceHash));
+  const existing = (await getGalleryImages()).find(image => image.sourceHashes.includes(sourceHash) &&
+    (image.sticker.mime === "image/webp" || image.sticker.mime === "image/gif"));
   check();
   if (existing) return { sticker: existing.sticker, reused: true };
   const result = await optimizeSticker(file, signal);

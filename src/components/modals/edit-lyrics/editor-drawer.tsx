@@ -1,14 +1,16 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 
 /** Both content and effects share responsive sizing, focus trapping and scrolling. */
-export function EditorDrawer({ open, onClose, title, description, children, footer, initialFocus, placement = "responsive" }: {
+export function EditorDrawer({ open, onClose, title, description, children, footer, initialFocus, bodyClassName, placement = "responsive" }: {
   open: boolean; onClose: () => void; title: string; description: string;
   children: ReactNode; footer?: ReactNode;
   initialFocus?: () => HTMLElement | null;
+  bodyClassName?: string;
   placement?: "responsive" | "bottom";
 }) {
   const mobile = useIsMobile(640);
@@ -20,7 +22,7 @@ export function EditorDrawer({ open, onClose, title, description, children, foot
         <SheetTitle>{title}</SheetTitle>
         <SheetDescription>{description}</SheetDescription>
       </SheetHeader>
-      <div data-editor-drawer-body className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{children}</div>
+      <div data-editor-drawer-body className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", bodyClassName)}>{children}</div>
       {footer && <SheetFooter className="shrink-0 border-t border-line pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</SheetFooter>}
     </SheetContent>
   </Sheet>;

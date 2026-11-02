@@ -15,6 +15,8 @@ import { ProjectToolbar } from "./project-toolbar";
 import { useProjectLoader } from "./use-project-loader";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { text } from "@/features/settings/locale";
+import skin from "@/components/common/workspace-skin.module.css";
+import styles from "./project-style.module.css";
 import usePreventPullToRefresh from "@/hooks/usePreventPullToRefresh";
 
 export function ProjectPage({ projectId }: { projectId: string }) {
@@ -54,7 +56,7 @@ export function ProjectPage({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${skin.skin} ${styles.editor}`}>
       <ProjectToolbar />
       <main className="min-h-0 flex-1">
         <ProjectWorkspace />

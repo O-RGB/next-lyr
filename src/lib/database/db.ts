@@ -368,6 +368,13 @@ export async function getStickerBlob(projectId: string, id: string) {
   return (await db.galleryAssets.get(id))?.blob ?? (await db.stickerAssets.get(`${projectId}:${id}`))?.blob;
 }
 
+/** Remove only the picker entry. Lyrics and open drafts still reference the
+ * shared blob by content hash, so deleting its bytes would break those images. */
+export async function removeGalleryImage(id: string) {
+  await db.galleryImages.delete(id);
+  galleryChanged();
+}
+
 export async function getGalleryImages() {
   return db.galleryImages.orderBy("createdAt").reverse().toArray();
 }

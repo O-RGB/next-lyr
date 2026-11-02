@@ -8,16 +8,10 @@
   --audio-line: color-mix(in srgb, var(--brand-2), var(--panel) 65%);
   --audio-surface: color-mix(in srgb, var(--brand-2), var(--panel) 94%);
   --audio-text: var(--brand-2);
-  --dashboard-shadow: var(--line);
   background-image:
     linear-gradient(var(--line-soft) 1px, transparent 1px),
     linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
   background-size: 24px 24px;
-}
-
-.workspace svg {
-  stroke-linecap: square;
-  stroke-linejoin: miter;
 }
 
 .workspace button,
@@ -95,17 +89,6 @@
 .title {
   letter-spacing: -0.035em;
   font-weight: 750;
-}
-
-.workspace [data-slot="button"] {
-  border: 1px solid var(--line-strong);
-  box-shadow: 2px 2px 0 var(--dashboard-shadow);
-}
-
-.workspace [data-slot="button"]:active,
-.openProject:active {
-  box-shadow: none;
-  transform: translate(2px, 2px);
 }
 
 .workspace .createButton {

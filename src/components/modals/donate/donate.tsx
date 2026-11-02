@@ -29,7 +29,7 @@ const Donate = ({ show = true }: DonateProps) => {
       </div>
 
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        {text(locale, "การสนับสนุนของคุณช่วยให้เราดูแลและพัฒนา NextLyricsEditor ต่อไปได้", "Your support helps us maintain and improve NextLyricsEditor")}
+        {text(locale, "การสนับสนุนของคุณช่วยให้เราดูแลและพัฒนา Lyrio Studio ต่อไปได้", "Your support helps us maintain and improve Lyrio Studio")}
       </p>
 
       <a
@@ -72,7 +72,7 @@ const Donate = ({ show = true }: DonateProps) => {
             <div className="flex items-center gap-3">
               <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                 <Image
-                  src="/images/icon-app.png"
+                  src="/images/icon-app.b051ea6945.png"
                   alt=""
                   aria-hidden="true"
                   width={512}
@@ -82,7 +82,7 @@ const Donate = ({ show = true }: DonateProps) => {
               </div>
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">
-                  NextLyricsEditor
+                  Lyrio Studio
                 </h2>
                 <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
                   Karaoke Lyrics Editor
@@ -99,7 +99,7 @@ const Donate = ({ show = true }: DonateProps) => {
                 {text(locale, "เกี่ยวกับโปรเจกต์", "About the project")}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {text(locale, "NextLyricsEditor พัฒนาให้การแก้ไขคำร้อง ซับ และจังหวะเพลงทำได้ง่าย ใช้งานได้จากเบราว์เซอร์โดยไม่ต้องติดตั้งโปรแกรมเพิ่มเติม", "NextLyricsEditor makes lyrics, subtitles, and timing easy to edit directly in the browser without extra installation")}
+                {text(locale, "Lyrio Studio พัฒนาให้การแก้ไขคำร้อง ซับ และจังหวะเพลงทำได้ง่าย ใช้งานได้จากเบราว์เซอร์โดยไม่ต้องติดตั้งโปรแกรมเพิ่มเติม", "Lyrio Studio makes lyrics, subtitles, and timing easy to edit directly in the browser without extra installation")}
               </p>
             </div>
 

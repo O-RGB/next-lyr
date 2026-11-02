@@ -28,6 +28,9 @@ import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
 
+// Chord tools are hidden from the editor UI.
+const SHOW_CHORDS = false;
+
 interface LyricsEditorMenuProps {
   preview: boolean;
   onPreviewChange: (visible: boolean) => void;
@@ -116,7 +119,7 @@ export default function LyricsEditorMenu({
               aria-label={text(locale, "เครื่องมือแก้ไข", "Editor tools")}
               title={text(locale, "เครื่องมือแก้ไข", "Editor tools")}
               childrenClassName="hidden sm:inline"
-              className="max-sm:!h-10 max-sm:!w-10 max-sm:!gap-0 max-sm:!rounded-lg max-sm:!border-line max-sm:!bg-panel max-sm:!p-0 max-sm:!text-foreground max-sm:!shadow-sm max-sm:active:scale-95 max-sm:touch-manipulation"
+              className="max-sm:!h-10 max-sm:!w-10 max-sm:!gap-0 max-sm:!rounded-lg max-sm:!border-line max-sm:!bg-panel max-sm:!p-0 max-sm:!text-foreground max-sm:!shadow-sm max-sm:active:scale-95 max-sm:touch-manipulation max-sm:disabled:!opacity-30 max-sm:disabled:!shadow-none"
             >
               {text(locale, "เครื่องมือ", "Tools")}
             </ButtonCommon>
@@ -161,7 +164,7 @@ export default function LyricsEditorMenu({
               </Switch>
             </DropdownMenuItem>
 
-            {mode === "midi" ? (
+            {SHOW_CHORDS && mode === "midi" ? (
               <DropdownMenuItem
                 closeOnClick={false}
                 disabled={timingMode}
