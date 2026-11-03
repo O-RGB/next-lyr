@@ -119,13 +119,6 @@ export default function Home() {
             <LayoutDashboard className="size-4" />
             {text("โปรเจกต์ทั้งหมด", "All projects")}
           </Link>
-          <Link
-            href="/guide"
-            className="mt-1 flex items-center gap-3 px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-base hover:text-primary"
-          >
-            <FileMusic className="size-4" />
-            {text("วิธีใช้งาน", "User guide")}
-          </Link>
           <div
             className={`mt-auto border border-line bg-base p-4 ${styles.localStorage}`}
           >
@@ -140,12 +133,6 @@ export default function Home() {
               )}
             </p>
           </div>
-          <Link
-            href="/guide"
-            className="mt-5 text-xs text-dim hover:text-primary"
-          >
-            {text("เกี่ยวกับ Lyrio Studio", "About Lyrio Studio")}
-          </Link>
         </aside>
 
         <div className="min-w-0 flex-1">
@@ -202,15 +189,6 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="outline"
-                  nativeButton={false}
-                  render={<Link href="/guide" />}
-                  className="hidden h-11 gap-2 px-5 sm:inline-flex"
-                >
-                  <FileMusic className="size-4" />
-                  {text("วิธีใช้งาน", "User guide")}
-                </Button>
                 <Button
                   onClick={newProject}
                   className={`h-11 gap-2 px-5 ${styles.createButton}`}
@@ -506,7 +484,6 @@ export default function Home() {
                   {text("แสดง", "Showing")} {rows.length} /{" "}
                   {projects?.length ?? 0} {text("โปรเจกต์", "projects")}
                 </span>
-                <Link href="/guide" className="text-primary sm:hidden">{text("วิธีใช้งาน", "User guide")}</Link>
                 <span className="hidden items-center gap-1.5 sm:flex">
                   <HardDrive className="size-3" />
                   {text(

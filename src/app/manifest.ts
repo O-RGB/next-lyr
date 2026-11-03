@@ -47,8 +47,8 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     screenshots: [
       {
-        src: "/images/cover.png",
-        sizes: "1671x941",
+        src: "/images/cover.e5d090ee7c.png",
+        sizes: "1774x887",
         type: "image/png",
         form_factor: "wide",
         label: "Lyrio Studio karaoke lyrics editor",

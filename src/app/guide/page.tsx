@@ -347,10 +347,10 @@ export default function Home() {
 
             <section className="overflow-hidden rounded-lg border border-line bg-slate-950 shadow-sm">
               <Image
-                src="/images/cover.png"
+                src="/images/cover.e5d090ee7c.png"
                 alt="Lyrio Studio lyrics editing preview"
-                width={1671}
-                height={941}
+                width={1774}
+                height={887}
                 priority
                 className="h-auto w-full object-cover"
               />

@@ -48,9 +48,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/cover.png",
-        width: 1671,
-        height: 941,
+        url: "/images/cover.e5d090ee7c.png",
+        width: 1774,
+        height: 887,
         type: "image/png",
         alt: "Lyrio Studio karaoke lyrics editor",
       },
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Lyrio Studio — Karaoke Lyrics Editor",
     description: "สร้างและแก้ไขเนื้อเพลง Karaoke Lyrio Studio รองรับ NCN",
-    images: ["/images/cover.png"],
+    images: ["/images/cover.e5d090ee7c.png"],
   },
   appleWebApp: {
     capable: true,
