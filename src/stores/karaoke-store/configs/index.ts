@@ -90,6 +90,7 @@ export const initialState: Omit<KaraokeState, "actions"> = {
   activeSoundfontId: DEFAULT_SOUNDFONT_ID,
   playerState: initialPlayerState,
   timingDirection: null,
+  wallpaper: undefined,
   lyricsData: [],
   lineStickers: {},
   lyricsDocument: null,

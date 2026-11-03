@@ -6,18 +6,19 @@ import useIsMobile from "@/hooks/useIsMobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 
 /** Both content and effects share responsive sizing, focus trapping and scrolling. */
-export function EditorDrawer({ open, onClose, title, description, children, footer, initialFocus, bodyClassName, placement = "responsive" }: {
+export function EditorDrawer({ open, onClose, title, description, children, footer, initialFocus, bodyClassName, placement = "responsive", size = "default" }: {
   open: boolean; onClose: () => void; title: string; description: string;
   children: ReactNode; footer?: ReactNode;
   initialFocus?: () => HTMLElement | null;
   bodyClassName?: string;
   placement?: "responsive" | "bottom";
+  size?: "default" | "compact";
 }) {
   const mobile = useIsMobile(640);
   return <Sheet open={open} onOpenChange={next => { if (!next) onClose(); }}>
     <SheetContent side={placement === "bottom" || mobile ? "bottom" : "right"} initialFocus={initialFocus}
       backdropProps={{ forceRender: true, className: "z-[60] bg-black/20" }}
-      className="z-[61] gap-0 overflow-hidden bg-panel data-[side=bottom]:h-[82dvh] data-[side=bottom]:rounded-t-2xl data-[side=bottom]:sm:mx-auto data-[side=bottom]:sm:max-w-[760px] data-[side=right]:w-[min(440px,92vw)] data-[side=right]:sm:max-w-[440px]">
+      className={cn("z-[61] gap-0 overflow-hidden bg-panel data-[side=bottom]:h-[82dvh] data-[side=bottom]:rounded-t-2xl data-[side=bottom]:sm:mx-auto data-[side=bottom]:sm:max-w-[760px] data-[side=right]:w-[min(440px,92vw)] data-[side=right]:sm:max-w-[440px]", size === "compact" && "data-[side=bottom]:h-auto data-[side=bottom]:max-h-[70dvh]")}>
       <SheetHeader className="shrink-0 border-b border-line pr-12">
         <SheetTitle>{title}</SheetTitle>
         <SheetDescription>{description}</SheetDescription>

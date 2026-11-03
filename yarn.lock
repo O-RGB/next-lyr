@@ -4412,6 +4412,11 @@ safe-regex-test@^1.0.3, safe-regex-test@^1.1.0:
 "safer-buffer@>= 2.1.2 < 3.0.0":
   version "2.1.2"
 
+"scenio@file:vendor/scenio-0.1.7.tgz":
+  version "0.1.7"
+  resolved "file:vendor/scenio-0.1.7.tgz"
+  integrity sha512-Zmlqsv++TSXNJ1oS6Z2xvHZUcYdkzYjOSb5IXrjlh3wLBW6+v0zG5GI20FXya5Sggzsf2B7/J3xPk00fGVO69g==
+
 scheduler@^0.25.0:
   version "0.25.0"
 

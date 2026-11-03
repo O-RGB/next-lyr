@@ -1,5 +1,6 @@
 "use client";
 
+import { WallpaperEditor } from "@/modules/wallpaper/wallpaper-editor";
 import AddLyricLineModal from "@/components/modals/add-lyrics/add-lyric-line-modal";
 import EditLyricLineModal from "@/components/modals/edit-lyrics/edit-lyric-line-modal";
 import DonateModal from "@/components/modals/donate";
@@ -13,6 +14,7 @@ export function ProjectDialogs() {
   return (
     <>
       <DonateModal />
+      <WallpaperEditor />
       <EditLyricLineModal open={isEditModalOpen} />
       <AddLyricLineModal open={isAddModalOpen} />
       <ChordEditModal />

@@ -1,3 +1,4 @@
+import type { ScenioDocument, ScenioAsset } from "scenio/core";
 import type { LineStickers, LyricSticker, GalleryImage } from "lyrio/media";
 import Dexie, { Table } from "dexie";
 import { MusicMode, IMidiInfo } from "@/types/common.type";
@@ -24,6 +25,7 @@ export interface PlayerState {
 }
 
 export interface ProjectData {
+  wallpaper?: ScenioDocument;
   playerState: PlayerState;
   lyricsData: KaraokeState["lyricsData"];
   lineStickers?: LineStickers;
@@ -85,7 +87,13 @@ export interface ProjectSummary {
   updatedAt: Date;
 }
 
+export interface WallpaperAssetRecord {
+  hidden?: boolean; id: string; asset: ScenioAsset; name: string; blob: Blob; createdAt: Date }
+
+export type WallpaperAssetSummary = Omit<WallpaperAssetRecord, "blob">;
+
 export class MySubClassedDexie extends Dexie {
+  wallpaperAssets!: Table<WallpaperAssetRecord>;
   projects!: Table<Project>;
   timingDrafts!: Table<TimingDraft>;
   stickerAssets!: Table<{ key: string; projectId: string; blob: Blob }>;
@@ -158,6 +166,7 @@ export class MySubClassedDexie extends Dexie {
       await tx.table("stickerAssets").clear();
     });
     this.version(13).stores({ effectSpriteAssets: "&id" });
+    this.version(14).stores({ wallpaperAssets: "&id" });
   }
 }
 
@@ -402,4 +411,15 @@ export async function pruneStickerAssets(_projectId: string, stickers: LineStick
     if (image?.sticker.name.startsWith("image-")) await db.galleryImages.update(sticker.id, { sticker });
   }
   if (old.length || known.size) galleryChanged();
+}
+
+
+/** Update only wallpaper fields; keep media, lyric drafts and other edits intact. */
+export async function saveProjectWallpaper(id: string, wallpaper: ScenioDocument) {
+  const updatedAt = nextProjectRevision();
+  await db.transaction('rw', db.projects, projectSummaries, async () => {
+    const count = await db.projects.update(id, {'data.wallpaper': wallpaper, updatedAt});
+    if (!count) throw new Error('Project no longer exists');
+    await projectSummaries.update(id, {updatedAt});
+  });
 }

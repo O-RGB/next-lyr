@@ -1,3 +1,4 @@
+import { importMidiWallpaper } from "@/modules/wallpaper/midi-wallpaper";
 import { FileMusic, Piano } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
@@ -195,6 +196,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 : await parseMidi(selectedFile);
             initialData.playerState.midi = parsedMidi;
             initialData.playerState.duration = parsedMidi.duration;
+            initialData.wallpaper = await importMidiWallpaper(selectedFile);
             initialData.metadata = {
               ...DEFAULT_SONG_INFO,
               ...parsedMidi.info,

@@ -52,6 +52,7 @@ export function SettingsDialog() {
   const openDialog = useUiStore((state) => state.openDialog);
   const { resolvedTheme, setTheme } = useTheme();
 
+  const targetFps = useSettingsStore((state) => state.targetFps);
   const masterVolume = useSettingsStore((state) => state.masterVolume);
   const midiBufferSize = useSettingsStore((state) => state.midiBufferSize);
   const uiLocale = useSettingsStore((state) => state.uiLocale);
@@ -325,6 +326,12 @@ export function SettingsDialog() {
 
           <Section icon={<Type className="size-4 text-primary" />} title={text(uiLocale, "การแสดงผล", "Display")}>
             <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="min-w-0 flex-1">{text(uiLocale, "เฟรมเรตภาพตัวอย่าง", "Preview frame rate")}</span>
+                <select aria-label="Preview frame rate" value={targetFps} onChange={event=>update("targetFps",Number(event.currentTarget.value))} className="h-8 min-w-36 rounded-lg border border-input bg-transparent px-2 text-sm">
+                  {[24,30,60,120].map(fps=><option key={fps} value={fps}>{fps} FPS</option>)}
+                </select>
+              </div>
               <div className="flex items-center gap-3 text-sm">
                 <span className="min-w-0 flex-1">{text(uiLocale, "ภาษาหน้าโปรแกรม", "Interface language")}</span>
                 <select

@@ -1,3 +1,4 @@
+import type { ScenioDocument } from "scenio/core";
 import type { BlockEffect } from "lyrio/effects";
 import type { LineStickers, LyricSticker } from "lyrio/media";
 import { LyricWordData, MusicMode } from "@/types/common.type";
@@ -15,7 +16,7 @@ import type { History } from "../history";
 
 export type HistoryState = Pick<
   KaraokeState,
-  "lyricsData" | "lyricsDocument" | "lyricsXml" | "chordsData" | "metadata" | "lineStickers"
+  "lyricsData" | "lyricsDocument" | "lyricsXml" | "chordsData" | "metadata" | "lineStickers" | "wallpaper"
 >;
 
 export interface PlayerState {
@@ -227,6 +228,7 @@ export type AllActions = ProjectActions &
   HistoryActions;
 
 export interface KaraokeState {
+  wallpaper?: ScenioDocument;
   projectId: string | null;
   mode: MusicMode | null;
   soundfonts: SoundfontEntry[];

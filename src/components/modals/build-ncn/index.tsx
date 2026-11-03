@@ -1,3 +1,4 @@
+import { exportMidiWallpaper } from "@/modules/wallpaper/midi-wallpaper";
 import { AlertTriangle, Download } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import ModalCommon from "../../common/modal";
@@ -258,9 +259,9 @@ const BuildNcnModal: React.FC<BuildNcnModalProps> = ({ open, onClose }) => {
         textEncoding: legacyEncodingSupported && !hasImages && !hasEffects ? "tis-620" : "utf-8",
       });
 
-      const blob = new Blob([newMidiBuffer as BlobPart], {
+      const blob = await exportMidiWallpaper(new Blob([newMidiBuffer as BlobPart], {
         type: "audio/midi",
-      });
+      }), useKaraokeStore.getState().wallpaper);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

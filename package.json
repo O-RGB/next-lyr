@@ -35,6 +35,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.61.1",
     "react-youtube": "^10.1.0",
+    "scenio": "file:vendor/scenio-0.1.7.tgz",
     "shadcn": "^4.16.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",

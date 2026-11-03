@@ -2,6 +2,7 @@
 
 import {
   FileText,
+  Images,
   ListRestart,
   MicVocal,
   StickyNote,
@@ -24,6 +25,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { text } from "@/features/settings/locale";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { useUiStore } from "@/features/ui/ui-store";
 import { useKaraokeStore } from "@/stores/karaoke-store";
 import { usePlayerHandlersStore } from "@/hooks/usePlayerHandlers";
 import { usePlayerSetupStore } from "@/hooks/usePlayerSetup";
@@ -48,6 +50,7 @@ export default function LyricsEditorMenu({
   const [metadataDirty, setMetadataDirty] = useState(false);
   const [metadataFormVersion, setMetadataFormVersion] = useState(0);
   const locale = useSettingsStore((state) => state.uiLocale);
+  const openDialog = useUiStore((state) => state.openDialog);
   const mode = useKaraokeStore((state) => state.mode);
   const lyricsData = useKaraokeStore((state) => state.lyricsData);
   const timingMode = useKaraokeStore(
@@ -163,6 +166,8 @@ export default function LyricsEditorMenu({
                 </span>
               </Switch>
             </DropdownMenuItem>
+
+            <DropdownMenuItem disabled={timingMode} onClick={() => openDialog("wallpaper")}><Images /><span>Wallpaper</span></DropdownMenuItem>
 
             {SHOW_CHORDS && mode === "midi" ? (
               <DropdownMenuItem

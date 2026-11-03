@@ -51,6 +51,7 @@ export const createProjectActions: StateCreator<
       const activeSoundfontId = get().activeSoundfontId;
 
       const dataToSave: ProjectData = {
+        wallpaper: get().wallpaper,
         playerState: {
           midi: playerState.midi,
           storedFile: playerState.storedFile,
@@ -125,6 +126,7 @@ export const createProjectActions: StateCreator<
 
       set({
         ...initialState,
+        wallpaper: project.data.wallpaper,
         lyricsData: restoredLyricsData,
         lineStickers: {},
         lyricsDocument,
@@ -144,6 +146,7 @@ export const createProjectActions: StateCreator<
         // opening state into an empty document.
         history: initHistory(
           {
+            wallpaper: project.data.wallpaper,
             lyricsData: restoredLyricsData,
             lineStickers: {},
             lyricsDocument,

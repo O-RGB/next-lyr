@@ -79,7 +79,6 @@ const ModalCommon: React.FC<ModalCommonProps> = ({
           className
         )}
         showCloseButton={showCloseButton}
-        onClose={onClose}
         onKeyDown={onKeyDown}
       >
         {title ? (

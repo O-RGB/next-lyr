@@ -9,6 +9,7 @@ import { create } from "zustand";
  * first by construction, so two can never stack on top of each other.
  */
 export type DialogName =
+  | "wallpaper"
   | "settings"
   | "shortcuts"
   | "history"

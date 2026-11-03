@@ -46,6 +46,8 @@ export interface EditorSettings {
   /** Font size of the karaoke preview, in px. */
   previewFontSize: number;
 
+  targetFps: number;
+
   /** Follow the playing line while the transport runs. */
   autoScroll: boolean;
 
@@ -63,6 +65,7 @@ const DEFAULTS = {
   masterVolume: 0.3,
   midiBufferSize: 16384,
   previewFontSize: 20,
+  targetFps: 60,
   autoScroll: true,
 } as const;
 
@@ -76,7 +79,7 @@ export const useSettingsStore = create<EditorSettings>()(
     {
       name: "next-lyr.settings",
       // Only persist the values; the actions are recreated on load.
-      partialize: ({ uiLocale, uiFontId, lyricsFontId, latencyMs, preRollSeconds, playbackRate, masterVolume, midiBufferSize, previewFontSize, autoScroll }) => ({
+      partialize: ({ uiLocale, uiFontId, lyricsFontId, latencyMs, preRollSeconds, playbackRate, masterVolume, midiBufferSize, previewFontSize, targetFps, autoScroll }) => ({
         uiLocale,
         uiFontId,
         lyricsFontId,
@@ -86,6 +89,7 @@ export const useSettingsStore = create<EditorSettings>()(
         masterVolume,
         midiBufferSize,
         previewFontSize,
+        targetFps,
         autoScroll,
       }),
     }

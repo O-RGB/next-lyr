@@ -16,6 +16,7 @@ import { HistoryActions, HistoryState, KaraokeState } from "../types";
 export function snapshot(state: KaraokeState): HistoryState {
   return {
     lyricsData: timingLyrics(state),
+    wallpaper: state.wallpaper,
     lineStickers: state.lineStickers,
     lyricsDocument: state.lyricsDocument,
     lyricsXml: state.lyricsXml,
